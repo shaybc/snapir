@@ -63,3 +63,18 @@ def test_pipeline_changes_component_hash_when_semantics_change(tmp_path: Path) -
 
     assert first.component_hash != second.component_hash
     assert first.artifact_dir != second.artifact_dir
+
+
+def test_xml_mapper_source_enforces_deterministic_serialization_contract() -> None:
+    source = ConversionPipeline._xml_mapper_source(
+        package_name="com.snapir.generated",
+        op_name="CreateOrder",
+        request_name="CreateOrderRequest",
+        response_name="CreateOrderResponse",
+    )
+
+    assert "DocumentBuilderFactory" in source
+    assert "createElementNS(\"urn:snapir:response\", \"snapir:response\")" in source
+    assert "payload = response == null ? \"\" : normalizeInput(response.getPayload())" in source
+    assert "transformer.setOutputProperty(OutputKeys.INDENT, \"no\")" in source
+    assert "private static String normalizeInput(String value)" in source
