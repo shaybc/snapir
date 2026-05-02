@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -55,7 +56,9 @@ class ConversionPipeline:
         if candidate is None:
             return PipelineResult(run_dir, component_hash, accepted=False, reused=False)
 
-        (run_dir / "SharedComponentLibrary.java").write_text(candidate, encoding="utf-8")
+        self._materialize_maven_project(run_dir, prompt_payload, candidate)
+        self._run_maven_build(run_dir)
+        self._publish_artifact_metadata(run_dir)
         (run_dir / "accepted.json").write_text(
             json.dumps({"component_hash": component_hash, "accepted": True}, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -122,6 +125,131 @@ class ConversionPipeline:
             f"    public {java_type} get{title}() {{ return {name}; }}\n"
             f"    public void set{title}({java_type} value) {{ this.{name} = value; }}"
         )
+
+    def _materialize_maven_project(self, run_dir: Path, prompt_payload: dict, source: str) -> None:
+        coordinates = self._artifact_coordinates(prompt_payload)
+        package_path = coordinates["package"].replace(".", "/")
+        src_main = run_dir / "src" / "main" / "java" / package_path
+        src_test = run_dir / "src" / "test" / "java" / package_path
+        src_main.mkdir(parents=True, exist_ok=True)
+        src_test.mkdir(parents=True, exist_ok=True)
+
+        (run_dir / "pom.xml").write_text(self._pom_xml(coordinates), encoding="utf-8")
+        (src_main / "SharedComponentLibrary.java").write_text(
+            f"package {coordinates['package']};\n\n{source}", encoding="utf-8"
+        )
+        (src_main / "SharedUtilities.java").write_text(
+            self._shared_utilities_source(coordinates["package"]), encoding="utf-8"
+        )
+        (src_main / "ConvertedComponent.java").write_text(
+            self._converted_component_source(coordinates["package"]), encoding="utf-8"
+        )
+        (src_test / "ConvertedComponentTest.java").write_text(
+            self._converted_component_test_source(coordinates["package"]), encoding="utf-8"
+        )
+
+    def _run_maven_build(self, run_dir: Path) -> None:
+        mvn = shutil.which("mvn")
+        if mvn is None:
+            (run_dir / "maven_build.json").write_text(
+                json.dumps({"executed": False, "reason": "mvn_not_found"}, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            return
+
+        cmd = [mvn, "-q", "package", "install", "-DskipTests"]
+        result = subprocess.run(cmd, cwd=run_dir, capture_output=True, text=True)
+        (run_dir / "maven_build.json").write_text(
+            json.dumps(
+                {
+                    "executed": True,
+                    "command": cmd,
+                    "returncode": result.returncode,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def _publish_artifact_metadata(self, run_dir: Path) -> None:
+        coordinates = self._coordinates_from_pom(run_dir / "pom.xml")
+        metadata = {
+            "groupId": coordinates.get("groupId"),
+            "artifactId": coordinates.get("artifactId"),
+            "version": coordinates.get("version"),
+            "packaging": "jar",
+            "artifactPath": str(run_dir / "target" / f"{coordinates.get('artifactId')}-{coordinates.get('version')}.jar"),
+        }
+        (run_dir / "artifact-metadata.json").write_text(
+            json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    def _artifact_coordinates(self, prompt_payload: dict) -> dict:
+        version_token = re.sub(r"[^a-zA-Z0-9]", "", self.version) or "v1"
+        return {
+            "group_id": "com.snapir.generated",
+            "artifact_id": "shared-component-library",
+            "version": f"1.0.0-{version_token}",
+            "package": "com.snapir.generated",
+        }
+
+    @staticmethod
+    def _pom_xml(coordinates: dict) -> str:
+        return f"""<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>{coordinates['group_id']}</groupId>\n  <artifactId>{coordinates['artifact_id']}</artifactId>\n  <version>{coordinates['version']}</version>\n  <properties>\n    <maven.compiler.source>17</maven.compiler.source>\n    <maven.compiler.target>17</maven.compiler.target>\n    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>\n  </properties>\n  <dependencies>\n    <dependency>\n      <groupId>org.junit.jupiter</groupId>\n      <artifactId>junit-jupiter</artifactId>\n      <version>5.10.2</version>\n      <scope>test</scope>\n    </dependency>\n  </dependencies>\n  <build>\n    <plugins>\n      <plugin>\n        <groupId>org.apache.maven.plugins</groupId>\n        <artifactId>maven-surefire-plugin</artifactId>\n        <version>3.2.5</version>\n      </plugin>\n    </plugins>\n  </build>\n</project>\n"""
+
+    @staticmethod
+    def _shared_utilities_source(package_name: str) -> str:
+        return f"""package {package_name};
+
+public final class SharedUtilities {{
+    private SharedUtilities() {{}}
+
+    public static String normalize(String value) {{
+        return value == null ? "" : value.trim();
+    }}
+}}
+"""
+
+    @staticmethod
+    def _converted_component_source(package_name: str) -> str:
+        return f"""package {package_name};
+
+public class ConvertedComponent {{
+    public String convert(String raw) {{
+        return SharedUtilities.normalize(raw);
+    }}
+}}
+"""
+
+    @staticmethod
+    def _converted_component_test_source(package_name: str) -> str:
+        return f"""package {package_name};
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class ConvertedComponentTest {{
+    @Test
+    void convertNormalizesInput() {{
+        ConvertedComponent component = new ConvertedComponent();
+        assertEquals("hello", component.convert("  hello  "));
+    }}
+}}
+"""
+
+    @staticmethod
+    def _coordinates_from_pom(pom: Path) -> dict:
+        content = pom.read_text(encoding="utf-8")
+        return {
+            "groupId": re.search(r"<groupId>([^<]+)</groupId>", content).group(1),
+            "artifactId": re.search(r"<artifactId>([^<]+)</artifactId>", content).group(1),
+            "version": re.search(r"<version>([^<]+)</version>", content).group(1),
+        }
 
 
 def run_conversion_pipeline(source_root: str | Path, out_root: str | Path, version: str) -> Path:
