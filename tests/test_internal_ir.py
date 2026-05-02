@@ -49,6 +49,11 @@ def test_internal_ir_builder_is_deterministic_and_captures_contracts(tmp_path: P
     ]
     assert plan["constraints"]["blocked_cycles"] == []
 
+    op_ir = payload1["operation_ir"]
+    assert op_ir["schema_version"] == "1"
+    assert [s["id"] for s in op_ir["step_graph"]["steps"]] == ["Fetch", "Normalize"]
+    assert op_ir["step_graph"]["transitions"] == [{"from": "Fetch", "type": "next", "to": ["Normalize"]}]
+
     out_dir = builder.persist(tmp_path / "out")
     persisted = json.loads((out_dir / "internal_ir.json").read_text(encoding="utf-8"))
     assert persisted == payload1
@@ -77,3 +82,29 @@ def test_component_conversion_plan_detects_cycles_and_keeps_topological_order(tm
     assert [c["name"] for c in plan["ordered_components"]] == ["Core", "Helper"]
     assert plan["reuse_scores"]["Helper"] > plan["reuse_scores"]["Core"]
     assert plan["constraints"]["blocked_cycles"] == ["CycleA", "CycleB"]
+
+
+def test_operation_ir_captures_branching_transformations_error_handlers_and_external_calls(tmp_path: Path) -> None:
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / "flow.xml").write_text(
+        """
+        <root>
+          <operation name='Start' callsOperation='RouteA RouteB' mapRule='fmt:v1' onError='Recover' endpoint='https://api.example.test/v1'/>
+          <operation name='RouteA' normalize='trim'/>
+          <operation name='RouteB' transform='enrich'/>
+          <operation name='Recover' service='dead-letter'/>
+        </root>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    payload = InternalIRBuilder(source, version="v1").build()
+    op_ir = payload["operation_ir"]
+
+    assert op_ir["routing"]["branches"] == [{"from": "Start", "type": "branch", "to": ["RouteA", "RouteB"]}]
+    start_step = next(step for step in op_ir["step_graph"]["steps"] if step["id"] == "Start")
+    assert start_step["transformations"] == [{"attribute": "mapRule", "value": "fmt:v1"}]
+    assert start_step["error_handlers"] == [{"attribute": "onError", "value": "Recover"}]
+    assert start_step["external_calls"] == ["https://api.example.test/v1"]
+    assert {x["operation"] for x in op_ir["external_calls"]} == {"Recover", "Start"}
