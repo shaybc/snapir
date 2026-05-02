@@ -62,3 +62,61 @@ def test_tag_semantic_resolver_queue_and_dictionary(tmp_path: Path) -> None:
     assert semantics['context_read']['semantic'] == 'read'
     assert semantics['unknowntag']['requires_llm'] is True
     assert any(entry['normalized'] == 'unknowntag' for entry in queue)
+    unknown = next(entry for entry in queue if entry['normalized'] == 'unknowntag')
+    assert unknown['llm_contract']['retry_on_schema_invalid'] is True
+    assert unknown['llm_contract']['response_schema']['required'] == [
+        'normalized_tag', 'semantic', 'confidence', 'rationale', 'provenance'
+    ]
+
+
+def test_unknown_tag_accepts_valid_llm_resolution_with_replayability(tmp_path: Path) -> None:
+    source = tmp_path / 'src'
+    source.mkdir()
+    (source / 'flow.xml').write_text("<root><unknownTag field='beta'/></root>", encoding='utf-8')
+
+    classifier = DataflowClassifier(source, version='v1')
+    classifier.build()
+    ok, reason = classifier.tag_resolver.resolve_unknown_with_llm(
+        {
+            'normalized_tag': 'unknowntag',
+            'semantic': 'read',
+            'confidence': 0.87,
+            'rationale': 'Used as a source-like operation in XML.',
+            'provenance': {
+                'model': 'gpt-x',
+                'prompt_template': 'tag-resolution-v1',
+                'response_schema_version': '1.0',
+            },
+        }
+    )
+    assert ok is True
+    assert reason == 'accepted'
+    accepted = classifier.tag_resolver.accepted_semantics['unknowntag']
+    assert accepted['semantic'] == 'read'
+    assert accepted['confidence'] == 0.87
+    assert 'replayability' in accepted
+
+
+def test_unknown_tag_rejects_invalid_schema_response(tmp_path: Path) -> None:
+    source = tmp_path / 'src'
+    source.mkdir()
+    (source / 'flow.xml').write_text("<root><unknownTag field='beta'/></root>", encoding='utf-8')
+
+    classifier = DataflowClassifier(source, version='v1')
+    classifier.build()
+    ok, reason = classifier.tag_resolver.resolve_unknown_with_llm(
+        {
+            'normalized_tag': 'unknowntag',
+            'semantic': 'read',
+            'confidence': 1.5,
+            'rationale': 'bad confidence',
+            'provenance': {
+                'model': 'gpt-x',
+                'prompt_template': 'tag-resolution-v1',
+                'response_schema_version': '1.0',
+            },
+        },
+        retry_count=2,
+    )
+    assert ok is False
+    assert reason.startswith('schema_invalid_rejected:')
