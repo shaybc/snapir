@@ -47,16 +47,17 @@ class ConversionPipeline:
             return PipelineResult(run_dir, component_hash, accepted=True, reused=True)
 
         prompt_payload = self._prepare_prompt(ir, context_bundle)
-        candidate, critic_log = self._critic_loop(prompt_payload)
+        candidate, loop_history = self._critic_loop(prompt_payload)
 
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "prompt.json").write_text(json.dumps(prompt_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        (run_dir / "critic_log.json").write_text(json.dumps(critic_log, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        (run_dir / "loop_history.json").write_text(json.dumps(loop_history, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
         if candidate is None:
             return PipelineResult(run_dir, component_hash, accepted=False, reused=False)
 
         self._materialize_maven_project(run_dir, prompt_payload, candidate)
+        (run_dir / "final_accepted_implementation.java").write_text(candidate, encoding="utf-8")
         self._run_maven_build(run_dir)
         self._publish_artifact_metadata(run_dir)
         (run_dir / "accepted.json").write_text(
@@ -81,12 +82,29 @@ class ConversionPipeline:
     def _critic_loop(self, prompt_payload: dict) -> tuple[str | None, list[dict]]:
         logs: list[dict] = []
         for attempt in range(1, self.max_attempts + 1):
+            operation_log = {"attempt": attempt}
             candidate = self._generate_java(prompt_payload, attempt)
+            operation_log["service_level_candidate"] = {"language": "java", "source": candidate}
+
+            critic = self._critic_feedback(candidate)
+            operation_log["critic_feedback"] = critic
+
             ok, message = self._compile_check(candidate)
-            logs.append({"attempt": attempt, "compile_ok": ok, "message": message})
+            operation_log["snippet_check"] = {"passed": ok, "message": message}
+            logs.append(operation_log)
             if ok:
                 return candidate, logs
         return None, logs
+
+    @staticmethod
+    def _critic_feedback(candidate: str) -> dict:
+        has_class = "class SharedComponentLibrary" in candidate
+        has_accessors = "get" in candidate and "set" in candidate
+        passed = has_class and has_accessors
+        return {
+            "passed": passed,
+            "notes": "contains shared library class and accessor methods" if passed else "missing class or accessor methods",
+        }
 
     def _generate_java(self, prompt_payload: dict, attempt: int) -> str:
         fields = prompt_payload["context_schemas"]["java_context_metadata"]["fields"]
