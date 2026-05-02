@@ -75,6 +75,7 @@ class InternalIRBuilder:
         }
 
         conversion_plan = self._build_component_conversion_plan(components, op_components, comp_deps)
+        operation_ir = self._build_operation_ir(operations, op_calls)
 
         return {
             "ir_schema_version": "1",
@@ -84,6 +85,7 @@ class InternalIRBuilder:
             "side_effects": side_effects,
             "dependency_contracts": dependency_contracts,
             "shared_component_conversion_plan": conversion_plan,
+            "operation_ir": operation_ir,
             "graph_diagnostics": graph_payload["graph_diagnostics"],
         }
 
@@ -159,6 +161,66 @@ class InternalIRBuilder:
             "reuse_scores": {name: reuse_scores[name] for name in component_names},
             "constraints": {"blocked_cycles": blocked_cycles},
         }
+
+    @classmethod
+    def _build_operation_ir(cls, operations: dict[str, dict], op_calls: dict[str, list[str]]) -> dict:
+        steps = []
+        transitions = []
+        external_calls = []
+
+        operation_names = set(operations)
+        for name in sorted(operations):
+            attrs = operations[name]["attributes"]
+            steps.append(
+                {
+                    "id": name,
+                    "source": {"file": operations[name]["file"], "path": operations[name]["path"]},
+                    "transformations": cls._match_tokens(attrs, ("transform", "map", "normalize", "convert")),
+                    "error_handlers": cls._match_tokens(attrs, ("onerror", "error", "fault", "catch", "handler")),
+                    "external_calls": cls._external_targets(attrs, operation_names),
+                }
+            )
+
+            if name in op_calls and len(op_calls[name]) > 1:
+                transitions.append({"from": name, "type": "branch", "to": op_calls[name]})
+            elif name in op_calls and op_calls[name]:
+                transitions.append({"from": name, "type": "next", "to": op_calls[name]})
+
+            for target in cls._external_targets(attrs, operation_names):
+                external_calls.append({"operation": name, "target": target})
+
+        return {
+            "schema_version": "1",
+            "step_graph": {
+                "steps": steps,
+                "transitions": transitions,
+            },
+            "routing": {
+                "branches": [t for t in transitions if t["type"] == "branch"],
+                "linear": [t for t in transitions if t["type"] == "next"],
+            },
+            "external_calls": external_calls,
+        }
+
+    @staticmethod
+    def _match_tokens(attrs: dict[str, str], hints: tuple[str, ...]) -> list[dict[str, str]]:
+        hits: list[dict[str, str]] = []
+        for key, value in sorted(attrs.items()):
+            lowered = key.lower()
+            if any(hint in lowered for hint in hints):
+                hits.append({"attribute": key, "value": value})
+        return hits
+
+    @staticmethod
+    def _external_targets(attrs: dict[str, str], operation_names: set[str]) -> list[str]:
+        external: set[str] = set()
+        for key, value in sorted(attrs.items()):
+            lowered = key.lower()
+            if not any(token in lowered for token in ("url", "uri", "endpoint", "service", "host", "http")):
+                continue
+            if value not in operation_names:
+                external.add(value)
+        return sorted(external)
 
 
 def build_internal_ir(source_root: str | Path, out_root: str | Path, version: str) -> Path:
