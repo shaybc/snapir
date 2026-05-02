@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snapir
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: snapir
+          image: ghcr.io/example/snapir:dev
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
