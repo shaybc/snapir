@@ -159,12 +159,76 @@ class ConversionPipeline:
         (src_main / "SharedUtilities.java").write_text(
             self._shared_utilities_source(coordinates["package"]), encoding="utf-8"
         )
-        (src_main / "ConvertedComponent.java").write_text(
-            self._converted_component_source(coordinates["package"]), encoding="utf-8"
+        operations = prompt_payload["ir"]["signatures"]["operations"]
+        for operation in operations:
+            name = operation["name"]
+            normalized = self._safe_identifier(name)
+            dto = f"{normalized}Request"
+            response_dto = f"{normalized}Response"
+            context_model = f"{normalized}Context"
+
+            (src_main / f"{dto}.java").write_text(self._dto_source(coordinates["package"], dto), encoding="utf-8")
+            (src_main / f"{response_dto}.java").write_text(
+                self._dto_source(coordinates["package"], response_dto), encoding="utf-8"
+            )
+            (src_main / f"{context_model}.java").write_text(
+                self._context_source(coordinates["package"], context_model, dto, response_dto), encoding="utf-8"
+            )
+            (src_main / f"{normalized}XmlMapper.java").write_text(
+                self._xml_mapper_source(coordinates["package"], normalized, dto, response_dto), encoding="utf-8"
+            )
+            (src_main / f"{normalized}Service.java").write_text(
+                self._service_source(coordinates["package"], normalized, context_model), encoding="utf-8"
+            )
+            (src_main / f"{normalized}Controller.java").write_text(
+                self._controller_source(coordinates["package"], normalized, context_model), encoding="utf-8"
+            )
+        (src_main / "ErrorMapper.java").write_text(self._error_mapper_source(coordinates["package"]), encoding="utf-8")
+        (src_main / "ApplicationBootstrap.java").write_text(
+            self._bootstrap_source(coordinates["package"], operations), encoding="utf-8"
+        )
+        (run_dir / "src" / "main" / "resources").mkdir(parents=True, exist_ok=True)
+        (run_dir / "src" / "main" / "resources" / "application.properties").write_text(
+            "app.name=snapir-generated-microservice\n", encoding="utf-8"
         )
         (src_test / "ConvertedComponentTest.java").write_text(
             self._converted_component_test_source(coordinates["package"]), encoding="utf-8"
         )
+
+    @staticmethod
+    def _safe_identifier(name: str) -> str:
+        return "".join(ch for ch in name if ch.isalnum()) or "Operation"
+
+    @staticmethod
+    def _dto_source(package_name: str, class_name: str) -> str:
+        return f"package {package_name};\n\npublic class {class_name} {{\n    private String payload;\n\n    public String getPayload() {{ return payload; }}\n    public void setPayload(String payload) {{ this.payload = payload; }}\n}}\n"
+
+    @staticmethod
+    def _context_source(package_name: str, class_name: str, request_name: str, response_name: str) -> str:
+        return f"package {package_name};\n\npublic class {class_name} {{\n    private {request_name} request;\n    private {response_name} response;\n\n    public {request_name} getRequest() {{ return request; }}\n    public void setRequest({request_name} request) {{ this.request = request; }}\n    public {response_name} getResponse() {{ return response; }}\n    public void setResponse({response_name} response) {{ this.response = response; }}\n}}\n"
+
+    @staticmethod
+    def _xml_mapper_source(package_name: str, op_name: str, request_name: str, response_name: str) -> str:
+        return f"package {package_name};\n\npublic class {op_name}XmlMapper {{\n    public {request_name} fromXml(String xml) {{\n        {request_name} dto = new {request_name}();\n        dto.setPayload(xml);\n        return dto;\n    }}\n\n    public String toXml({response_name} response) {{\n        return \"<response>\" + response.getPayload() + \"</response>\";\n    }}\n}}\n"
+
+    @staticmethod
+    def _service_source(package_name: str, op_name: str, context_model: str) -> str:
+        return f"package {package_name};\n\npublic class {op_name}Service {{\n    public {context_model} process({context_model} context) {{\n        if (context.getResponse() == null) {{\n            context.setResponse(new {op_name}Response());\n        }}\n        context.getResponse().setPayload(SharedUtilities.normalize(context.getRequest().getPayload()));\n        return context;\n    }}\n}}\n"
+
+    @staticmethod
+    def _controller_source(package_name: str, op_name: str, context_model: str) -> str:
+        return f"package {package_name};\n\npublic class {op_name}Controller {{\n    private final {op_name}XmlMapper xmlMapper = new {op_name}XmlMapper();\n    private final {op_name}Service service = new {op_name}Service();\n\n    public String handle(String requestXml) {{\n        try {{\n            {context_model} context = new {context_model}();\n            context.setRequest(xmlMapper.fromXml(requestXml));\n            context = service.process(context);\n            return xmlMapper.toXml(context.getResponse());\n        }} catch (Exception ex) {{\n            return ErrorMapper.toXml(ex);\n        }}\n    }}\n}}\n"
+
+    @staticmethod
+    def _error_mapper_source(package_name: str) -> str:
+        return f"package {package_name};\n\npublic final class ErrorMapper {{\n    private ErrorMapper() {{}}\n\n    public static String toXml(Exception ex) {{\n        return \"<error>\" + ex.getClass().getSimpleName() + \":\" + ex.getMessage() + \"</error>\";\n    }}\n}}\n"
+
+    def _bootstrap_source(self, package_name: str, operations: list[dict]) -> str:
+        controllers = "\n".join(
+            f"        {self._safe_identifier(op['name'])}Controller {self._safe_identifier(op['name']).lower()}Controller = new {self._safe_identifier(op['name'])}Controller();"
+            for op in operations
+        )
+        return f"package {package_name};\n\npublic class ApplicationBootstrap {{\n    public static void main(String[] args) {{\n{controllers}\n        System.out.println(\"Microservice project initialized\");\n    }}\n}}\n"
 
     def _run_maven_build(self, run_dir: Path) -> None:
         mvn = shutil.which("mvn")
@@ -233,17 +297,6 @@ public final class SharedUtilities {{
 """
 
     @staticmethod
-    def _converted_component_source(package_name: str) -> str:
-        return f"""package {package_name};
-
-public class ConvertedComponent {{
-    public String convert(String raw) {{
-        return SharedUtilities.normalize(raw);
-    }}
-}}
-"""
-
-    @staticmethod
     def _converted_component_test_source(package_name: str) -> str:
         return f"""package {package_name};
 
@@ -253,23 +306,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ConvertedComponentTest {{
     @Test
-    void convertNormalizesInput() {{
-        ConvertedComponent component = new ConvertedComponent();
-        assertEquals("hello", component.convert("  hello  "));
+    void normalizeHelperWorks() {{
+        assertEquals("hello", SharedUtilities.normalize("  hello  "));
     }}
 }}
 """
 
     @staticmethod
-    def _coordinates_from_pom(pom: Path) -> dict:
-        content = pom.read_text(encoding="utf-8")
+    def _coordinates_from_pom(pom_path: Path) -> dict[str, str]:
+        text = pom_path.read_text(encoding="utf-8")
+
+        def pick(tag: str) -> str:
+            match = re.search(rf"<{tag}>(.*?)</{tag}>", text)
+            return match.group(1).strip() if match else ""
+
         return {
-            "groupId": re.search(r"<groupId>([^<]+)</groupId>", content).group(1),
-            "artifactId": re.search(r"<artifactId>([^<]+)</artifactId>", content).group(1),
-            "version": re.search(r"<version>([^<]+)</version>", content).group(1),
+            "groupId": pick("groupId"),
+            "artifactId": pick("artifactId"),
+            "version": pick("version"),
         }
-
-
-def run_conversion_pipeline(source_root: str | Path, out_root: str | Path, version: str) -> Path:
-    result = ConversionPipeline(Path(source_root), Path(out_root), version).run()
-    return result.artifact_dir
