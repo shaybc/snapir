@@ -11,9 +11,13 @@ def test_graph_builder_outputs_stable_graphs_and_indexes(tmp_path: Path) -> None
         """
         <root>
           <component name='CompA' usesComponent='CompB'/>
-          <component name='CompB'/>
-          <operation name='OpA' componentRef='CompA' callsOperation='OpB'/>
+          <component name='CompB' usesComponent='CompA'/>
+          <component name='CompIsolated'/>
+          <operation name='OpA' componentRef='CompA' callsOperation='OpB OpC OpD'/>
           <operation name='OpB'/>
+          <operation name='OpC' callsOperation='OpD'/>
+          <operation name='OpD' callsOperation='OpC'/>
+          <operation name='OpLonely'/>
           <contextRead operation='OpA' context='CustomerId'/>
           <contextWrite component='CompA' contextKey='CacheKey'/>
         </root>
@@ -34,10 +38,17 @@ def test_graph_builder_outputs_stable_graphs_and_indexes(tmp_path: Path) -> None
     assert op_comp["edges"][0]["target"] == "CompA"
 
     comp_comp = json.loads((out_dir / "graph_component_to_component.json").read_text(encoding="utf-8"))
-    assert comp_comp["count"] == 1
+    assert comp_comp["count"] == 2
 
     context = json.loads((out_dir / "graph_context_dependencies.json").read_text(encoding="utf-8"))
     assert context["count"] == 2
 
     adj = json.loads((out_dir / "graph_operation_to_operation_adjacency_index.json").read_text(encoding="utf-8"))
-    assert adj == {"OpA": ["OpB"]}
+    assert adj == {"OpA": ["OpB", "OpC", "OpD"], "OpC": ["OpD"], "OpD": ["OpC"]}
+
+    diagnostics = json.loads((out_dir / "graph_diagnostics.json").read_text(encoding="utf-8"))
+    assert diagnostics["summary"]["operation_cycles"] == 1
+    assert diagnostics["summary"]["component_cycles"] == 1
+    assert diagnostics["summary"]["unreachable_operations"] == 1
+    assert diagnostics["summary"]["unreachable_components"] == 1
+    assert diagnostics["issues"]["high_fanout"]["operation"][0] == {"node": "OpA", "fanout": 4}
