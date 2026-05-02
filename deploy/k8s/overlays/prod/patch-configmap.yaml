@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: snapir-config
-data:
-  SNAPIR_ENV: "prod"
-  LOG_LEVEL: "warn"
