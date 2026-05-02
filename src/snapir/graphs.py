@@ -56,12 +56,14 @@ class GraphBuilder:
                 context_edges=context_edges,
             )
 
-        return {
+        payload = {
             "graph_operation_to_component": self._serialize_edges(op_to_component),
             "graph_operation_to_operation": self._serialize_edges(op_to_op),
             "graph_component_to_component": self._serialize_edges(component_to_component),
             "graph_context_dependencies": self._serialize_edges(context_edges),
         }
+        payload["graph_diagnostics"] = self._build_diagnostics(payload)
+        return payload
 
     def persist(self, out_root: Path, include_adjacency_index: bool = True) -> Path:
         indexer = ComposerIndexer(self.source_root, self.version)
@@ -176,6 +178,97 @@ class GraphBuilder:
         for edge in graph.get("edges", []):
             adjacency.setdefault(edge["source"], []).append(edge["target"])
         return {k: sorted(set(v)) for k, v in sorted(adjacency.items())}
+
+    def _build_diagnostics(self, payload: dict[str, dict]) -> dict:
+        op_op_edges = payload["graph_operation_to_operation"]["edges"]
+        op_comp_edges = payload["graph_operation_to_component"]["edges"]
+        comp_comp_edges = payload["graph_component_to_component"]["edges"]
+
+        op_catalog, comp_catalog = self._collect_symbols()
+
+        op_neighbors = self._build_adjacency_index(payload["graph_operation_to_operation"])
+        comp_neighbors = self._build_adjacency_index(payload["graph_component_to_component"])
+
+        operation_cycles = self._find_cycles(op_neighbors)
+        component_cycles = self._find_cycles(comp_neighbors)
+
+        unreachable_operations = self._isolated_nodes(op_catalog, op_op_edges)
+        unreachable_components = self._isolated_nodes(comp_catalog, comp_comp_edges)
+
+        op_fanout = self._fanout_hotspots(op_comp_edges + op_op_edges)
+        comp_fanout = self._fanout_hotspots(comp_comp_edges)
+
+        return {
+            "schema_version": "1",
+            "summary": {
+                "operation_cycles": len(operation_cycles),
+                "component_cycles": len(component_cycles),
+                "unreachable_operations": len(unreachable_operations),
+                "unreachable_components": len(unreachable_components),
+                "operation_hotspots": len(op_fanout),
+                "component_hotspots": len(comp_fanout),
+            },
+            "issues": {
+                "cycles": {
+                    "operation": operation_cycles,
+                    "component": component_cycles,
+                },
+                "unreachable": {
+                    "operation": [{"node": name, "reason": "no_path_from_root"} for name in unreachable_operations],
+                    "component": [{"node": name, "reason": "no_path_from_root"} for name in unreachable_components],
+                },
+                "high_fanout": {
+                    "operation": op_fanout,
+                    "component": comp_fanout,
+                },
+            },
+        }
+
+    @staticmethod
+    def _find_cycles(adjacency: dict[str, list[str]]) -> list[dict]:
+        discovered: set[tuple[str, ...]] = set()
+        stack: list[str] = []
+        status: dict[str, int] = {}
+
+        def visit(node: str) -> None:
+            status[node] = 1
+            stack.append(node)
+            for nxt in adjacency.get(node, []):
+                if status.get(nxt, 0) == 0:
+                    visit(nxt)
+                elif status.get(nxt) == 1 and nxt in stack:
+                    idx = stack.index(nxt)
+                    cycle = stack[idx:] + [nxt]
+                    key = tuple(cycle)
+                    discovered.add(key)
+            stack.pop()
+            status[node] = 2
+
+        for node in sorted(adjacency):
+            if status.get(node, 0) == 0:
+                visit(node)
+
+        return [{"nodes": list(cycle), "length": len(cycle) - 1} for cycle in sorted(discovered)]
+
+    @staticmethod
+    def _isolated_nodes(nodes: set[str], edges: list[dict]) -> list[str]:
+        connected: set[str] = set()
+        for edge in edges:
+            connected.add(edge["source"])
+            connected.add(edge["target"])
+        return sorted(nodes - connected)
+
+    @staticmethod
+    def _fanout_hotspots(edges: list[dict]) -> list[dict]:
+        fanout: dict[str, set[str]] = {}
+        for edge in edges:
+            fanout.setdefault(edge["source"], set()).add(edge["target"])
+        rows = [{"node": k, "fanout": len(v)} for k, v in fanout.items()]
+        rows.sort(key=lambda row: (-row["fanout"], row["node"]))
+        if not rows:
+            return []
+        threshold = max(2, rows[0]["fanout"] // 2)
+        return [row for row in rows if row["fanout"] >= threshold]
 
 
 def build_graphs(source_root: str | Path, out_root: str | Path, version: str, include_adjacency_index: bool = True) -> Path:
