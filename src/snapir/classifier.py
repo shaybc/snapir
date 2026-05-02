@@ -7,6 +7,7 @@ from typing import Iterable
 import xml.etree.ElementTree as ET
 
 from .indexer import ComposerIndexer, SUPPORTED_EXTENSIONS
+from .tag_resolver import TagSemanticResolver
 
 CLASSES = ("INPUT", "INTERMEDIATE", "ERROR", "OUTPUT")
 
@@ -26,6 +27,7 @@ class DataflowClassifier:
     def __init__(self, source_root: Path, version: str) -> None:
         self.source_root = Path(source_root)
         self.version = version
+        self.tag_resolver = TagSemanticResolver(self.source_root, version)
 
     def build(self) -> dict:
         format_fields = self._collect_format_fields()
@@ -42,6 +44,8 @@ class DataflowClassifier:
         }
         return {
             "field_classification": assignments,
+            "normalized_tag_semantics": self.tag_resolver.normalized_semantics_dictionary,
+            "llm_tag_interpretation_queue": self.tag_resolver.unknown_queue,
             "classification_traces": [
                 {
                     "field": t.field,
@@ -98,9 +102,10 @@ class DataflowClassifier:
         return fields
 
     def _walk_format_fields(self, node: ET.Element, ancestry: list[str], rel: str, fields: dict[str, dict[str, str]]) -> None:
-        tag = self._normalize_tag(node.tag)
+        tag_resolution = self.tag_resolver.resolve(node.tag, rel, "/".join(ancestry))
+        tag = tag_resolution.normalized_tag
         path = "/".join(ancestry + [tag])
-        if tag in {"field", "attribute", "element", "member"}:
+        if tag_resolution.semantic == "field":
             name = node.attrib.get("name") or node.attrib.get("id") or node.attrib.get("key")
             if name and name not in fields:
                 fields[name] = {"file": rel, "path": path}
@@ -117,10 +122,11 @@ class DataflowClassifier:
         return reads, writes
 
     def _walk_reads_writes(self, node: ET.Element, ancestry: list[str], rel: str, reads: dict[str, dict[str, str]], writes: dict[str, dict[str, str]]) -> None:
-        tag = self._normalize_tag(node.tag)
+        tag_resolution = self.tag_resolver.resolve(node.tag, rel, "/".join(ancestry))
+        tag = tag_resolution.normalized_tag
         path = "/".join(ancestry + [tag])
-        is_read = "read" in tag or tag in {"source", "input"}
-        is_write = "write" in tag or tag in {"target", "output"}
+        is_read = tag_resolution.semantic == "read"
+        is_write = tag_resolution.semantic == "write"
 
         for key, value in node.attrib.items():
             k = key.lower()
@@ -142,12 +148,6 @@ class DataflowClassifier:
             p for p in self.source_root.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
         ]
         return sorted(files, key=lambda p: p.relative_to(self.source_root).as_posix())
-
-    @staticmethod
-    def _normalize_tag(tag: str) -> str:
-        if "}" in tag:
-            tag = tag.split("}", 1)[1]
-        return tag.strip().lower()
 
 
 def build_classification(source_root: str | Path, out_root: str | Path, version: str) -> Path:
