@@ -38,6 +38,8 @@ def test_pipeline_persists_only_accepted_version_and_reuses_by_component_hash(tm
     assert (first.artifact_dir / "src" / "test" / "java" / "com" / "snapir" / "generated" / "ConvertedComponentTest.java").exists()
     assert (first.artifact_dir / "artifact-metadata.json").exists()
     assert (first.artifact_dir / "maven_build.json").exists()
+    assert (first.artifact_dir / "loop_history.json").exists()
+    assert (first.artifact_dir / "final_accepted_implementation.java").exists()
 
     second = pipeline.run()
     assert second.accepted is True
