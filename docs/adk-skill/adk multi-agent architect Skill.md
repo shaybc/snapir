@@ -1,4 +1,3 @@
-
 # Google ADK Multi-Agent Architect
 
 This skill designs and generates complete Google ADK multi-agent architectures from a user's

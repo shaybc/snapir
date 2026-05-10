@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+    <CCDSEServerOperation id="CreateLoanQuoteOp" operationContext="CreateLoanQuoteCtxt">
+        <opStep id="CreateLoanQuote" implClass="demo.bankcomposer.operations.loans.CreateLoanQuoteStep" sourceSystem="loans" entity="loan-quotes" on0Do="end" on4Do="CreateLoanQuoteNotFound" on5Do="CreateLoanQuoteInvalidRequest" onOtherDo="CreateLoanQuoteFailed"/>
+        <opStep id="CreateLoanQuoteNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
+        <opStep id="CreateLoanQuoteInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
+        <opStep id="CreateLoanQuoteFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
+        <refFormat name="csRequestFormat" refid="CreateLoanQuoteRQFmt"/>
+        <refFormat name="csReplyFormat" refid="CreateLoanQuoteRSFmt"/>
+    </CCDSEServerOperation>
+</XML>
+

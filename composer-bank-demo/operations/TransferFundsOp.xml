@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+    <CCDSEServerOperation id="TransferFundsOp" operationContext="TransferFundsCtxt">
+        <opStep id="TransferFunds" implClass="demo.bankcomposer.operations.payments.TransferFundsStep" sourceSystem="payments" entity="transfers" on0Do="end" on4Do="TransferFundsNotFound" on5Do="TransferFundsInvalidRequest" onOtherDo="TransferFundsFailed"/>
+        <opStep id="TransferFundsNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
+        <opStep id="TransferFundsInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
+        <opStep id="TransferFundsFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
+        <refFormat name="csRequestFormat" refid="TransferFundsRQFmt"/>
+        <refFormat name="csReplyFormat" refid="TransferFundsRSFmt"/>
+    </CCDSEServerOperation>
+</XML>
+

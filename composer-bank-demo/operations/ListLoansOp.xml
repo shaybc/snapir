@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+    <CCDSEServerOperation id="ListLoansOp" operationContext="ListLoansCtxt">
+        <opStep id="ListLoans" implClass="demo.bankcomposer.operations.loans.ListLoansStep" sourceSystem="loans" entity="loans" on0Do="end" on4Do="ListLoansNotFound" on5Do="ListLoansInvalidRequest" onOtherDo="ListLoansFailed"/>
+        <opStep id="ListLoansNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
+        <opStep id="ListLoansInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
+        <opStep id="ListLoansFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
+        <refFormat name="csRequestFormat" refid="ListLoansRQFmt"/>
+        <refFormat name="csReplyFormat" refid="ListLoansRSFmt"/>
+    </CCDSEServerOperation>
+</XML>
+

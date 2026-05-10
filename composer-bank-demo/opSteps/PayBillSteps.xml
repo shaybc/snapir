@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+    <opStep id="PayBill" implClass="demo.bankcomposer.operations.payments.PayBillStep" sourceSystem="payments" entity="bill-payments" on0Do="end" on4Do="PayBillNotFound" on5Do="PayBillInvalidRequest" onOtherDo="PayBillFailed"/>
+    <opStep id="PayBillNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
+    <opStep id="PayBillInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
+    <opStep id="PayBillFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
+</XML>
+

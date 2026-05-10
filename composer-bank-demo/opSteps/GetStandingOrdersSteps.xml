@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+    <opStep id="GetStandingOrders" implClass="demo.bankcomposer.operations.payments.GetStandingOrdersStep" sourceSystem="payments" entity="standing-orders" on0Do="end" on4Do="GetStandingOrdersNotFound" on5Do="GetStandingOrdersInvalidRequest" onOtherDo="GetStandingOrdersFailed"/>
+    <opStep id="GetStandingOrdersNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
+    <opStep id="GetStandingOrdersInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
+    <opStep id="GetStandingOrdersFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
+</XML>
+

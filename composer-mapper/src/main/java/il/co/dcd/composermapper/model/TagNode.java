@@ -1,0 +1,2 @@
+package il.co.dcd.composermapper.model; import java.util.*;
+public class TagNode { private final String tagName; private final Map<String,String> attributes=new LinkedHashMap<>(); private final List<TagNode> children=new ArrayList<>(); public TagNode(String tagName){this.tagName=tagName;} public String getTagName(){return tagName;} public Map<String,String> getAttributes(){return attributes;} public List<TagNode> getChildren(){return children;} }
