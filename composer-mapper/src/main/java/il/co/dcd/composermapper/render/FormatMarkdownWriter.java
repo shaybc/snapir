@@ -25,21 +25,31 @@ public class FormatMarkdownWriter {
     appendSerializationNotes(sb, f);
     appendDatabaseLookups(sb, f);
 
-    sb.append("## Structure\n```xml\n")
-        .append(MarkdownSupport.tagTree(f.getRootTag(), 0))
-        .append("```\n\n## Referenced Formats\n");
+    sb.append("## Structure\n");
+    if (f.getRootTag() == null) {
+      sb.append("- None\n\n");
+    } else {
+      sb.append("```xml\n")
+          .append(MarkdownSupport.tagTree(f.getRootTag(), 0))
+          .append("```\n\n");
+    }
+
+    sb.append("## Referenced Formats\n");
     if (f.getReferencedXmlTags().isEmpty()) {
       sb.append("- None\n");
     } else {
-      f.getReferencedXmlTags().forEach(t -> sb.append(MarkdownSupport.bullet(t)));
+      f.getReferencedXmlTags().forEach(t -> sb.append(MarkdownSupport.bullet(formatLink(t, x, links))));
     }
 
-    sb.append("\n## Implementation Classes\n");
-    if (f.getReferencedMappedJavaClasses().isEmpty()) {
+    sb.append("\n## Implementation Class\n");
+    String implementationClass = x.tagToClass().get(f.getId());
+    if (implementationClass == null || implementationClass.isBlank()) {
       sb.append("- None\n");
     } else {
-      f.getReferencedMappedJavaClasses().forEach(cls -> sb.append(MarkdownSupport.bullet(
-          x.classToSource().containsKey(cls) ? links.classLink(cls) : "Unresolved: " + MarkdownSupport.code(cls))));
+      sb.append(MarkdownSupport.bullet(
+          x.classToSource().containsKey(implementationClass)
+              ? links.classLink(implementationClass)
+              : "Unresolved: " + MarkdownSupport.code(implementationClass)));
     }
 
     sb.append("\n## Inferred External Dependencies\n");
@@ -79,6 +89,10 @@ public class FormatMarkdownWriter {
 
   private String codeOrMissing(String value) {
     return value == null || value.isBlank() ? "`<missing>`" : MarkdownSupport.code(value);
+  }
+
+  private String formatLink(String id, Indexes x, LinkResolver links) {
+    return x.formatToSource().containsKey(id) || x.tagToClass().containsKey(id) ? links.formatLink(id) : id;
   }
 
   private boolean isShared(FormatDef f, Indexes x) {
