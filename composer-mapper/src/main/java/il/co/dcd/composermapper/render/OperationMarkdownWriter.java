@@ -16,6 +16,8 @@ public class OperationMarkdownWriter {
 
     sb.append("# ").append(op.getId())
         .append("\n\n---\nentity_type: operation\nentity_id: ").append(op.getId())
+        .append("\nconversion_status: not_started")
+        .append("\nentry_step: ").append(entryStep(op))
         .append("\nsource_file: ").append(op.getSourceFile())
         .append("\nsource_hash: ").append(FileUtil.sha256(op.getSourceFile()))
         .append("\n---\n\n## Context\n");
@@ -37,17 +39,7 @@ public class OperationMarkdownWriter {
       }
     }
 
-    sb.append("\n## Formats\n");
-    if (op.getRefFormats().isEmpty() && op.getInlineFormatIds().isEmpty()) {
-      sb.append("- None\n");
-    } else {
-      op.getRefFormats().forEach((n, r) -> sb.append(MarkdownSupport.bullet(n + ": "
-          + (x.formatToSource().containsKey(r) ? links.formatLink(r) : "unresolved " + MarkdownSupport.code(r)))));
-      for (String id : op.getInlineFormatIds()) {
-        sb.append(MarkdownSupport.bullet("inline: "
-            + (x.formatToSource().containsKey(id) ? links.formatLink(id) : "unresolved " + MarkdownSupport.code(id))));
-      }
-    }
+    appendFormats(sb, op, x, links);
 
     sb.append("\n## Java Dependencies\n");
     boolean any = false;
@@ -91,6 +83,41 @@ public class OperationMarkdownWriter {
       }
     }
     sb.append("```\n");
+  }
+
+  private String entryStep(OperationDef op) {
+    return op.getSteps().isEmpty() ? "" : op.getSteps().get(0).getId();
+  }
+
+  private void appendFormats(StringBuilder sb, OperationDef op, Indexes x, LinkResolver links) {
+    appendNamedFormat(sb, "Request Format", op.getRefFormats().get("csRequestFormat"), x, links);
+    appendNamedFormat(sb, "Reply Format", op.getRefFormats().get("csReplyFormat"), x, links);
+
+    sb.append("\n## Other Formats\n");
+    boolean any = false;
+    for (var entry : op.getRefFormats().entrySet()) {
+      if ("csRequestFormat".equals(entry.getKey()) || "csReplyFormat".equals(entry.getKey())) continue;
+      any = true;
+      sb.append(MarkdownSupport.bullet(entry.getKey() + ": " + formatRef(entry.getValue(), x, links)));
+    }
+    for (String id : op.getInlineFormatIds()) {
+      any = true;
+      sb.append(MarkdownSupport.bullet("inline: " + formatRef(id, x, links)));
+    }
+    if (!any) sb.append("- None\n");
+  }
+
+  private void appendNamedFormat(StringBuilder sb, String heading, String formatId, Indexes x, LinkResolver links) {
+    sb.append("\n## ").append(heading).append("\n");
+    if (formatId == null || formatId.isBlank()) {
+      sb.append("- None\n");
+      return;
+    }
+    sb.append(MarkdownSupport.bullet(formatRef(formatId, x, links)));
+  }
+
+  private String formatRef(String formatId, Indexes x, LinkResolver links) {
+    return x.formatToSource().containsKey(formatId) ? links.formatLink(formatId) : "unresolved " + MarkdownSupport.code(formatId);
   }
 
   private void appendNode(StringBuilder sb, String id, String label) {
