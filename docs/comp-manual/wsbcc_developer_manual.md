@@ -27,6 +27,97 @@ IBM WebSphere Server Business Component Composer (WSBCC) is a framework for crea
 
 ## Architecture
 
+### Composer Internals Architecture
+
+```mermaid
+flowchart LR
+    subgraph Composer["COMPOSER"]
+        direction LR
+
+        subgraph ChannelHandler["Channel Handler"]
+            direction TB
+            Web["WEB"]
+            Ivr["IVR"]
+            OtherChannels["..."]
+        end
+
+        subgraph Formats["Formats"]
+            direction TB
+            RqFmt["RqFmt"]
+            RsFmt["RsFmt"]
+        end
+
+        subgraph Operations["Operations"]
+            direction TB
+            OperationDef["Operation definitions"]
+        end
+
+        subgraph Context["Context"]
+            direction TB
+            ContextDef["Context definition"]
+            ContextRuntime["Runtime context"]
+            ContextDef --> ContextRuntime
+        end
+
+        subgraph OpSteps["OpSteps"]
+            direction TB
+            OpStepDefs["Operation step definitions"]
+        end
+
+        Web --> RqFmt
+        Ivr --> RqFmt
+        OtherChannels --> RqFmt
+        RqFmt --> OperationDef
+        RsFmt -. "response format" .- OperationDef
+        ContextDef --> OperationDef
+        OperationDef --> OpStepDefs
+    end
+
+    subgraph BranchScreens["Branch Screens"]
+        direction TB
+        BranchUi["Branch screen flows"]
+    end
+
+    subgraph AmtaConnector["Amta Connector (FT)"]
+        direction LR
+        Java["Java"]
+        Ps10["PS10"]
+        Ps9Connector["PS9"]
+        Java --> Ps10 --> Ps9Connector
+    end
+
+    subgraph Mf["MF"]
+        direction LR
+        Ps9Mf["PS9"]
+        Asta["Asta"]
+        Ps9Mf --> Asta
+    end
+
+    OpStepDefs --> Java
+    BranchUi --> AmtaConnector
+    Ps9Connector --> Ps9Mf
+
+    classDef metadata fill:#ffffff,stroke:#111111,stroke-width:2px,color:#15a84a;
+    classDef flow fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    classDef connector fill:#ffffff,stroke:#ffbf00,stroke-width:2px,color:#3442d6;
+    classDef mainframe fill:#ffffff,stroke:#ff7a1a,stroke-width:2px,color:#ff7a1a;
+
+    style Composer fill:#ffffff,stroke:#18a84a,stroke-width:2px,color:#18a84a;
+    style ChannelHandler fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style Formats fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style Operations fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style Context fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style OpSteps fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style BranchScreens fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
+    style AmtaConnector fill:#ffffff,stroke:#ffbf00,stroke-width:2px,color:#3442d6;
+    style Mf fill:#ffffff,stroke:#ff7a1a,stroke-width:2px,color:#ff7a1a;
+
+    class Web,Ivr,OtherChannels,RqFmt,RsFmt metadata;
+    class OperationDef,ContextDef,ContextRuntime,OpStepDefs,BranchUi flow;
+    class Java,Ps10,Ps9Connector connector;
+    class Ps9Mf,Asta mainframe;
+```
+
 ### Component Interaction
 
 ```
