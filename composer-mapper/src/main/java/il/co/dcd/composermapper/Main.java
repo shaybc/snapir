@@ -17,16 +17,21 @@ public class Main {
 
     FileDiscoveryService discovery = new FileDiscoveryService();
     var files = discovery.discover(root);
+    ProcessingReport report = new ProcessingReport();
 
-    Indexes indexes = new IndexBuildService().build(files);
+    Indexes indexes = new IndexBuildService().build(files, report);
     new VaultPreparationService().prepare(vault, clean);
 
     new StreamingGenerationService(
       new OperationFileParser(), new FormatFileParser(), new ContextFileParser(), new JavaClassParser(),
       new OperationMarkdownWriter(), new OpStepMarkdownWriter(), new FormatMarkdownWriter(),
       new ContextMarkdownWriter(), new JavaClassMarkdownWriter(), new LinkResolver(markdownLinks)
-    ).generate(files, indexes, vault);
+    ).generate(files, indexes, vault, report);
 
     System.out.println("Done. Ops=" + indexes.operationToSource().size() + ", steps=" + indexes.stepToSource().size() + ", formats=" + indexes.formatToSource().size() + ", contexts=" + indexes.contextToSource().size() + ", classes=" + indexes.classToSource().size());
+    if(report.hasFailures()){
+      System.out.println("XML files that failed parsing:");
+      report.failedXmlFiles().forEach((file,error) -> System.out.println("- " + file + " (" + error + ")"));
+    }
   }
 }
