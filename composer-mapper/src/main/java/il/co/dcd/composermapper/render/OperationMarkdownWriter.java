@@ -5,13 +5,14 @@ import il.co.dcd.composermapper.model.OpStepDef;
 import il.co.dcd.composermapper.model.OperationDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
+import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
 public class OperationMarkdownWriter {
   public void write(OperationDef op, Indexes x, LinkResolver links, Path vault) {
-    Path out = vault.resolve("operations").resolve(op.getId() + ".md");
+    Path out = vault.resolve("operations").resolve(SafePathNames.document(op.getId()));
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(op.getId())

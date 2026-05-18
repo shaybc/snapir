@@ -4,6 +4,7 @@ import il.co.dcd.composermapper.index.Indexes;
 import il.co.dcd.composermapper.model.JavaClassDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
+import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -11,7 +12,7 @@ import java.util.Set;
 
 public class JavaClassMarkdownWriter {
   public void write(JavaClassDef j, Indexes x, LinkResolver links, Path vault) {
-    Path out = vault.resolve("classes").resolve(j.getFullyQualifiedName().replace('.', '/') + ".md");
+    Path out = vault.resolve(SafePathNames.classPathWithoutExtension(j.getFullyQualifiedName()) + ".md");
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(j.getFullyQualifiedName())

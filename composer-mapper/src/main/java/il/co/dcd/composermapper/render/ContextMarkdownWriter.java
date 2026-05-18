@@ -3,13 +3,14 @@ package il.co.dcd.composermapper.render;
 import il.co.dcd.composermapper.model.ContextDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
+import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
 public class ContextMarkdownWriter {
   public void write(ContextDef c, LinkResolver links, Path vault) {
-    Path out = vault.resolve("contexts").resolve(c.getId() + ".md");
+    Path out = vault.resolve("contexts").resolve(SafePathNames.document(c.getId()));
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(c.getId())

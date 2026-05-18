@@ -4,6 +4,7 @@ import il.co.dcd.composermapper.index.Indexes;
 import il.co.dcd.composermapper.model.FormatDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
+import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -11,7 +12,7 @@ import java.util.Set;
 
 public class FormatMarkdownWriter {
   public void write(FormatDef f, Indexes x, LinkResolver links, Path vault) {
-    Path out = vault.resolve("formats").resolve(f.getId() + ".md");
+    Path out = vault.resolve("formats").resolve(SafePathNames.document(f.getId()));
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(f.getId())

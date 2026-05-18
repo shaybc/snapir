@@ -1,5 +1,7 @@
 package il.co.dcd.composermapper.service;
 
+import il.co.dcd.composermapper.util.SafePathNames;
+
 public class LinkResolver {
   private final boolean markdownLinks;
 
@@ -12,23 +14,23 @@ public class LinkResolver {
   }
 
   public String operationLink(String id) {
-    return link("operations/" + id, id);
+    return link(SafePathNames.pathWithoutExtension("operations", id), id);
   }
 
   public String stepLink(String id) {
-    return link("opsteps/" + id, id);
+    return link(SafePathNames.pathWithoutExtension("opsteps", id), id);
   }
 
   public String formatLink(String id) {
-    return link("formats/" + id, id);
+    return link(SafePathNames.pathWithoutExtension("formats", id), id);
   }
 
   public String contextLink(String id) {
-    return link("contexts/" + id, id);
+    return link(SafePathNames.pathWithoutExtension("contexts", id), id);
   }
 
   public String classLink(String fqcn) {
-    return link("classes/" + fqcn.replace('.', '/'), fqcn);
+    return link(SafePathNames.classPathWithoutExtension(fqcn), fqcn);
   }
 
   private String link(String pathWithoutExtension, String label) {

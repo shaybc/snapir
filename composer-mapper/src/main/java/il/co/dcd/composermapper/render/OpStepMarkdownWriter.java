@@ -4,13 +4,14 @@ import il.co.dcd.composermapper.index.Indexes;
 import il.co.dcd.composermapper.model.OpStepDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
+import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
 public class OpStepMarkdownWriter {
   public void write(OpStepDef s, Indexes x, LinkResolver links, Path vault) {
-    Path out = vault.resolve("opsteps").resolve(s.getId() + ".md");
+    Path out = vault.resolve("opsteps").resolve(SafePathNames.document(s.getId()));
     String impl = s.getImplClass();
     if ((impl == null || impl.isBlank()) && x.tagToClass().containsKey("opStep")) {
       impl = x.tagToClass().get("opStep");
