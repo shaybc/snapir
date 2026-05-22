@@ -1,0 +1,119 @@
+Good instinct to step back. Here's how a disciplined human engineer would actually do this:
+
+---
+
+## Manual Refactoring Process: WSBCC Monolith → Microservices
+
+### Step 1: Understand the Runtime Model First
+
+Before touching a single operation, read the framework deeply. Understand exactly how WSBCC executes: the tag parser instantiates a Java class, sets attributes via reflection, calls `execute()`, reads the return code, jumps to the next opStep. Understand that the context object is the shared mutable state carrier throughout the operation lifecycle. Understand how fmtDef structures map to XML wire format. You cannot convert what you don't understand at the mechanical level.
+
+**Output:** A personal reference document: "This is exactly what happens at runtime when WSBCC processes one operation."
+
+---
+
+### Step 2: Inventory Everything — Don't Start Converting Yet
+
+Scan all XML files. Build a complete list of every operation name, which file it lives in, which context it uses, which opSteps it calls, which implClasses those steps reference, which fmtDefs it uses. Do the same for formats and contexts — note which ones are local to one file and which are shared across files.
+
+Also catalog every unique tag type across all operations and map each one to its Java class via dse.ini or inline implClass.
+
+**Output:** A spreadsheet. Rows are operations. Columns are: operation id, source file, context, opStep list, implClass list, fmtDef list, shared/local. A second tab lists every unique tag type and its Java class.
+
+---
+
+### Step 3: Read the Java Classes for Every Unique Tag Type
+
+This is the most important step and cannot be skipped or rushed. For every unique implClass across all operations, read the Java source. Understand what it does: does it read from context, write to context, call a DB, call another service, format data, map an error? What do its return codes actually mean? What attributes does it expect?
+
+You are building a mental (and written) translation dictionary: "This IBM class does X. The native Java/Node/Python equivalent is Y."
+
+**Output:** A translation dictionary. One entry per unique implClass: what it does in plain English, what its return codes mean, what context fields it reads and writes, what the native equivalent pattern is.
+
+---
+
+### Step 4: Identify and Convert Shared Components First
+
+Look at your spreadsheet. Which implClasses appear across many operations? Which fmtDefs are referenced by multiple operations via refFormat? Which context definitions have a parent chain shared by many operations?
+
+Convert these shared pieces first, in isolation, before touching any operation. Write the native Java class (or Node module, or Python class) for each shared implClass. Write the DTO and XML serializer for each shared format. Write the typed context class for each shared context.
+
+Compile and unit-test each one independently. Do not move on until each shared component builds cleanly and its behavior matches the original.
+
+**Output:** A `common-lib` — a compiled, tested library of native components that any generated microservice can import.
+
+---
+
+### Step 5: Pick One Simple Operation and Do It Completely by Hand
+
+Choose the simplest operation in the entire codebase — ideally one with a single opStep, one DB call, simple request/response formats, and no shared formats. Convert it completely: parse the request XML, execute the flow, format the response XML. No shortcuts. Write every line.
+
+This is your proof of concept and your reference implementation. You will look back at this when you hit confusing cases in later operations.
+
+**Output:** One fully working microservice, manually written and tested against the live legacy system.
+
+---
+
+### Step 6: Identify the Operation Patterns That Actually Exist
+
+Now look at your full operation inventory again with fresh eyes. With the translation dictionary and the one hand-done example in front of you, start grouping operations by their actual structure:
+
+- How many opSteps does it have?
+- Are the opSteps all DB calls, or mixed?
+- How complex is the RC branching?
+- Are the formats local or shared?
+- Does it have a context parent chain or is it flat?
+
+You are not guessing at categories from the outside — you are reading the actual operations and noticing what structures recur. Write down what you observe. Some patterns will be obvious; some operations will be genuinely unique.
+
+**Output:** A realistic grouping of operations by structural complexity, based on actual reading — not assumption.
+
+---
+
+### Step 7: Convert Operations in Batches by Complexity
+
+Start with the simplest group. Convert 5–10 operations of the same structural type. By the third one you will have a rhythm: the request XML parsing is always the same shape, the flow switch-on-RC always follows the same logic, the response XML serialization is always assembled the same way.
+
+After each batch, stop and review: are all converted operations consistent with each other? Does the generated code for operation 7 look like the code for operation 3? If not, figure out why and standardize before moving to the next batch.
+
+Move to the next complexity tier only when the current tier is clean.
+
+**Output:** Growing set of converted microservices, consistently structured within each complexity tier.
+
+---
+
+### Step 8: Test Each Converted Operation Against the Live System
+
+For each converted microservice, send it the same XML input the legacy system receives. Compare the XML response byte-for-byte. If there's a diff, trace it: is it a format issue (wrong element name, missing wrapper), a logic issue (wrong RC branch taken), or a data issue (wrong field written to context)?
+
+Fix the source of the diff, not the symptom. If 5 operations all have the same diff pattern, fix it in the shared component or the common pattern, not in 5 individual places.
+
+**Output:** Pass/fail record per operation. All failures traced to root cause and fixed at the right level.
+
+---
+
+### Step 9: Handle the Genuinely Unusual Operations Last
+
+By the time you've converted 80–90% of operations, you know the system well. The remaining unusual ones — deeply nested formats, unusual tag combinations, multi-context operations — you handle individually with full attention. These are not "complex_flow" as a bucket; they are specific operations that need specific reasoning.
+
+**Output:** The long tail, handled carefully one by one.
+
+---
+
+### Step 10: Final Consistency Pass
+
+Once all operations are converted, do a cross-cutting review: are all controllers structured the same way? Are all XML serializers following the same pattern? Are all error mappings handled consistently? Any technical debt introduced during the "difficult" operations that should be normalized?
+
+**Output:** A codebase that looks like it was written by one person with a clear plan, not assembled piecemeal.
+
+---
+
+## What This Process Tells Us About the Agent Architecture
+
+The human process reveals something important: **the critical investment is in Steps 2–4** — inventory, translation dictionary, and shared components — **before any operation conversion begins**. Everything from Step 5 onward is mechanical if Steps 2–4 were done thoroughly.
+
+The human also does something the v4 architecture underweights: **Step 6 is empirical, not assumed**. The human reads actual operations and discovers the real patterns. They don't pre-declare 5 pattern types — they find out what patterns actually exist in this specific codebase.
+
+And the human's quality mechanism is **consistency checking within batches** (Step 7), not just per-operation validation. Noticing that operation 7 looks different from operation 3 is a quality signal that an automated per-operation critic would miss entirely.
+
+These three observations suggest three concrete changes worth making to the architecture. Want me to incorporate them?
