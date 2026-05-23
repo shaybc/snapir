@@ -1,5 +1,6 @@
 package il.co.dcd.composermapper.render;
 
+import il.co.dcd.composermapper.index.Indexes;
 import il.co.dcd.composermapper.model.ContextDef;
 import il.co.dcd.composermapper.service.LinkResolver;
 import il.co.dcd.composermapper.util.FileUtil;
@@ -9,14 +10,15 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 public class ContextMarkdownWriter {
-  public void write(ContextDef c, LinkResolver links, Path vault) {
+  public void write(ContextDef c, Indexes x, LinkResolver links, Path vault) {
     Path out = vault.resolve("contexts").resolve(SafePathNames.document(c.getId()));
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(c.getId())
         .append("\n\n---\nentity_type: context\nentity_id: ").append(c.getId())
-        .append("\nconversion_status: not_started")
-        .append("\nsource_file: ").append(c.getSourceFile())
+        .append("\nconversion_status: not_started\n")
+        .append(MarkdownSupport.usedByList("used_by_operations", x.contextUsedByOperations().get(c.getId())))
+        .append("source_file: ").append(c.getSourceFile())
         .append("\nsource_hash: ").append(FileUtil.sha256(c.getSourceFile()))
         .append("\n---\n\n## Details\n");
 

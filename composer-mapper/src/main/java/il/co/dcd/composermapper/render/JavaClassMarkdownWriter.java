@@ -17,9 +17,10 @@ public class JavaClassMarkdownWriter {
 
     sb.append("# ").append(j.getFullyQualifiedName())
         .append("\n\n---\nentity_type: java_class\nentity_id: ").append(j.getFullyQualifiedName())
-        .append("\nconversion_status: not_started")
-        .append("\nshared: ").append(isShared(j, x))
-        .append("\nsource_file: ").append(j.getSourceFile())
+        .append("\nconversion_status: not_started\n")
+        .append("shared: ").append(isShared(j, x)).append("\n")
+        .append(MarkdownSupport.usedByList("used_by_steps", x.classUsedBySteps().get(j.getFullyQualifiedName())))
+        .append("source_file: ").append(j.getSourceFile())
         .append("\nsource_hash: ").append(FileUtil.sha256(j.getSourceFile()))
         .append("\n---\n\n## Package\n");
 

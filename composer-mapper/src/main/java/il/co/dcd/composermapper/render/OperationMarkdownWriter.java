@@ -9,6 +9,9 @@ import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class OperationMarkdownWriter {
   public void write(OperationDef op, Indexes x, LinkResolver links, Path vault) {
@@ -30,6 +33,8 @@ public class OperationMarkdownWriter {
     } else {
       sb.append(MarkdownSupport.bullet("Unresolved: " + MarkdownSupport.code(op.getOperationContext())));
     }
+
+    appendSharedComponents(sb, op, x, links);
 
     sb.append("\n## Steps\n");
     if (op.getSteps().isEmpty()) {
@@ -61,6 +66,43 @@ public class OperationMarkdownWriter {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private void appendSharedComponents(StringBuilder sb, OperationDef op, Indexes x, LinkResolver links) {
+    Map<String, String> shared = new LinkedHashMap<>();
+
+    String context = op.getOperationContext();
+    if (context != null && !context.isBlank() && isSharedContext(context, x)) {
+      shared.put("context " + context, links.contextLink(context));
+    }
+
+    for (String formatId : op.getRefFormats().values()) {
+      Set<String> ops = x.formatUsedByOperations().get(formatId);
+      if (ops != null && ops.size() > 1) {
+        shared.put("format " + formatId, formatRef(formatId, x, links));
+      }
+    }
+
+    for (OpStepDef step : op.getSteps()) {
+      String impl = step.getImplClass();
+      Set<String> steps = x.classUsedBySteps().get(impl);
+      if (impl != null && !impl.isBlank() && steps != null && steps.size() > 1) {
+        shared.put("implClass " + impl, x.classToSource().containsKey(impl) ? links.classLink(impl) : "Unresolved: " + MarkdownSupport.code(impl));
+      }
+    }
+
+    sb.append("\n## Shared Components\n");
+    if (shared.isEmpty()) {
+      sb.append("- None\n");
+      return;
+    }
+    sb.append(MarkdownSupport.bullet(shared.size() + " shared component" + (shared.size() == 1 ? "" : "s")));
+    shared.forEach((label, link) -> sb.append(MarkdownSupport.bullet(label + ": " + link)));
+  }
+
+  private boolean isSharedContext(String context, Indexes x) {
+    Set<String> ops = x.contextUsedByOperations().get(context);
+    return ops != null && ops.size() > 1;
   }
 
   private void appendFlowDiagram(StringBuilder sb, OperationDef op) {

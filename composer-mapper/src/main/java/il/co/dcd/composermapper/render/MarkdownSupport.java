@@ -2,11 +2,25 @@ package il.co.dcd.composermapper.render;
 
 import il.co.dcd.composermapper.model.TagNode;
 
+import java.util.Set;
+
 public final class MarkdownSupport {
   private MarkdownSupport(){}
 
   public static String bullet(String v){ return "- "+v+System.lineSeparator(); }
   public static String code(String v){ return "`"+v+"`"; }
+
+  public static String usedByList(String fieldName, Set<String> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return fieldName + ": []\n";
+    }
+    StringBuilder sb = new StringBuilder();
+    sb.append(fieldName).append(":\n");
+    ids.stream()
+        .sorted()
+        .forEach(id -> sb.append("  - ").append(id).append("\n"));
+    return sb.toString();
+  }
 
   public static String mermaidNodeId(String value) {
     String raw = value == null || value.isBlank() ? "blank" : value;

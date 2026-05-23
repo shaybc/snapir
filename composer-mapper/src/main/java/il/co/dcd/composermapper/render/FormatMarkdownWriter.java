@@ -17,9 +17,10 @@ public class FormatMarkdownWriter {
 
     sb.append("# ").append(f.getId())
         .append("\n\n---\nentity_type: format\nentity_id: ").append(f.getId())
-        .append("\nconversion_status: not_started")
-        .append("\nshared: ").append(isShared(f, x))
-        .append("\nsource_file: ").append(f.getSourceFile())
+        .append("\nconversion_status: not_started\n")
+        .append("shared: ").append(isShared(f, x)).append("\n")
+        .append(MarkdownSupport.usedByList("used_by_operations", x.formatUsedByOperations().get(f.getId())))
+        .append("source_file: ").append(f.getSourceFile())
         .append("\nsource_hash: ").append(FileUtil.sha256(f.getSourceFile()))
         .append("\n---\n\n");
 

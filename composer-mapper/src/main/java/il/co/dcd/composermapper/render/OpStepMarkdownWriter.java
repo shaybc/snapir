@@ -8,6 +8,7 @@ import il.co.dcd.composermapper.util.SafePathNames;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Set;
 
 public class OpStepMarkdownWriter {
   public void write(OpStepDef s, Indexes x, LinkResolver links, Path vault) {
@@ -21,8 +22,9 @@ public class OpStepMarkdownWriter {
     StringBuilder sb = new StringBuilder();
     sb.append("# ").append(s.getId())
         .append("\n\n---\nentity_type: opStep\nentity_id: ").append(s.getId())
-        .append("\nconversion_status: not_started")
-        .append("\nsource_file: ").append(s.getSourceFile())
+        .append("\nconversion_status: not_started\n")
+        .append(MarkdownSupport.usedByList("used_by_operations", singletonSetOrEmpty(x.stepToOperation().get(s.getId()))))
+        .append("source_file: ").append(s.getSourceFile())
         .append("\nsource_hash: ").append(FileUtil.sha256(s.getSourceFile()))
         .append("\n---\n\n## Implementation\n");
     if (impl == null || impl.isBlank()) {
@@ -47,6 +49,9 @@ public class OpStepMarkdownWriter {
           MarkdownSupport.code(c) + " -> " + (x.stepToSource().containsKey(t) ? links.stepLink(t) : "unresolved " + MarkdownSupport.code(t)))));
     }
 
+    sb.append("\n## Parser Notes\n")
+        .append("- Transition attributes are detected with the `on*Do` naming pattern. Verify this covers all transition names used in the source WSBCC codebase before relying on `Parameters` as transition-free.\n");
+
     sb.append("\n## Raw Attributes\n");
     s.getRawAttributes().forEach((k, v) -> sb.append(MarkdownSupport.bullet(k + ": " + MarkdownSupport.code(v))));
 
@@ -55,5 +60,10 @@ public class OpStepMarkdownWriter {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private Set<String> singletonSetOrEmpty(String value) {
+    if (value == null || value.isBlank()) return Set.of();
+    return Set.of(value);
   }
 }
