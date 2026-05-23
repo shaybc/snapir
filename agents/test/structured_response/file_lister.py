@@ -25,4 +25,6 @@ file_lister_agent = LlmAgent(
     """,
     tools=[list_files_structured],
     output_key="raw_files",
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
 )

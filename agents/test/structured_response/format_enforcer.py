@@ -49,4 +49,6 @@ format_enforcer_agent = LlmAgent(
     """,
     output_schema=FileList,
     output_key="structured_response",
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
 )
