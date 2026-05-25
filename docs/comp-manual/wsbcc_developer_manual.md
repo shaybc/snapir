@@ -1,723 +1,1111 @@
-# IBM WebSphere Server Business Component Composer (WSBCC) Developer Manual
+# IBM WebSphere Server Business Component Composer (WSBCC) — Developer Manual v2
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Tag-to-Class Mapping](#tag-to-class-mapping)
-4. [Tag Execution Flow](#tag-execution-flow)
-5. [XML Operation Structure](#xml-operation-structure)
-6. [Available Tags Reference](#available-tags-reference)
-7. [Example Implementation](#example-implementation)
-8. [Best Practices](#best-practices)
+
+1. [Overview](#1-overview)
+2. [Workspace and Channel Structure](#2-workspace-and-channel-structure)
+3. [dse.ini — Configuration and Tag Registry](#3-dseini--configuration-and-tag-registry)
+4. [Runtime Execution Model](#4-runtime-execution-model)
+5. [Context](#5-context)
+6. [Formats and the Format/Unformat Process](#6-formats-and-the-formatunformat-process)
+7. [Decorators](#7-decorators)
+8. [opSteps](#8-opsteps)
+9. [CCDSEServerOperation](#9-ccdseserveroperation)
+10. [XML Operation File Structure](#10-xml-operation-file-structure)
+11. [Tag Reference](#11-tag-reference)
+12. [Complete Operation Example](#12-complete-operation-example)
+13. [Conversion Guide — WSBCC to Native Java](#13-conversion-guide--wsbcc-to-native-java)
+14. [Best Practices](#14-best-practices)
 
 ---
 
-## Overview
+## 1. Overview
 
-IBM WebSphere Server Business Component Composer (WSBCC) is a framework for creating XML-based service operations. Each operation receives XML input, performs defined logic steps, and returns XML output as a response.
+IBM WebSphere Business Component Composer (WSBCC) is a configuration-driven service framework. Developers define service operations declaratively in XML files. The WSBCC runtime interprets those XML definitions to instantiate Java objects, execute business logic, parse incoming XML requests, build XML responses, and route execution based on return codes.
+
+**The key insight for anyone reading this manual:** WSBCC is a runtime that executes a declarative XML program. The XML is not data — it is code. Every tag is an instruction to the runtime to instantiate a specific Java class, configure it with the tag's attributes, and execute it. Understanding this distinction is essential for both developing with WSBCC and for converting WSBCC operations to native code.
 
 ### Key Concepts
 
-- **Operations**: Services defined in XML that process requests and generate responses
-- **Tags**: XML elements that map to Java classes implementing business logic
-- **Context**: A shared data structure for passing information between tags
-- **Formats**: XML structure definitions for requests and responses
+| Concept | Description |
+|---|---|
+| **Channel** | A deployment context (INTERNET, IVR, SME, etc.). Each channel has its own dse.ini, operation registry, and may override or extend shared operations. |
+| **Operation** | A complete service unit. Defined in an XML file. Receives a request, executes a chain of opSteps, returns a response. |
+| **opStep** | One step in an operation's execution chain. Maps to a Java class that performs a specific action (DB call, error mapping, data transformation, backend call). |
+| **Format (fmtDef)** | A declarative description of an XML data structure. Drives serialization (format) and deserialization (unformat) of XML ↔ context data. |
+| **Decorator** | A post-processor chained after a formatter tag. Transforms the formatter's string result in one or both directions (format/unformat). |
+| **Context** | A runtime data carrier. A hierarchical map that holds all data flowing through an operation — request fields, backend results, computed values, error codes. |
+| **dse.ini** | Per-channel XML configuration file that registers: the operation file list, all tag→Java class mappings, and service/processor definitions. |
 
 ---
 
-## Architecture
+## 2. Workspace and Channel Structure
 
-### Composer Internals Architecture
+### Workspace Layout
 
-```mermaid
-flowchart LR
-    subgraph Composer["COMPOSER"]
-        direction LR
-
-        subgraph ChannelHandler["Channel Handler"]
-            direction TB
-            Web["WEB"]
-            Ivr["IVR"]
-            OtherChannels["..."]
-        end
-
-        subgraph Formats["Formats"]
-            direction TB
-            RqFmt["RqFmt"]
-            RsFmt["RsFmt"]
-        end
-
-        subgraph Operations["Operations"]
-            direction TB
-            OperationDef["Operation definitions"]
-        end
-
-        subgraph Context["Context"]
-            direction TB
-            ContextDef["Context definition"]
-            ContextRuntime["Runtime context"]
-            ContextDef --> ContextRuntime
-        end
-
-        subgraph OpSteps["OpSteps"]
-            direction TB
-            OpStepDefs["Operation step definitions"]
-        end
-
-        Web --> RqFmt
-        Ivr --> RqFmt
-        OtherChannels --> RqFmt
-        RqFmt --> OperationDef
-        RsFmt -. "response format" .- OperationDef
-        ContextDef --> OperationDef
-        OperationDef --> OpStepDefs
-    end
-
-    subgraph BranchScreens["Branch Screens"]
-        direction TB
-        BranchUi["Branch screen flows"]
-    end
-
-    subgraph AmtaConnector["Amta Connector (FT)"]
-        direction LR
-        Java["Java"]
-        Ps10["PS10"]
-        Ps9Connector["PS9"]
-        Java --> Ps10 --> Ps9Connector
-    end
-
-    subgraph Mf["MF"]
-        direction LR
-        Ps9Mf["PS9"]
-        Asta["Asta"]
-        Ps9Mf --> Asta
-    end
-
-    OpStepDefs --> Java
-    BranchUi --> AmtaConnector
-    Ps9Connector --> Ps9Mf
-
-    classDef metadata fill:#ffffff,stroke:#111111,stroke-width:2px,color:#15a84a;
-    classDef flow fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    classDef connector fill:#ffffff,stroke:#ffbf00,stroke-width:2px,color:#3442d6;
-    classDef mainframe fill:#ffffff,stroke:#ff7a1a,stroke-width:2px,color:#ff7a1a;
-
-    style Composer fill:#ffffff,stroke:#18a84a,stroke-width:2px,color:#18a84a;
-    style ChannelHandler fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style Formats fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style Operations fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style Context fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style OpSteps fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style BranchScreens fill:#ffffff,stroke:#111111,stroke-width:2px,color:#3442d6;
-    style AmtaConnector fill:#ffffff,stroke:#ffbf00,stroke-width:2px,color:#3442d6;
-    style Mf fill:#ffffff,stroke:#ff7a1a,stroke-width:2px,color:#ff7a1a;
-
-    class Web,Ivr,OtherChannels,RqFmt,RsFmt metadata;
-    class OperationDef,ContextDef,ContextRuntime,OpStepDefs,BranchUi flow;
-    class Java,Ps10,Ps9Connector connector;
-    class Ps9Mf,Asta mainframe;
-```
-
-### Component Interaction
+The WSBCC codebase is organized as a set of Eclipse workspaces, one per channel (plus shared/infrastructure workspaces):
 
 ```
-XML Operation File
-    ↓
-Tag Parser (WSBCC)
-    ↓
-Reflection-based Class Instantiation
-    ↓
-Attribute Setters (via Reflection)
-    ↓
-Execute Method
-    ↓
-Result/Output
+composer/Workspace/
+├── WSBCC_ARNAV/        ← ARNAV channel
+├── WSBCC_BANKADMIN/    ← Bank Admin channel
+├── WSBCC_COMMON/       ← Shared common library
+├── WSBCC_EJB/          ← EJB infrastructure (not a channel)
+├── WSBCC_G2/           ← G2 channel
+├── WSBCC_GVP/          ← GVP channel
+├── WSBCC_INTERNET/     ← Internet banking channel
+├── WSBCC_IVR/          ← IVR (phone) channel
+├── WSBCC_KIOSK/        ← Kiosk channel
+├── WSBCC_MKT/          ← Marketing channel
+├── WSBCC_ONLINEGOV/    ← Online government channel
+├── WSBCC_SME/          ← SME (small business) channel
+├── WSBCC_TRANSFERS/    ← Transfers channel
+├── WSBCC_WEB/          ← Web channel
+├── WSBCC_WS/           ← Web Services channel
+├── WSBCC_WS_WAR/       ← Web Services WAR packaging
+├── WSBCC_XML/          ← Common XML channel (shared definitions)
+├── WSBCC_XML_EAR/      ← EAR packaging
+└── WSBCC_XML_WAR/      ← WAR packaging
 ```
 
-### Core Principles
+Each `WSBCC_{CHANNEL}` workspace contains:
+```
+WSBCC_{CHANNEL}/
+└── src/
+    └── Xml Definition/
+        └── Channel/
+            └── {CHANNEL}/
+                ├── dse.ini                   ← Channel configuration
+                ├── defaultFile/
+                │   ├── dsecontext.xml        ← Context definitions
+                │   ├── dseformat.xml         ← Format definitions
+                │   ├── dsedata.xml           ← Data definitions
+                │   ├── dseoperation.xml      ← Operation definitions
+                │   └── dseConnector.tmp      ← Connector config
+                └── selfDefOper/
+                    └── *.xml                 ← Individual operation files
+    └── com/...                               ← Java source files
+```
 
-1. Each XML tag represents a Java object with instance members and an `execute()` method
-2. Tag attributes are mapped to Java class properties via reflection-based setters
-3. Child tags are passed to parent instances for recursive parsing
-4. Operations execute sequentially based on step results
+### Channel Scope Rule
+
+**Every operation belongs to a specific channel.** The channel's dse.ini is the authoritative registry for that channel's operations and tag→class mappings. When converting an operation to native code, the channel identity must be known because:
+
+- Channel-specific opStep classes may differ from other channels
+- `onlyFor` filtering of opSteps is resolved per channel
+- The same operation name may exist in multiple channels with different implementations
+
+**If the same operation name appears in multiple channel dse.ini files, they produce separate microservices** — e.g. `GetClientLinks_internet` and `GetClientLinks_ivr` — because the implementations may differ.
 
 ---
 
-## Tag-to-Class Mapping
+## 3. dse.ini — Configuration and Tag Registry
 
-### Mapping Methods
+### Structure
 
-There are two ways to map XML tags to Java implementation classes:
-
-#### 1. Central Mapping File (dse.ini)
-A centralized XML mapping file that defines tag-to-class relationships for the entire system.
-
-#### 2. Inline Mapping (implClass Attribute)
-Specify the implementing class directly in the XML tag using the `implClass` attribute:
+The dse.ini is an XML configuration file. Its complete structure:
 
 ```xml
-<opStep id="GetClientLinks" implClass="db.GetClientLinksSP" />
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<dse.ini>
+
+  <kColl id="import">
+    <field id="sme"/>          <!-- imports another channel's dse.ini -->
+  </kColl>
+
+  <kColl id="settings">
+
+    <kColl id="files">
+
+      <kColl id="defaultFile">
+        <!-- Root XML definition files loaded at startup -->
+        <operDef id="Xml Definition/Channel/{CHANNEL}/defaultFile/dsecontext.xml"/>
+        <operDef id="Xml Definition/Channel/{CHANNEL}/defaultFile/dseformat.xml"/>
+        <operDef id="Xml Definition/Channel/{CHANNEL}/defaultFile/dseoperation.xml"/>
+        <operDef id="Xml Definition/Channel/{CHANNEL}/defaultFile/dseConnector.tmp"/>
+        <operDef id="Xml Definition/Channel/{CHANNEL}/defaultFile/dsedata.xml"/>
+      </kColl>
+
+      <kColl id="selfDefOper">
+        <!-- Operation registry: XML file path → operation name -->
+        <operDef id="Xml Definition/Channel/{CHANNEL}/selfDefOper/GetClientLinks.xml"
+                 value="GetClientLinksOp"/>
+        <!-- ... one entry per operation ... -->
+      </kColl>
+
+      <kColl id="operations">
+        <!-- Usually empty; operations are in selfDefOper -->
+      </kColl>
+
+    </kColl>
+
+    <kColl id="tags">
+      <kColl id="data">        <!-- Data tag → class mappings -->
+      </kColl>
+      <kColl id="formats">     <!-- Format AND decorator tag → class mappings -->
+        <!-- Decorator subsection -->
+        <field id="nilDecorator" value="com.ibm.il.dse.cc.decorator.NilDecorator"/>
+        <field id="RemoveLeadingZerosDecorator"
+               value="com.ibm.il.dse.cc.decorator.RemoveLeadingZerosDecorator"/>
+        <!-- ... more decorators ... -->
+        <!-- Format subsection -->
+        <field id="CCString"   value="com.ibm.il.dse.cc.format.CCString"/>
+        <field id="CCDate"     value="com.ibm.il.dse.cc.format.CCDate"/>
+        <field id="CCXML"      value="com.ibm.il.dse.cc.format.CCXML"/>
+        <field id="CCIColl"    value="com.ibm.il.dse.cc.format.CCIColl"/>
+        <!-- ... more formats ... -->
+      </kColl>
+      <kColl id="contexts">    <!-- Always empty — contexts resolved differently -->
+      </kColl>
+      <kColl id="services">    <!-- Backend service connectors -->
+        <field id="HTTPService" value="com.ibm.il.dse.cc.service.communication.http.HTTPService"/>
+      </kColl>
+      <kColl id="operations">  <!-- The CCDSEServerOperation base class -->
+        <field id="CCDSEServerOperation"
+               value="com.ibm.il.dse.cc.cut.CCDSEServerOperation"
+               description="compound"/>
+      </kColl>
+      <kColl id="opSteps">     <!-- opStep tag → class mappings -->
+        <field id="GetClientLinksSP"
+               value="com.ibm.il.dse.operations.internet.db.GetClientLinksSP"/>
+      </kColl>
+      <kColl id="processors">  <!-- Processor definitions -->
+      </kColl>
+      <kColl id="types">       <!-- Type definitions -->
+      </kColl>
+    </kColl>
+
+  </kColl>
+</dse.ini>
 ```
 
-Format: `implClass="package.ClassName"`
+### Import Chain
+
+A channel's dse.ini may import other dse.ini configurations:
+
+```xml
+<kColl id="import">
+  <field id="sme"/>
+</kColl>
+```
+
+This means: merge the `sme` channel's dse.ini into this channel's configuration. Imports are resolved recursively. Channel-specific mappings override imported mappings for the same tag name.
+
+**The `WSBCC_XML` channel's dse.ini is the shared base** — it defines all built-in format and decorator tag mappings. All other channels import from it directly or indirectly. It is the authoritative source for tags like `CCString`, `CCXML`, `CCIColl`, `NumberFormat`, `nilDecorator`, `CCPadding`, etc.
+
+### Tag Resolution
+
+When the runtime encounters a tag name in XML:
+1. Look up the tag name in the merged dse.ini `tags` section for this channel
+2. The `value` attribute gives the fully qualified Java class name (FQCN)
+3. The `description="compound"` flag marks container tags that recursively process child tags
+4. If an opStep has an `implClass` attribute in the XML, that overrides the dse.ini lookup
+
+### selfDefOper — Operation Registry
+
+The `selfDefOper` section is the complete operation registry for the channel:
+
+```xml
+<operDef id="Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml"
+         value="GetClientLinksOp"/>
+```
+
+- `id` = relative path to the operation's XML file
+- `value` = the operation name (matches the `CCDSEServerOperation id` attribute in the XML)
+
+**Every operation in the system appears exactly once in its channel's selfDefOper.** This is the authoritative inventory of operations for that channel.
 
 ---
 
-## Tag Execution Flow
+## 4. Runtime Execution Model
 
-### Instantiation and Execution Process
+### High-Level Flow
 
-When the WSBCC parser encounters a tag, it follows this sequence:
+When a channel handler receives an HTTP/service request for operation `GetClientLinksOp`:
 
-1. **Class Instantiation**: The mapped Java class is instantiated using reflection
-2. **Attribute Setting**: Each XML attribute value is set on the instance using setter methods
-3. **Child Tag Assignment**: If present, child tags are passed to the instance
-4. **Execution**: The `execute()` method is called
-5. **Result Handling**: The return value determines the next execution step
-
-### Implementation Example
-
-Given this XML tag:
-
-```xml
-<CCDate dataName="WrittenAt" 
-        pattern="yyyyMMdd" 
-        useSep="no" 
-        fourDigYear="yes" />
+```
+1. Channel Handler receives request XML
+2. Looks up "GetClientLinksOp" in dse.ini selfDefOper → finds XML file path
+3. Loads and initializes CCDSEServerOperation from that XML file
+4. Channel Handler calls: operation.unformat(requestXml)
+   → request format cascades through the fmtDef structure
+   → each formatter tag reads its value from the XML and writes it to context
+   → each decorator in the chain transforms the value before/after the formatter
+5. Channel Handler calls: operation.execute()
+   → opStep chain runs according to RC routing
+   → opSteps read from / write to context
+6. Channel Handler calls: operation.format()
+   → response format cascades through the reply fmtDef
+   → each formatter tag reads its value from context and builds XML output
+   → each decorator transforms the value
+7. Channel Handler returns the formatted XML response
 ```
 
-The corresponding Java class must implement:
+**Important:** Steps 4, 5, and 6 are managed by the channel handler infrastructure. The developer defines what happens inside each step, not the orchestration between them.
+
+### CCDSEServerOperation.execute() — The opStep Loop
+
+The execute() method runs the opStep chain:
 
 ```java
-public class CCDate {
-    private String dataName;
-    private String pattern;
-    private String useSep;
-    private String fourDigYear;
-    
-    // Setter methods - names must match attribute names
-    public void setDataName(String name) {
-        this.dataName = name;
+// Pseudocode of CCDSEServerOperation.execute()
+public void execute() throws Exception {
+    // 1. Set channel context values
+    setValueAt("HOST_HEADER.HOST_KEY", getHostKey());
+    setFields(getOperationfields());
+
+    // 2. Filter opSteps not applicable to this channel
+    removeOpStepsNotForThisChannel();
+
+    // 3. Run the opStep chain
+    int index = 0;
+    KeyedCollection end_opstep = null;
+    if (isFinallyOpStepExist()) {
+        end_opstep = getFinallyOpStep();  // the "End" step if defined
     }
-    
-    public void setPattern(String pattern) {
-        this.pattern = pattern;
+
+    do {
+        KeyedCollection kc = getOperationStep(index);
+        index = processOpStep(kc, operationName, index);
+    } while (index != -1);
+
+    // 4. Run the "End" step if it exists
+    if (end_opstep != null) {
+        processOpStep(end_opstep, operationName, index);
     }
-    
-    public void setUseSep(String flag) {
-        this.useSep = flag;
-    }
-    
-    public void setFourDigYear(String shouldUse4DigitsYear) {
-        this.fourDigYear = shouldUse4DigitsYear;
-    }
-    
-    // Execute method performs the tag logic
-    public int execute() {
-        // Implementation logic here
-        return 0; // Return code
+
+    // 5. Error body substitution (if an opStep switched the reply format)
+    if (isReturnedErrorBodyChanged() && getReturnedErrorBodyChanger() != null) {
+        // substitute csErrorReplyFormat for csReplyFormat
     }
 }
 ```
 
-### Key Requirements
+### processOpStep() — RC Routing
 
-- Setter method names must match attribute names (case-sensitive)
-- Setter methods use reflection, so naming conventions are critical
-- The `execute()` method returns an integer result code
-- All attributes are passed as String types
-
----
-
-## XML Operation Structure
-
-An operation file is structured as follows:
+The RC routing priority for each opStep result:
 
 ```
-XML (root)
-├── CCDSEServerOperation (operation definition)
-│   ├── opStep (logic steps)
-│   ├── refFormat (format references)
-│   └── fmtDef (format definitions)
-├── fmtDef (reusable formats)
-└── context (data context)
+1. Check "on{RC}Return" → if set, switch the error reply format body
+2. If RC == RC_TIMEOUT → check "onTimeoutDo" first
+3. Check "on{RC}Do" → if found, go to that step name
+4. Check "onOtherDo" → if found, go to that step name
+5. Check "onOtherDoDefault" → if found, use it (with warning log)
+6. If next == "next" → increment index, continue loop
+7. If next == "end"  → return -1, break loop
+8. Otherwise → look up step by name, jump to it
 ```
 
----
+### Channel Filtering — onlyFor
 
-## Available Tags Reference
+Before execute() runs, `removeOpStepsNotForThisChannel()` scans all opSteps and removes any that have an `onlyFor` attribute whose value does not match the current channel name.
 
-### 1. XML Tag
-
-**Purpose**: Root wrapper element for the entire XML document
-
-**Child Tags**: 
-- `CCDSEServerOperation`
-- `fmtDef`
-- `context`
-
-**Attributes**: None
-
-**Example**:
 ```xml
-<?xml version="1.0" encoding="ISO-8859-1"?>
-<XML>
-    <!-- Operation content -->
-</XML>
-```
-
----
-
-### 2. CCDSEServerOperation Tag
-
-**Purpose**: Defines the complete operation and wraps all operation logic
-
-**Child Tags**:
-- `opStep` - Logic steps to execute
-- `refFormat` - References to format definitions
-- `fmtDef` - Inline format definitions
-
-**Attributes**:
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `id` | Yes | Unique identifier for the operation |
-| `operationContext` | Yes | Name of the context tag that defines the data structure |
-
-**Example**:
-```xml
-<CCDSEServerOperation id="GetLinksOp" operationContext="GetLinksCtxt">
-    <!-- Operation steps and formats -->
-</CCDSEServerOperation>
-```
-
----
-
-### 3. opStep Tag
-
-**Purpose**: Defines individual logic steps (actions) that execute sequentially
-
-**Child Tags**: None
-
-**Attributes**:
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `id` | Yes | Unique identifier for the operation step |
-| `implClass` | No | Fully qualified class name implementing this step's logic |
-| `on{X}Do` | No | Dynamic attribute where {X} is an integer return code. Specifies the next step ID to execute if this return code is received |
-| `onOtherDo` | No | Specifies the default next step ID if no `on{X}Do` matches |
-
-**Return Code Flow**:
-
-The `execute()` method returns an integer. The operation uses this value to determine the next step:
-
-1. Check if an `on{X}Do` attribute matches the return code
-2. If matched, execute the specified step
-3. If no match, execute the step specified in `onOtherDo`
-
-**Example**:
-```xml
-<opStep id="GetClientLinks" 
-        implClass="db.GetClientLinksSP" 
-        on0Do="end" 
-        on4Do="ErrorDataNotFound" 
-        on5Do="ErrorInvalidLinks" 
+<!-- This step only runs on the INTERNET channel -->
+<opStep id="InternetOnlyValidation"
+        implClass="operations.InternetValidation"
+        onlyFor="internet"
+        on0Do="end"
         onOtherDo="OperationFailed"/>
 ```
 
-In this example:
-- Return code 0 → go to "end"
-- Return code 4 → go to "ErrorDataNotFound"
-- Return code 5 → go to "ErrorInvalidLinks"
-- Any other code → go to "OperationFailed"
+**Conversion rule:** When converting an operation XML to native code for a specific channel, opSteps with `onlyFor` values that do not match the target channel are simply omitted from the generated code. The generated class reflects only the steps that actually run for that channel.
 
-**Custom Attributes**:
+---
 
-Any additional attributes defined in the tag are passed to the implementing class via setter methods:
+## 5. Context
 
-```xml
-<opStep id="ErrorDataNotFound" 
-        implClass="operations.MapErrorByValueAlways" 
-        ErrorCategory="10" 
-        ErrorNumber="0" 
-        onOtherDo="OperationFailed" />
+### What Context Is
+
+The context is a hierarchical runtime data store. It is the central communication mechanism between all components of an operation — formatters read from and write to it, opSteps read from and write to it, decorators do not directly access it (they transform string values, not context fields).
+
+At runtime, the context is essentially a nested map:
+```
+context["ClientId"]      = "123456"
+context["ClientName"]    = "John Doe"
+context["links"]         = [list of link objects]
+context["ERROR_CODE"]    = "10"
+context["ERROR_NUMBER"]  = "0"
 ```
 
-The class must implement:
+In practice, any Java object can be stored in a context field — strings, numbers, collections, custom objects. The formatter tags define how those objects are serialized to/from XML.
+
+### Context Inheritance Chain
+
+Contexts form an inheritance hierarchy via the `parent` attribute:
+
+```xml
+<context id="BaseOpCtxt"     parent="nil"         type="op"/>
+<context id="InternetCtxt"   parent="BaseOpCtxt"  type="op"/>
+<context id="GetLinksCtxt"   parent="InternetCtxt" type="op"/>
+```
+
+When `GetLinksCtxt` is active:
+- An opStep or formatter can read/write fields in `GetLinksCtxt`
+- It can also read/write fields in `InternetCtxt` (parent)
+- It can also read/write fields in `BaseOpCtxt` (grandparent)
+- Each context has its **own isolated namespace** — there is no collision between field names in different levels
+- Access traverses up the chain: if a field is not found in the current context, the runtime looks in the parent, then grandparent, up to `nil`
+
+### Context Access Rules
+
+- **Formatters** (CCString, CCDate, CCXML, etc.): read from and write to context fields identified by their `dataName` attribute
+- **opStep implClasses**: have full access to the context chain — can read any field and write any field at any level they have access to
+- **Decorators**: do NOT directly access context — they receive a string value from the formatter and return a transformed string
+- **No component can access context fields from a sibling context** — only from its own context and its ancestors
+
+### Context in the Operation XML
+
+```xml
+<context id="GetLinksCtxt" parent="nil" type="op"/>
+
+<CCDSEServerOperation id="GetLinksOp" operationContext="GetLinksCtxt">
+    ...
+</CCDSEServerOperation>
+```
+
+The `operationContext` attribute binds the operation to its context. The context is instantiated once when the operation starts and lives until the operation completes.
+
+---
+
+## 6. Formats and the Format/Unformat Process
+
+### What a Format Is
+
+A `fmtDef` is a declarative description of an XML data structure. It is not a DTO class — it is a recursive tree of formatter tags, each of which knows how to:
+- **unformat**: read its value from incoming XML and write it to the context
+- **format**: read its value from context and write it to the output XML
+
+The format tree is walked recursively. Each node in the tree is a formatter tag instance.
+
+### Format and Unformat Direction
+
+**Unformat (parsing — XML → context):**
+```
+Incoming XML string
+  → root formatter tag's unformat() is called
+  → root tag parses its children recursively
+  → each leaf formatter reads its XML element value
+  → (if decorators present: removeDecoration() chain applied first)
+  → final value written to context[dataName]
+```
+
+**Format (serializing — context → XML):**
+```
+context[dataName] value
+  → (if decorators present: addDecoration() chain applied first)
+  → leaf formatter writes its value as an XML element
+  → parent formatters build the XML structure up the tree
+  → result is the complete XML output string
+```
+
+### Decorator Chain Direction
+
+**During unformat (parsing incoming XML):**
+```
+XML string value
+  → last decorator in chain: removeDecoration(value)
+  → second-to-last decorator: removeDecoration(previous result)
+  → ... (chain runs in reverse order)
+  → first decorator: removeDecoration(...)
+  → result passed to formatter for context write
+```
+
+**During format (building outgoing XML):**
+```
+context value (string from formatter)
+  → first decorator in chain: addDecoration(value)
+  → second decorator: addDecoration(previous result)
+  → ... (chain runs in forward order)
+  → last decorator: addDecoration(...)
+  → result written to XML output
+```
+
+The decorator chain is defined by the order of decorator tags after the formatter tag in the XML.
+
+### Format Execution Contexts
+
+The format/unformat process is not limited to request/response. It occurs whenever data needs to be serialized or deserialized:
+
+- **Request reception**: channel handler calls unformat on `csRequestFormat`
+- **Response building**: channel handler calls format on `csReplyFormat` (or `csErrorReplyFormat` if error body was switched)
+- **Backend request**: an opStep builds a request to a backend system using a format
+- **Backend response**: an opStep parses a response from a backend system using a format
+- **Logging**: some opSteps serialize context data to log using a format
+
+### refFormat — Format Reuse
+
+```xml
+<!-- In CCDSEServerOperation: -->
+<refFormat name="csRequestFormat"  refid="GetLinksRQFmt"/>
+<refFormat name="csReplyFormat"    refid="GetLinksRSFmt"/>
+<refFormat name="csErrorReplyFormat" refid="StandardErrorFmt"/>
+```
+
+The `name` attribute is the role the format plays in this operation. The conventional names are:
+- `csRequestFormat` — the incoming request XML structure
+- `csReplyFormat` — the success response XML structure
+- `csErrorReplyFormat` — the error response XML structure (substituted when an opStep signals an error body change via `on{RC}Return`)
+
+The `refid` points to a `fmtDef` id, which may be defined in the same XML file, in `dseformat.xml`, or in any other file loaded via `defaultFile`.
+
+### CCTableFormat — Database Lookup During Format
+
+`CCTableFormat` is a special formatter that performs a database lookup during the format process. When the format tree reaches a `CCTableFormat` node during format (building outgoing XML):
+1. It reads the key value from context (identified by `keyValue` attribute)
+2. Queries `fromTable` column `fromColumn` where the key matches
+3. Writes the result as the field's XML value
+
+This means database calls can happen during response building, not just during opStep execution.
+
+---
+
+## 7. Decorators
+
+### What a Decorator Is
+
+A decorator is a value transformer chained after a formatter tag. It operates on the string result of the formatter, not on the context directly.
+
+**XML syntax:**
+```xml
+<CCString dataName="AccountId"/>
+<CCPadding padChar="0" length="9"/>
+```
+
+`CCPadding` is a decorator that follows `CCString`. The decorator tag appears as a sibling immediately after the formatter's self-closing tag.
+
+### Decorator Contracts
+
+There are two decorator base classes with different contracts:
+
+**Type 1 — Value Decorator** (extends `FormatDecoratorHolder`):
 ```java
-public void setErrorCategory(String category);
-public void setErrorNumber(String number);
+public String addDecoration(String s);     // called during FORMAT
+public String removeDecoration(String s);  // called during UNFORMAT
+public Object initializeFrom(Tag tag);     // reads this tag's own attributes
 ```
+
+Example — `CCPadding`:
+- `addDecoration("1234567")` → `"001234567"` (pad to length 9 with '0')
+- `removeDecoration("001234567")` → `"1234567"` (strip leading zeros)
+
+**Type 2 — Attribute Decorator** (extends `AttributeXmlFormatDecoratorImpl`):
+```java
+public Hashtable formatXmlAttributes(Context ctx, DataElement de, FormatElement fe);
+public Object initializeFrom(Tag tag);
+```
+
+This type operates at the XML attribute level rather than the string value level. It can add XML attributes (like `xsi:nil="true"`) to the output element. Example: `NilDecorator`.
+
+### Decorator Chain Rules
+
+1. A decorator applies only to the immediately preceding formatter tag
+2. Multiple decorators can be chained after one formatter — each receives the previous one's output
+3. During **format**: chain runs in order (first decorator → last decorator)
+4. During **unformat**: chain runs in reverse order (last decorator → first decorator)
+5. `initializeFrom(Tag tag)` reads only this decorator's own XML attributes — never the formatter's attributes or sibling tags
+6. A decorator can be placed after a complex formatter (like `CCXML`) — in that case it decorates the entire XML subtree produced by that formatter
+
+### Example — Multiple Decorators
+
+```xml
+<CCString dataName="Amount"/>
+<RemoveLeadingZerosDecorator/>
+<CCPadding padChar=" " length="12"/>
+```
+
+**During unformat** (input XML: `<Amount>   0001234</Amount>`):
+1. `CCPadding.removeDecoration("   0001234")` → strips right-padding → `"0001234"`
+2. `RemoveLeadingZerosDecorator.removeDecoration("0001234")` → `"1234"`
+3. `CCString` writes `"1234"` to context["Amount"]
+
+**During format** (context["Amount"] = "1234"):
+1. `CCString` reads `"1234"` from context
+2. `RemoveLeadingZerosDecorator.addDecoration("1234")` → (no-op in format) → `"1234"`
+3. `CCPadding.addDecoration("1234")` → `"        1234"` (12 chars, space-padded left)
+4. XML output: `<Amount>        1234</Amount>`
+
+### All Decorator Tags (from XML channel dse.ini)
+
+| Tag | Class | Description |
+|---|---|---|
+| `nilDecorator` | `...decorator.NilDecorator` | Sets `xsi:nil="true"` when value is null/empty |
+| `RemoveLeadingZerosDecorator` | `...decorator.RemoveLeadingZerosDecorator` | Strips leading zeros |
+| `CCPadding` | `...decorator.CCPadding` | Pads string to fixed length |
+| `CCFixedLength` | `...decorator.CCFixedLength` | Enforces fixed string length |
+| `CCMandatory` | `...decorator.CCMandatory` | Validates field is not empty |
+| `CCNotNull` | `...decorator.CCNotNull` | Validates field is not null |
+| `CCZeroToNull` | `...decorator.CCZeroToNull` | Converts zero value to null |
+| `CCNullToZero` | `...decorator.CCNullToZero` | Converts null to zero |
+| `fZeroToDecimalIDB` | `...decorator.ZeroToDecimalIDB` | Handles zero decimal display |
+| `fFixedLengthTranIDB` | `...decorator.FixedLengthTranIDB` | Fixed-length transform |
+| `fStringDateIDB` | `...decorator.StringDateIDB` | String-to-date conversion |
+| `fZeroToNullIDB` | `...decorator.ZeroToNullIDB` | Zero-to-null for IDB |
+| `fTrimIDB` | `...decorator.TrimIDB` | Trim whitespace for IDB |
+| `SmartMirror` | `...decorator.SmartMirror` | Hebrew/Latin text mirroring |
+| `HebrewWHF` | `...decorator.HebrewWHF` | Hebrew character handling |
+| `MF2Hebrew` | `...decorator.MF2Hebrew` | Mainframe-to-Hebrew conversion |
+| `Base64Decorator` | `...decorator.Base64Decorator` | Base64 encode/decode |
+| `ArithmaticAction` | `...decorator.ArithmaticAction` | Arithmetic on value |
+| `CCRegExp` | `...decorator.CCRegExp` | Regex validation |
+| `CCRegExpReplace` | `...decorator.CCRegExpReplace` | Regex replace |
+| `MaskLogDecorator` | `...decorator.MaskLogDecorator` | Masks value in logs |
+| `TypeReceive` | `...decorator.TypeReceive` | Type conversion on receive |
+| `SetCenturyFor2DigitsYear` | `...decorator.SetCenturyFor2DigitsYear` | Y2K year handling |
+| `CCPhoneNumberDecorator` | `...decorator.CCPhoneNumberDecorator` | Phone number formatting |
+| `AltamiraChannelDecorator` | `...decorator.AltamiraChannelDecorator` | Altamira channel transform |
+| `HebrewLogicalToVisualDecorator` | `...decorator.HebrewLogicalToVisualDecorator` | Hebrew visual order |
+| `unicodeDecorator` | `...decorator.UnicodeDecorator` | Unicode handling |
+| `convertReservedTags` | `...decorator.ConvertReservedTags` | XML reserved char escaping |
+| `delimS` | `...decorator.DelimiterStr` | Delimiter-based splitting |
 
 ---
 
-### 4. fmtDef Tag
+## 8. opSteps
 
-**Purpose**: Defines XML structure templates for requests and responses
+### What an opStep Is
 
-Format definitions describe the structure of XML data, including element names, types, and formatting rules. They contain tags representing XML elements with specific data types.
+An opStep is one step in an operation's execution chain. Each opStep maps to a Java class that performs a specific, bounded piece of business logic — a database call, a backend service call, an error code mapping, a data transformation, a validation check.
 
-**Child Tags**: Various format tags (CCString, CCDate, CCXML, CCTcoll, etc.)
+### opStep Tag Structure
 
-**Attributes**:
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `id` | Yes | Unique identifier for the format definition |
-
-**Common Format Tags**:
-
-- `CCXML` - XML element container
-- `CCString` - String value element
-- `CCDate` - Date value element with formatting
-- `CCBoolean` - Boolean value element
-- `CCTcoll` - Collection/array element
-- `CCTableFormat` - Database table lookup element
-- `NumberFormat` - Numeric value element
-
-**Example**:
 ```xml
-<fmtDef id="GetLinksRQFmt">
-    <CCXML dataName="GetLinks">
-        <CCString dataName="ClientId"/>
-        <CCString dataName="ClientName"/>
-    </CCXML>
-</fmtDef>
+<opStep id="GetClientLinks"
+        implClass="com.ibm.il.dse.operations.internet.db.GetClientLinksSP"
+        on0Do="end"
+        on4Do="ErrorDataNotFound"
+        on5Do="ErrorInvalidLinks"
+        onOtherDo="OperationFailed"
+        onlyFor="internet"
+        SomeCustomParam="someValue"/>
 ```
 
-**Complex Format Example**:
+### Reserved Attributes
+
+| Attribute | Description |
+|---|---|
+| `id` | Unique step name within the operation |
+| `implClass` | FQCN of the Java class implementing this step. Overrides dse.ini lookup. |
+| `on{N}Do` | Where to go when execute() returns integer N. Can be a step id, "next", or "end" |
+| `onOtherDo` | Default routing when no `on{N}Do` matches the return code |
+| `onOtherDoDefault` | Final fallback routing (with runtime warning) |
+| `onTimeoutDo` | Where to go when execute() returns RC_TIMEOUT |
+| `on{N}Return` | When RC=N, switch the error reply format body before routing |
+| `onlyFor` | Comma-separated channel names this step runs on. Absent = runs on all channels. |
+
+### Custom Attributes
+
+Any attribute beyond the reserved list is a custom parameter. It is passed to the implClass via a setter method named `set{AttributeName}`:
+
 ```xml
-<fmtDef id="GetLinksRSFmt">
-    <CCXML dataName="Response" transparent="true">
-        <CCXML dataName="GetLinks" transparent="true">
-            <CCXML dataName="ReqParams" transparent="true">
-                <CCString dataName="ClientId"/>
-                <CCString dataName="ClientName"/>
-            </CCXML>
-            <CCTcoll dataName="LinksBlock" transparentSource="true" append="true" times="*">
-                <CCXML dataName="DocData" unnamed="false">
-                    <CCString dataName="DocId"/>
-                    <CCString dataName="Flag"/>
-                    <CCTableFormat dataName="LinkDescription" 
-                                   fromTable="some_table" 
-                                   fromColumn="some_column" 
-                                   keyValue="link_id"/>
-                    <CCString dataName="StoreDate"/>
-                    <NumberFormat dataName="MaxAccess" 
-                                  showThousandsSep="no" 
-                                  showDecimalsSep="no"/>
-                    <CCDate dataName="WrittenAt" 
-                            pattern="yyyyMMdd" 
-                            useSep="no" 
-                            fourDigYear="yes" 
-                            ordering="ymd" 
-                            usePattern="yes" 
-                            onFailed="current" />
-                </CCXML>
-            </CCTcoll>
-        </CCXML>
-    </CCXML>
-</fmtDef>
+<opStep id="MapError"
+        implClass="operations.MapErrorByValueAlways"
+        ErrorCategory="10"
+        ErrorNumber="0"
+        onOtherDo="OperationFailed"/>
 ```
+
+The implClass must implement:
+```java
+public void setErrorCategory(String value);
+public void setErrorNumber(String value);
+```
+
+### opStep implClass Contract
+
+Every opStep implClass implements `OperationStepInterface` (directly or via `CCOperationStep`):
+
+```java
+public interface OperationStepInterface {
+    int execute() throws Exception;
+    void setParams(KeyedCollection kc);
+    void setOperation(DSEServerOperation op);
+    Context getContext();
+    String getName();
+}
+```
+
+The implClass has access to:
+- **Context**: via `getContext()` — can read and write any field in the context chain
+- **Operation**: via `getOperation()` — provides access to operation-level data
+- **Params (KeyedCollection)**: all opStep XML attributes are available via `kc`
+
+### Return Code Routing
+
+The integer returned by `execute()` drives the opStep chain:
+- `0` conventionally means success but any integer is valid
+- The routing attributes (`on{N}Do`, `onOtherDo`) map return codes to the next step name
+- The special step name `"end"` terminates the chain normally
+- The special step name `"next"` advances to the immediately following step
 
 ---
 
-### 5. refFormat Tag
+## 9. CCDSEServerOperation
 
-**Purpose**: References existing format definitions for reusability
+### What It Is
 
-Instead of duplicating format structures, use `refFormat` to reference a `fmtDef` by its ID. The referenced format can be in the same file or in external files.
+`CCDSEServerOperation` (package: `com.ibm.il.dse.cc.cut`) is the base class for all WSBCC operations. It extends `AbstractDSEServerOperationIDB`. Every operation XML file's root tag instantiates this class.
 
-**Child Tags**: None
+### Initialization from XML
 
-**Attributes**:
+When the runtime loads an operation XML file, `initializeFrom(Tag tag)` is called:
 
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `name` | Yes | Local name for this format reference within the operation scope |
-| `refid` | Yes | The `id` of the `fmtDef` being referenced |
+1. Reads `id` attribute → sets operation name
+2. Reads operation-level attributes: `operationFields`, `hostKey`, `writeToOfecStat`, `writeToLog`, `isSelectiveJournalising`
+3. Iterates child tags:
+   - `context` sub-tag → instantiates the context via `Context.getExternalizer().convertTagToObject()`
+   - `refFormat` sub-tag → loads format via `FormatElement.getExternalizer().convertTagToObject()`, stores in `getFormats()` hashtable
+   - `refOpSteps` sub-tag → loads an opStep group
+   - `iniValue` sub-tag → loads initial key-value pairs into the context
+   - Any other tag → treated as an opStep, initialized via `CCOperationStep.initializeFrom()`
+4. Reads all XML attributes and sets them on the operation object
 
-**Example**:
-```xml
-<refFormat name="requestFormat" refid="GetLinksRQFmt" />
-<refFormat name="csRequestFormat" refid="GetLinksRQFmt" />
-<refFormat name="csReplyFormat" refid="GetLinksRSFmt" />
+### Operation Attributes
+
+| Attribute | Description |
+|---|---|
+| `id` | Operation name. Must match the `value` in selfDefOper dse.ini entry. |
+| `operationContext` | ID of the context definition this operation uses |
+| `operationFields` | Comma-separated `key=value` pairs pre-loaded into context at execute() start |
+| `hostKey` | 4-digit identifier for mainframe transaction tracking |
+| `writeToOfecStat` | Whether to write to OfecStat logging |
+| `writeToLog` | Whether to write to standard log |
+| `isSelectiveJournalising` | Controls selective journaling behavior |
+
+### Format Lookup
+
+After `execute()`, the channel handler calls format on the reply format. The operation holds all formats in its `getFormats()` hashtable, keyed by the `name` attribute of `refFormat`:
+
+```java
+// Conventionally named formats:
+FormatElement requestFmt = (FormatElement) getFormats().get("csRequestFormat");
+FormatElement replyFmt   = (FormatElement) getFormats().get("csReplyFormat");
+FormatElement errorFmt   = (FormatElement) getFormats().get("csErrorReplyFormat");
 ```
 
-This creates a reference named "csRequestFormat" that uses the structure defined in "GetLinksRQFmt".
+When an opStep signals an error body change (`on{N}Return`), the operation substitutes `csErrorReplyFormat` for `csReplyFormat` before format() is called.
 
 ---
 
-### 6. context Tag
+## 10. XML Operation File Structure
 
-**Purpose**: Defines a shared data structure for passing information between operation components
+### Single-File Structure
 
-The context acts as a static, operation-scoped data store. Tags can read from and write to the context, enabling data flow between operation steps. For example:
-- Parse input XML and store it in context
-- Operation steps read values from context
-- Store results in context for response formatting
-
-**Child Tags**: None
-
-**Attributes**:
-
-| Attribute | Required | Description |
-|-----------|----------|-------------|
-| `id` | Yes | Unique identifier for the context |
-| `parent` | Yes | Parent context ID, or "nil" if no parent exists |
-| `type` | Yes | Context attachment type. Currently only "op" (operation) is valid |
-
-**Example**:
-```xml
-<context id="GetLinksCtxt" parent="nil" type="op" />
-```
-
-**Usage Notes**:
-- Only `CCDSEServerOperation` tags can use contexts (when `type="op"`)
-- The context is referenced by the operation via the `operationContext` attribute
-- Data stored in context persists throughout the operation lifecycle
-
----
-
-## Example Implementation
-
-### Complete Operation Example
-
-This example demonstrates a complete operation that retrieves client links from a database:
+An operation may define all its components in one file:
 
 ```xml
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <XML>
-    <!-- Main Operation Definition -->
-    <CCDSEServerOperation id="GetLinksOp" operationContext="GetLinksCtxt">
-    
-        <!-- Operation Steps -->
-        <opStep id="GetClientLinks" 
-                implClass="db.GetClientLinksSP" 
-                on0Do="end" 
-                on4Do="ErrorDataNotFound" 
-                on5Do="ErrorInvalidLinks" 
-                onOtherDo="OperationFailed"/>
-                
-        <opStep id="ErrorDataNotFound" 
-                implClass="operations.MapErrorByValueAlways" 
-                ErrorCategory="10" 
-                ErrorNumber="0" 
-                onOtherDo="OperationFailed" />
-                
-        <opStep id="ErrorInvalidLinks" 
-                implClass="operations.MapErrorByValueAlways" 
-                ErrorCategory="20" 
-                ErrorNumber="0" 
-                onOtherDo="OperationFailed" />
-                
-        <opStep id="OperationFailed" 
-                onOtherDo="end" />
-        
-        <!-- Format References -->
-        <refFormat name="csRequestFormat" refid="GetLinksRQFmt" />
-        <refFormat name="csReplyFormat" refid="GetLinksRSFmt" />
+    <CCDSEServerOperation id="OperationName" operationContext="OperationCtxt">
+        <!-- opSteps -->
+        <opStep id="Step1" implClass="..." on0Do="end" onOtherDo="ErrorStep"/>
+        <opStep id="ErrorStep" implClass="..." onOtherDo="end"/>
+        <!-- format references -->
+        <refFormat name="csRequestFormat"  refid="OperationRQFmt"/>
+        <refFormat name="csReplyFormat"    refid="OperationRSFmt"/>
     </CCDSEServerOperation>
-    
-    <!-- Request Format Definition -->
-    <fmtDef id="GetLinksRQFmt">
-        <CCXML dataName="GetLinks">
-            <CCString dataName="ClientId"/>
-            <CCString dataName="ClientName"/>
+
+    <fmtDef id="OperationRQFmt">
+        <CCXML dataName="OperationRequest">
+            <CCString dataName="Field1"/>
         </CCXML>
     </fmtDef>
-    
-    <!-- Response Format Definition -->
-    <fmtDef id="GetLinksRSFmt">
-        <CCXML dataName="Response" transparent="true">
-            <CCXML dataName="GetLinks" transparent="true">
-                <CCXML dataName="ReqParams" transparent="true">
-                    <CCString dataName="ClientId"/>
-                    <CCString dataName="ClientName"/>
-                </CCXML>
-                <CCTcoll dataName="LinksBlock" 
-                         transparentSource="true" 
-                         append="true" 
-                         times="*">
-                    <CCXML dataName="DocData" unnamed="false">
-                        <CCString dataName="DocId"/>
-                        <CCString dataName="Flag"/>
-                        <CCTableFormat dataName="LinkDescription" 
-                                       fromTable="some_table" 
-                                       fromColumn="some_column" 
-                                       keyValue="link_id"/>
-                        <nilDecorator/>
-                        <CCString dataName="StoreDate"/>
-                        <NumberFormat dataName="MaxAccess" 
-                                      showThousandsSep="no" 
-                                      showDecimalsSep="no"/>
-                        <CCDate dataName="WrittenAt" 
-                                pattern="yyyyMMdd" 
-                                useSep="no" 
-                                fourDigYear="yes" 
-                                ordering="ymd" 
-                                usePattern="yes" 
-                                onFailed="current" />
-                    </CCXML>
-                </CCTcoll>
-            </CCXML>
+
+    <fmtDef id="OperationRSFmt">
+        <CCXML dataName="OperationResponse">
+            <CCString dataName="Result"/>
         </CCXML>
     </fmtDef>
-    
-    <!-- Context Definition -->
-    <context id="GetLinksCtxt" parent="nil" type="op" />
+
+    <context id="OperationCtxt" parent="nil" type="op"/>
 </XML>
 ```
 
-### Operation Flow Explanation
+### Split-File Structure
 
-1. **Request Reception**: Operation receives XML matching `GetLinksRQFmt` format
-2. **Data Parsing**: Request is parsed and stored in context `GetLinksCtxt`
-3. **Step Execution**: `GetClientLinks` step executes (calls database stored procedure)
-4. **Result Handling**:
-   - If return code = 0: Operation completes successfully (go to "end")
-   - If return code = 4: Data not found error (go to `ErrorDataNotFound`)
-   - If return code = 5: Invalid links error (go to `ErrorInvalidLinks`)
-   - Other codes: General operation failure (go to `OperationFailed`)
-5. **Error Mapping**: Error steps map specific error categories and numbers
-6. **Response Generation**: Response is formatted according to `GetLinksRSFmt`
-7. **Response Return**: XML response is returned to the caller
+Large operations may reference formats and contexts defined in `dseformat.xml` or `dsecontext.xml` using `refFormat`. The format can live anywhere as long as its file is loaded via `defaultFile` in dse.ini.
+
+### File Naming Convention
+
+Operation files in `selfDefOper/` are typically named after the operation: `GetClientLinks.xml`. The `selfDefOper` dse.ini entry maps the file path to the operation name.
 
 ---
 
-## Best Practices
+## 11. Tag Reference
 
-### 1. Naming Conventions
+### Format Tags (Formatters)
 
-- Use descriptive, clear IDs for operations, steps, and formats
-- Follow consistent naming patterns across your operations
-- Use camelCase for attribute names to match Java setter conventions
+| Tag | Class | Description |
+|---|---|---|
+| `CCXML` | `...format.CCXML` | XML element container. Groups child fields. `transparent=true` omits wrapper element from wire format. |
+| `CCString` | `...format.CCString` | String field. Reads/writes a string value between XML element and context. |
+| `CCDate` | `...format.CCDate` | Date field with pattern formatting. |
+| `CCTime` | `...format.CCTime` | Time field. |
+| `CCBoolean` | `...format.CCBoolean` | Boolean field. |
+| `NumberFormat` | `...format.NumberFormat` | Numeric field with decimal/thousands separator control. |
+| `CCIColl` | `...format.CCIColl` | Index-based collection. Iterates a list stored in context and formats/unformats each element. |
+| `CCTableFormat` | `...format.CCTableFormat` | Database lookup formatter. Queries DB during format to populate field from a table. |
+| `CCDate` | `...format.CCDate` | Date with configurable pattern, separator, year digit options. |
+| `CCConstant` | `...format.CCConstant` | Writes a constant value to context/XML regardless of input. |
+| `CCRecord` | `...format.CCRecord` | Record structure formatter. |
+| `CCLength` | `...format.CCLength` | String with length constraint. |
+| `CCEnumFormat` | `...format.CCEnumFormat` | Enumeration mapping formatter. |
+| `CCEnum` | `...format.CCEnum` | Enum value formatter. |
+| `CCConditionalString` | `...format.CCConditionalString` | Conditional string — value depends on a context condition. |
+| `CCConcatObjects` | `...format.CCConcatObjects` | Concatenates multiple context values. |
+| `CCReflect` | `...format.CCReflect` | Reflects a value from one context field to another. |
+| `CCTagValue` | `...format.CCTagValue` | Writes the tag name as the value. |
+| `CCSysTimeDate` | `...format.CCSysTimeDate` | Current system timestamp. |
+| `CCTimeDateFormats` | `...format.CCTimeDateFormats` | Combined time/date with multiple format options. |
+| `CCHostName` | `...format.CCHostName` | Server hostname. |
+| `CCTableFormatMultiLanguage` | `...format.CCTableFormatMultiLanguage` | Multi-language DB lookup. |
+| `ValdFIColl` | `...format.ValdFIColl` | Validated index collection. |
+| `SumCollFields` | `...format.SumCollFields` | Sums a collection field. |
+| `PS10NewXMLFormat` | `...format.PS10NewXMLFormat` | PS10 protocol XML format. |
+| `PS10MFormat` | `...format.PS10MFormat` | PS10 M-format. |
+| `CCHTTP` | `...format.CCHTTP` | HTTP-specific format handling. |
 
-### 2. Error Handling
+### Context Tags
 
-- Always provide comprehensive `on{X}Do` mappings for expected return codes
-- Use `onOtherDo` as a catch-all for unexpected errors
-- Create dedicated error-handling operation steps
-- Define clear error categories and numbers
+| Tag | Description |
+|---|---|
+| `context` | Defines a context. Attributes: `id`, `parent` ("nil" or parent context id), `type` ("op") |
 
-### 3. Format Definitions
+### Operation Tags
 
-- Create reusable format definitions and reference them with `refFormat`
-- Keep format definitions separate from operation logic for maintainability
-- Document complex format structures with XML comments
-- Use meaningful `dataName` attributes that reflect the business domain
-
-### 4. Context Usage
-
-- Define one context per operation for clarity
-- Use contexts to share data between operation steps
-- Avoid complex context hierarchies unless necessary
-
-### 5. Java Implementation
-
-- Ensure setter method names exactly match XML attribute names
-- Implement robust error handling in `execute()` methods
-- Return meaningful integer codes from `execute()` methods
-- Document return codes in your Java class comments
-
-### 6. Code Organization
-
-**Recommended File Structure**:
-```
-operations/
-├── dse.ini                    # Tag-to-class mappings
-├── dseoperation.xml           # Operation definitions
-├── dseformat.xml              # Format definitions
-└── dsecontext.xml             # Context definitions
-```
-
-Or use a single file approach for simpler operations:
-```
-operations/
-└── GetLinksOperation.xml      # All-in-one operation file
-```
-
-### 7. Testing
-
-- Test each operation step independently
-- Verify all return code paths
-- Test error scenarios thoroughly
-- Validate XML format compliance for requests and responses
-
-### 8. Documentation
-
-- Comment complex format structures
-- Document custom attributes and their purposes
-- Maintain a registry of return codes and their meanings
-- Document operation dependencies and prerequisites
-
-### 9. Performance
-
-- Minimize context size and complexity
-- Reuse format definitions where possible
-- Keep operation step logic focused and efficient
-- Consider caching frequently-used data
-
-### 10. Security
-
-- Validate all input data in operation steps
-- Sanitize data before database operations
-- Implement appropriate access controls
-- Log security-relevant operations
+| Tag | Description |
+|---|---|
+| `CCDSEServerOperation` | Defines a complete operation. See Section 9. |
+| `opStep` | Defines one execution step. See Section 8. |
+| `refFormat` | References a fmtDef by id with a local role name. |
+| `fmtDef` | Defines a format structure inline or in a shared file. |
+| `refOpSteps` | References a group of opSteps defined elsewhere. |
+| `iniValue` | Pre-loads key-value pairs into the context at operation start. |
 
 ---
 
-## Appendix: Common Format Tag Attributes
+## 12. Complete Operation Example
+
+```xml
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+    <!-- ================================================ -->
+    <!-- Operation Definition                              -->
+    <!-- ================================================ -->
+    <CCDSEServerOperation id="GetClientLinksOp"
+                          operationContext="GetClientLinksCtxt"
+                          hostKey="GCLN">
+
+        <!-- Step 1: fetch links from DB -->
+        <opStep id="GetClientLinks"
+                implClass="com.ibm.il.dse.operations.internet.db.GetClientLinksSP"
+                on0Do="end"
+                on4Do="ErrorDataNotFound"
+                on8Do="ErrorTechnical"
+                onOtherDo="ErrorTechnical"/>
+
+        <!-- Step 2a: business error — data not found -->
+        <opStep id="ErrorDataNotFound"
+                implClass="operations.MapErrorByValueAlways"
+                ErrorCategory="10"
+                ErrorNumber="0"
+                on0Return="ErrorBody"
+                onOtherDo="end"/>
+
+        <!-- Step 2b: technical error -->
+        <opStep id="ErrorTechnical"
+                implClass="operations.MapErrorByValueAlways"
+                ErrorCategory="99"
+                ErrorNumber="0"
+                on0Return="ErrorBody"
+                onOtherDo="end"/>
+
+        <!-- Format references -->
+        <refFormat name="csRequestFormat"     refid="GetClientLinksRQFmt"/>
+        <refFormat name="csReplyFormat"       refid="GetClientLinksRSFmt"/>
+        <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+    </CCDSEServerOperation>
+
+    <!-- ================================================ -->
+    <!-- Request Format                                    -->
+    <!-- ================================================ -->
+    <fmtDef id="GetClientLinksRQFmt">
+        <CCXML dataName="GetClientLinks">
+            <CCString dataName="ClientId"/>
+            <nilDecorator/>
+            <CCString dataName="BankId"/>
+        </CCXML>
+    </fmtDef>
+
+    <!-- ================================================ -->
+    <!-- Response Format                                   -->
+    <!-- ================================================ -->
+    <fmtDef id="GetClientLinksRSFmt">
+        <CCXML dataName="GetClientLinksResponse" transparent="true">
+            <CCString dataName="ClientId"/>
+            <CCIColl dataName="Links" times="*">
+                <CCXML dataName="Link">
+                    <CCString dataName="LinkId"/>
+                    <CCTableFormat dataName="LinkDescription"
+                                   fromTable="LINK_TYPES"
+                                   fromColumn="DESCRIPTION"
+                                   keyValue="LinkId"/>
+                    <nilDecorator/>
+                    <CCDate dataName="LinkDate"
+                            pattern="yyyyMMdd"
+                            useSep="no"
+                            fourDigYear="yes"/>
+                </CCXML>
+            </CCIColl>
+        </CCXML>
+    </fmtDef>
+
+    <!-- ================================================ -->
+    <!-- Context Definition                                -->
+    <!-- ================================================ -->
+    <context id="GetClientLinksCtxt" parent="nil" type="op"/>
+
+</XML>
+```
+
+### Execution Walkthrough
+
+1. **Channel handler** receives request XML:
+   ```xml
+   <GetClientLinks>
+     <ClientId>001234567</ClientId>
+     <BankId>01</BankId>
+   </GetClientLinks>
+   ```
+
+2. **Unformat** (`csRequestFormat`):
+   - `CCXML` tag opens the `<GetClientLinks>` element
+   - `CCString[ClientId]` reads `"001234567"` → writes `context["ClientId"] = "001234567"`
+   - `nilDecorator` (after CCString[ClientId]) checks if value was null → if so sets `xsi:nil`
+   - `CCString[BankId]` reads `"01"` → writes `context["BankId"] = "01"`
+
+3. **execute()** runs the opStep chain:
+   - `GetClientLinks` runs `GetClientLinksSP.execute()`:
+     - Reads `ClientId` and `BankId` from context
+     - Calls stored procedure `CLIENT_LINKS_GET`
+     - Writes results to context: `context["Links"] = [list of link objects]`
+     - Returns `0` (success) or `4` (not found) or `8` (technical error)
+   - RC=0 → route to `"end"` → chain terminates
+   - RC=4 → route to `ErrorDataNotFound` → `MapErrorByValueAlways` writes error codes to context, `on0Return="ErrorBody"` signals error body switch → chain terminates
+
+4. **Format** (either `csReplyFormat` or `csErrorReplyFormat`):
+   - Success: `CCXML` transparent → no wrapper element emitted
+   - `CCString[ClientId]` reads `context["ClientId"]` → writes `<ClientId>001234567</ClientId>`
+   - `CCIColl[Links]` iterates `context["Links"]`:
+     - For each link: `CCString[LinkId]`, `CCTableFormat[LinkDescription]` (DB lookup), `CCDate[LinkDate]`
+   - Error: `StandardErrorRSFmt` serializes error category/number from context
+
+---
+
+## 13. Conversion Guide — WSBCC to Native Java
+
+This section is specifically for LLMs and developers performing the migration from WSBCC XML to native code. It explains the conversion rules for each WSBCC concept.
+
+### Core Conversion Principle
+
+**Do not reimplement the WSBCC framework in the generated code.**
+
+The generated microservice should be the result of evaluating the WSBCC configuration — not a reimplementation of the configuration engine. The XML is a declarative program; generate the equivalent imperative code.
+
+Wrong approach:
+```java
+// BAD: reimplements framework machinery
+FormatEngine.unformat(requestXml, csRequestFormat, context);
+opStepChain.execute(context);
+FormatEngine.format(context, csReplyFormat);
+```
+
+Correct approach:
+```java
+// GOOD: direct, evaluated result
+String clientId = XmlUtil.getText(requestXml, "GetClientLinks/ClientId");
+String bankId   = XmlUtil.getText(requestXml, "GetClientLinks/BankId");
+List<Link> links = db.getClientLinks(clientId, bankId);
+return buildLinksResponse(clientId, links);
+```
+
+### Conversion Rules by Concept
+
+**Channel filtering (onlyFor):**
+When converting for channel X, omit all opSteps whose `onlyFor` attribute does not include X. The generated class only contains the steps that actually run for that channel.
+
+**Context:**
+Context fields become local variables or fields on a simple operation-scoped data class. No dynamic hashtable. Use typed fields.
+```java
+// context["ClientId"] = "001234567"  →  String clientId = "001234567";
+```
+
+**Format/unformat:**
+Replace with direct XML parsing (JAXB or DOM) for request, and direct XML building for response. The format tree defines the XML structure — generate JAXB annotated classes matching that structure.
+
+**Decorator chain:**
+Evaluate what the decorator chain does and write equivalent inline code:
+```java
+// CCString + RemoveLeadingZerosDecorator + CCPadding(9, '0')
+// In unformat: strip leading zeros from parsed value
+String accountId = parseString(xml, "AccountId").replaceFirst("^0+", "");
+// In format: pad to 9 chars with leading zeros
+String xmlValue = String.format("%09d", Long.parseLong(accountId));
+```
+
+**opStep implClass:**
+If the implClass contains only IBM framework plumbing around business logic, extract the business logic and write it directly. If the implClass is already business logic (DB call, validation, calculation), keep the logic and remove IBM infrastructure.
+
+**RC routing:**
+The opStep chain routing logic (`on{N}Do`, `onOtherDo`, `onTimeoutDo`, `on{N}Return`) is defined in the operation XML — not in any Java class. When converting, read the operation XML's opStep routing attributes to determine the complete flow, then generate the equivalent imperative branching. The XML is the source of truth for flow control; the implClass only produces a return code and does not know what happens next.
+
+```java
+int rc = getClientLinksSP(clientId, bankId, context);
+if (rc == 0) {
+    return buildSuccessResponse(context);
+} else if (rc == 4) {
+    return buildErrorResponse("10", "0");
+} else {
+    return buildTechnicalError();
+}
+```
+
+**CCTableFormat DB lookup:**
+`CCTableFormat` is a DB lookup that was incorrectly placed inside a format definition in WSBCC — mixing serialization concerns with business logic. Do not carry this mistake into the converted code. JAXB classes are pure data carriers with no logic; they never perform DB calls.
+
+The correct conversion is to move the lookup to the service/business logic layer, where it belongs. Execute the DB query during the opStep phase and store the result in the response object before serialization begins. By the time the JAXB serializer runs, every field — including those that were `CCTableFormat` in the original XML — must already be populated.
+
+```java
+// In the service layer (opStep equivalent), not in the serializer:
+String description = linkTypeRepository.findDescriptionByKey(linkId);
+linkDto.setDescription(description);
+
+// The JAXB class is a plain DTO — no logic, no DB calls:
+@XmlElement(name = "LinkDescription")
+public String getDescription() { return description; }
+```
+
+When you encounter a `CCTableFormat` in a fmtDef, treat it as a signal that a DB lookup is missing from the opStep layer. Add it there.
+
+**Shared components:**
+Any implClass used by more than one operation goes into `common-lib` as a shared utility class. The generated service imports it rather than duplicating the logic.
+
+**Naming:**
+For operations that exist in multiple channels, append the channel name:
+```
+GetClientLinksOp in INTERNET channel → GetClientLinksService (internet package)
+GetClientLinksOp in IVR channel     → GetClientLinksService (ivr package)
+```
+
+---
+
+## 14. Best Practices
+
+### For WSBCC Developers
+
+1. **Format reuse**: Define shared formats in `dseformat.xml` and reference via `refFormat`. Never duplicate format structures — a shared format changed in one place updates all operations.
+2. **Context sizing**: Define context fields only for the operation's actual data needs. Do not use context as a global scratchpad.
+3. **Return codes**: Document all return codes in the implClass Javadoc. Ensure every possible RC is handled by `on{N}Do` or `onOtherDo`.
+4. **onlyFor**: Use sparingly. Each `onlyFor` opStep is invisible to other channels — prefer separate operations over invisible conditional logic.
+5. **Decorator order**: The order of decorator tags is the execution order during format. Reverse order runs during unformat. Document the intended transformation chain with a comment.
+6. **Error body switching**: When an opStep uses `on{N}Return`, ensure `csErrorReplyFormat` is defined on the operation. Missing error format causes a silent null response.
+
+### For Conversion
+
+1. **Read the implClass source before converting** — the XML tag tells you what class to call; the Java source tells you what it actually does.
+2. **Evaluate, don't translate** — generate code that does what the WSBCC XML does, not code that looks like the XML.
+3. **Channel first** — always establish which channel before converting an operation. The channel determines which opSteps run.
+4. **Verify decorator chains** — decorator behavior in format vs unformat direction is frequently asymmetric. Read both `addDecoration` and `removeDecoration` before generating equivalent code.
+5. **CCTableFormat is a DB call** — it is not just a format tag. The generated code needs a DB query at the point where this tag would have executed.
+
+
+---
+
+> **Code structure and separation of concerns rules for each target language are defined in the generation skill files.**
+> See `skills/java_generation_skills/spring_boot_structure.md` for Java/Spring Boot,
+> `skills/nodejs_generation_skills/express_structure.md` for Node.js/Express, and
+> `skills/python_generation_skills/fastapi_structure.md` for Python/FastAPI.
+> Language-agnostic conversion rules (evaluate don't translate, channel-first, shared components, etc.)
+> are in `skills/conversion_rules_skill.md`.
+
+---
+
+## Appendix A: Format Tag Quick Reference
+
+### CCString Attributes
+| Attribute | Description |
+|---|---|
+| `dataName` | XML element name and context field name |
 
 ### CCDate Attributes
-- `dataName`: Element name in XML
-- `pattern`: Date format pattern (e.g., "yyyyMMdd")
-- `useSep`: Use separators in date (yes/no)
-- `fourDigYear`: Use four-digit year (yes/no)
-- `ordering`: Date component order (ymd, dmy, mdy)
-- `usePattern`: Apply the pattern (yes/no)
-- `onFailed`: Behavior on parse failure
+| Attribute | Description |
+|---|---|
+| `dataName` | XML element name |
+| `pattern` | Date format pattern (e.g. `yyyyMMdd`) |
+| `useSep` | Use separators (`yes`/`no`) |
+| `fourDigYear` | Use 4-digit year (`yes`/`no`) |
+| `ordering` | Component order (`ymd`, `dmy`, `mdy`) |
+| `usePattern` | Apply the pattern (`yes`/`no`) |
+| `onFailed` | Behavior on parse failure (`current` = use current date) |
 
 ### CCXML Attributes
-- `dataName`: Element name in XML
-- `transparent`: Pass through without creating wrapper element (true/false)
-- `unnamed`: Create element without name (true/false)
+| Attribute | Description |
+|---|---|
+| `dataName` | XML element name |
+| `transparent` | When `true`: element wrapper is not emitted; children appear at parent level |
+| `unnamed` | Controls whether `dataName` appears as the element name |
 
-### CCTcoll Attributes
-- `dataName`: Collection element name
-- `transparentSource`: Source is transparent (true/false)
-- `append`: Append to existing collection (true/false)
-- `times`: Number of iterations or "*" for unlimited
+### CCIColl Attributes
+| Attribute | Description |
+|---|---|
+| `dataName` | Collection element name |
+| `times` | Max iterations, or `*` for unlimited |
+| `transparentSource` | Whether source is transparent |
+| `append` | Append to existing collection |
 
 ### NumberFormat Attributes
-- `dataName`: Element name in XML
-- `showThousandsSep`: Show thousands separator (yes/no)
-- `showDecimalsSep`: Show decimal separator (yes/no)
+| Attribute | Description |
+|---|---|
+| `dataName` | XML element name |
+| `showThousandsSep` | Include thousands separator (`yes`/`no`) |
+| `showDecimalsSep` | Include decimal separator (`yes`/`no`) |
 
 ### CCTableFormat Attributes
-- `dataName`: Element name in XML
-- `fromTable`: Database table name
-- `fromColumn`: Database column name
-- `keyValue`: Key value for lookup
+| Attribute | Description |
+|---|---|
+| `dataName` | XML element name |
+| `fromTable` | Database table to query |
+| `fromColumn` | Column to retrieve |
+| `keyValue` | Context field name whose value is the lookup key |
+
+---
+
+## Appendix B: Channel List
+
+| Workspace | Channel Name | Description |
+|---|---|---|
+| `WSBCC_ARNAV` | ARNAV | ARNAV channel |
+| `WSBCC_BANKADMIN` | BANKADMIN | Bank administration |
+| `WSBCC_G2` | G2 | G2 channel |
+| `WSBCC_GVP` | GVP | GVP channel |
+| `WSBCC_INTERNET` | INTERNET | Internet banking |
+| `WSBCC_IVR` | IVR | Phone/IVR banking |
+| `WSBCC_KIOSK` | KIOSK | Kiosk banking |
+| `WSBCC_MKT` | MKT | Marketing |
+| `WSBCC_ONLINEGOV` | ONLINEGOV | Online government services |
+| `WSBCC_SME` | SME | Small/medium enterprise banking |
+| `WSBCC_TRANSFERS` | TRANSFERS | Transfers |
+| `WSBCC_WEB` | WEB | Web channel |
+| `WSBCC_WS` | WS | Web services |
+| `WSBCC_XML` | XML | Common shared definitions (imported by all channels) |
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-01-27 | Development Team | Initial release |
-
----
-
-## Support and Resources
-
-For additional support and resources:
-- Consult IBM WebSphere documentation
-- Review sample operations in your installation
-- Contact your system administrator for environment-specific guidance
-
----
-
-*End of Developer Manual*
+| Version | Date | Changes |
+|---|---|---|
+| 1.0 | 2026-01-27 | Initial release |
+| 2.0 | 2026-05-25 | Complete rewrite. Added: runtime execution model, CCDSEServerOperation internals, dse.ini complete structure, channel/workspace inventory, decorator contracts and chain rules, context inheritance, format/unformat direction, CCTableFormat DB lookup behavior, onlyFor channel filtering, RC routing full priority chain, conversion guide for LLM and human developers. |
