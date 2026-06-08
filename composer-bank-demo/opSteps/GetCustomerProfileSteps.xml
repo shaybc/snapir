@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="ISO-8859-1"?>
-<XML>
-    <opStep id="GetCustomerProfile" implClass="demo.bankcomposer.operations.customers.GetCustomerProfileStep" sourceSystem="crm" entity="customer-profile" on0Do="end" on4Do="GetCustomerProfileNotFound" on5Do="GetCustomerProfileInvalidRequest" onOtherDo="GetCustomerProfileFailed"/>
-    <opStep id="GetCustomerProfileNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
-    <opStep id="GetCustomerProfileInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
-    <opStep id="GetCustomerProfileFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
-</XML>

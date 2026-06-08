@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- INTERNET channel context hierarchy                               -->
+  <!-- ================================================================ -->
+
+  <!-- Internet base context — extends the shared base -->
+  <context id="InternetBaseCtxt" parent="BaseOpCtxt" type="op"/>
+
+  <!-- Account operations share this context level -->
+  <context id="AccountOpCtxt" parent="InternetBaseCtxt" type="op"/>
+
+  <!-- Operation-specific contexts -->
+  <context id="GetClientAccountsCtxt"   parent="AccountOpCtxt"    type="op"/>
+  <context id="GetAccountDetailsCtxt"   parent="AccountOpCtxt"    type="op"/>
+  <context id="TransferFundsCtxt"       parent="AccountOpCtxt"    type="op"/>
+  <context id="GetClientLinksCtxt"      parent="InternetBaseCtxt" type="op"/>
+
+</XML>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="ISO-8859-1"?>
-<XML>
-    <opStep id="LastTransactions" implClass="demo.bankcomposer.operations.accounts.LastTransactionsStep" sourceSystem="core-banking" entity="transactions" on0Do="end" on4Do="LastTransactionsNotFound" on5Do="LastTransactionsInvalidRequest" onOtherDo="LastTransactionsFailed"/>
-    <opStep id="LastTransactionsNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
-    <opStep id="LastTransactionsInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
-    <opStep id="LastTransactionsFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
-</XML>
-

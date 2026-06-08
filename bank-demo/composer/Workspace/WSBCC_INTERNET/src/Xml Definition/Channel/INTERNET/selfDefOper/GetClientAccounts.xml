@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- GetClientAccountsOp                                              -->
+  <!-- Returns all accounts belonging to an authenticated client.      -->
+  <!-- Shared with IVR channel (different opStep set via onlyFor).     -->
+  <!-- ================================================================ -->
+
+  <CCDSEServerOperation id="GetClientAccountsOp"
+                        operationContext="GetClientAccountsCtxt"
+                        hostKey="GCAC"
+                        operationFields="CHANNEL_ID=INTERNET"
+                        writeToLog="true">
+
+    <!-- Step 1: Validate session token is present and not expired -->
+    <opStep id="ValidateSession"
+            implClass="com.ibm.il.dse.operations.common.ValidateInputFields"
+            RequiredFields="SessionToken,ClientId"
+            on0Do="GetAccounts"
+            onOtherDo="ValidationFailed"/>
+
+    <!-- Step 2: Fetch accounts from DB -->
+    <opStep id="GetAccounts"
+            implClass="com.ibm.il.dse.operations.internet.db.GetClientAccountsSP"
+            on0Do="end"
+            on4Do="NoAccountsFound"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Step 3a: Business error — no accounts -->
+    <opStep id="NoAccountsFound"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="20"
+            ErrorNumber="1"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <!-- Step 3b: Business error — validation failed -->
+    <opStep id="ValidationFailed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="10"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <!-- Step 3c: Technical errors -->
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <!-- IVR-only logging step — excluded from INTERNET channel -->
+    <opStep id="LogIvrCall"
+            implClass="com.ibm.il.dse.operations.ivr.db.LogIvrSession"
+            onlyFor="IVR"
+            on0Do="end"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="GetClientAccountsRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="GetClientAccountsRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <!-- ================================================================ -->
+  <!-- Request format                                                   -->
+  <!-- ================================================================ -->
+  <fmtDef id="GetClientAccountsRQFmt">
+    <CCXML dataName="GetClientAccounts">
+      <CCString dataName="ClientId"/>
+      <CCMandatory/>
+      <CCString dataName="SessionToken"/>
+      <CCMandatory/>
+      <CCBoolean dataName="IncludeInactive"/>
+      <nilDecorator/>
+      <CCString dataName="BankId"/>
+      <CCPadding padChar="0" length="4"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- ================================================================ -->
+  <!-- Reply format                                                     -->
+  <!-- ================================================================ -->
+  <fmtDef id="GetClientAccountsRSFmt">
+    <CCXML dataName="GetClientAccountsResponse">
+      <CCString dataName="ClientId"/>
+      <CCString dataName="ClientFullName"/>
+      <nilDecorator/>
+      <!-- CCIColl iterates the accounts list stored in context -->
+      <CCIColl dataName="Accounts" times="*">
+        <!-- Inline the AccountSummaryFmt structure for each account -->
+        <CCXML dataName="Account">
+          <CCString dataName="AccountNumber"/>
+          <CCPadding padChar="0" length="10"/>
+          <CCTableFormat dataName="AccountTypeName"
+                         fromTable="ACCOUNT_TYPES"
+                         fromColumn="TYPE_DESC"
+                         keyValue="AccountTypeCode"/>
+          <nilDecorator/>
+          <CCString dataName="AccountTypeCode"/>
+          <CCString dataName="AccountNickname"/>
+          <nilDecorator/>
+          <NumberFormat dataName="AvailableBalance"
+                        showThousandsSep="no"
+                        showDecimalsSep="yes"/>
+          <CCString dataName="Currency"/>
+          <CCPadding padChar=" " length="3"/>
+          <CCBoolean dataName="IsActive"/>
+          <CCDate dataName="OpenDate"
+                  pattern="yyyyMMdd"
+                  useSep="no"
+                  fourDigYear="yes"/>
+        </CCXML>
+      </CCIColl>
+      <CCString dataName="TotalAccountCount"/>
+      <RemoveLeadingZerosDecorator/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Context definition scoped to this operation -->
+  <context id="GetClientAccountsCtxt" parent="AccountOpCtxt" type="op"/>
+
+</XML>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="ISO-8859-1"?>
-<XML>
-    <opStep id="GetCreditCardList" implClass="demo.bankcomposer.operations.cards.GetCreditCardListStep" sourceSystem="cards" entity="cards" on0Do="end" on4Do="GetCreditCardListNotFound" on5Do="GetCreditCardListInvalidRequest" onOtherDo="GetCreditCardListFailed"/>
-    <opStep id="GetCreditCardListNotFound" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="10" ErrorNumber="404" onOtherDo="end"/>
-    <opStep id="GetCreditCardListInvalidRequest" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="20" ErrorNumber="400" onOtherDo="end"/>
-    <opStep id="GetCreditCardListFailed" implClass="demo.bankcomposer.operations.common.MapErrorByValueAlways" ErrorCategory="90" ErrorNumber="500" onOtherDo="end"/>
-</XML>
-

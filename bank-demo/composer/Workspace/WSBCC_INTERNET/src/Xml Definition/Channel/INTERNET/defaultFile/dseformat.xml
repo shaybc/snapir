@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- INTERNET channel shared formats                                  -->
+  <!-- ================================================================ -->
+
+  <!-- Account summary entry — used in GetClientAccounts and nested in
+       GetAccountDetails CCIColl lists -->
+  <fmtDef id="AccountSummaryFmt">
+    <CCXML dataName="Account">
+      <CCString dataName="AccountNumber"/>
+      <CCPadding padChar="0" length="10"/>
+      <CCTableFormat dataName="AccountTypeName"
+                     fromTable="ACCOUNT_TYPES"
+                     fromColumn="TYPE_DESC"
+                     keyValue="AccountTypeCode"/>
+      <nilDecorator/>
+      <CCString dataName="AccountTypeCode"/>
+      <CCString dataName="AccountNickname"/>
+      <nilDecorator/>
+      <NumberFormat dataName="AvailableBalance" showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCString dataName="Currency"/>
+      <CCPadding padChar=" " length="3"/>
+      <CCBoolean dataName="IsActive"/>
+      <CCDate dataName="OpenDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Transaction entry — used in GetAccountDetails CCIColl -->
+  <fmtDef id="TransactionEntryFmt">
+    <CCXML dataName="Transaction">
+      <CCString dataName="TransactionId"/>
+      <CCDate dataName="TransactionDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <CCTime dataName="TransactionTime"/>
+      <nilDecorator/>
+      <CCString dataName="Description"/>
+      <nilDecorator/>
+      <NumberFormat dataName="Amount" showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCString dataName="DebitCredit"/>
+      <CCPadding padChar=" " length="1"/>
+      <CCString dataName="BalanceAfter"/>
+      <nilDecorator/>
+      <CCTableFormat dataName="TransactionTypeName"
+                     fromTable="TRANSACTION_TYPES"
+                     fromColumn="TYPE_DESC"
+                     keyValue="TransactionTypeCode"/>
+      <CCString dataName="TransactionTypeCode"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Link entry — used in GetClientLinks CCIColl -->
+  <fmtDef id="LinkEntryFmt">
+    <CCXML dataName="Link">
+      <CCString dataName="LinkId"/>
+      <CCMandatory/>
+      <CCString dataName="LinkUrl"/>
+      <CCTableFormat dataName="LinkDescription"
+                     fromTable="LINK_TYPES"
+                     fromColumn="DESCRIPTION"
+                     keyValue="LinkId"/>
+      <CCBoolean dataName="IsExternal"/>
+      <CCString dataName="IconCode"/>
+      <nilDecorator/>
+    </CCXML>
+  </fmtDef>
+
+</XML>

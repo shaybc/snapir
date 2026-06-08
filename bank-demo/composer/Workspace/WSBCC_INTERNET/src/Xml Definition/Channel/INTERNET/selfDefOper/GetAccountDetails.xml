@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- GetAccountDetailsOp                                              -->
+  <!-- Returns full account details including recent transactions.     -->
+  <!-- Demonstrates: CCKColl, CCIColl nesting, date range filtering.   -->
+  <!-- ================================================================ -->
+
+  <CCDSEServerOperation id="GetAccountDetailsOp"
+                        operationContext="GetAccountDetailsCtxt"
+                        hostKey="GACD"
+                        writeToLog="true">
+
+    <!-- Step 1: Validate required fields -->
+    <opStep id="ValidateRequest"
+            implClass="com.ibm.il.dse.operations.common.ValidateInputFields"
+            RequiredFields="AccountNumber,ClientId,SessionToken"
+            on0Do="GetDetails"
+            onOtherDo="ValidationFailed"/>
+
+    <!-- Step 2: Fetch account details and transactions from DB -->
+    <opStep id="GetDetails"
+            implClass="com.ibm.il.dse.operations.internet.db.GetAccountDetailsSP"
+            on0Do="GetTransactions"
+            on4Do="AccountNotFound"
+            on5Do="AccessDenied"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Step 3: Fetch transactions (separate SP call) -->
+    <opStep id="GetTransactions"
+            implClass="com.ibm.il.dse.operations.internet.db.GetAccountTransactionsSP"
+            on0Do="end"
+            on4Do="end"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Error steps — shared MapErrorByValueAlways class -->
+    <opStep id="ValidationFailed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="10"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="AccountNotFound"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="20"
+            ErrorNumber="4"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="AccessDenied"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="30"
+            ErrorNumber="5"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="GetAccountDetailsRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="GetAccountDetailsRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <!-- ================================================================ -->
+  <!-- Request format                                                   -->
+  <!-- ================================================================ -->
+  <fmtDef id="GetAccountDetailsRQFmt">
+    <CCXML dataName="GetAccountDetails">
+      <CCString dataName="ClientId"/>
+      <CCMandatory/>
+      <CCString dataName="AccountNumber"/>
+      <CCMandatory/>
+      <CCPadding padChar="0" length="10"/>
+      <CCString dataName="SessionToken"/>
+      <CCMandatory/>
+      <!-- Optional date range for transaction filtering -->
+      <CCDate dataName="FromDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <nilDecorator/>
+      <CCDate dataName="ToDate"   pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <nilDecorator/>
+      <CCString dataName="MaxTransactions"/>
+      <CCNullToZero/>
+      <RemoveLeadingZerosDecorator/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- ================================================================ -->
+  <!-- Reply format                                                     -->
+  <!-- ================================================================ -->
+  <fmtDef id="GetAccountDetailsRSFmt">
+    <CCXML dataName="GetAccountDetailsResponse">
+
+      <!-- Account header info -->
+      <CCString dataName="AccountNumber"/>
+      <CCPadding padChar="0" length="10"/>
+      <CCString dataName="AccountHolderName"/>
+      <CCTableFormat dataName="AccountTypeName"
+                     fromTable="ACCOUNT_TYPES"
+                     fromColumn="TYPE_DESC"
+                     keyValue="AccountTypeCode"/>
+      <CCString dataName="AccountTypeCode"/>
+      <CCString dataName="BranchCode"/>
+      <CCPadding padChar="0" length="3"/>
+      <CCString dataName="BranchName"/>
+      <nilDecorator/>
+      <CCDate dataName="OpenDate"      pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <CCDate dataName="LastActivityDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <nilDecorator/>
+
+      <!-- Balance block using CCKColl (key-value collection) -->
+      <CCKColl dataName="Balances">
+        <NumberFormat dataName="AvailableBalance"
+                      showThousandsSep="no" showDecimalsSep="yes"/>
+        <NumberFormat dataName="BookBalance"
+                      showThousandsSep="no" showDecimalsSep="yes"/>
+        <NumberFormat dataName="HoldAmount"
+                      showThousandsSep="no" showDecimalsSep="yes"/>
+        <nilDecorator/>
+        <CCString dataName="Currency"/>
+        <CCPadding padChar=" " length="3"/>
+      </CCKColl>
+
+      <!-- Transaction history list -->
+      <CCIColl dataName="Transactions" times="*">
+        <CCXML dataName="Transaction">
+          <CCString dataName="TransactionId"/>
+          <CCDate dataName="TransactionDate"
+                  pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+          <CCTime dataName="TransactionTime"/>
+          <nilDecorator/>
+          <CCString dataName="Description"/>
+          <nilDecorator/>
+          <NumberFormat dataName="Amount"
+                        showThousandsSep="no" showDecimalsSep="yes"/>
+          <CCString dataName="DebitCredit"/>
+          <CCPadding padChar=" " length="1"/>
+          <CCString dataName="BalanceAfter"/>
+          <nilDecorator/>
+          <CCTableFormat dataName="TransactionTypeName"
+                         fromTable="TRANSACTION_TYPES"
+                         fromColumn="TYPE_DESC"
+                         keyValue="TransactionTypeCode"/>
+          <CCString dataName="TransactionTypeCode"/>
+        </CCXML>
+      </CCIColl>
+
+      <CCString dataName="TransactionCount"/>
+      <RemoveLeadingZerosDecorator/>
+
+    </CCXML>
+  </fmtDef>
+
+  <context id="GetAccountDetailsCtxt" parent="AccountOpCtxt" type="op"/>
+
+</XML>

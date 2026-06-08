@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- TransferFundsOp                                                  -->
+  <!-- Transfers funds between two accounts.                           -->
+  <!-- Most complex operation: fraud check, multi-step DB, on{N}Return -->
+  <!-- ================================================================ -->
+
+  <CCDSEServerOperation id="TransferFundsOp"
+                        operationContext="TransferFundsCtxt"
+                        hostKey="TRFR"
+                        operationFields="CHANNEL_ID=INTERNET,MAX_RETRY=3"
+                        writeToLog="true"
+                        writeToOfecStat="true">
+
+    <!-- iniValue: pre-load transfer status to PENDING -->
+    <iniValue id="TransferStatus=PENDING"/>
+    <iniValue id="FraudScore=0"/>
+
+    <!-- Step 1: Validate all required fields and amount -->
+    <opStep id="ValidateTransfer"
+            implClass="com.ibm.il.dse.operations.common.ValidateInputFields"
+            RequiredFields="SourceAccount,TargetAccount,Amount,Currency,SessionToken"
+            on0Do="CheckLimits"
+            onOtherDo="ValidationFailed"/>
+
+    <!-- Step 2: Check transfer limits from DB -->
+    <opStep id="CheckLimits"
+            implClass="com.ibm.il.dse.operations.internet.db.ValidateTransferLimitsSP"
+            on0Do="FraudCheck"
+            on3Do="DailyLimitExceeded"
+            on4Do="InsufficientFunds"
+            on5Do="AccountNotEligible"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Step 3: Call fraud detection backend service -->
+    <opStep id="FraudCheck"
+            implClass="com.ibm.il.dse.operations.internet.service.CallFraudDetection"
+            ServiceTimeout="5000"
+            on0Do="ExecuteTransfer"
+            on2Do="FraudSuspected"
+            onTimeoutDo="SkipFraudOnTimeout"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Step 3a: If fraud service times out — allow transfer with warning -->
+    <opStep id="SkipFraudOnTimeout"
+            implClass="com.ibm.il.dse.operations.common.SetChannelContext"
+            FieldName="FraudCheckSkipped"
+            FieldValue="true"
+            on0Do="ExecuteTransfer"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Step 4: Execute the transfer in core banking -->
+    <opStep id="ExecuteTransfer"
+            implClass="com.ibm.il.dse.operations.internet.db.ExecuteTransferSP"
+            on0Do="end"
+            on6Do="CoreBankingRejected"
+            on7Do="TransferAlreadyProcessed"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- Error mappings — all use shared MapErrorByValueAlways -->
+    <opStep id="ValidationFailed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="10"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="InsufficientFunds"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="40"
+            ErrorNumber="4"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DailyLimitExceeded"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="40"
+            ErrorNumber="3"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="AccountNotEligible"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="40"
+            ErrorNumber="5"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="FraudSuspected"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="50"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="CoreBankingRejected"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="60"
+            ErrorNumber="6"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TransferAlreadyProcessed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="60"
+            ErrorNumber="7"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="TransferFundsRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="TransferFundsRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <!-- ================================================================ -->
+  <!-- Request format                                                   -->
+  <!-- ================================================================ -->
+  <fmtDef id="TransferFundsRQFmt">
+    <CCXML dataName="TransferFunds">
+      <CCString dataName="SourceAccount"/>
+      <CCMandatory/>
+      <CCPadding padChar="0" length="10"/>
+      <CCString dataName="TargetAccount"/>
+      <CCMandatory/>
+      <CCPadding padChar="0" length="10"/>
+      <NumberFormat dataName="Amount" showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCMandatory/>
+      <CCString dataName="Currency"/>
+      <CCPadding padChar=" " length="3"/>
+      <CCString dataName="SessionToken"/>
+      <CCMandatory/>
+      <MaskLogDecorator/>
+      <CCString dataName="TransferReference"/>
+      <nilDecorator/>
+      <CCString dataName="ScheduledDate"/>
+      <nilDecorator/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- ================================================================ -->
+  <!-- Reply format                                                     -->
+  <!-- ================================================================ -->
+  <fmtDef id="TransferFundsRSFmt">
+    <CCXML dataName="TransferFundsResponse">
+      <CCString dataName="TransferId"/>
+      <CCString dataName="TransferStatus"/>
+      <CCDate dataName="ExecutionDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <CCTime dataName="ExecutionTime"/>
+      <NumberFormat dataName="Amount" showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCString dataName="Currency"/>
+      <CCPadding padChar=" " length="3"/>
+      <CCString dataName="SourceAccount"/>
+      <CCPadding padChar="0" length="10"/>
+      <CCString dataName="TargetAccount"/>
+      <CCPadding padChar="0" length="10"/>
+      <NumberFormat dataName="NewSourceBalance"
+                    showThousandsSep="no" showDecimalsSep="yes"/>
+      <nilDecorator/>
+      <CCBoolean dataName="FraudCheckSkipped"/>
+    </CCXML>
+  </fmtDef>
+
+  <context id="TransferFundsCtxt" parent="AccountOpCtxt" type="op"/>
+
+</XML>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- IVR channel contexts -->
+  <context id="IvrBaseCtxt"            parent="BaseOpCtxt"  type="op"/>
+  <context id="GetClientAccountsCtxt"  parent="IvrBaseCtxt" type="op"/>
+  <context id="GetAccountBalanceCtxt"  parent="IvrBaseCtxt" type="op"/>
+
+</XML>

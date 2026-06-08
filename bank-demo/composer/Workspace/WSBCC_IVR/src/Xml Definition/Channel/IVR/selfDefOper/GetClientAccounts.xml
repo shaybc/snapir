@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- GetClientAccountsOp — IVR version                               -->
+  <!-- Same operation name as INTERNET but different opStep set.       -->
+  <!-- IVR returns simpler account list (no nickname, no open date).   -->
+  <!-- ================================================================ -->
+
+  <CCDSEServerOperation id="GetClientAccountsOp"
+                        operationContext="GetClientAccountsCtxt"
+                        hostKey="GCAC"
+                        operationFields="CHANNEL_ID=IVR"
+                        writeToLog="true">
+
+    <opStep id="ValidatePin"
+            implClass="com.ibm.il.dse.operations.common.ValidateInputFields"
+            RequiredFields="ClientId,Pin"
+            on0Do="GetAccounts"
+            onOtherDo="ValidationFailed"/>
+
+    <opStep id="GetAccounts"
+            implClass="com.ibm.il.dse.operations.ivr.db.GetClientAccountsIvrSP"
+            on0Do="LogIvrCall"
+            on4Do="NoAccountsFound"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <!-- IVR-specific logging step -->
+    <opStep id="LogIvrCall"
+            implClass="com.ibm.il.dse.operations.ivr.db.LogIvrSession"
+            on0Do="end"
+            onOtherDo="end"/>
+
+    <opStep id="NoAccountsFound"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="20"
+            ErrorNumber="1"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="ValidationFailed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="10"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="GetClientAccountsIvrRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="GetClientAccountsIvrRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <fmtDef id="GetClientAccountsIvrRQFmt">
+    <CCXML dataName="GetClientAccounts">
+      <CCString dataName="ClientId"/>
+      <CCMandatory/>
+      <CCString dataName="Pin"/>
+      <CCMandatory/>
+      <MaskLogDecorator/>
+    </CCXML>
+  </fmtDef>
+
+  <fmtDef id="GetClientAccountsIvrRSFmt">
+    <CCXML dataName="GetClientAccountsResponse">
+      <CCIColl dataName="Accounts" times="*">
+        <CCXML dataName="Account">
+          <CCString dataName="AccountNumber"/>
+          <CCPadding padChar="0" length="10"/>
+          <CCString dataName="AccountTypeCode"/>
+          <NumberFormat dataName="AvailableBalance"
+                        showThousandsSep="no" showDecimalsSep="yes"/>
+          <CCString dataName="Currency"/>
+          <CCPadding padChar=" " length="3"/>
+        </CCXML>
+      </CCIColl>
+    </CCXML>
+  </fmtDef>
+
+  <context id="GetClientAccountsCtxt" parent="IvrBaseCtxt" type="op"/>
+
+</XML>

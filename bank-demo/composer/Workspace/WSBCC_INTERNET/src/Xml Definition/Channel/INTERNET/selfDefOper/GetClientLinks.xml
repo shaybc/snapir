@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- GetClientLinksOp                                                 -->
+  <!-- Returns personalised navigation links for a client.             -->
+  <!-- Simple linear operation — good as a pilot/reference example.   -->
+  <!-- ================================================================ -->
+
+  <CCDSEServerOperation id="GetClientLinksOp"
+                        operationContext="GetClientLinksCtxt"
+                        hostKey="GCLN"
+                        writeToLog="false">
+
+    <!-- Single opStep — fetch links for this client and channel -->
+    <opStep id="GetClientLinks"
+            implClass="com.ibm.il.dse.operations.internet.db.GetClientLinksSP"
+            on0Do="end"
+            on4Do="NoLinksFound"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <opStep id="NoLinksFound"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="20"
+            ErrorNumber="1"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="GetClientLinksRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="GetClientLinksRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <fmtDef id="GetClientLinksRQFmt">
+    <CCXML dataName="GetClientLinks">
+      <CCString dataName="ClientId"/>
+      <CCMandatory/>
+      <CCString dataName="BankId"/>
+      <CCPadding padChar="0" length="4"/>
+    </CCXML>
+  </fmtDef>
+
+  <fmtDef id="GetClientLinksRSFmt">
+    <CCXML dataName="GetClientLinksResponse" transparent="true">
+      <CCString dataName="ClientId"/>
+      <CCIColl dataName="Links" times="*">
+        <CCXML dataName="Link">
+          <CCString dataName="LinkId"/>
+          <CCMandatory/>
+          <CCTableFormat dataName="LinkDescription"
+                         fromTable="LINK_TYPES"
+                         fromColumn="DESCRIPTION"
+                         keyValue="LinkId"/>
+          <nilDecorator/>
+          <CCString dataName="LinkUrl"/>
+          <CCBoolean dataName="IsExternal"/>
+          <CCString dataName="IconCode"/>
+          <nilDecorator/>
+        </CCXML>
+      </CCIColl>
+    </CCXML>
+  </fmtDef>
+
+  <context id="GetClientLinksCtxt" parent="InternetBaseCtxt" type="op"/>
+
+</XML>

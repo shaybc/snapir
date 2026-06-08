@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- Shared standard formats used across all channels and operations  -->
+  <!-- ================================================================ -->
+
+  <!-- Standard request/response envelope header -->
+  <fmtDef id="StandardRequestHeaderFmt">
+    <CCXML dataName="RequestHeader">
+      <CCString dataName="ChannelId"/>
+      <CCString dataName="SessionToken"/>
+      <CCMandatory/>
+      <CCString dataName="RequestTimestamp"/>
+      <CCString dataName="ClientIp"/>
+      <nilDecorator/>
+      <CCString dataName="RequestId"/>
+      <CCMandatory/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Standard success reply header (transparent — fields appear at parent level) -->
+  <fmtDef id="StandardReplyHeaderFmt">
+    <CCXML dataName="ReplyHeader" transparent="true">
+      <CCString dataName="RequestId"/>
+      <CCSysTimeDate dataName="ReplyTimestamp"/>
+      <CCConstant dataName="Status" value="SUCCESS"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Standard error reply — used as csErrorReplyFormat across all operations -->
+  <fmtDef id="StandardErrorRSFmt">
+    <CCXML dataName="ErrorReply">
+      <CCString dataName="ErrorCategory"/>
+      <CCString dataName="ErrorNumber"/>
+      <CCString dataName="ErrorDescription"/>
+      <nilDecorator/>
+      <CCString dataName="RequestId"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Money amount — used by multiple operations -->
+  <fmtDef id="MoneyAmountFmt">
+    <CCXML dataName="Amount" transparent="true">
+      <NumberFormat dataName="Value" showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCString dataName="Currency"/>
+      <CCPadding padChar=" " length="3"/>
+    </CCXML>
+  </fmtDef>
+
+  <!-- Date range selection — reused in account and transaction queries -->
+  <fmtDef id="DateRangeFmt">
+    <CCXML dataName="DateRange" transparent="true">
+      <CCDate dataName="FromDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <nilDecorator/>
+      <CCDate dataName="ToDate"   pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+      <nilDecorator/>
+    </CCXML>
+  </fmtDef>
+
+</XML>

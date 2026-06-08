@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- IVR-only operation — returns single account balance by voice menu -->
+  <CCDSEServerOperation id="GetAccountBalanceOp"
+                        operationContext="GetAccountBalanceCtxt"
+                        hostKey="GBAL"
+                        operationFields="CHANNEL_ID=IVR">
+
+    <opStep id="ValidateRequest"
+            implClass="com.ibm.il.dse.operations.common.ValidateInputFields"
+            RequiredFields="AccountNumber,ClientId,Pin"
+            on0Do="GetBalance"
+            onOtherDo="ValidationFailed"/>
+
+    <opStep id="GetBalance"
+            implClass="com.ibm.il.dse.operations.ivr.db.GetAccountBalanceSP"
+            on0Do="LogIvrCall"
+            on4Do="AccountNotFound"
+            on8Do="DatabaseError"
+            onOtherDo="TechnicalError"/>
+
+    <opStep id="LogIvrCall"
+            implClass="com.ibm.il.dse.operations.ivr.db.LogIvrSession"
+            on0Do="end"
+            onOtherDo="end"/>
+
+    <opStep id="AccountNotFound"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="20"
+            ErrorNumber="4"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="ValidationFailed"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="10"
+            ErrorNumber="2"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="DatabaseError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="8"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <opStep id="TechnicalError"
+            implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+            ErrorCategory="99"
+            ErrorNumber="0"
+            on0Return="ErrorBody"
+            onOtherDo="end"/>
+
+    <refFormat name="csRequestFormat"     refid="GetAccountBalanceRQFmt"/>
+    <refFormat name="csReplyFormat"       refid="GetAccountBalanceRSFmt"/>
+    <refFormat name="csErrorReplyFormat"  refid="StandardErrorRSFmt"/>
+
+  </CCDSEServerOperation>
+
+  <fmtDef id="GetAccountBalanceRQFmt">
+    <CCXML dataName="GetAccountBalance">
+      <CCString dataName="ClientId"/>
+      <CCMandatory/>
+      <CCString dataName="AccountNumber"/>
+      <CCMandatory/>
+      <CCPadding padChar="0" length="10"/>
+      <CCString dataName="Pin"/>
+      <CCMandatory/>
+      <MaskLogDecorator/>
+    </CCXML>
+  </fmtDef>
+
+  <fmtDef id="GetAccountBalanceRSFmt">
+    <CCXML dataName="GetAccountBalanceResponse">
+      <CCString dataName="AccountNumber"/>
+      <CCPadding padChar="0" length="10"/>
+      <NumberFormat dataName="AvailableBalance"
+                    showThousandsSep="no" showDecimalsSep="yes"/>
+      <NumberFormat dataName="BookBalance"
+                    showThousandsSep="no" showDecimalsSep="yes"/>
+      <CCString dataName="Currency"/>
+      <CCPadding padChar=" " length="3"/>
+      <CCDate dataName="BalanceDate" pattern="yyyyMMdd" useSep="no" fourDigYear="yes"/>
+    </CCXML>
+  </fmtDef>
+
+  <context id="GetAccountBalanceCtxt" parent="IvrBaseCtxt" type="op"/>
+
+</XML>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<XML>
+
+  <!-- ================================================================ -->
+  <!-- Base context hierarchy — shared across all channels              -->
+  <!-- ================================================================ -->
+
+  <!-- Root base context — parent of everything -->
+  <context id="BaseOpCtxt" parent="nil" type="op"/>
+
+  <!-- Standard error fields used by all error-handling opSteps -->
+  <context id="ErrorCtxt" parent="BaseOpCtxt" type="op"/>
+
+</XML>
