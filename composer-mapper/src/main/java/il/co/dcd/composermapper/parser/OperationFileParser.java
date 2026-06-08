@@ -25,7 +25,7 @@ public class OperationFileParser {
     }
 
     private void walk(Element e, Path xml, List<OperationDef> out) {
-        if ("CCDSEServerOperation".equals(e.getTagName())) out.add(parseOperation(e, xml));
+        if (tagEquals(e, "CCDSEServerOperation")) out.add(parseOperation(e, xml));
         for (Element c : XmlUtil.childElements(e)) walk(c, xml, out);
     }
 
@@ -48,13 +48,13 @@ public class OperationFileParser {
         }
 
         for (Element c : XmlUtil.childElements(e)) {
-            switch (c.getTagName()) {
-                case "opStep"     -> op.getSteps().add(parseStep(c, op.getId(), xml));
-                case "refFormat"  -> { String n = XmlUtil.attr(c, "name"), r = XmlUtil.attr(c, "refid");
+            switch (c.getTagName().toLowerCase(Locale.ROOT)) {
+                case "opstep"     -> op.getSteps().add(parseStep(c, op.getId(), xml));
+                case "refformat"  -> { String n = XmlUtil.attrIgnoreCase(c, "name"), r = XmlUtil.attrIgnoreCase(c, "refid");
                                        if (n != null && r != null) op.getRefFormats().put(n, r); }
-                case "fmtDef"     -> { String id = XmlUtil.attr(c, "id");
+                case "fmtdef"     -> { String id = XmlUtil.attrIgnoreCase(c, "id");
                                        if (id != null && !id.isBlank()) op.getInlineFormatIds().add(id); }
-                case "iniValue"   -> { String v = XmlUtil.attr(c, "id");
+                case "inivalue"   -> { String v = XmlUtil.attrIgnoreCase(c, "id");
                                        if (v != null && !v.isBlank()) op.getIniValues().add(v); }
             }
         }
@@ -89,5 +89,9 @@ public class OperationFileParser {
             }
         }
         return s;
+    }
+
+    private boolean tagEquals(Element e, String name) {
+        return e.getTagName().equalsIgnoreCase(name);
     }
 }

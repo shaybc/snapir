@@ -200,13 +200,14 @@ public class OperationMarkdownWriter {
     }
 
     private void appendFormats(StringBuilder sb, OperationDef op, Indexes x, LinkResolver links) {
-        appendNamedFormat(sb, "Request Format", op.getRefFormats().get("csRequestFormat"),  x, links);
-        appendNamedFormat(sb, "Reply Format",   op.getRefFormats().get("csReplyFormat"),     x, links);
+        appendNamedFormat(sb, "Request Format", refFormat(op, "csRequestFormat"), x, links);
+        appendNamedFormat(sb, "Reply Format",   refFormat(op, "csReplyFormat"),   x, links);
 
         sb.append("\n## Other Formats\n");
         boolean any = false;
         for (var entry : op.getRefFormats().entrySet()) {
-            if ("csRequestFormat".equals(entry.getKey()) || "csReplyFormat".equals(entry.getKey())) continue;
+            if (isNamedFormat(entry.getKey(), "csRequestFormat")
+                    || isNamedFormat(entry.getKey(), "csReplyFormat")) continue;
             any = true;
             sb.append(MarkdownSupport.bullet(
                 entry.getKey() + ": " + formatRef(entry.getValue(), x, links)));
@@ -216,6 +217,19 @@ public class OperationMarkdownWriter {
             sb.append(MarkdownSupport.bullet("inline: " + formatRef(id, x, links)));
         }
         if (!any) sb.append("- None\n");
+    }
+
+    private String refFormat(OperationDef op, String name) {
+        String exact = op.getRefFormats().get(name);
+        if (exact != null) return exact;
+        for (var entry : op.getRefFormats().entrySet()) {
+            if (isNamedFormat(entry.getKey(), name)) return entry.getValue();
+        }
+        return null;
+    }
+
+    private boolean isNamedFormat(String actual, String expected) {
+        return actual != null && actual.equalsIgnoreCase(expected);
     }
 
     private void appendNamedFormat(StringBuilder sb, String heading, String formatId,
