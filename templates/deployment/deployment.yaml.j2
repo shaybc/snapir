@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ spec.service_name }}
+  namespace: {{ defaults.namespace }}
+  labels:
+    app: {{ spec.service_name }}
+    app.kubernetes.io/managed-by: {{ defaults.managed_by_label }}
+spec:
+  replicas: {{ defaults.replicas }}
+  selector:
+    matchLabels:
+      app: {{ spec.service_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ spec.service_name }}
+    spec:
+      containers:
+        - name: {{ spec.service_name }}
+          image: {{ spec.image_name }}
+          imagePullPolicy: {{ defaults.image_pull_policy }}
+          ports:
+            - containerPort: {{ spec.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ spec.service_name }}-config
+          resources:
+            requests:
+              cpu: {{ defaults.cpu_request }}
+              memory: {{ defaults.memory_request }}
+            limits:
+              cpu: {{ defaults.cpu_limit }}
+              memory: {{ defaults.memory_limit }}
+          livenessProbe:
+            httpGet:
+              path: {{ spec.health_paths.liveness }}
+              port: {{ spec.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ spec.health_paths.readiness }}
+              port: {{ spec.port }}

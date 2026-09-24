@@ -1,0 +1,50 @@
+package trace;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.Instant;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.stereotype.Component;
+
+@Aspect
+@Component
+public class ExecutionTraceInterceptor {
+    private static final String OPERATION_ID = "${operationId}";
+
+    @Around("execution(public * *..*Service.*(..))")
+    public Object capture(ProceedingJoinPoint joinPoint) throws Throwable {
+        long start = System.currentTimeMillis();
+        try {
+            Object result = joinPoint.proceed();
+            writeTrace(joinPoint.getSignature().getName(), "0", System.currentTimeMillis() - start);
+            return result;
+        } catch (Throwable ex) {
+            writeTrace(joinPoint.getSignature().getName(), "1", System.currentTimeMillis() - start);
+            throw ex;
+        }
+    }
+
+    private void writeTrace(String methodName, String returnCode, long elapsedMillis) throws IOException {
+        String json = "{"
+            + "\"operation_id\":\"" + OPERATION_ID + "\","
+            + "\"channel\":\"\","
+            + "\"scenario\":\"generated\","
+            + "\"request_xml\":\"\","
+            + "\"steps_executed\":[{\"step_id\":\"" + methodName + "\",\"step_index\":0,"
+            + "\"impl_class\":\"generated\",\"return_code\":" + returnCode + ","
+            + "\"context_reads\":[],\"context_writes\":[],\"next_step_id\":null,"
+            + "\"routing_rule_used\":\"aop\",\"elapsed_ms\":" + elapsedMillis + "}],"
+            + "\"selected_reply_format\":\"\","
+            + "\"reply_format_switched\":false,"
+            + "\"switch_triggered_by\":null,"
+            + "\"final_xml\":\"\","
+            + "\"captured_at\":\"" + Instant.now().toString() + "\""
+            + "}";
+        try (FileWriter writer = new FileWriter("/tmp/trace_" + OPERATION_ID + ".json")) {
+            writer.write(json);
+        }
+    }
+}

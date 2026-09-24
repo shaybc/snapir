@@ -1,0 +1,10 @@
+{
+  "migration_plan": {
+    "plan_id": "plan-run-1",
+    "batches": ["pilot"]
+  },
+  "code_review": {
+    "passed": true,
+    "issues": []
+  }
+}
