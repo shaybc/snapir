@@ -107,6 +107,9 @@ def submit_jaxb_dto(
     java_source: str,
     output_path: str,
     run_id: str,
+    *,
+    build_context=None,
+    dependency_proposals=(),
 ) -> str:
     """Write a generated JAXB DTO, compile it, and update task/artifact state."""
     task = get_agent_task(conn, task_id)
@@ -114,8 +117,11 @@ def submit_jaxb_dto(
         raise KeyError(f"Conversion task not found: {task_id}")
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(java_source, encoding="utf-8")
-    compile_result = _compile_java_source(path)
+    if build_context is not None:
+        compile_result = build_context.submit(java_source, output_path, task_id, dependency_proposals)
+    else:
+        path.write_text(java_source, encoding="utf-8")
+        compile_result = _compile_java_source(path)
     if compile_result.returncode == 0:
         _record_native_artifact(
             conn,
@@ -183,15 +189,29 @@ def run_xml_to_java_converter_task(
     output_path: str,
     run_id: str,
     converter: Callable[[ConversionTaskPacket], str],
+    *,
+    build_context=None,
 ) -> str:
     """Run one fmtDef conversion task with an injectable converter function."""
     task = get_format_conversion_task(conn, task_id)
     try:
-        java_source, slr = parse_converter_output(converter(task))
+        output = converter(task)
+        dependencies = []
+        if build_context is not None:
+            from models.maven_dependency import JavaConversionOutput
+            payload = json.loads(output)
+            slr = ServiceLayerRequirements.model_validate(payload.pop("service_layer_requirements"))
+            converted = JavaConversionOutput.model_validate(payload)
+            java_source, dependencies = converted.java_source, converted.dependencies
+        else:
+            java_source, slr = parse_converter_output(output)
     except Exception as exc:
         _record_parse_failure(conn, task_id, str(exc))
         return "parse_failed"
     submit_service_layer_requirements(conn, slr.format_id, slr.channel, slr, run_id)
+    if build_context is not None:
+        return submit_jaxb_dto(conn, task_id, java_source, output_path, run_id,
+                               build_context=build_context, dependency_proposals=dependencies)
     return submit_jaxb_dto(conn, task_id, java_source, output_path, run_id)
 
 

@@ -166,3 +166,19 @@ def test_gate1_report_includes_include_exclude_filter_status():
     assert "INCLUDE_OPERATIONS filter active: yes" in report
     assert "EXCLUDE_OPERATIONS filter active: yes" in report
     assert "Blocked (needs_human_review): 1" in report
+
+
+def test_validator_accepts_small_scope():
+    conn = memory_conn()
+    seed_operations(conn, ["OpA"])
+    migration_plan = plan([batch("batch-1", [packet("OpA")], is_pilot=True)])
+    assert validate_migration_plan(migration_plan, run_config(), conn) == []
+
+
+def test_validator_preserves_channel_identity():
+    conn = memory_conn()
+    seed_operations(conn, ["OpA"])
+    upsert_operation(conn, operation_id="OpA", channel="IVR", run_id=RUN_ID, xml_file_path="ivr.xml")
+    other = packet("OpA").model_copy(update={"channel": "IVR", "task_id": "ivr-task"})
+    migration_plan = plan([batch("batch-1", [packet("OpA"), other], is_pilot=True)])
+    assert validate_migration_plan(migration_plan, run_config(), conn) == []

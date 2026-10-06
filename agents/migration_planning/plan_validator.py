@@ -15,23 +15,25 @@ def validate_migration_plan(
     operation_ids = _plan_operation_ids(plan)
     if plan.batches:
         pilot_size = len(plan.batches[0].task_packets)
-        if pilot_size < 3 or pilot_size > 5:
+        minimum = min(3, len(operation_ids), run_config.max_operations_per_batch)
+        if pilot_size < minimum or pilot_size > 5:
             errors.append("Batch 1 size must be 3-5 operations")
     for batch in plan.batches:
         if len(batch.task_packets) > run_config.max_operations_per_batch:
             errors.append(f"Batch {batch.batch_id} exceeds MAX_OPERATIONS_PER_BATCH")
 
-    duplicates = sorted({operation_id for operation_id in operation_ids if operation_ids.count(operation_id) > 1})
+    identities = [(packet.operation_id, packet.channel) for batch in plan.batches for packet in batch.task_packets]
+    duplicates = sorted({operation_id for operation_id, channel in identities if identities.count((operation_id, channel)) > 1})
     for operation_id in duplicates:
         errors.append(f"Operation appears more than once: {operation_id}")
 
     if conn is not None:
         expected = _operation_ids_from_db(conn, run_config.run_id)
-        missing = sorted(expected - set(operation_ids))
-        extra = sorted(set(operation_ids) - expected)
-        for operation_id in missing:
+        missing = sorted(expected - set(identities))
+        extra = sorted(set(identities) - expected)
+        for operation_id, channel in missing:
             errors.append(f"Plan is missing operation: {operation_id}")
-        for operation_id in extra:
+        for operation_id, channel in extra:
             errors.append(f"Plan references unknown operation: {operation_id}")
 
     for index, batch in enumerate(plan.batches):
@@ -55,6 +57,6 @@ def _plan_operation_ids(plan: MigrationPlan) -> list[str]:
     ]
 
 
-def _operation_ids_from_db(conn: sqlite3.Connection, run_id: str) -> set[str]:
-    rows = conn.execute("SELECT operation_id FROM operations WHERE run_id = ?", (run_id,)).fetchall()
-    return {row["operation_id"] for row in rows}
+def _operation_ids_from_db(conn: sqlite3.Connection, run_id: str) -> set[tuple[str, str]]:
+    rows = conn.execute("SELECT operation_id, channel FROM operations WHERE run_id = ?", (run_id,)).fetchall()
+    return {(row["operation_id"], row["channel"]) for row in rows}

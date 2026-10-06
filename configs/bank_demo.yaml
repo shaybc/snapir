@@ -1,0 +1,9 @@
+source_root: ../bank-demo/composer/Workspace
+mapper_jar: ../composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar
+output_root: ../work/migration_runs
+channels:
+  - INTERNET
+include_operations:
+  - GetClientLinksOp
+target_languages:
+  - java

@@ -156,18 +156,25 @@ def run_java_validation(
     trace_runner=run_trace_comparison,
     behavior_runner=None,
     performance_runner=run_performance_benchmark,
+    build_context=None,
 ) -> ValidationReport:
     """Run Java service validation steps and update generated artifact state."""
     artifact = _artifact(conn, artifact_id)
     attempt_number = int(artifact["attempt_number"] or 0) if artifact else 0
     plan = validation_plan or ValidationPlan(operation_id=operation_id)
 
-    build_result = compile_validator(generated_path)
+    if build_context is not None:
+        compiled = build_context.verifier.compile_project(generated_path, build_context.allowed_ibm_artifacts)
+        build_result = JavaBuildResult(compiled.returncode, compiled.stdout, compiled.stderr)
+    else:
+        build_result = compile_validator(generated_path)
     if not build_result.passed:
         _set_artifact_state(conn, artifact_id, "blocked", "compile_failed")
         return _report(run_id, operation_id, False, False, False, False, False, attempt_number, ValidationFailureClass.build_failure)
 
-    findings = ibm_guard_validator(generated_path, FORBIDDEN_DEPENDENCIES)
+    findings = (scan_for_ibm_dependencies(generated_path, FORBIDDEN_DEPENDENCIES,
+                allowed_classes=build_context.allowed_ibm_classes) if build_context is not None else
+                ibm_guard_validator(generated_path, FORBIDDEN_DEPENDENCIES))
     if findings:
         _set_artifact_state(conn, artifact_id, "blocked", "ibm_dependency_found")
         return _report(run_id, operation_id, True, False, False, False, False, attempt_number, ValidationFailureClass.build_failure)

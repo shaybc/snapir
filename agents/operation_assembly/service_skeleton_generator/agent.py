@@ -193,13 +193,20 @@ def write_and_compile_service_skeleton(
     channel: str,
     run_id: str,
     output_root: str = NATIVE_JAVA_ROOT,
+    *,
+    build_context=None,
+    managed_output_path: str | None = None,
+    dependency_proposals=(),
 ) -> str:
     """Write a service skeleton to disk, compile it, and store artifact state."""
     task = get_agent_task(conn, task_id)
-    output_path = Path(output_root) / channel / operation_id / "Service.java"
+    output_path = Path(managed_output_path) if managed_output_path else Path(output_root) / channel / operation_id / "Service.java"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(java_source, encoding="utf-8")
-    compile_result = _compile_java_source(output_path)
+    if build_context is not None:
+        compile_result = build_context.submit(java_source, str(output_path), task_id, dependency_proposals)
+    else:
+        output_path.write_text(java_source, encoding="utf-8")
+        compile_result = _compile_java_source(output_path)
     if compile_result.returncode == 0:
         _record_native_artifact(
             conn,

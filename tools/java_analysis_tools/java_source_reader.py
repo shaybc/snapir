@@ -22,5 +22,6 @@ def resolve_source_path(composer_root: str, fqcn: str) -> str | None:
     """Resolve a fully qualified Java class name to a source file under composer_root."""
     if not fqcn.strip():
         return None
-    source_path = Path(composer_root) / Path(*fqcn.split(".")).with_suffix(".java")
-    return str(source_path) if source_path.exists() else None
+    from tools.source_discovery_tools import discover_java_sources, resolve_indexed_source
+
+    return resolve_indexed_source(discover_java_sources(composer_root), fqcn)

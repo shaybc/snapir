@@ -6,6 +6,7 @@ import sqlite3
 import subprocess
 from pathlib import Path
 from typing import Callable
+from contextlib import nullcontext
 
 from constants import (
     AGENT_MODEL,
@@ -79,7 +80,7 @@ def parse_generated_project_output(output: str | dict[str, str]) -> dict[str, st
     return files
 
 
-def validate_generated_project(files: dict[str, str], operation_id: str) -> list[str]:
+def validate_generated_project(files: dict[str, str], operation_id: str, *, build_context=None) -> list[str]:
     """Return structural and dependency issues in a generated Spring Boot project."""
     issues = []
     required_suffixes = [
@@ -106,10 +107,25 @@ def validate_generated_project(files: dict[str, str], operation_id: str) -> list
     if pom_path:
         pom = normalized_paths[pom_path]
         for forbidden in FORBIDDEN_DEPENDENCIES:
+            if build_context is not None and forbidden == "com.ibm":
+                continue
             if forbidden.lower() in pom.lower():
                 issues.append(f"pom contains forbidden dependency: {forbidden}")
         if COMMON_LIB_GROUP_ID not in pom or COMMON_LIB_ARTIFACT_ID not in pom:
             issues.append("pom missing common-lib dependency")
+        if build_context is not None:
+            from xml.etree import ElementTree
+            from models.maven_dependency import MavenDependency
+            from tools.maven_dependency_tools.policy import validate_dependency_policy
+            try:
+                root = ElementTree.fromstring(pom)
+                for node in root.findall(".//{*}dependency"):
+                    validate_dependency_policy(MavenDependency(
+                        group_id=node.findtext("{*}groupId"), artifact_id=node.findtext("{*}artifactId"),
+                        version=node.findtext("{*}version"), scope=node.findtext("{*}scope", "compile"),
+                        reason="Managed service dependency"), build_context.allowed_ibm_artifacts)
+            except ValueError as exc:
+                issues.append(str(exc))
     return issues
 
 
@@ -118,11 +134,15 @@ def write_generated_project(
     output_root: str,
     channel: str,
     operation_id: str,
+    *,
+    preserve_pom: bool = False,
 ) -> Path:
     """Write a generated Spring Boot project under the operation output directory."""
     project_root = Path(output_root) / channel / operation_id
     for relative_path, content in files.items():
         destination = project_root / relative_path
+        if preserve_pom and destination.resolve() == (project_root / "pom.xml").resolve():
+            continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(content, encoding="utf-8")
     return project_root
@@ -137,20 +157,37 @@ def run_java_service_generation_agent(
     generator: ProjectGenerator,
     *,
     output_root: str = OUTPUT_ROOT,
+    managed_pom_path: str | None = None,
+    build_context=None,
 ) -> str:
     """Generate, compile, retry, and persist a Spring Boot microservice project."""
     task = get_agent_task(conn, task_id)
     max_retries = int(task["max_retries"] or MAX_AGENT_TASK_RETRIES) if task else MAX_AGENT_TASK_RETRIES
     compiler_error = None
     validation_errors: list[str] = []
+    if build_context is not None:
+        managed_pom_path = build_context.pom_path
     for attempt in range(1, max_retries + 1):
         files = parse_generated_project_output(generator(compiler_error))
-        validation_errors = validate_generated_project(files, operation_id)
+        if managed_pom_path:
+            expected = (Path(output_root) / channel / operation_id / "pom.xml").resolve()
+            if Path(managed_pom_path).resolve() != expected:
+                raise ValueError("Managed POM must be the final service project's pom.xml")
+            files["pom.xml"] = expected.read_text(encoding="utf-8")
+        validation_errors = validate_generated_project(files, operation_id, build_context=build_context)
         if validation_errors:
             compiler_error = "\n".join(validation_errors)
             continue
-        project_root = write_generated_project(files, output_root, channel, operation_id)
-        compile_result = _mvn_compile(project_root)
+        if managed_pom_path:
+            from tools.maven_dependency_tools.pom_manager import project_lock
+            build_lock = project_lock(Path(managed_pom_path).resolve())
+        else:
+            build_lock = nullcontext()
+        with build_lock:
+            project_root = write_generated_project(files, output_root, channel, operation_id,
+                                                   preserve_pom=bool(managed_pom_path))
+            compile_result = (build_context.verifier.compile_project(project_root, build_context.allowed_ibm_artifacts)
+                              if build_context is not None else _mvn_compile(project_root))
         if compile_result.returncode == 0:
             upsert_generated_artifact(
                 conn,

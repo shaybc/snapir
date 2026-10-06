@@ -33,12 +33,13 @@ def build_operation_closure(
     run_id: str,
     composer_root: str,
     vault_root: str,
+    classpath_index=None,
 ) -> OperationClosure:
     """Build, validate, and store a deterministic operation closure."""
     operation = _required_artifact(conn, run_id, "operation", operation_id)
     metadata = loads(operation["metadata_json"], {}) or {}
     included_opsteps, excluded_opsteps = filter_opsteps_for_channel(conn, operation_id, channel, run_id)
-    java_classes, java_issues = resolve_java_impls(conn, included_opsteps, run_id, composer_root)
+    java_classes, java_issues = resolve_java_impls(conn, included_opsteps, run_id, composer_root, classpath_index)
     formats = resolve_format_dependencies(conn, list(metadata.get("ref_formats", {}).values()), run_id, vault_root)
     format_issues = get_format_blocking_issues(formats)
     context_id = metadata.get("operation_context") or ""
@@ -75,6 +76,41 @@ def build_operation_closure(
         source_hash_composite=_source_hash_composite(conn, run_id, operation_id, included_opsteps, formats.all_format_ids),
     )
     closure = validate_closure(closure, conn, run_id, composer_root)
+    if classpath_index is not None:
+        from tools.source_discovery_tools import discover_java_sources
+        from tools.source_discovery_tools.dependencies import classify_java_imports
+
+        source_index = discover_java_sources(composer_root)
+        dependency_issues = [ClosureBlockingIssue(
+            kind=ClosureStatus.BLOCKED_UNRESOLVED_REFERENCE,
+            entity_id=operation_id, detail=issue,
+        ) for issue in classpath_index.issues]
+        pending = [ref.source_file for ref in java_classes]
+        inspected = set()
+        while pending:
+            source_file = pending.pop()
+            if source_file in inspected:
+                continue
+            inspected.add(source_file)
+            for dependency in classify_java_imports(source_file, source_index, classpath_index):
+                kind = dependency["kind"]
+                if kind in {"missing", "ambiguous", "needs_review"}:
+                    dependency_issues.append(ClosureBlockingIssue(
+                        kind=ClosureStatus.BLOCKED_UNRESOLVED_REFERENCE,
+                        entity_id=dependency["import_name"],
+                        detail=f"Java dependency {kind} in {source_file}",
+                    ))
+                elif kind == "replacement_required" and not dependency["locations"]:
+                    dependency_issues.append(ClosureBlockingIssue(
+                        kind=ClosureStatus.NEEDS_HUMAN_MAPPING,
+                        entity_id=dependency["import_name"],
+                        detail="Legacy framework dependency requires an explicit replacement mapping",
+                    ))
+                elif kind == "source":
+                    pending.extend(location.removeprefix("source:") for location in dependency["locations"])
+        if dependency_issues:
+            closure = closure.model_copy(update={"blocking_issues": [*closure.blocking_issues, *dependency_issues]})
+            closure = validate_closure(closure, conn, run_id, composer_root)
     upsert_operation_closure(
         conn,
         operation_id=operation_id,

@@ -57,10 +57,11 @@ def review_native_java(
     converted_java: str,
     *,
     review_kind: str = "ibm_java",
+    allowed_ibm_classes=(),
 ) -> ConversionReviewResult:
     """Run deterministic native Java review checks for tests and fallback review."""
     issues = []
-    issues.extend(_forbidden_import_issues(converted_java))
+    issues.extend(_forbidden_import_issues(converted_java, allowed_ibm_classes))
     issues.extend(_missing_setter_issues(original_source, converted_java))
     issues.extend(_return_code_issues(original_source, converted_java))
     issues.extend(_context_rewrite_issues(converted_java))
@@ -87,6 +88,8 @@ def dispatch_reviews_for_batch(
     run_id: str,
     batch_converted_ids: list[str],
     reviewer: Callable[[str, str, str], ConversionReviewResult] | None = None,
+    *,
+    build_context=None,
 ) -> list[ConversionReviewResult]:
     """Review converted native Java artifacts and update review state."""
     results = []
@@ -101,6 +104,7 @@ def dispatch_reviews_for_batch(
             original_source,
             converted_java,
             review_kind=review_kind,
+            allowed_ibm_classes=build_context.allowed_ibm_classes if build_context else (),
         )
         result = result.model_copy(update={"conversion_id": artifact["conversion_id"]})
         _apply_review_result(conn, artifact_id, result)
@@ -134,10 +138,14 @@ def build_human_gate2_report(
     ])
 
 
-def _forbidden_import_issues(java_source: str) -> list[str]:
+def _forbidden_import_issues(java_source: str, allowed_ibm_classes=()) -> list[str]:
     issues = []
     for line in java_source.splitlines():
         stripped = line.strip()
+        if stripped.startswith("import ") and stripped.removeprefix("import ").removesuffix(";") in allowed_ibm_classes:
+            from tools.validation_tools.ibm_dependency_guard_tool import scan_source
+            if not scan_source(stripped, ["com.ibm", "javax.ejb", "org.omg"], allowed_classes=allowed_ibm_classes):
+                continue
         if stripped.startswith(("import com.ibm.", "import javax.ejb.", "import org.omg.")):
             issues.append(f"Forbidden IBM import remains: {stripped}")
     return issues

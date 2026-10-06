@@ -70,6 +70,14 @@ JAVA_SOURCE:
 {java_source}
 """
 
+MANAGED_IBM_CLEANER_INSTRUCTION = IBM_CLEANER_INSTRUCTION.replace(
+    "12. Output ONLY the clean Java source. No explanation, no markdown.",
+    '12. Output JSON with java_source and dependencies. Each dependency must contain '
+    'group_id, artifact_id, version, scope, reason, and required_classes. '
+    'Propose only dependencies needed by the converted code. Use pinned versions. '
+    'Do not include Composer runtime libraries. No markdown.',
+)
+
 
 def get_conversion_task(conn: sqlite3.Connection, task_id: str) -> ConversionTaskPacket:
     """Read a pending IBM Java conversion task from agent_tasks."""
@@ -90,6 +98,13 @@ def submit_cleaned_class(
     cleaned_java_source: str,
     output_path: str,
     run_id: str,
+    *,
+    managed_pom_path: str | None = None,
+    dependency_proposals=None,
+    dependency_verifier=None,
+    allowed_ibm_artifacts=(),
+    maven_settings_path: str | None = None,
+    allowed_ibm_classes=(),
 ) -> str:
     """Write cleaned Java, compile it, and persist conversion status."""
     task = get_agent_task(conn, task_id)
@@ -101,8 +116,26 @@ def submit_cleaned_class(
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(cleaned_java_source, encoding="utf-8")
-    compile_result = _compile_java_source(path)
+    if managed_pom_path:
+        from models.maven_dependency import JavaConversionOutput
+        from tools.maven_dependency_tools.conversion_submission import submit_managed_conversion
+
+        if dependency_verifier is None:
+            raise ValueError("Managed conversion requires a trusted dependency verifier")
+        try:
+            compile_result = submit_managed_conversion(
+                JavaConversionOutput(java_source=cleaned_java_source, dependencies=dependency_proposals or []),
+                output_path, managed_pom_path, dependency_verifier,
+                allowed_ibm_artifacts=allowed_ibm_artifacts, task_id=task_id,
+                allowed_ibm_classes=allowed_ibm_classes,
+                settings_path=maven_settings_path,
+            )
+        except ValueError as exc:
+            request_human_review(conn, task_id, "dependency_review", [str(exc)])
+            return "needs_human_review"
+    else:
+        path.write_text(cleaned_java_source, encoding="utf-8")
+        compile_result = _compile_java_source(path)
     if compile_result.returncode == 0:
         _record_native_artifact(
             conn,
@@ -169,10 +202,32 @@ def run_ibm_java_cleaner_task(
     output_path: str,
     run_id: str,
     llm_cleaner: Callable[[ConversionTaskPacket], str],
+    *,
+    managed_pom_path: str | None = None,
+    dependency_verifier=None,
+    allowed_ibm_artifacts=(),
+    maven_settings_path: str | None = None,
+    build_context=None,
 ) -> str:
     """Run one cleaner task with an injectable cleaner function for tests."""
     task = get_conversion_task(conn, task_id)
     cleaned_source = llm_cleaner(task)
+    if build_context is not None:
+        managed_pom_path = build_context.pom_path
+        dependency_verifier = build_context.verifier
+        allowed_ibm_artifacts = build_context.allowed_ibm_artifacts
+        maven_settings_path = getattr(build_context.verifier, "settings_path", None)
+    if managed_pom_path:
+        from tools.maven_dependency_tools.conversion_submission import parse_conversion_output
+
+        converted = parse_conversion_output(cleaned_source)
+        return submit_cleaned_class(
+            conn, task_id, converted.java_source, output_path, run_id,
+            managed_pom_path=managed_pom_path, dependency_proposals=converted.dependencies,
+            dependency_verifier=dependency_verifier, allowed_ibm_artifacts=allowed_ibm_artifacts,
+            maven_settings_path=maven_settings_path,
+            allowed_ibm_classes=build_context.allowed_ibm_classes if build_context else (),
+        )
     return submit_cleaned_class(conn, task_id, cleaned_source, output_path, run_id)
 
 

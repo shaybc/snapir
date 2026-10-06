@@ -66,6 +66,8 @@ def review_operation_equivalence(
     context_plan: ContextPlan,
     serialization_plan: SerializationPlan,
     forbidden: list[str] | None = None,
+    *,
+    expected_return_type: str | None = None,
 ) -> EquivalenceReviewResult:
     """Review a generated service class against deterministic assembly plans."""
     execute_body = _method_body(java_source, "execute") or ""
@@ -87,6 +89,7 @@ def review_operation_equivalence(
         context_plan,
         serialization_plan,
         forbidden or FORBIDDEN_DEPENDENCIES,
+        expected_return_type,
     )
     issues = missing_steps + missing_rc_branches + context_issues + logic_differences
     return EquivalenceReviewResult(
@@ -209,6 +212,7 @@ def _logic_differences(
     context_plan: ContextPlan,
     serialization_plan: SerializationPlan,
     forbidden: list[str],
+    expected_return_type: str | None = None,
 ) -> list[str]:
     issues = []
     for step in routing_plan.steps:
@@ -226,8 +230,9 @@ def _logic_differences(
             issues.append(f"IBM dependency remains: {pattern}")
     if _dto_class_contains_logic(java_source):
         issues.append("DTO class contains logic")
-    expected_return = f"{routing_plan.operation_id}Response"
-    signature_pattern = rf"public\s+{re.escape(expected_return)}\s+execute\s*\("
+    expected_return = expected_return_type or f"{routing_plan.operation_id}Response"
+    accepted_return = "(?:" + re.escape(expected_return) + "|" + re.escape(expected_return.rsplit(".", 1)[-1]) + ")"
+    signature_pattern = rf"public\s+{accepted_return}\s+execute\s*\("
     if not re.search(signature_pattern, java_source):
         issues.append(f"execute return type does not match {expected_return}")
     if context_plan.operation_id != routing_plan.operation_id:

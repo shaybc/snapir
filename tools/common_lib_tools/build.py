@@ -10,10 +10,10 @@ from tools.java_analysis_tools.java_source_reader import resolve_source_path
 from agents.source_conversion.ibm_java_cleaner.agent import clean_ibm_java_source
 
 
-def run_common_lib_build(common_lib_root: str) -> JavaBuildResult:
+def run_common_lib_build(common_lib_root: str, *, build_context=None) -> JavaBuildResult:
     """Run mvn install on the common-lib project."""
     started = time.perf_counter()
-    result = subprocess.run(
+    result = build_context.verifier.compile_project(common_lib_root, build_context.allowed_ibm_artifacts, goal="install") if build_context else subprocess.run(
         ["mvn", "install"],
         cwd=common_lib_root,
         capture_output=True,

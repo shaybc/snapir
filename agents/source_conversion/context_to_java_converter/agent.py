@@ -70,6 +70,9 @@ def submit_context_class(
     java_source: str,
     output_path: str,
     run_id: str,
+    *,
+    build_context=None,
+    dependency_proposals=(),
 ) -> str:
     """Write a generated context class, compile it, and persist conversion status."""
     task = get_agent_task(conn, task_id)
@@ -77,8 +80,11 @@ def submit_context_class(
         raise KeyError(f"Conversion task not found: {task_id}")
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(java_source, encoding="utf-8")
-    compile_result = _compile_java_source(path)
+    if build_context is not None:
+        compile_result = build_context.submit(java_source, output_path, task_id, dependency_proposals)
+    else:
+        path.write_text(java_source, encoding="utf-8")
+        compile_result = _compile_java_source(path)
     if compile_result.returncode == 0:
         _record_native_artifact(
             conn,
@@ -123,10 +129,17 @@ def run_context_to_java_converter_task(
     run_id: str,
     output_path: str,
     converter: Callable[[ContextFieldInventory], str],
+    *,
+    build_context=None,
 ) -> str:
     """Run one context conversion task with an injectable converter function."""
     inventory = get_context_inventory(conn, context_id, channel, run_id)
     java_source = converter(inventory)
+    if build_context is not None:
+        from tools.maven_dependency_tools.conversion_submission import parse_conversion_output
+        converted = parse_conversion_output(java_source)
+        return submit_context_class(conn, task_id, converted.java_source, output_path, run_id,
+                                    build_context=build_context, dependency_proposals=converted.dependencies)
     return submit_context_class(conn, task_id, java_source, output_path, run_id)
 
 

@@ -12,6 +12,7 @@ def resolve_java_impls(
     opstep_ids: list[str],
     run_id: str,
     composer_root: str,
+    classpath_index=None,
 ) -> tuple[list[JavaClassRef], list[ClosureBlockingIssue]]:
     """Resolve opStep implementation classes from vault metadata and source files."""
     refs: list[JavaClassRef] = []
@@ -23,6 +24,14 @@ def resolve_java_impls(
         fqcn = _impl_class_for_opstep(conn, metadata, run_id)
         if not fqcn:
             issues.append(_missing_impl(opstep_id, "Missing implClass"))
+            continue
+        binary_locations = classpath_index.classes.get(fqcn, []) if classpath_index else []
+        if binary_locations and resolve_source_path(composer_root, fqcn) is None:
+            issues.append(ClosureBlockingIssue(
+                kind=ClosureStatus.NEEDS_HUMAN_MAPPING,
+                entity_id=fqcn,
+                detail="Implementation is available only as compiled library code; provide source or an explicit retention decision",
+            ))
             continue
         class_artifact = _source_artifact(conn, run_id, "java_class", fqcn)
         if class_artifact is None:

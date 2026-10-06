@@ -116,6 +116,8 @@ def run_step_implementation_inserter(
     service_path: str,
     pass_generator: Callable[[ImplementationPass, str, RoutingPlan, ContextPlan, SerializationPlan, str | None], str],
     forbidden: list[str] | None = None,
+    *,
+    build_context=None,
 ) -> str:
     """Run all six implementation passes, compiling after each successful pass."""
     routing_plan, context_plan, serialization_plan = _load_plans(conn, operation_id, channel, run_id)
@@ -133,12 +135,18 @@ def run_step_implementation_inserter(
             pass_generator,
             path,
             max_retries,
+            build_context=build_context,
         )
         if status != "compiled":
             _mark_task_compile_failure(conn, task_id, max_retries, status)
             _record_artifact(conn, task, run_id, task_id, operation_id, str(path), status="failed", compiles=False)
             return status
-    guard_findings = run_ibm_guard(current_class, forbidden or FORBIDDEN_DEPENDENCIES)
+    if build_context:
+        from tools.validation_tools.ibm_dependency_guard_tool import scan_source
+        guard_findings = scan_source(current_class, forbidden or FORBIDDEN_DEPENDENCIES,
+                                     allowed_classes=build_context.allowed_ibm_classes)
+    else:
+        guard_findings = run_ibm_guard(current_class, forbidden or FORBIDDEN_DEPENDENCIES)
     if guard_findings:
         retry_status, current_class = _retry_execute_for_guard(
             current_class,
@@ -149,11 +157,16 @@ def run_step_implementation_inserter(
             path,
             max_retries,
             ", ".join(guard_findings),
+            build_context=build_context,
         )
         if retry_status != "compiled":
             _mark_task_compile_failure(conn, task_id, max_retries, retry_status)
             _record_artifact(conn, task, run_id, task_id, operation_id, str(path), status="failed", compiles=False)
             return retry_status
+    if build_context and ("TODO" in current_class or "UnsupportedOperationException" in current_class):
+        _mark_task_compile_failure(conn, task_id, max_retries, "incomplete_implementation")
+        _record_artifact(conn, task, run_id, task_id, operation_id, str(path), status="failed", compiles=False)
+        return "incomplete_implementation"
     _record_artifact(conn, task, run_id, task_id, operation_id, str(path), status="converted", compiles=True)
     _mark_task_completed(conn, task_id)
     return "compiled"
@@ -169,6 +182,7 @@ def _run_single_pass(
     path: Path,
     max_retries: int,
     compiler_error: str | None = None,
+    build_context=None,
 ) -> tuple[str, str]:
     for _ in range(max_retries):
         updated_class = pass_generator(
@@ -179,8 +193,15 @@ def _run_single_pass(
             serialization_plan,
             compiler_error,
         )
-        path.write_text(updated_class, encoding="utf-8")
-        compile_result = _compile_java_source(path)
+        if build_context:
+            try:
+                compile_result = build_context.submit(updated_class, str(path), "assembly-pass")
+            except ValueError as exc:
+                compiler_error = str(exc)
+                continue
+        else:
+            path.write_text(updated_class, encoding="utf-8")
+            compile_result = _compile_java_source(path)
         if compile_result.returncode == 0:
             return "compiled", updated_class
         compiler_error = compile_result.stderr
@@ -196,6 +217,7 @@ def _retry_execute_for_guard(
     path: Path,
     max_retries: int,
     guard_error: str,
+    build_context=None,
 ) -> tuple[str, str]:
     execute_pass = PASSES[2]
     return _run_single_pass(
@@ -208,6 +230,7 @@ def _retry_execute_for_guard(
         path,
         max_retries,
         compiler_error=f"IBM dependency guard found: {guard_error}",
+        build_context=build_context,
     )
 
 
