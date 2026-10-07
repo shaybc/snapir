@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from constants import AGENT_MODEL, FORBIDDEN_DEPENDENCIES, MAX_AGENT_TASK_RETRIES
+from constants import JAVA_VERSION, AGENT_MODEL, FORBIDDEN_DEPENDENCIES, MAX_AGENT_TASK_RETRIES
 from models.conversion_models import ContextPlan, RoutingPlan, SerializationPlan
 from tools.state_store_tools.agent_tasks import get_agent_task
 from tools.state_store_tools.context_plans import get_context_plan
@@ -275,7 +275,7 @@ def _step_method_name(impl_class: str) -> str:
 
 def _compile_java_source(path: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["javac", str(path)],
+        ["javac", "--release", JAVA_VERSION, str(path)],
         capture_output=True,
         text=True,
         check=False,

@@ -13,7 +13,7 @@ from tools.shared_artifact_classifier_tools.classifier import run_shared_artifac
 from tools.state_store_tools.db import create_all_tables, get_connection
 from tools.state_store_tools.runs import update_run_status
 from tools.workspace_intake_tools.run_factory import create_run_config, persist_run_config
-from runtime.workspace_paths import resolve_run_directory
+from runtime.workspace_paths import resolve_run_directory, run_database_path, run_profile_path, run_report_path, run_mapper_log_path
 from tools.source_discovery_tools import discover_java_sources
 from tools.source_discovery_tools.classpath import discover_java_classpath
 
@@ -22,8 +22,10 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
     """Create a new run and prepare planning inputs; fail on an existing run directory."""
     directory = resolve_run_directory(profile.output_root, run_id)
     directory.mkdir(parents=True, exist_ok=False)
+    for folder in ("state", "reports", "logs", "generated"):
+        (directory / folder).mkdir()
     vault = directory / "vault"
-    database = directory / "migration.db"
+    database = run_database_path(directory)
     settings = {key: getattr(constants, key) for key in dir(constants) if key.isupper()}
     settings.update(
         COMPOSER_ROOT=profile.source_root, VAULT_ROOT=str(vault),
@@ -39,31 +41,39 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
     conn = get_connection(str(database))
     try:
         create_all_tables(conn)
-        persist_run_config(conn, config)
-        (directory / "profile.json").write_text(profile.model_dump_json(indent=2), encoding="utf-8")
+        persist_run_config(conn, config, directory)
+        run_profile_path(directory).write_text(profile.model_dump_json(indent=2), encoding="utf-8")
         source_index = discover_java_sources(profile.source_root)
-        (directory / "java_source_index.json").write_text(source_index.model_dump_json(indent=2), encoding="utf-8")
+        run_report_path(directory, "java_source_index.json").write_text(source_index.model_dump_json(indent=2), encoding="utf-8")
         if source_index.issues:
-            raise ValueError("Java source discovery reported issues; inspect java_source_index.json")
+            raise ValueError("Java source discovery reported issues; inspect reports/java_source_index.json")
         classpath = discover_java_classpath(profile.source_root, profile.classpath_jars,
                                            profile.eclipse_classpath_variables)
-        (directory / "java_classpath_index.json").write_text(classpath.model_dump_json(indent=2), encoding="utf-8")
+        run_report_path(directory, "java_classpath_index.json").write_text(classpath.model_dump_json(indent=2), encoding="utf-8")
+        from tools.component_inventory_tools import build_component_inventory
+        from tools.state_store_tools.component_inventory import persist_component_inventory, get_implementation_usage, get_configured_component_usage
+        inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index)
+        persist_component_inventory(conn, run_id, inventory)
+        run_report_path(directory, "component_inventory.json").write_text(inventory.model_dump_json(indent=2), encoding="utf-8")
+        run_report_path(directory, "java_source_dependencies.json").write_text(inventory.java_dependencies.model_dump_json(indent=2), encoding="utf-8")
+        run_report_path(directory, "component_usage.json").write_text(json.dumps(get_implementation_usage(conn, run_id), indent=2), encoding="utf-8")
+        run_report_path(directory, "configured_component_usage.json").write_text(json.dumps(get_configured_component_usage(conn, run_id), indent=2), encoding="utf-8")
         command = ["java", "-jar", profile.mapper_jar, "--root", profile.source_root,
                    "--vault", str(vault), "--md"]
         if len(profile.channels) == 1:
             command.extend(["--channel", profile.channels[0]])
         update_run_status(conn, run_id, "in_progress", "mapper")
         result = subprocess.run(command, capture_output=True, text=True, check=False)
-        (directory / "mapper.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+        run_mapper_log_path(directory).write_text(result.stdout + result.stderr, encoding="utf-8")
         if result.returncode:
-            raise RuntimeError("Composer mapper failed; see mapper.log")
+            raise RuntimeError("Composer mapper failed; see logs/mapper.log")
         analysis = run_legacy_composer_analysis(conn, config)
         if analysis["paused"]:
             return directory
         build_all_context_hierarchies(conn, run_id)
         run_shared_artifact_classification(conn, run_id)
         operations = get_operations_for_planning(conn, run_id)
-        (directory / "planning_inputs.json").write_text(json.dumps(operations, indent=2), encoding="utf-8")
+        run_report_path(directory, "planning_inputs.json").write_text(json.dumps(operations, indent=2), encoding="utf-8")
         update_run_status(conn, run_id, "paused", "planning_inputs_ready")
         return directory
     except Exception:

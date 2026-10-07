@@ -1,6 +1,8 @@
 """Verify proposed artifacts using Maven routed through approved mirrors."""
 
 import subprocess
+
+from tools.maven_dependency_tools.command import maven_executable
 import tempfile
 from pathlib import Path
 from xml.etree import ElementTree
@@ -34,7 +36,7 @@ class MavenRepositoryVerifier:
             empty_settings = Path(directory) / "global-settings.xml"
             empty_settings.write_text("<settings/>", encoding="utf-8")
             result = subprocess.run([
-                "mvn", "--batch-mode", "--settings", self.settings_path,
+                maven_executable(), "--batch-mode", "--settings", self.settings_path,
                 "--global-settings", str(empty_settings),
                 f"-Dmaven.repo.local={self.local_repository}",
                 "org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get",
@@ -59,7 +61,7 @@ class MavenRepositoryVerifier:
             global_settings = Path(directory) / "settings.xml"
             global_settings.write_text("<settings/>", encoding="utf-8")
             tree_path = Path(directory) / "dependencies.json"
-            arguments = ["mvn", "--batch-mode", "--settings", self.settings_path,
+            arguments = [maven_executable(), "--batch-mode", "--settings", self.settings_path,
                          "--global-settings", str(global_settings), f"-Dmaven.repo.local={self.local_repository}"]
             resolved = subprocess.run(arguments + ["org.apache.maven.plugins:maven-dependency-plugin:3.8.1:tree",
                                       "-DoutputType=json", f"-DoutputFile={tree_path}"], cwd=project_root,

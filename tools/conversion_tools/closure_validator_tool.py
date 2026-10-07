@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 
 from models.conversion_models import ClosureBlockingIssue, ClosureStatus, OperationClosure
+from tools.state_store_tools._json import loads
+from tools.conversion_tools.java_impl_resolver_tool import _impl_class_for_opstep
 
 
 class ClosureNotReadyError(RuntimeError):
@@ -27,14 +29,15 @@ def validate_closure(
 ) -> OperationClosure:
     """Run the deterministic ten-check closure gate."""
     issues = list(closure.blocking_issues)
-    issues.extend(_check_impl_refs(closure))
+    issues.extend(_check_impl_refs(closure, conn, run_id))
     issues.extend(_check_java_source_files(closure))
     issues.extend(_check_formats_exist(closure, conn, run_id))
     issues.extend(_check_tags_exist(closure, conn, run_id))
     issues.extend(_check_context_chain(closure))
     issues.extend(_check_error_reply_format(closure))
     issues.extend(_check_unresolved_formats(closure))
-    issues.extend(_check_routing_covers_return_codes(closure))
+    issues.extend(_check_routing_covers_return_codes(closure, conn, run_id))
+    issues = list({(issue.kind, issue.entity_id, issue.detail): issue for issue in issues}.values())
     status = _most_severe_status(issues)
     return closure.model_copy(update={"status": status, "blocking_issues": issues})
 
@@ -48,10 +51,19 @@ def assert_closure_ready(closure: OperationClosure) -> None:
         )
 
 
-def _check_impl_refs(closure: OperationClosure) -> list[ClosureBlockingIssue]:
-    if len(closure.java_classes) >= len(closure.included_opstep_ids):
-        return []
-    return [_issue(ClosureStatus.BLOCKED_MISSING_IMPL_CLASS, closure.operation_id, "opStep without JavaClassRef")]
+def _step_implementation(conn, run_id, step_id, closure):
+    row = conn.execute("SELECT metadata_json FROM source_artifacts WHERE run_id=? AND kind='opStep' AND logical_id=?",
+                       (run_id, step_id)).fetchone()
+    if row is None:
+        # Standalone closure callers may identify a step by its exact class name.
+        return step_id if any(ref.fqcn == step_id for ref in closure.java_classes) else None
+    return _impl_class_for_opstep(conn, loads(row[0], {}) or {}, run_id)
+
+
+def _check_impl_refs(closure: OperationClosure, conn, run_id) -> list[ClosureBlockingIssue]:
+    resolved = {ref.fqcn for ref in closure.java_classes}
+    return [_issue(ClosureStatus.BLOCKED_MISSING_IMPL_CLASS, step, "opStep without JavaClassRef")
+            for step in closure.included_opstep_ids if _step_implementation(conn, run_id, step, closure) not in resolved]
 
 
 def _check_java_source_files(closure: OperationClosure) -> list[ClosureBlockingIssue]:
@@ -109,9 +121,13 @@ def _check_unresolved_formats(closure: OperationClosure) -> list[ClosureBlocking
     ]
 
 
-def _check_routing_covers_return_codes(closure: OperationClosure) -> list[ClosureBlockingIssue]:
+def _check_routing_covers_return_codes(closure: OperationClosure, conn, run_id) -> list[ClosureBlockingIssue]:
     issues = []
-    for opstep_id, java_ref in zip(closure.included_opstep_ids, closure.java_classes):
+    refs = {ref.fqcn: ref for ref in closure.java_classes}
+    for opstep_id in closure.included_opstep_ids:
+        java_ref = refs.get(_step_implementation(conn, run_id, opstep_id, closure))
+        if java_ref is None:
+            continue
         routing = closure.routing_graph.get(opstep_id, {})
         for rc in java_ref.return_codes:
             if f"on{rc}Do" not in routing and "onOtherDo" not in routing:

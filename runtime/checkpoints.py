@@ -9,7 +9,7 @@ from models.migration_models import MigrationPlan
 from models.pipeline_configuration import PipelineConfiguration
 from runtime.human_gates import evaluate_gate
 from runtime.planning import prepare_plan
-from runtime.workspace_paths import resolve_run_directory
+from runtime.workspace_paths import resolve_run_directory, run_database_path, run_profile_path, run_report_path
 from tools.conversion_tools.closure_builder_tool import build_operation_closure
 from tools.conversion_tools.context_field_resolver_tool import resolve_context_fields
 from tools.state_store_tools._json import loads
@@ -21,16 +21,16 @@ from tools.source_discovery_tools.classpath import discover_java_classpath
 def resume_pipeline(output_root: str, run_id: str):
     """Resume planning without rerunning intake, stopping on review or blocked closure."""
     directory = resolve_run_directory(output_root, run_id)
-    if not (directory / "migration.db").is_file():
+    if not run_database_path(directory).is_file():
         raise ValueError("Run database does not exist")
-    profile = PipelineConfiguration.model_validate_json((directory / "profile.json").read_text(encoding="utf-8"))
-    conn = get_connection(str(directory / "migration.db"))
+    profile = PipelineConfiguration.model_validate_json(run_profile_path(directory).read_text(encoding="utf-8"))
+    conn = get_connection(str(run_database_path(directory)))
     try:
         run = get_run(conn, run_id)
         if run is None:
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
-        if run["current_phase"] in {"gate_4_pending", "gate_4_rejected", "finalization_blocked", "migration_approved"}:
+        if run["current_phase"] in {"gate_4_pending", "gate_4_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
             row = conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1", (run_id,)).fetchone()
             if row is None:
                 raise ValueError("Finalization requires a persisted migration plan")
@@ -86,18 +86,24 @@ def resume_pipeline(output_root: str, run_id: str):
             except Exception:
                 update_run_status(conn, run_id, "failed", "planning_failed")
                 raise
+        from tools.component_inventory_tools.library_planner import prepare_library_plan
+        libraries = prepare_library_plan(conn, config, profile, plan)
         report = build_gate1_report(plan, config, operations)
+        if libraries is not None:
+            (directory / "shared_library_plan.json").write_text(libraries.model_dump_json(indent=2), encoding="utf-8")
+            report += "\nShared library ownership plan:\n" + libraries.model_dump_json(indent=2)
         report += "\n\nReviewed plan:\n" + plan.model_dump_json(indent=2)
         report += "\nModel mode: " + profile.model_provider
         (directory / "gate_1_report.txt").write_text(report, encoding="utf-8")
-        decision = evaluate_gate(conn, run_id, 1, report, profile.gate_policies.get("1", "human"), True)
+        decision = evaluate_gate(conn, run_id, 1, report, profile.gate_policies.get("1", "human"), libraries is None or not libraries.diagnostics)
         if decision != "approved":
             update_run_status(conn, run_id, "paused" if decision == "pending" else "stopped", f"gate_1_{decision}")
             return directory
         closures = []
         classpath = discover_java_classpath(config.source_root, profile.classpath_jars,
                                            profile.eclipse_classpath_variables)
-        (directory / "java_classpath_index.json").write_text(classpath.model_dump_json(indent=2), encoding="utf-8")
+        run_report_path(directory, "java_classpath_index.json").parent.mkdir(parents=True, exist_ok=True)
+        run_report_path(directory, "java_classpath_index.json").write_text(classpath.model_dump_json(indent=2), encoding="utf-8")
         for batch in plan.batches:
             for packet in batch.task_packets:
                 source = conn.execute("SELECT metadata_json FROM source_artifacts WHERE run_id=? AND kind='operation' AND logical_id=?",

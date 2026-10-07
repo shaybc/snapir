@@ -4,6 +4,8 @@ import json
 import re
 import sqlite3
 import subprocess
+
+from tools.maven_dependency_tools.command import maven_executable
 from pathlib import Path
 from typing import Callable
 from contextlib import nullcontext
@@ -49,6 +51,7 @@ REPOSITORY_INTERFACES: {repository_sources}
 JAVA_PACKAGE_BASE: {java_package_base}
 SPRING_BOOT_VERSION: {spring_boot_version}
 JAVA_VERSION: {java_version}
+Set maven.compiler.release to JAVA_VERSION and pin the Spring Boot parent and packaging plugin to SPRING_BOOT_VERSION. Do not override compiler source, target, release, or toolchains with older Java versions.
 
 Output a JSON map: {"relative_file_path": "file_content", ...}
 Include EVERY file. No explanation.
@@ -106,6 +109,21 @@ def validate_generated_project(files: dict[str, str], operation_id: str, *, buil
     pom_path = _find_suffix(normalized_paths, "pom.xml")
     if pom_path:
         pom = normalized_paths[pom_path]
+        from tools.maven_dependency_tools.pom_manager import validate_java_target
+        from xml.etree import ElementTree
+        try:
+            validate_java_target(pom)
+            root = ElementTree.fromstring(pom)
+            properties = root.find("{*}properties")
+            values = {} if properties is None else {node.tag.split("}")[-1]: (node.text or "").strip() for node in properties}
+            for node in root.iter():
+                if node.findtext("{*}groupId") == "org.springframework.boot":
+                    version = node.findtext("{*}version", "")
+                    version = values.get(version[2:-1], version) if version.startswith("${") and version.endswith("}") else version
+                    if version and version != SPRING_BOOT_VERSION:
+                        raise ValueError(f"Generated POM Spring Boot must use {SPRING_BOOT_VERSION}, found {version}")
+        except (ValueError, ElementTree.ParseError) as exc:
+            issues.append(str(exc))
         for forbidden in FORBIDDEN_DEPENDENCIES:
             if build_context is not None and forbidden == "com.ibm":
                 continue
@@ -218,7 +236,7 @@ def _controller_has_business_logic(source: str) -> bool:
 
 def _mvn_compile(project_root: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["mvn", "compile"],
+        [maven_executable(), "compile"],
         cwd=project_root,
         capture_output=True,
         text=True,

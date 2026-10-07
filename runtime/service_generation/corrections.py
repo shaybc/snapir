@@ -33,6 +33,8 @@ def route_correction(conn, config, item, result):
                 return "human"
             if owner is None and category != "shared_component_gap":
                 return "human"
+            if data.get("consumer_operations") is not None and item["channel"] + "/" + item["operation_id"] not in data["consumer_operations"]:
+                return "human"
             owners.append((row, data))
     conn.execute("""CREATE TABLE IF NOT EXISTS service_correction_attempts (
         run_id TEXT, operation_id TEXT, channel TEXT, attempts INTEGER NOT NULL,

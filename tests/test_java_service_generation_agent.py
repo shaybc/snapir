@@ -55,7 +55,7 @@ public class AccountRepository {
     return {
         "pom.xml": f"""
 <project>
-  <properties><java.version>17</java.version></properties>
+  <properties><java.version>25</java.version><maven.compiler.release>25</maven.compiler.release></properties>
   <dependencies>
     <dependency><groupId>com.company.migration</groupId><artifactId>composer-common-lib</artifactId></dependency>
     {pom_extra}
@@ -139,3 +139,18 @@ def test_mvn_compile_failure_triggers_retry(monkeypatch, tmp_path):
     assert calls["generator_errors"] == [None, "compile failed"]
     assert task["status"] == "completed"
     assert artifact["status"] == "converted"
+
+
+def test_generated_pom_rejects_missing_or_conflicting_java_target():
+    for old, new in (("<maven.compiler.release>25</maven.compiler.release>", ""),
+                     ("<java.version>25</java.version>", "<java.version>17</java.version>"),
+                     ("</project>", "<profiles><profile><properties><maven.compiler.release>17</maven.compiler.release></properties></profile></profiles></project>"),
+                     ("</project>", "<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId><configuration><release>17</release></configuration></plugin></plugins></build></project>")):
+        files = project_files()
+        files["pom.xml"] = files["pom.xml"].replace(old, new)
+        assert any("POM" in issue for issue in validate_generated_project(files, OPERATION_ID))
+
+
+def test_generated_pom_rejects_incompatible_spring_boot():
+    files = project_files(pom_extra="<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId><version>3.3.0</version></dependency>")
+    assert any("Spring Boot must use" in issue for issue in validate_generated_project(files, OPERATION_ID))

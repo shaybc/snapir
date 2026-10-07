@@ -130,3 +130,37 @@ def test_transitive_ibm_runtime_blocks_compilation(monkeypatch, tmp_path):
     with pytest.raises(ValueError, match="prohibited"):
         verifier.compile_project(tmp_path)
     assert len(calls) == 1
+
+
+def test_managed_pom_targets_java_25_with_pinned_compiler_and_jdk_enforcement(tmp_path):
+    pom = create_pom(tmp_path)
+    root = ElementTree.parse(pom)
+    assert root.findtext(".//{*}maven.compiler.release") == "25"
+    assert root.findtext(".//{*}requireJavaVersion/{*}version") == "[25,26)"
+    assert root.findtext(".//{*}plugin/{*}artifactId") == "maven-compiler-plugin"
+    from runtime.service_generation.project_output import configure_executable_build
+    from types import SimpleNamespace
+    from constants import SPRING_BOOT_VERSION
+    configure_executable_build(SimpleNamespace(pom_path=str(pom)))
+    root = ElementTree.parse(pom)
+    assert len(root.findall("{*}build")) == 1
+    plugins = root.findall(".//{*}plugin")
+    assert any(node.findtext("{*}artifactId") == "maven-compiler-plugin" for node in plugins)
+    assert any(node.findtext("{*}artifactId") == "spring-boot-maven-plugin" and node.findtext("{*}version") == SPRING_BOOT_VERSION for node in plugins)
+
+
+def test_existing_old_managed_pom_is_rejected_without_overwriting(tmp_path):
+    pom = create_pom(tmp_path)
+    pom.write_text(pom.read_text().replace(">25<", ">17<"))
+    original = pom.read_bytes()
+    with pytest.raises(ValueError, match="release=25"):
+        initialize_managed_pom(str(pom), "org.example", "service")
+    assert pom.read_bytes() == original
+
+
+def test_maven_launcher_uses_path_discovery(monkeypatch):
+    from tools.maven_dependency_tools.command import maven_executable
+    monkeypatch.setattr("tools.maven_dependency_tools.command.shutil.which", lambda name: "C:/Maven/bin/mvn.cmd")
+    assert maven_executable() == "C:/Maven/bin/mvn.cmd"
+    monkeypatch.setattr("tools.maven_dependency_tools.command.shutil.which", lambda name: None)
+    assert maven_executable() == "mvn"

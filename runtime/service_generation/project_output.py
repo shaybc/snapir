@@ -14,8 +14,12 @@ def configure_executable_build(context):
     with project_lock(path):
         root = ElementTree.parse(path).getroot()
         namespace = root.tag.partition("}")[0] + "}" if "}" in root.tag else ""
-        build = ElementTree.SubElement(root, namespace + "build")
-        plugins = ElementTree.SubElement(build, namespace + "plugins")
+        build = root.find(namespace + "build")
+        if build is None:
+            build = ElementTree.SubElement(root, namespace + "build")
+        plugins = build.find(namespace + "plugins")
+        if plugins is None:
+            plugins = ElementTree.SubElement(build, namespace + "plugins")
         plugin = ElementTree.SubElement(plugins, namespace + "plugin")
         for name, text in (("groupId", "org.springframework.boot"),
                            ("artifactId", "spring-boot-maven-plugin"), ("version", SPRING_BOOT_VERSION)):

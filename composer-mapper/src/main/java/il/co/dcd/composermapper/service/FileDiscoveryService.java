@@ -19,8 +19,8 @@ public class FileDiscoveryService {
      *   .../Channel/{CHANNEL}/... or .../Channel/{CHANNEL}/dse.ini
      *
      * @param root   workspace root path
-     * @param channel optional channel filter — if non-null, only files under
-     *                Channel/{channel}/ are included (case-insensitive)
+     * @param channel optional channel filter — includes the selected channel and
+     *                its declared imports in parent-before-child order
      */
     public List<DiscoveredFile> discover(Path root, String channel) {
         List<DiscoveredFile> out = new ArrayList<>();
@@ -28,13 +28,6 @@ public class FileDiscoveryService {
             s.filter(Files::isRegularFile).forEach(p -> {
                 String lower = p.getFileName().toString().toLowerCase();
                 String detectedChannel = extractChannel(p);
-
-                // channel filter
-                if (channel != null && !channel.isBlank()
-                        && detectedChannel != null
-                        && !detectedChannel.equalsIgnoreCase(channel)) {
-                    return;
-                }
 
                 DiscoveredFile.FileType type;
                 if (lower.endsWith(".xml") && !isKnownNonComposerXml(lower)) {
@@ -50,6 +43,12 @@ public class FileDiscoveryService {
             });
         } catch (IOException e) {
             throw new RuntimeException("Failed scanning: " + root, e);
+        }
+        if (channel != null && !channel.isBlank()) {
+            List<String> channels = new ChannelImportResolver().resolve(out, channel);
+            out.removeIf(file -> file.channel() != null && !channels.contains(file.channel().toUpperCase(Locale.ROOT)));
+            out.sort(Comparator.comparingInt(file -> file.channel() == null ? -1 :
+                channels.indexOf(file.channel().toUpperCase(Locale.ROOT))));
         }
         return out;
     }

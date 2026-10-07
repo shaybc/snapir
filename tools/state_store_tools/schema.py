@@ -293,3 +293,11 @@ SCHEMA_STATEMENTS = [
     )
     """,
 ]
+
+from tools.state_store_tools.component_inventory import INVENTORY_SCHEMA
+
+SCHEMA_STATEMENTS.extend(INVENTORY_SCHEMA)
+SCHEMA_STATEMENTS.append("CREATE TABLE IF NOT EXISTS shared_library_plans (run_id TEXT PRIMARY KEY, plan_json TEXT NOT NULL)")
+SCHEMA_STATEMENTS.append("""CREATE TABLE IF NOT EXISTS managed_component_registry (
+    component_id TEXT PRIMARY KEY, source_key TEXT NOT NULL, input_hash TEXT NOT NULL,
+    task_id TEXT NOT NULL, record_json TEXT NOT NULL)""")

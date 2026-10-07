@@ -1,6 +1,8 @@
 """Compile converted Java in its managed Maven project."""
 
 import subprocess
+
+from tools.maven_dependency_tools.command import maven_executable
 from pathlib import Path
 
 from models.maven_dependency import JavaConversionOutput
@@ -29,7 +31,7 @@ def submit_managed_conversion(output: JavaConversionOutput, source_path: str, po
     with project_lock(pom):
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_text(output.java_source, encoding="utf-8")
-        command = ["mvn", "--batch-mode", "compile"]
+        command = [maven_executable(), "--batch-mode", "compile"]
         if settings_path:
             command.extend(["--settings", settings_path])
         if hasattr(verifier, "compile_project"):

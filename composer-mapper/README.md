@@ -19,7 +19,7 @@ Output:
 
 ## Minimum install requirements
 
-- Java 17 or newer
+- JDK 25 (set JAVA_HOME and PATH to the same JDK for Maven and Java)
 - Apache Maven 3.8 or newer
 - Access to Maven Central on the first build, so Maven can download build plugins
 - An IBM Composer code base containing XML, INI, and/or Java files

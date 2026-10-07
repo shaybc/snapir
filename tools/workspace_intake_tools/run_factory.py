@@ -5,6 +5,7 @@ import sqlite3
 
 from models.common_models.common import RunConfig
 from tools.state_store_tools.runs import upsert_run
+from runtime.workspace_paths import resolve_run_directory, run_report_path
 
 
 def create_run_config(resolved_env: dict, run_id: str) -> RunConfig:
@@ -34,10 +35,12 @@ def create_run_config(resolved_env: dict, run_id: str) -> RunConfig:
     )
 
 
-def persist_run_config(conn: sqlite3.Connection, config: RunConfig) -> None:
-    output_path = Path(config.output_root) / "runs" / config.run_id
-    output_path.mkdir(parents=True, exist_ok=True)
-    (output_path / "run_config.json").write_text(config.model_dump_json(indent=2))
+def persist_run_config(conn: sqlite3.Connection, config: RunConfig, directory: Path | None = None) -> None:
+    """Persist effective settings in the database and the run inspection reports."""
+    directory = directory if directory is not None else resolve_run_directory(config.output_root, config.run_id)
+    snapshot = run_report_path(directory, "run_config.json")
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
+    snapshot.write_text(config.model_dump_json(indent=2), encoding="utf-8")
     upsert_run(
         conn,
         run_id=config.run_id,

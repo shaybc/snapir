@@ -33,6 +33,7 @@ def make_pass_generator(profile, payload, build_context, model_call=None):
     def generate(implementation_pass, current_class, routing, context, serialization, compiler_error):
         instruction = re.sub(r"\{[A-Za-z_][A-Za-z0-9_]*\}", "See assembly input JSON", IMPLEMENTATION_PASS_INSTRUCTION)
         instruction += "\nReturn JSON with java_source and dependencies. Preserve the class outside the requested method exactly."
+        instruction += "\nCall the supplied converted component APIs. Do not recreate their utility implementations inside the operation."
         request = dict(payload, method_name=implementation_pass.method_name, current_class=current_class,
                        routing_plan=routing.model_dump(mode="json"), context_plan=context.model_dump(mode="json"),
                        serialization_plan=serialization.model_dump(mode="json"), compiler_error=compiler_error)

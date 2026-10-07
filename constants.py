@@ -43,8 +43,8 @@ COMPOSER_MAPPER_JAR = "./composer-mapper/target/composer-mapper.jar"
 COMMON_LIB_GROUP_ID = "com.company.migration"
 COMMON_LIB_ARTIFACT_ID = "composer-common-lib"
 JAVA_PACKAGE_BASE = "com.company.generated"
-SPRING_BOOT_VERSION = "3.3.0"
-JAVA_VERSION = "17"
+SPRING_BOOT_VERSION = "3.5.16"
+JAVA_VERSION = "25"
 
 # Schema
 ARTIFACT_SCHEMA_VERSION = "v1"

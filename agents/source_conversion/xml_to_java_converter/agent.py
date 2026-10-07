@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from constants import AGENT_MODEL, MAX_AGENT_TASK_RETRIES
+from constants import JAVA_VERSION, AGENT_MODEL, MAX_AGENT_TASK_RETRIES
 from models.conversion_models import (
     ConversionTaskPacket,
     DbLookupRequirement,
@@ -367,7 +367,7 @@ def _upper_first(value: str) -> str:
 
 def _compile_java_source(path: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["javac", str(path)],
+        ["javac", "--release", JAVA_VERSION, str(path)],
         capture_output=True,
         text=True,
         check=False,

@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 from models.maven_dependency import MavenDependency
+from constants import JAVA_VERSION, SPRING_BOOT_VERSION
 from runtime.human_gates import evaluate_gate
 from runtime.managed_projects import create_build_context
 from runtime.model_execution.adk_executor import AdkExecutor
@@ -48,7 +49,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         key = (config.run_id, item["operation_id"], item["channel"])
         project = Path(directory) / "services" / item["channel"] / item["operation_id"]
         task_id = "service-" + hashlib.sha256(":".join(key).encode()).hexdigest()
-        identity = hashlib.sha256((item["fingerprint"] + report).encode()).hexdigest()
+        identity = hashlib.sha256((item["fingerprint"] + report + profile.runtime_validation_mode + JAVA_VERSION + SPRING_BOOT_VERSION).encode()).hexdigest()
         row = conn.execute("SELECT * FROM service_generation_checkpoints WHERE run_id=? AND operation_id=? AND channel=?", key).fetchone()
         attempts = row["attempts"] if row and row["input_hash"] == identity else 0
         result = None
@@ -79,6 +80,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 shutil.copyfile(Path(item["project"]) / "pom.xml", project / "pom.xml")
                 context = context_factory(profile, project, item["operation_id"])
                 payload = dict(operation=item["payload"], approved_sources=protected,
+                               java_version=JAVA_VERSION, spring_boot_version=SPRING_BOOT_VERSION,
                                pom=(project / "pom.xml").read_text(encoding="utf-8"),
                                validation_feedback=cached if row and row["input_hash"] == identity else {})
                 previous = conn.execute("SELECT output_json FROM agent_tasks WHERE task_id=?", (task_id,)).fetchone()
@@ -88,7 +90,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                     if profile.model_provider == "mock":
                         raise ValueError("Mock service generation requires explicit fixtures")
                     output = AdkExecutor(profile).execute(
-                        'Generate Spring Boot wrappers and tests around the supplied immutable Java sources. Address all validation_feedback using previous_generation when supplied. Return JSON with files (relative source/resource path to content) and dependencies (group_id, artifact_id, version, scope, reason, required_classes). Do not return a POM, binary files or alter approved sources. Include Application.java, controller, xml/JaxbConfig.java, error/GlobalExceptionHandler.java and application.properties. Delegate business logic to the supplied service. Use pinned verified Maven dependency proposals.',
+                        'Generate Spring Boot wrappers and tests around the supplied immutable Java sources. Address all validation_feedback using previous_generation when supplied. Return JSON with files (relative source/resource path to content) and dependencies (group_id, artifact_id, version, scope, reason, required_classes). Do not return a POM, binary files or alter approved sources. Include Application.java, controller, xml/JaxbConfig.java, error/GlobalExceptionHandler.java and application.properties. Delegate business logic to the supplied service. Use Java java_version and pin every Spring Boot dependency to spring_boot_version from the supplied JSON. Use pinned verified Maven dependency proposals.',
                         json.dumps(payload))
                     output = json.loads(output)
                 else:
@@ -108,6 +110,11 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 result["generation_output"] = output
                 conn.execute("UPDATE service_generation_checkpoints SET project_hash=?, validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                              (_project_hash(project), json.dumps(result), *key))
+            if result.get("build_passed") and result.get("package_passed"):
+                from runtime.runtime_validation.executor import RuntimeTestExecutor
+                result.update(RuntimeTestExecutor(profile).execute(item, directory))
+                conn.execute("UPDATE service_generation_checkpoints SET validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
+                             (json.dumps(result), *key))
             passed = result.get("build_passed") and result.get("package_passed") and result.get("ibm_guard_passed") and result.get("test_status") == "passed"
             upsert_generated_artifact(conn, artifact_id=task_id, run_id=config.run_id, operation_id=item["operation_id"],
                 channel=item["channel"], target_language="java", artifact_kind="service", generated_path=str(project),
@@ -136,7 +143,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         conn.commit()
     fresh = collect_operation_evidence(conn, config, profile, plan)
     expected = [(value["operation_id"], value["channel"],
-                 hashlib.sha256((value["fingerprint"] + report).encode()).hexdigest()) for value in fresh]
+                 hashlib.sha256((value["fingerprint"] + report + profile.runtime_validation_mode + JAVA_VERSION + SPRING_BOOT_VERSION).encode()).hexdigest()) for value in fresh]
     recorded = conn.execute("SELECT operation_id,channel,input_hash FROM service_generation_checkpoints WHERE run_id=?",
                             (config.run_id,)).fetchall()
     unchanged = set(expected) == {tuple(value) for value in recorded} and all(not value["issues"] for value in fresh)

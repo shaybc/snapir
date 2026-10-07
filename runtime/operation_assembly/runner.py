@@ -55,9 +55,8 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                     original_xml = Path(config.source_root) / original_xml
                 xml = original_xml.read_text(encoding="utf-8")
                 evidence = collect_component_evidence(conn, config, profile)
-                supporting = [component for component in evidence if component["task_input"].get("managed_project_operation") is None or
-                              (component["task_input"].get("managed_project_operation"), component["task_input"].get("channel")) ==
-                              (packet.operation_id, packet.channel)]
+                from runtime.shared_libraries.ownership import task_covers
+                supporting = [component for component in evidence if task_covers(component["task_input"], packet.operation_id, packet.channel)]
                 if not supporting or any(component["issues"] for component in supporting):
                     raise ValueError("Approved component evidence is missing or stale")
                 payload = dict(operation_id=packet.operation_id, channel=packet.channel,
@@ -65,7 +64,9 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                                routing_plan=routing.model_dump(mode="json"), context_plan=context.model_dump(mode="json"),
                                serialization_plan=serialization.model_dump(mode="json"),
                                components=[dict(task_id=component["task_id"], kind=component["kind"], logical_id=component["conversion_id"],
-                                                java_source=component["converted_source"], fingerprint=component["fingerprint"])
+                                                java_source=component["converted_source"], fingerprint=component["fingerprint"],
+                                                source_component_key=component["task_input"].get("source_component_key"),
+                                                library_id=component["task_input"].get("managed_library_id"))
                                            for component in supporting],
                                approved_ibm_classes=profile.allowed_ibm_classes)
                 if prior and prior.get("output_json") and prior["output_json"].get("equivalence_feedback"):

@@ -1,0 +1,42 @@
+{
+  "source_root": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace",
+  "source_workspace_id": null,
+  "shared_library_min_usage": 5,
+  "broad_library_usage_threshold": 10,
+  "mapper_jar": "C:\\GitHub\\shaybc\\snapir\\composer-mapper\\target\\composer-mapper-1.1.1-jar-with-dependencies.jar",
+  "output_root": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs",
+  "channels": [
+    "INTERNET"
+  ],
+  "include_operations": [
+    "GetClientLinksOp"
+  ],
+  "exclude_operations": null,
+  "target_languages": [
+    "java"
+  ],
+  "model_name": "gemini/gemini-2.5-pro",
+  "model_base_url": "",
+  "auto_rerun_impacted_operations": true,
+  "model_provider": "gemini",
+  "classpath_jars": [],
+  "maven_settings_path": null,
+  "approved_maven_repository_urls": [],
+  "maven_local_repository": null,
+  "allowed_ibm_artifacts": [],
+  "allowed_ibm_classes": [],
+  "deployment_template_dir": null,
+  "deployment_values": {},
+  "runtime_validation_mode": "disabled",
+  "eclipse_classpath_variables": {},
+  "model_api_key_environment": "GOOGLE_API_KEY",
+  "model_timeout_seconds": 180,
+  "max_model_attempts": 3,
+  "max_operations_per_batch": 5,
+  "gate_policies": {
+    "1": "human",
+    "2": "human",
+    "3": "human",
+    "4": "human"
+  }
+}

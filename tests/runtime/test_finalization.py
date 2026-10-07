@@ -71,3 +71,27 @@ def test_gate4_rejection_survives_resume(tmp_path):
     assert finalize(tmp_path, setup) == "gate_4_pending"
     record_decision(setup[0], setup[1].run_id, 4, (tmp_path / "gate_4_report.txt").read_text(), "rejected")
     assert finalize(tmp_path, setup) == "gate_4_rejected"
+
+
+def test_configured_executor_runs_and_gate4_uses_normal_completion(tmp_path):
+    setup = setup_final(tmp_path)
+    setup[2].runtime_validation_mode = "dummy"
+    setup[2].gate_policies["4"] = "automatic"
+    assert run(tmp_path, setup) == "validation_evidence_pending"
+    report = json.loads((tmp_path / "runtime_test_reports/INTERNET/Op/report.json").read_text())
+    assert all(report["checks"].values())
+    assert report["simulated"] and not report["real_tests_executed"]
+    assert finalize(tmp_path, setup) == "migration_approved"
+    inventory = json.loads((tmp_path / "delivery_manifest.json").read_text())
+    assert inventory["production_ready"]
+    assert any("Dummy runtime tests" in notice for notice in inventory["validation_notices"])
+    assert "Real endpoint tests are not implemented" in (tmp_path / "gate_4_report.txt").read_text()
+
+
+def test_disabled_mode_cannot_accept_previously_dummy_results(tmp_path):
+    setup = setup_final(tmp_path)
+    setup[2].runtime_validation_mode = "dummy"
+    assert run(tmp_path, setup) == "validation_evidence_pending"
+    setup[2].runtime_validation_mode = "disabled"
+    setup[2].gate_policies["4"] = "automatic"
+    assert finalize(tmp_path, setup) == "finalization_blocked"

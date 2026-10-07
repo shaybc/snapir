@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from constants import AGENT_MODEL, JAVA_PACKAGE_BASE, MAX_AGENT_TASK_RETRIES, NATIVE_JAVA_ROOT, SPRING_BOOT_VERSION
+from constants import JAVA_VERSION, AGENT_MODEL, JAVA_PACKAGE_BASE, MAX_AGENT_TASK_RETRIES, NATIVE_JAVA_ROOT, SPRING_BOOT_VERSION
 from models.conversion_models import ContextPlan, RoutingPlan, SerializationPlan
 from tools.state_store_tools.agent_tasks import get_agent_task, update_task_status
 from tools.state_store_tools.context_plans import get_context_plan
@@ -294,7 +294,7 @@ def _lower_first(value: str) -> str:
 
 def _compile_java_source(path: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["javac", str(path)],
+        ["javac", "--release", JAVA_VERSION, str(path)],
         capture_output=True,
         text=True,
         check=False,

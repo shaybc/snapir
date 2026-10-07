@@ -44,41 +44,80 @@ def run_managed_tasks(conn, config, profile, plan) -> dict[str, int]:
                                            packet.operation_id)
             contexts[identity] = context
             reconcile_pom_hash(conn, config.run_id, context.pom_path, packet.operation_id, packet.channel)
-    shared = create_build_context(profile, Path(config.output_root) / "common-lib", COMMON_LIB_ARTIFACT_ID)
-    from models.maven_dependency import MavenDependency
-    from tools.maven_dependency_tools.pom_manager import merge_dependencies
-    for context in contexts.values():
-        merge_dependencies(context.pom_path, [MavenDependency(
-            group_id=COMMON_LIB_GROUP_ID, artifact_id=COMMON_LIB_ARTIFACT_ID, version="1.0.0",
-            reason="Generated common-library module from this migration run")],
-            lambda proposal: None, task_id="generated-common-library-baseline")
-    reconcile_pom_hash(conn, config.run_id, shared.pom_path, None, "all")
+    from runtime.shared_libraries.projects import create_library_contexts
+    libraries = create_library_contexts(conn, config, profile, contexts, create_build_context)
+    for shared in libraries.values():
+        reconcile_pom_hash(conn, config.run_id, shared.pom_path, None, "all")
     rows = conn.execute("""SELECT * FROM agent_tasks WHERE run_id=? AND
         status IN ('pending','failed','needs_rerun') ORDER BY created_at""", (config.run_id,)).fetchall()
     results = {"compiled": 0, "failed": 0, "pending": 0}
     executor = AdkExecutor(profile)
-    rows = sorted(rows, key=lambda row: bool((loads(row["input_json"], {}) or {}).get("managed_project_operation")))
+    from runtime.shared_libraries.dependencies import ordered_conversion_tasks, converted_dependency_apis, dependency_binding
+    rows = ordered_conversion_tasks(conn, config, rows)
     common_installed = False
+    installed_libraries = set()
     for row in rows:
         data = loads(row["input_json"], {}) or {}
         kind = data.get("kind")
         if kind not in {"ibm_java", "xml_fmtdef", "xml_context"}:
             continue
         owner = data.get("managed_project_operation")
-        context = contexts.get((owner, row["channel"])) if owner else shared
+        context = contexts.get((owner, row["channel"])) if owner else libraries.get(data.get("managed_library_id") or "common-lib")
         if context is None:
             raise ValueError("Conversion task references an operation outside the approved plan")
+        from tools.state_store_tools.shared_library_plans import get_shared_library_plan
+        library_plan = get_shared_library_plan(conn, config.run_id)
+        if not owner and library_plan:
+            from tools.common_lib_tools.build import run_common_lib_build
+            for dependency in library_plan.library_dependencies.get(data.get("managed_library_id"), []):
+                if dependency not in installed_libraries:
+                    build = run_common_lib_build(str(Path(libraries[dependency].pom_path).parent), build_context=libraries[dependency])
+                    if not build.success:
+                        results["failed"] += 1
+                        return results
+                    installed_libraries.add(dependency)
         if owner and not common_installed:
             if results["failed"]:
                 return results
             from tools.common_lib_tools.build import run_common_lib_build
-            build = run_common_lib_build(str(Path(shared.pom_path).parent), build_context=shared)
-            if not build.success:
-                results["failed"] += 1
-                return results
+            order = library_plan.library_build_order if library_plan and library_plan.library_build_order else list(libraries)
+            for name in [*order, *(name for name in libraries if name not in order)]:
+                shared = libraries[name]
+                build = run_common_lib_build(str(Path(shared.pom_path).parent), build_context=shared)
+                if not build.success:
+                    results["failed"] += 1
+                    return results
             common_installed = True
+        try:
+            current_dependencies = dependency_binding(conn, config, data.get("source_component_key"))
+            if current_dependencies.get("dependency_source_hash") != data.get("dependency_source_hash"):
+                raise ValueError("Conversion dependency inputs changed; reschedule conversion")
+            data["converted_dependency_apis"] = converted_dependency_apis(conn, config, data)
+        except ValueError as exc:
+            from tools.state_store_tools.agent_tasks import update_task_status
+            from runtime.shared_libraries.dependencies import UtilityNotReadyError
+            update_task_status(conn, row["task_id"], "pending" if isinstance(exc, UtilityNotReadyError) else "blocked", error_message=str(exc))
+            results["failed"] += 1
+            continue
+        conn.execute("UPDATE agent_tasks SET input_json=? WHERE task_id=?", (json.dumps(data), row["task_id"]))
         conn.execute("UPDATE agent_tasks SET status='pending' WHERE task_id=?", (row["task_id"],))
         conn.commit()
+        from runtime.shared_libraries.registry import reusable_component
+        reused = reusable_component(conn, config, profile, data, context)
+        if reused:
+            from tools.state_store_tools.native_java_artifacts import upsert_native_java_artifact
+            from tools.state_store_tools.agent_tasks import update_task_status
+            compiled = context.verifier.compile_project(Path(context.pom_path).parent, context.allowed_ibm_artifacts)
+            if compiled.returncode:
+                results["failed"] += 1
+                continue
+            upsert_native_java_artifact(conn, artifact_id=f"{config.run_id}:native_java:{row['task_id']}",
+                run_id=config.run_id, conversion_id=data["conversion_id"], kind=kind, logical_id=data["conversion_id"],
+                artifact_path=reused["source_path"], compiles=True, review_status="approved", status="converted")
+            update_task_status(conn, row["task_id"], "completed")
+            results["compiled"] += 1
+            results["reused"] = results.get("reused", 0) + 1
+            continue
         instruction = {"ibm_java": MANAGED_IBM_CLEANER_INSTRUCTION,
                        "xml_fmtdef": XML_TO_JAVA_INSTRUCTION,
                        "xml_context": CONTEXT_TO_JAVA_INSTRUCTION}[kind]
@@ -86,6 +125,8 @@ def run_managed_tasks(conn, config, profile, plan) -> dict[str, int]:
         if kind == "xml_fmtdef":
             instruction += " Include service_layer_requirements in the same JSON object, without markers."
         instruction += "\nApproved IBM client classes: " + json.dumps(profile.allowed_ibm_classes)
+        if data.get("converted_dependency_apis"):
+            instruction += "\nUse the supplied converted_dependency_apis for original Java utility dependencies. Call their actual native APIs; do not recreate or rename their implementations in this component."
         if data.get("component_review_feedback"):
             instruction += "\nRevise the previous converted source to address every component_review_feedback issue in the request. Preserve original business behavior."
         instruction = instruction.replace("Remove ALL imports starting with com.ibm.*", "Remove IBM runtime imports except explicitly approved IBM client classes; remove imports starting with com.ibm.* when not approved")
@@ -129,10 +170,32 @@ def enqueue_closure_conversions(conn, config, closures):
         if closure["status"] != "READY":
             continue
         units = []
+        source_files = {reference["fqcn"]: reference["source_file"] for reference in closure.get("java_classes", [])}
         if closure.get("context_id"):
             units.append(("xml_context", closure["context_id"], json.dumps(closure.get("context_fields", [])), False))
         for reference in closure.get("java_classes", []):
             units.append(("ibm_java", reference["fqcn"], Path(reference["source_file"]).read_text(encoding="utf-8"), reference["shared"]))
+        if conn.execute("SELECT 1 FROM shared_library_plans WHERE run_id=?", (config.run_id,)).fetchone():
+            implementations = {row[0]: loads(row[1], {}) for row in conn.execute(
+                "SELECT implementation_id,record_json FROM source_implementations WHERE run_id=?", (config.run_id,))}
+            uses = conn.execute("SELECT record_json FROM configured_component_uses WHERE run_id=? AND operation_id=? AND channel=?",
+                                (config.run_id, closure["operation_id"], closure["channel"])).fetchall()
+            indirect = conn.execute("SELECT record_json FROM java_dependency_uses WHERE run_id=? AND operation_id=? AND channel=?",
+                                    (config.run_id, closure["operation_id"], closure["channel"])).fetchall()
+            all_uses = [loads(row[0], {}) for row in uses]
+            all_uses.extend(dict(loads(row[0], {}), component_kind="java_dependency") for row in indirect)
+            for use in all_uses:
+                if use["component_kind"] not in {"opStep", "formatter", "decorator", "java_dependency"} or not use["implementation_id"]:
+                    continue
+                implementation = implementations[use["implementation_id"]]
+                fqcn = (implementation["package_name"] + "." if implementation["package_name"] else "") + implementation["class_name"]
+                source_file = str(Path(config.source_root) / implementation["source_path"])
+                if fqcn in source_files:
+                    if Path(source_files[fqcn]).resolve() != Path(source_file).resolve():
+                        raise ValueError("Operation references conflicting source definitions of " + fqcn)
+                    continue
+                source_files[fqcn] = source_file
+                units.append(("ibm_java", fqcn, Path(source_file).read_text(encoding="utf-8"), False))
         for format_id in closure["formats"].get("all_format_ids", []):
             row = conn.execute("SELECT source_path FROM source_artifacts WHERE run_id=? AND kind='format' AND logical_id=?",
                                (config.run_id, format_id)).fetchone()
@@ -143,15 +206,30 @@ def enqueue_closure_conversions(conn, config, closures):
         # Contexts and DTOs precede implementation classes in the task queue.
         units.sort(key=lambda unit: {"xml_context": 0, "xml_fmtdef": 1, "ibm_java": 2}[unit[0]])
         for kind, logical_id, source, shared in units:
+            from runtime.shared_libraries.ownership import task_binding
+            source_file = source_files.get(logical_id)
+            binding = task_binding(conn, config, closure, kind, logical_id, source_file)
+            from runtime.shared_libraries.dependencies import dependency_binding
+            binding.update(dependency_binding(conn, config, binding.get("source_component_key")))
+            source = binding.pop("configured_source_xml", source)
+            if binding:
+                shared = binding["managed_library_id"] is not None
             owner = None if shared else closure["operation_id"]
-            identity = f"{config.run_id}:{closure['channel']}:{owner}:{kind}:{logical_id}"
+            identity = (f"{config.run_id}:{binding['source_component_key']}:{binding['managed_library_id'] or closure['channel'] + '/' + closure['operation_id']}"
+                        if binding else f"{config.run_id}:{closure['channel']}:{owner}:{kind}:{logical_id}")
             task_id = "managed-" + hashlib.sha256(identity.encode()).hexdigest()
-            if get_agent_task(conn, task_id) is not None:
-                continue
+            existing = get_agent_task(conn, task_id)
+            if existing is not None:
+                original = existing["input_json"] or {}
+                if original.get("primary_source_content") == source and original.get("source_component_hash") == binding.get("source_component_hash") and original.get("dependency_source_hash") == binding.get("dependency_source_hash"):
+                    continue
             data = ConversionTaskPacket(conversion_id=logical_id, kind=kind, channel=closure["channel"],
                                         primary_source_content=source, relationship_context=json.dumps(closure),
                                         target_kind="native_java").model_dump(mode="json")
             data["managed_project_operation"] = owner
+            data.update(binding)
+            if shared and binding:
+                data["relationship_context"] = json.dumps(dict(component=binding["source_component_key"], consumers=binding["consumer_operations"]), sort_keys=True)
             upsert_agent_task(conn, task_id=task_id, run_id=config.run_id, agent_name="ManagedConversion",
                               scope_type="java_class", scope_id=logical_id, channel=closure["channel"],
                               target_language="java", status="pending", input_data=data,

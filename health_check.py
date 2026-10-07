@@ -56,6 +56,7 @@ def run_health_checks(
         _check_adk(import_checker),
         _check_requirements(import_checker),
         _check_java(command_runner),
+        _check_javac(command_runner),
         _check_maven(command_runner),
         _check_composer_mapper(command_runner),
         _check_composer_root(),
@@ -114,13 +115,24 @@ def _check_requirements(import_checker: ImportChecker) -> CheckResult:
 
 
 def _check_java(command_runner: CommandRunner) -> CheckResult:
+    return _check_java_command(command_runner, "java")
+
+
+def _check_javac(command_runner: CommandRunner) -> CheckResult:
+    return _check_java_command(command_runner, "javac")
+
+
+def _check_java_command(command_runner: CommandRunner, executable: str) -> CheckResult:
+    """Require the selected runtime/compiler to use the generated Java target."""
+    name = f"{'Java' if executable == 'java' else 'javac'} {constants.JAVA_VERSION}"
     try:
-        result = command_runner(["java", "-version"])
+        result = command_runner([executable, "-version"])
     except FileNotFoundError:
-        return CheckResult("Java 17+", False, "java not found")
+        return CheckResult(name, False, f"{executable} not found")
     output = f"{result.stdout}\n{result.stderr}"
     version = _first_version(output)
-    return CheckResult("Java 17+", bool(version and version >= (17, 0)), output.strip() or "no version output")
+    passed = result.returncode == 0 and version is not None and version[0] == int(constants.JAVA_VERSION)
+    return CheckResult(name, passed, output.strip() or "no version output")
 
 
 def _check_maven(command_runner: CommandRunner) -> CheckResult:
@@ -128,8 +140,14 @@ def _check_maven(command_runner: CommandRunner) -> CheckResult:
         result = command_runner(["mvn", "-version"])
     except FileNotFoundError:
         return CheckResult("Maven 3.8+", False, "mvn not found")
-    version = _first_version(result.stdout)
-    return CheckResult("Maven 3.8+", bool(version and version >= (3, 8)), result.stdout.splitlines()[0] if result.stdout else "no version output")
+    output = re.sub(r"\x1b\[[0-9;]*m", "", f"{result.stdout}\n{result.stderr}")
+    maven = re.search(r"Apache Maven\s+(\d+)\.(\d+)", output)
+    java = re.search(r"Java version:\s*(\d+)", output, re.IGNORECASE)
+    passed = (result.returncode == 0 and maven is not None and
+              tuple(map(int, maven.groups())) >= (3, 8) and
+              java is not None and int(java.group(1)) == int(constants.JAVA_VERSION))
+    return CheckResult("Maven 3.8+", passed,
+                       f"Requires Maven 3.8+ running JDK {constants.JAVA_VERSION}: {output.strip() or 'no version output'}")
 
 
 def _check_composer_mapper(command_runner: CommandRunner) -> CheckResult:
@@ -219,6 +237,9 @@ def _check_writable_dir(name: str, path: Path) -> CheckResult:
 
 
 def _run_command(command: list[str]) -> subprocess.CompletedProcess:
+    if command[0] == "mvn":
+        from tools.maven_dependency_tools.command import maven_executable
+        command = [maven_executable(), *command[1:]]
     return subprocess.run(command, capture_output=True, text=True, check=False)
 
 

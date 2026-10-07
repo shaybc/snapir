@@ -49,7 +49,7 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
                         destination.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(original, destination)
                 result = context.verifier.compile_project(staged, context.allowed_ibm_artifacts,
-                                                           goal="install" if Path(project).name == "common-lib" else "compile")
+                                                           goal="install" if Path(project).name == "common-lib" or Path(project).parent.name == "libraries" else "compile")
             return result.returncode == 0
     # Each revision consumes a persisted attempt; resume cannot reset the bound.
     while True:
@@ -103,7 +103,19 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
             evidence = collect_component_evidence(conn, config, profile)
         break
     problems = [issue for item in evidence for issue in item["issues"]]
+    from tools.state_store_tools.shared_library_plans import get_shared_library_plan
+    library_plan = get_shared_library_plan(conn, config.run_id)
+    if library_plan:
+        problems.extend(library_plan.diagnostics)
     approved_scope = {(packet.operation_id, packet.channel) for batch in plan.batches for packet in batch.task_packets}
+    from runtime.shared_libraries.ownership import task_covers
+    for operation, channel in approved_scope:
+        for row in conn.execute("SELECT implementation_id FROM java_dependency_uses WHERE run_id=? AND operation_id=? AND channel=?",
+                                (config.run_id, operation, channel)):
+            key = "implementation:" + row[0]
+            if not any(item["task_input"].get("source_component_key") == key and task_covers(item["task_input"], operation, channel)
+                       for item in evidence):
+                problems.append("Expected Java utility conversion task is missing: " + key)
     for item in evidence:
         owner = item["task_input"].get("managed_project_operation")
         if owner is not None and (owner, item["task_input"].get("channel")) not in approved_scope:
@@ -142,22 +154,26 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
                     problems.append("Framework component mapping is unresolved or ambiguous: " + tag)
                 else:
                     framework_components.update(candidates)
+                    if library_plan and not any(item["conversion_id"] in candidates and
+                            task_covers(item["task_input"], closure["operation_id"], closure["channel"]) for item in evidence):
+                        problems.append("Framework component conversion is missing for this operation: " + tag)
             requirements = [("ibm_java", reference["fqcn"]) for reference in closure.get("java_classes", [])]
             requirements += [("xml_fmtdef", name) for name in closure.get("formats", {}).get("all_format_ids", [])]
             if closure.get("context_id"):
                 requirements.append(("xml_context", closure["context_id"]))
             for kind, logical_id in requirements:
+                from runtime.shared_libraries.ownership import task_covers
                 if not any(item["kind"] == kind and item["conversion_id"] == logical_id and
-                           item["task_input"].get("channel") == closure["channel"] and
-                           item["task_input"].get("managed_project_operation") in {None, closure["operation_id"]}
+                           task_covers(item["task_input"], closure["operation_id"], closure["channel"])
                            for item in evidence):
                     problems.append("Expected conversion task is missing: " + logical_id)
     for fqcn in sorted(framework_components):
         if not any(item["kind"] == "ibm_java" and item["conversion_id"] == fqcn and
-                   item["task_input"].get("managed_project_operation") is None for item in evidence):
+                   (library_plan is not None or item["task_input"].get("managed_project_operation") is None) for item in evidence):
             problems.append("Framework component conversion is missing: " + fqcn)
     builds = {}
-    for project in sorted({item["project"] for item in evidence}, key=lambda path: (Path(path).name != "common-lib", path)):
+    from runtime.shared_libraries.dependencies import ordered_review_projects
+    for project in ordered_review_projects(conn, config, {item["project"] for item in evidence}):
         try:
             builds[project] = bool(project_builder(project))
         except Exception:
@@ -201,6 +217,9 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
     directory = Path(directory)
     (directory / "gate_2_report.txt").write_text(report, encoding="utf-8")
     decision = evaluate_gate(conn, config.run_id, 2, report, profile.gate_policies.get("2", "human"), passed)
+    if decision == "approved":
+        from runtime.shared_libraries.registry import register_approved_components
+        register_approved_components(conn, config, profile, evidence)
     phase = "assembly_pending" if decision == "approved" else "component_review_blocked" if decision == "blocked" else f"gate_2_{decision}"
     update_run_status(conn, config.run_id, "stopped" if decision == "rejected" else "blocked" if decision == "blocked" else "paused", phase)
     return phase

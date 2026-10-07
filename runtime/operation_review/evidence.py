@@ -53,9 +53,8 @@ def collect_operation_evidence(conn, config, profile, plan):
                                      ("context_plan", context.model_dump(mode="json")), ("serialization_plan", serialization.model_dump(mode="json"))):
                     if inputs.get(key) != current:
                         item["issues"].append("Assembly input changed: " + key)
-                supporting = [component for component in components if component["task_input"].get("managed_project_operation") is None or
-                              (component["task_input"].get("managed_project_operation"), component["task_input"].get("channel")) ==
-                              (packet.operation_id, packet.channel)]
+                from runtime.shared_libraries.ownership import task_covers
+                supporting = [component for component in components if task_covers(component["task_input"], packet.operation_id, packet.channel)]
                 if not supporting or any(component["issues"] for component in supporting):
                     item["issues"].append("Approved component evidence is missing or stale")
                 item["components"] = [dict(kind=value["kind"], logical_id=value["conversion_id"], java_source=value["converted_source"],

@@ -11,10 +11,11 @@ from xml.etree import ElementTree
 
 from tools.maven_dependency_tools.policy import validate_dependency_policy
 from models.maven_dependency import MavenDependency
+from constants import JAVA_VERSION
 
 
 def initialize_managed_pom(pom_path: str, group_id: str, artifact_id: str,
-                           version: str = "1.0.0", java_version: int = 17) -> None:
+                           version: str = "1.0.0", java_version: int = int(JAVA_VERSION)) -> None:
     """Create a minimal canonical POM once; never overwrite an existing build."""
     MavenDependency(group_id=group_id, artifact_id=artifact_id, version=version, reason="Project identity")
     if java_version < 8:
@@ -23,16 +24,54 @@ def initialize_managed_pom(pom_path: str, group_id: str, artifact_id: str,
     path.parent.mkdir(parents=True, exist_ok=True)
     with project_lock(path):
         if path.exists():
+            validate_java_target(path.read_text(encoding="utf-8"), java_version)
             return
         root = ElementTree.Element("project", xmlns="http://maven.apache.org/POM/4.0.0")
         for name, value in (("modelVersion", "4.0.0"), ("groupId", group_id),
                             ("artifactId", artifact_id), ("version", version)):
             ElementTree.SubElement(root, name).text = value
         properties = ElementTree.SubElement(root, "properties")
-        for name, value in (("maven.compiler.source", str(java_version)),
+        for name, value in (("maven.compiler.release", str(java_version)), ("maven.compiler.source", str(java_version)),
                             ("maven.compiler.target", str(java_version)), ("project.build.sourceEncoding", "UTF-8")):
             ElementTree.SubElement(properties, name).text = value
+        plugins = ElementTree.SubElement(ElementTree.SubElement(root, "build"), "plugins")
+        compiler = ElementTree.SubElement(plugins, "plugin")
+        for name, value in (("groupId", "org.apache.maven.plugins"),
+                            ("artifactId", "maven-compiler-plugin"), ("version", "3.14.1")):
+            ElementTree.SubElement(compiler, name).text = value
+        enforcer = ElementTree.SubElement(plugins, "plugin")
+        for name, value in (("groupId", "org.apache.maven.plugins"),
+                            ("artifactId", "maven-enforcer-plugin"), ("version", "3.6.2")):
+            ElementTree.SubElement(enforcer, name).text = value
+        execution = ElementTree.SubElement(ElementTree.SubElement(enforcer, "executions"), "execution")
+        ElementTree.SubElement(ElementTree.SubElement(execution, "goals"), "goal").text = "enforce"
+        rules = ElementTree.SubElement(ElementTree.SubElement(execution, "configuration"), "rules")
+        requirement = ElementTree.SubElement(rules, "requireJavaVersion")
+        ElementTree.SubElement(requirement, "version").text = f"[{java_version},{java_version + 1})"
         path.write_bytes(ElementTree.tostring(root, encoding="utf-8", xml_declaration=True))
+
+
+def validate_java_target(pom: str, java_version: int = int(JAVA_VERSION)) -> None:
+    """Reject missing release and conflicting Java targets in generated Maven builds."""
+    root = ElementTree.fromstring(pom)
+    properties = root.find("{*}properties")
+    values = {} if properties is None else {node.tag.split("}")[-1]: (node.text or "").strip() for node in properties}
+    expected = str(java_version)
+    if values.get("maven.compiler.release") != expected:
+        raise ValueError(f"Generated POM requires maven.compiler.release={expected}")
+    targets = [node for container in root.findall(".//{*}properties") for node in container if node.tag.split("}")[-1] in
+        {"java.version", "maven.compiler.source", "maven.compiler.target", "maven.compiler.release",
+         "maven.compiler.testSource", "maven.compiler.testTarget", "maven.compiler.testRelease"}]
+    for plugin in root.findall(".//{*}plugin"):
+        if plugin.findtext("{*}artifactId") == "maven-compiler-plugin":
+            targets.extend(node for node in plugin.iter() if node.tag.split("}")[-1] in
+                           {"source", "target", "release", "testSource", "testTarget", "testRelease"})
+    for node in targets:
+        name = node.tag.split("}")[-1]
+        value = (node.text or "").strip()
+        value = values.get(value[2:-1], value) if value.startswith("${") and value.endswith("}") else value
+        if value != expected:
+            raise ValueError(f"Generated POM {name} must target Java {expected}, found {value}")
 
 
 @contextmanager

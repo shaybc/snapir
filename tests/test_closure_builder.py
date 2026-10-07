@@ -195,3 +195,30 @@ def test_assert_closure_ready_raises_for_blocked_status(tmp_path: Path):
 
     with pytest.raises(ClosureNotReadyError):
         assert_closure_ready(closure)
+
+
+def test_shared_implementation_covers_each_step_and_checks_each_route(tmp_path):
+    import json
+    conn, composer_root, vault_root = add_ready_fixture(tmp_path)
+    metadata = json.loads(conn.execute("SELECT metadata_json FROM source_artifacts WHERE logical_id='OpA'").fetchone()[0])
+    metadata["steps"].append("StepB")
+    conn.execute("UPDATE source_artifacts SET metadata_json=? WHERE logical_id='OpA'", (json.dumps(metadata),))
+    upsert_source_artifact(conn, artifact_id="run-1:opStep:StepB", run_id=RUN_ID, kind="opStep", logical_id="StepB",
+        source_hash="second-step", metadata=dict(id="StepB", impl_class="com.bank.ops.StepA", transitions={"on0Do": "end"}))
+    conn.commit()
+    closure = build_operation_closure(conn, "OpA", "INTERNET", RUN_ID, str(composer_root), str(vault_root))
+    assert closure.status == ClosureStatus.READY
+    assert len(closure.java_classes) == 1
+    conn.execute("UPDATE source_artifacts SET metadata_json=? WHERE logical_id='StepB'",
+                 (json.dumps(dict(id="StepB", impl_class="com.bank.ops.StepA", transitions={})),))
+    conn.commit()
+    closure = build_operation_closure(conn, "OpA", "INTERNET", RUN_ID, str(composer_root), str(vault_root))
+    assert any(issue.entity_id == "StepB" and "Latent routing gap" in issue.detail for issue in closure.blocking_issues)
+
+
+def test_revalidating_closure_does_not_duplicate_findings(tmp_path):
+    from tools.conversion_tools.closure_validator_tool import validate_closure
+    conn, composer_root, vault_root = add_ready_fixture(tmp_path, return_codes={"8": ["error"]})
+    closure = build_operation_closure(conn, "OpA", "INTERNET", RUN_ID, str(composer_root), str(vault_root))
+    again = validate_closure(closure, conn, RUN_ID, str(composer_root))
+    assert again.blocking_issues == closure.blocking_issues

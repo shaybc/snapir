@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class PipelineConfiguration(BaseModel):
@@ -10,6 +10,9 @@ class PipelineConfiguration(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     source_root: str
+    source_workspace_id: str | None = Field(default=None, min_length=1)
+    shared_library_min_usage: int = Field(default=5, ge=1)
+    broad_library_usage_threshold: int = Field(default=10, ge=1)
     mapper_jar: str
     output_root: str
     channels: list[str] = Field(min_length=1)
@@ -28,6 +31,7 @@ class PipelineConfiguration(BaseModel):
     allowed_ibm_classes: list[str] = Field(default_factory=list)
     deployment_template_dir: str | None = None
     deployment_values: dict[str, dict] = Field(default_factory=dict)
+    runtime_validation_mode: Literal["disabled", "dummy"] = "disabled"
     eclipse_classpath_variables: dict[str, str] = Field(default_factory=dict)
     model_api_key_environment: str = "GOOGLE_API_KEY"
     model_timeout_seconds: int = Field(default=180, gt=0)
@@ -44,3 +48,10 @@ class PipelineConfiguration(BaseModel):
         if set(value) - {"1", "2", "3", "4"}:
             raise ValueError("Gate numbers must be 1 through 4")
         return value
+
+    @model_validator(mode="after")
+    def validate_library_thresholds(self):
+        """Require a non-empty small-sharing range between configured thresholds."""
+        if self.broad_library_usage_threshold < self.shared_library_min_usage:
+            raise ValueError("broad_library_usage_threshold must be at least shared_library_min_usage")
+        return self

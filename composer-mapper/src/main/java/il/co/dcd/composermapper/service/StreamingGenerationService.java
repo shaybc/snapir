@@ -65,7 +65,7 @@ public class StreamingGenerationService {
             }
         }
         writeMappedFormatNotes(x, vault);
-        writeChannelNotes(x, vault);
+        writeChannelNotes(files, x, vault);
         writeChannelOperationRegistry(x, vault);
         writeUnresolved(x, vault);
     }
@@ -101,7 +101,7 @@ public class StreamingGenerationService {
      * Each note lists the channel's operation count, import chain,
      * tag mapping summary, and all registered operations.
      */
-    private void writeChannelNotes(Indexes x, Path vault) {
+    private void writeChannelNotes(List<DiscoveredFile> files, Indexes x, Path vault) {
         // Group operations by channel
         Map<String, List<String>> opsByChannel = new LinkedHashMap<>();
         x.channelForOperation().forEach((opName, channel) ->
@@ -122,6 +122,10 @@ public class StreamingGenerationService {
                 sb.append("\n");
             }
 
+            sb.append("## Tag Mappings\n");
+            new ChannelImportResolver().tagMappings(files, channel).entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry ->
+                sb.append("- ").append(entry.getKey()).append(" -> ").append(entry.getValue()).append("\n"));
+            sb.append("\n");
             sb.append("## Operations (").append(opNames.size()).append(")\n");
             opNames.stream().sorted().forEach(op -> {
                 String filePath = x.channelOperationRegistry().get(op);

@@ -18,7 +18,8 @@ def collect_component_evidence(conn, config, profile):
         artifact = conn.execute("SELECT * FROM native_java_artifacts WHERE run_id=? AND artifact_id=?",
                                 (config.run_id, artifact_id)).fetchone()
         owner = data.get("managed_project_operation")
-        project = Path(config.output_root) / task["channel"] / owner if owner else Path(config.output_root) / "common-lib"
+        from runtime.shared_libraries.ownership import component_project
+        project = component_project(config, data, task["channel"])
         item = dict(task_id=task["task_id"], artifact_id=artifact_id, conversion_id=data.get("conversion_id", task["scope_id"]),
                     kind=data.get("kind"), original_source=data.get("primary_source_content", ""),
                     task_input=data, project=str(project.resolve()), source_path=None, issues=[])
@@ -46,6 +47,16 @@ def collect_component_evidence(conn, config, profile):
             item.setdefault("source_hash", "missing")
         if not item["converted_source"].strip():
             item["issues"].append("Converted Java source is empty")
+        if data.get("dependency_component_keys"):
+            from runtime.shared_libraries.dependencies import dependency_binding, converted_dependency_apis
+            try:
+                current = dependency_binding(conn, config, data.get("source_component_key"))
+                if current.get("dependency_source_hash") != data.get("dependency_source_hash"):
+                    raise ValueError("Original utility dependencies changed since conversion")
+                if converted_dependency_apis(conn, config, data) != data.get("converted_dependency_apis"):
+                    raise ValueError("Native utility APIs changed since caller conversion")
+            except (ValueError, OSError) as exc:
+                item["issues"].append(str(exc))
         fingerprint = dict(input=data, source_hash=item["source_hash"], pom_hash=item["pom_hash"],
                            review_contract_version="1",
                            model=profile.model_name, model_provider=profile.model_provider,

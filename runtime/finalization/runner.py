@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from constants import JAVA_VERSION, SPRING_BOOT_VERSION
 from agents.documentation_report.agent import generate_operation_doc
 from agents.java_deployment_manifest.agent import build_deployment_spec
 from runtime.human_gates import evaluate_gate
@@ -20,6 +21,7 @@ def run_finalization(conn, config, profile, plan, directory):
     evidence = collect_operation_evidence(conn, config, profile, plan)
     blockers = []
     deliverables = []
+    validation_notices = []
     report3 = (directory / "gate_3_report.txt").read_text(encoding="utf-8")
     if evaluate_gate(conn, config.run_id, 3, report3, "human", True) != "approved":
         blockers.append("Current Gate 3 is not approved")
@@ -34,10 +36,12 @@ def run_finalization(conn, config, profile, plan, directory):
         evidence_files = []
         try:
             row = conn.execute("SELECT * FROM service_generation_checkpoints WHERE run_id=? AND operation_id=? AND channel=?", key).fetchone()
-            expected = hashlib.sha256((item["fingerprint"] + report3).encode()).hexdigest()
+            expected = hashlib.sha256((item["fingerprint"] + report3 + profile.runtime_validation_mode + JAVA_VERSION + SPRING_BOOT_VERSION).encode()).hexdigest()
             if row is None or row["input_hash"] != expected or not row["project_hash"] or _project_hash(project) != row["project_hash"]:
                 raise ValueError("Generated project evidence is missing or stale")
             validation = json.loads(row["validation_json"])
+            if validation.get("runtime_validation_notice"):
+                validation_notices.append(label + ": " + validation["runtime_validation_notice"])
             for name in ("build_passed", "package_passed", "ibm_guard_passed"):
                 if validation.get(name) is not True:
                     issues.append(name + " has not passed")
@@ -89,11 +93,13 @@ def run_finalization(conn, config, profile, plan, directory):
             files={str(path.relative_to(directory)): hashlib.sha256(path.read_bytes()).hexdigest()
                    for path in files if path.is_file() and path.suffix not in {".lock"}}))
     inventory = dict(run_id=config.run_id, operations=deliverables, blockers=blockers,
-                     deployed=False, production_ready=bool(evidence) and not blockers)
+                     deployed=False, validation_notices=validation_notices,
+                     production_ready=bool(evidence) and not blockers)
     (directory / "delivery_manifest.json").write_text(json.dumps(inventory, sort_keys=True, indent=2), encoding="utf-8")
     final_report = "# Migration deliverable review\n\nNo cluster deployment or image publication was performed.\n\n" + json.dumps(inventory, sort_keys=True, indent=2)
     (directory / "final_report.md").write_text(final_report, encoding="utf-8")
-    report = "=== Human Gate 4 ===\nProduction readiness review; approval does not deploy anything.\n" + final_report
+    review_notice = "Configured-executor readiness review; inspect validation notices. Approval does not deploy anything.\n"
+    report = "=== Human Gate 4 ===\n" + review_notice + final_report
     (directory / "gate_4_report.txt").write_text(report, encoding="utf-8")
     decision = evaluate_gate(conn, config.run_id, 4, report, profile.gate_policies.get("4", "human"), bool(evidence) and not blockers)
     phase = "migration_approved" if decision == "approved" else "finalization_blocked" if decision == "blocked" else "gate_4_" + decision
