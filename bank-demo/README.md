@@ -3,6 +3,20 @@
 A realistic demo of a bank's IBM WebSphere Business Component Composer (WSBCC)
 workspace. Used as a test fixture for the Composer Sunset migration pipeline.
 
+## Demo Framework Classes
+
+The shared `WSBCC_XML/src` tree supplies `Context`, `CCOperationStep`, and
+`HTTPService` for the demo operation steps. Bind the same `Context` to each step
+with `setContext`; its `getValueAt` and `setValueAt` methods carry operation values.
+Database steps require a JDBC connection supplied through `setConnection`.
+The caller manages the connection and transactions.
+
+For fraud detection, construct `HTTPService()` and register it
+on the step with `setService("FraudDetectionService", service)`. It returns a fixed
+sample XML response with score 7 and decision ALLOW, without network calls. These
+classes implement the contracts used by this fixture. Other Composer format and
+server framework types still require their own implementations.
+
 ## Channels
 
 | Workspace | Channel | Operations |
@@ -59,6 +73,13 @@ nil
 ```
 
 ## Running composer-mapper against this demo
+
+The demo includes a thin `CCTime` formatter and a minimal `Tag` attribute holder.
+`initializeFrom(Tag)` selects the configured `dataName`; `format(Context)` emits
+that XML element with the fixed sample time `00:00:00`, and
+`unformat(String, Context)` stores a dummy `Date(0)` in the named context field.
+These are conversion fixtures for `ExecutionTime` and `TransactionTime`; production
+time parsing, timezone conversion, and Reuters behavior are outside their scope.
 
 ```bash
 java -jar composer-mapper.jar \

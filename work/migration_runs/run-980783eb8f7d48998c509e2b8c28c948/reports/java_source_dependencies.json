@@ -1,6 +1,0 @@
-{
-  "dependencies": [],
-  "uses": [],
-  "issues": [],
-  "analysis_scope": "Static source-type references; reflection, overload resolution and runtime dispatch are not proven"
-}

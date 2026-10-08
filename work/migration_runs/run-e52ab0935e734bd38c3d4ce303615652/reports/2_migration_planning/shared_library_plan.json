@@ -1,0 +1,334 @@
+{
+  "fingerprint": "27ff66f2d707a271a068430137a97de4ffc4a9378638d67d407d1cf0508c5153",
+  "libraries": [
+    {
+      "library_id": "shared-33e19da28f26",
+      "version": "1.0.0-e6665e69f2ae",
+      "component_keys": [
+        "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec",
+        "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd",
+        "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880",
+        "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0",
+        "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4",
+        "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a",
+        "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584",
+        "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a",
+        "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9",
+        "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e",
+        "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9"
+      ],
+      "consumers": [
+        "INTERNET/GetAccountDetailsOp",
+        "INTERNET/GetClientAccountsOp",
+        "INTERNET/GetClientLinksOp",
+        "INTERNET/TransferFundsOp",
+        "IVR/GetAccountBalanceOp",
+        "IVR/GetClientAccountsOp"
+      ]
+    },
+    {
+      "library_id": "shared-aacf434ff625",
+      "version": "1.0.0-ad5643203770",
+      "component_keys": [
+        "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d",
+        "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1"
+      ],
+      "consumers": [
+        "INTERNET/GetAccountDetailsOp",
+        "INTERNET/GetClientAccountsOp",
+        "INTERNET/TransferFundsOp",
+        "IVR/GetAccountBalanceOp",
+        "IVR/GetClientAccountsOp"
+      ]
+    }
+  ],
+  "assignments": {
+    "definition:1b41b65739446128e44df1b504ce74ede096acebdbc5767e7bbc50fa7d2596a4": null,
+    "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec": "shared-33e19da28f26",
+    "definition:2b26afb902417228bcee82e033545221127b7f3d5da7a5788f5409d01b9b4933": null,
+    "definition:7a5327e3d4d26f03278bf3f6b2221c14107e8223ad7f2012a59d131c8764c89d": null,
+    "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd": "shared-33e19da28f26",
+    "definition:bb86cb2d3032aa4d37dbc97eac577e57bd25698c6b474493001c530c836c1224": null,
+    "definition:f741754b23b9a98ba76686686e6b6858cfb5d1d614fa1e5386200858bd27b002": null,
+    "implementation:10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0": null,
+    "implementation:52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498": null,
+    "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880": "shared-33e19da28f26",
+    "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0": "shared-33e19da28f26",
+    "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4": "shared-33e19da28f26",
+    "implementation:5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f": null,
+    "implementation:64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58": null,
+    "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d": "shared-aacf434ff625",
+    "implementation:75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84": null,
+    "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a": "shared-33e19da28f26",
+    "implementation:796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4": null,
+    "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584": "shared-33e19da28f26",
+    "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1": "shared-aacf434ff625",
+    "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a": "shared-33e19da28f26",
+    "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9": "shared-33e19da28f26",
+    "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e": "shared-33e19da28f26",
+    "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9": "shared-33e19da28f26",
+    "implementation:f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4": null,
+    "implementation:f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234": null,
+    "implementation:fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df": null
+  },
+  "consumers": {
+    "definition:1b41b65739446128e44df1b504ce74ede096acebdbc5767e7bbc50fa7d2596a4": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "definition:2b26afb902417228bcee82e033545221127b7f3d5da7a5788f5409d01b9b4933": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp"
+    ],
+    "definition:7a5327e3d4d26f03278bf3f6b2221c14107e8223ad7f2012a59d131c8764c89d": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/TransferFundsOp"
+    ],
+    "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "definition:bb86cb2d3032aa4d37dbc97eac577e57bd25698c6b474493001c530c836c1224": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "definition:f741754b23b9a98ba76686686e6b6858cfb5d1d614fa1e5386200858bd27b002": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp"
+    ],
+    "implementation:64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84": [
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "implementation:f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234": [
+      "INTERNET/TransferFundsOp"
+    ],
+    "implementation:fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df": [
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ]
+  },
+  "usage_counts": {
+    "definition:1b41b65739446128e44df1b504ce74ede096acebdbc5767e7bbc50fa7d2596a4": 1,
+    "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec": 6,
+    "definition:2b26afb902417228bcee82e033545221127b7f3d5da7a5788f5409d01b9b4933": 4,
+    "definition:7a5327e3d4d26f03278bf3f6b2221c14107e8223ad7f2012a59d131c8764c89d": 3,
+    "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd": 6,
+    "definition:bb86cb2d3032aa4d37dbc97eac577e57bd25698c6b474493001c530c836c1224": 1,
+    "definition:f741754b23b9a98ba76686686e6b6858cfb5d1d614fa1e5386200858bd27b002": 1,
+    "implementation:10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0": 1,
+    "implementation:52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498": 1,
+    "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880": 6,
+    "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0": 6,
+    "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4": 6,
+    "implementation:5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f": 4,
+    "implementation:64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58": 2,
+    "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d": 5,
+    "implementation:75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84": 3,
+    "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a": 6,
+    "implementation:796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4": 1,
+    "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584": 6,
+    "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1": 5,
+    "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a": 6,
+    "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9": 6,
+    "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e": 6,
+    "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9": 6,
+    "implementation:f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4": 1,
+    "implementation:f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234": 1,
+    "implementation:fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df": 3
+  },
+  "reference_counts": {
+    "definition:1b41b65739446128e44df1b504ce74ede096acebdbc5767e7bbc50fa7d2596a4": 1,
+    "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec": 6,
+    "definition:2b26afb902417228bcee82e033545221127b7f3d5da7a5788f5409d01b9b4933": 4,
+    "definition:7a5327e3d4d26f03278bf3f6b2221c14107e8223ad7f2012a59d131c8764c89d": 3,
+    "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd": 6,
+    "definition:bb86cb2d3032aa4d37dbc97eac577e57bd25698c6b474493001c530c836c1224": 1,
+    "definition:f741754b23b9a98ba76686686e6b6858cfb5d1d614fa1e5386200858bd27b002": 1,
+    "implementation:10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0": 1,
+    "implementation:52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498": 2,
+    "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880": 153,
+    "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0": 29,
+    "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4": 22,
+    "implementation:5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f": 8,
+    "implementation:64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58": 2,
+    "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d": 5,
+    "implementation:75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84": 4,
+    "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a": 23,
+    "implementation:796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4": 1,
+    "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584": 503,
+    "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1": 11,
+    "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a": 20,
+    "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9": 6,
+    "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e": 47,
+    "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9": 77,
+    "implementation:f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4": 1,
+    "implementation:f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234": 1,
+    "implementation:fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df": 3
+  },
+  "shared_library_min_usage": 5,
+  "broad_library_usage_threshold": 10,
+  "diagnostics": [],
+  "conversion_order": [
+    "definition:1b41b65739446128e44df1b504ce74ede096acebdbc5767e7bbc50fa7d2596a4",
+    "definition:297bbde47f65bd7cd4076e3fcff0441ef58422eda6ffefd781af15a35a8e24ec",
+    "definition:2b26afb902417228bcee82e033545221127b7f3d5da7a5788f5409d01b9b4933",
+    "definition:7a5327e3d4d26f03278bf3f6b2221c14107e8223ad7f2012a59d131c8764c89d",
+    "definition:8c696d72557a32b15b9e512f851956f4f7d4b683e8eb19bef7c771579ad2edfd",
+    "definition:bb86cb2d3032aa4d37dbc97eac577e57bd25698c6b474493001c530c836c1224",
+    "definition:f741754b23b9a98ba76686686e6b6858cfb5d1d614fa1e5386200858bd27b002",
+    "implementation:52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498",
+    "implementation:59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880",
+    "implementation:78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a",
+    "implementation:884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584",
+    "implementation:59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4",
+    "implementation:5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f",
+    "implementation:64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58",
+    "implementation:75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84",
+    "implementation:91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1",
+    "implementation:cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a",
+    "implementation:d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9",
+    "implementation:ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e",
+    "implementation:10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0",
+    "implementation:59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0",
+    "implementation:6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d",
+    "implementation:796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4",
+    "implementation:f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9",
+    "implementation:f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4",
+    "implementation:f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234",
+    "implementation:fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df"
+  ],
+  "library_dependencies": {
+    "shared-33e19da28f26": [],
+    "shared-aacf434ff625": [
+      "shared-33e19da28f26"
+    ]
+  },
+  "library_build_order": [
+    "shared-33e19da28f26",
+    "shared-aacf434ff625"
+  ],
+  "dependency_analysis": "Static source references; dynamic/reflection and compiler-level symbol attribution remain outside this inventory"
+}

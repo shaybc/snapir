@@ -56,8 +56,8 @@ MANAGED_IBM_CLEANER_INSTRUCTION for that model invocation. Managed conversion
 returns JSON containing java_source and dependencies, with group_id, artifact_id,
 version, scope, reason, and required_classes for each proposal.
 
-MavenRepositoryVerifier requires an approved Maven settings file with a mirrorOf
-value of * and approved mirror URLs. It resolves target artifacts and checks
+MavenRepositoryVerifier uses Maven's normal user and installation settings,
+repositories, mirrors, credentials, and local cache. It resolves target artifacts and checks
 requested class entries. No source-analysis downloads are introduced. Repository
 verification has not been exercised against an enterprise repository in tests.
 An existing local Maven cache must be trusted; this verifier does not establish
@@ -85,9 +85,10 @@ resolved dependency tree before compilation, rejecting prohibited transitives.
 Build, service generation, validation, and common-library build APIs accept this
 context so repository routing and policy remain consistent.
 
-Configure maven_settings_path, approved_maven_repository_urls, and
-maven_local_repository in a project profile to enable runtime managed conversion
-after READY closure checks. Runtime creates service/common-lib POMs and dispatches
+Managed conversion starts after READY closure checks using Maven's normal configuration.
+Optional maven_settings_path and maven_local_repository values override Maven defaults;
+approved_maven_repository_urls is retained for older profiles and is no longer enforced.
+Runtime creates service/common-lib POMs and dispatches
 context, DTO, and Java implementation tasks to their managed projects. Dependency
 conflicts and source/build failures remain blocking results. Mock conversion
 requires explicit fixtures rather than fabricated source. IBM exceptions use

@@ -12,9 +12,16 @@ if not exist ".venv\Scripts\python.exe" (
 ".venv\Scripts\python.exe" -m pip install -r "requirements.txt"
 set "exit_code=%errorlevel%"
 if not "%exit_code%"=="0" goto finish
+cls
 
-".venv\Scripts\python.exe" -m cli %*
+pushd "source"
+if errorlevel 1 (
+    set "exit_code=1"
+    goto finish
+)
+"%~dp0.venv\Scripts\python.exe" -m cli %*
 set "exit_code=%errorlevel%"
+popd
 goto finish
 
 :environment_failed

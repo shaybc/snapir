@@ -1,0 +1,1091 @@
+[
+  {
+    "implementation": {
+      "implementation_id": "10b2068a01977775d6d125dae2b82121712fb55e923bad29f1031f3525966cf0",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/ValidateTransferLimitsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "ValidateTransferLimitsSP",
+      "method_signature": null,
+      "source_hash": "9d53db5a089f95744959a557e6c43811faa0636cdc8ed9cd26c0e8c9d12fc8bb"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "12b1cc7da3186a1b42198d9693d0817b31a3fb71dcd0ea59e04688077830ff86",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetClientLinksSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetClientLinksSP",
+      "method_signature": null,
+      "source_hash": "3236d23fe5afcbd68284a7bb29a470e440668d66fcea8e8e62b69c4035259fc2"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "2bd4d87f07159bf3f59afb8d46c6ce1e272f1af89ac84f3a076ec69bb20f9176",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetAccountTransactionsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetAccountTransactionsSP",
+      "method_signature": null,
+      "source_hash": "b8ac688669c736e65040d543d75b6f4da88a6fb8b8686f0d5fd0844c9a742365"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "34378d3ab5a9803cddbd3b80f9399e0208c63140ef3fc3161da623d2a90a4473",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetAccountDetailsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetAccountDetailsSP",
+      "method_signature": null,
+      "source_hash": "6468b1df9864424487f6dd2fc6b112fc4e7de830717b2adfa7c4fd0cf3a738df"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "52bab9099c9d3e3c9661e5e65b240068e6ffdb35f8692fd7750471b087ca3498",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/service/communication/http/HTTPService.java",
+      "package_name": "com.ibm.il.dse.cc.service.communication.http",
+      "class_name": "HTTPService",
+      "method_signature": null,
+      "source_hash": "8c37d2dee87e1a9d301f767805bdf66e2ad5ec78976dc0b6fc82589752a4a425"
+    },
+    "reference_count": 2,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 2,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "59bfbb8aa1e28ce2c6a012013034b4eb9095cf8f3864ea011cd78a6d16f64880",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/Tag.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "Tag",
+      "method_signature": null,
+      "source_hash": "1e9e41364576b476c2d0fe656fae4afbf4b9660ebfab4a89fcaf9ce30eac3c5c"
+    },
+    "reference_count": 153,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 153,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "59d2936c914363d623ec5175256b61942eb7357b0d3e82b839bebcb04586d2f0",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/MapErrorByValueAlways.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "MapErrorByValueAlways",
+      "method_signature": null,
+      "source_hash": "728019a09f6eaca78ce390b7464dc3b102fb895c35486189fc8b5fd6ff340aad"
+    },
+    "reference_count": 29,
+    "direct_reference_count": 29,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "59d971bae6a1d523f0ded2c813a6cca9c1aef0dc9e8edcc20838799402734da4",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCXML.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCXML",
+      "method_signature": null,
+      "source_hash": "e732cb3877944fcb8f24a7c2a74b182372df732f988bc1d7fd48f20283fbc0d2"
+    },
+    "reference_count": 22,
+    "direct_reference_count": 22,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "5dd774b43589acd6a17335eb743124551f7f048574cdf44f5032f397c82b055f",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCDate.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCDate",
+      "method_signature": null,
+      "source_hash": "e63d0cb718572ced0c42cc89c4d3bb3f3162d922d27366769b2be8b8bebdc92a"
+    },
+    "reference_count": 8,
+    "direct_reference_count": 8,
+    "indirect_reference_count": 0,
+    "operation_count": 4,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "641c66e46e865f50301701dd10bc8e2dcea4b31e497b04ac31ae00246e86bd7e",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/RemoveLeadingZerosDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "RemoveLeadingZerosDecorator",
+      "method_signature": null,
+      "source_hash": "f576cbef9580be2edd0804b45a5d4f1d4b9b1c4cf99103c89128a2a9d5d6e1c9"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 2,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "646342f30b2df904d1906292a8339fc66b7bd05b8213312560021d26e6cbdcab",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetClientAccountsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetClientAccountsSP",
+      "method_signature": null,
+      "source_hash": "109d3ccbac7adc4cf4baeb5227767952517a3d9988bf7204b5eb78901b7489ad"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "64b140fac631e4618d902b0a7152e906f26f4306b075766dfd97928866d58b58",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCTime.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCTime",
+      "method_signature": null,
+      "source_hash": "790a5807d4c0b972b11e111e5344c37613d746798e4f8f12ded61b9bedfca9b2"
+    },
+    "reference_count": 2,
+    "direct_reference_count": 2,
+    "indirect_reference_count": 0,
+    "operation_count": 2,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "6b604ad2f0003d1e584e8e50018661d56164824f14830139ee6b1475c9314f7d",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/ValidateInputFields.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "ValidateInputFields",
+      "method_signature": null,
+      "source_hash": "0481dd3f3b2bce30fbfba96d2f23daefc016f076cae0fcbab2ce4f3b1846b07b"
+    },
+    "reference_count": 5,
+    "direct_reference_count": 5,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "75571ea7659da0cc66e2db6bf9c260f5e4bd7da4ad91a071d9753c4e61a12a84",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCBoolean.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCBoolean",
+      "method_signature": null,
+      "source_hash": "46f468039799b2adf37f65ccb229b4146daf2c071d1301b25b0bd8aaad54f1b6"
+    },
+    "reference_count": 4,
+    "direct_reference_count": 4,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "78dd352c2087e1f6497ee5b0a5c963940a477bd3d942304e5019e76b8a84728a",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/NilDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "NilDecorator",
+      "method_signature": null,
+      "source_hash": "53ce014a9aa60009126eb4ca0ae6c22b4b1c86c25052e2f477c43d4c9cfebf42"
+    },
+    "reference_count": 23,
+    "direct_reference_count": 23,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "796e44be9cead425ded97aa2cee95588dfa03819246ad4f4f472d680bf2806d4",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/service/CallFraudDetection.java",
+      "package_name": "com.ibm.il.dse.operations.internet.service",
+      "class_name": "CallFraudDetection",
+      "method_signature": null,
+      "source_hash": "2347391cff69706616aa4c191746ed4e3aced3969987948e115b13c0f720c40c"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "884325dc843f324a4518c4061045395a5f81b795ae12333a8e089a1b25060584",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/Context.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "Context",
+      "method_signature": null,
+      "source_hash": "2ecbe34eb7f561dab6bdbe5d9949b56e652f33c8a8e792994fdba33114cacf71"
+    },
+    "reference_count": 503,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 503,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "91588fd7f75c9bdf9c904fd1457c36316877e1acc1adf7af1d1abec8c06501b1",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/NumberFormat.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "NumberFormat",
+      "method_signature": null,
+      "source_hash": "e66a40fafe7e6eaf760111243c71bf175b8f09b68a4afaa87dccd75dedb7014f"
+    },
+    "reference_count": 11,
+    "direct_reference_count": 11,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "ae8011c3a2be1b026761a51b7fa7b6c5f09f5a53cfe7bfa85b597cff5b751b16",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/GetClientAccountsIvrSP.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "GetClientAccountsIvrSP",
+      "method_signature": null,
+      "source_hash": "c2fbea5032a597f6b02c1822bbe401aacb1a0696ad1c841bb88f2f5c7be0ed3a"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "c9f009cfc86237a641b69ce558f53c77ba5da9acee890c564f6fcddef37ad1bf",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCTableFormat.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCTableFormat",
+      "method_signature": null,
+      "source_hash": "7ff7d2a1f9260f0d88b6c865a48854bde91f7bbe3ee9f2bff3d42e78fcc06e44"
+    },
+    "reference_count": 4,
+    "direct_reference_count": 4,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "cba9efefa9c54ea3799f4b5f50247fa2abee238dac6c1757fd4d3d943e7e685a",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/CCPadding.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "CCPadding",
+      "method_signature": null,
+      "source_hash": "8796f326980c6ce43fcf0bef0380df973a7156b47cbb3742a2c8e2030b4da72a"
+    },
+    "reference_count": 20,
+    "direct_reference_count": 20,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "d1f4f6592ee7b5e8a8344fe938db54b5c8ce3d75bc79e7dcbc527accbdc05f76",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/LogIvrSession.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "LogIvrSession",
+      "method_signature": null,
+      "source_hash": "f63dfa8cf6154b4083e13ab63a74c7076e88aca70ead0e166932fa2fdfae951e"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "d22c31b7bff1bf4b9f6d99d7bc20e51728eb873a87be84d5472a3b424ea5f3c9",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/cut/CCDSEServerOperation.java",
+      "package_name": "com.ibm.il.dse.cc.cut",
+      "class_name": "CCDSEServerOperation",
+      "method_signature": null,
+      "source_hash": "fcaf68594b17326659d327bcc975553a231d2d1e62f7b741959b9e142603d288"
+    },
+    "reference_count": 6,
+    "direct_reference_count": 6,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "df983c3e5c19bd62bf913c4c79820df6f09353c5361aa39794b6ad7e55288b0c",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/GetAccountBalanceSP.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "GetAccountBalanceSP",
+      "method_signature": null,
+      "source_hash": "f59e733ef7bcbfe92c77e1213f242cdd50126058bbde230ce245c2177851ad32"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "e13abfbf8961e5f4c01244f34f37edd6b927c7ee1f8d99cd843f7cc5550d0c56",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCKColl.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCKColl",
+      "method_signature": null,
+      "source_hash": "e83e9b57eeea86540a90aa6b7ecbebf406affa9edb9f0ee6e42bb06864d360f8"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "e61f8f5ff8e81c3953f0fe2c7853b83f44cae40b5d138073291fc2552674cf07",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCIColl.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCIColl",
+      "method_signature": null,
+      "source_hash": "ac389a07d8ae1a86cda4356c16d02606a9800ae4e5e5e52ecb6e985dca557091"
+    },
+    "reference_count": 4,
+    "direct_reference_count": 4,
+    "indirect_reference_count": 0,
+    "operation_count": 4,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "ed762b67ac2ce0a1e76a9a21bbda0c5fb01bb73dfcac87018fe5dd17d656201e",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/CCOperationStep.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "CCOperationStep",
+      "method_signature": null,
+      "source_hash": "bdba80eb19b1472b584f9e327d0e51c64249bc354b6f84f97ab3828e3e026bff"
+    },
+    "reference_count": 47,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 47,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "f12ae0fb7b6d2e14c58e16eb03691dddf49ce5442e02269c481bd101d1102ce9",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCString.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCString",
+      "method_signature": null,
+      "source_hash": "ea468aff40ac74ec3555cd7464e729d0fd1f42f83a6652e388be733c4d153cc4"
+    },
+    "reference_count": 77,
+    "direct_reference_count": 77,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "7977cc770af63e79a12da9f69c9a5053058b264d6a10fb65e05597728d8e9473",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "bd05ac2d479ae058c1c0fd0e60bf5b9ce7941d8b7977e10e0ec430cc1690383c",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c6718958f546959c4420e8088e5908047786d264a3fc4df7e7d73abbebdbe9f5",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "f69f76b2a6eaa357bc90a809cf56bcd93034843a77464549a3f453163c98c0c4",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/ExecuteTransferSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "ExecuteTransferSP",
+      "method_signature": null,
+      "source_hash": "a2e3037c57693fba711306a9605165ab05b5abcd41dfc9d8169ea99ee38d2bcd"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "f94dee4f98e0df8e925afc51c8445735b5ed89b89f428bc670cfae06ea598234",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/SetChannelContext.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "SetChannelContext",
+      "method_signature": null,
+      "source_hash": "f6f0e6d9b8f7f67fa6900ad55ec8ea842c17769880bd1a8d6f197064fc80f95f"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "fb0262181d020585512671dbfe1a3365eb9d9564323828d38ccd6a716072b9df",
+      "workspace_id": "file:///C:/GitHub/shaybc/snapir/bank-demo/composer/Workspace",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/MaskLogDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "MaskLogDecorator",
+      "method_signature": null,
+      "source_hash": "fa4fa8f7545d2031baeb77e7d3845ca079b0cabcd572e9a267bc98ab385dd2fa"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "4939e44154e077911dcd143f31b316583b1691e4ddc45711b053fc67293c2513",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "4e1eead84c8e3836358f772daa2bad4e4f8f29af973f8e50583c7c84c1e893fb",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "b397ff2208c2df021da200b378b84615098ae82d2351db9c31100d03635c0836",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  }
+]

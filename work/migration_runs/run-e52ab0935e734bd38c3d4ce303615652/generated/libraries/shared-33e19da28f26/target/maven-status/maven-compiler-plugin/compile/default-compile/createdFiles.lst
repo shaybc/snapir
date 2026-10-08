@@ -1,0 +1,10 @@
+com\company\generated\CCOperationStep.class
+com\company\generated\decorator\CCPadding.class
+com\company\generated\Context.class
+com\company\generated\StandardErrorRSFmt.class
+com\company\generated\decorator\NilDecorator.class
+com\company\generated\MapErrorByValueAlways.class
+com\company\generated\CCPadding.class
+com\company\generated\Tag.class
+com\company\generated\CCString.class
+com\company\generated\CCXML.class
