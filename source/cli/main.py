@@ -29,7 +29,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", nargs="?", choices=["start", "status", "resume", "approve", "reject"])
     parser.add_argument("--config")
     parser.add_argument("--run-id")
-    parser.add_argument("--gate", type=int, choices=range(1, 5))
+    parser.add_argument('--connection-answers', help='JSON list of last-resort service/driver decisions for Resume')
+    parser.add_argument("--gate", type=lambda value: 'plan' if value == 'plan' else int(value), choices=[1, 2, 3, 4, 'plan'])
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Enable detailed file diagnostics; keep console progress concise.")
     args = parser.parse_args(argv)
@@ -58,10 +59,14 @@ def main(argv: list[str] | None = None) -> int:
                         if warning:
                             print(warning)
                 print(f"Run workspace: {directory}")
-                print("Intake stopped before model-driven planning. Inspect status for the persisted result.")
+                print("Intake result is saved. Inspect status and the intake reports for the plan or any blockers."
+                      if getattr(profile, 'conversion_strategy', None) == 'behavior_units' else
+                      "Intake stopped before model-driven planning. Inspect status for the persisted result.")
                 if not command_selected_from_menu:
                     return 0
-                print("You may review the intake reports before continuing. Choose Resume a migration when ready to begin planning.")
+                print("Review the conversion plan in the intake reports and approve it when required."
+                      if getattr(profile, 'conversion_strategy', None) == 'behavior_units' else
+                      "You may review the intake reports before continuing. Choose Resume a migration when ready to begin planning.")
                 args.run_id = None
             elif args.command in {"approve", "reject"} and command_selected_from_menu:
                 try:
@@ -83,6 +88,10 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "resume" and command_selected_from_menu:
                 try:
                     directory = select_resume_run()
+                    from cli.service_connections import answer_connection_questions
+                    from pathlib import Path
+                    answers = json.loads(Path(args.connection_answers).read_text()) if args.connection_answers else None
+                    answer_connection_questions(directory, answers=answers)
                     resumed_directory = resume_pipeline(str(directory.parent), directory.name)
                     database = run_database_path(directory)
                     with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as conn:
@@ -100,10 +109,15 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"Saved status: {result[0]}; checkpoint: {result[1] or 'No checkpoint'}")
                     print(f"Workflow stage: {workflow_stage_label(result[1])}")
                     print("Choose View run status to inspect the result and any review requirements.")
+                    from tools.state_store_tools.operation_progress import active_operation, operation_directory
+                    with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True) as progress_conn:
+                        progress_conn.row_factory = sqlite3.Row
+                        current = active_operation(progress_conn, directory.name)
+                    report_directory = operation_directory(directory, current['operation_key']) if current else directory
                     if result[0] == "paused" and result[1] == "gate_1_pending":
-                        offer_gate_one_report(directory)
+                        offer_gate_one_report(report_directory)
                     elif result[0] == "blocked" and result[1] == "closures_blocked":
-                        offer_dependency_closure_report(directory)
+                        offer_dependency_closure_report(report_directory)
                 args.run_id = None
             elif args.command == "status":
                 if command_selected_from_menu:
@@ -124,6 +138,11 @@ def main(argv: list[str] | None = None) -> int:
                         raise ValueError("Run not found")
                     status = {key: run[key] for key in ("run_id", "status", "current_phase")}
                     status["workflow_stage"] = workflow_stage_label(run["current_phase"])
+                    from tools.state_store_tools.operation_progress import progress_rows
+                    progress = progress_rows(conn, run_id)
+                    if progress:
+                        status['operations'] = [{key: item[key] for key in ('operation_key', 'position', 'status', 'phase')}
+                                                for item in progress]
                     print(json.dumps(status, indent=2))
                 if not command_selected_from_menu:
                     return 0
@@ -142,6 +161,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "resume":
             if not args.run_id:
                 parser.error("resume requires --run-id")
+            if args.connection_answers:
+                directory = resolve_run_directory(profile.output_root, args.run_id)
+                from cli.service_connections import answer_connection_questions
+                from pathlib import Path
+                answers = json.loads(Path(args.connection_answers).read_text())
+                answer_connection_questions(directory, answers=answers)
             print(f"Run workspace: {resume_pipeline(profile.output_root, args.run_id)}")
         elif args.command in {"approve", "reject"}:
             if not args.run_id or not args.gate:

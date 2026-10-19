@@ -1,0 +1,89 @@
+{
+  "files": [
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStep.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\n/**\n * Converted unit: ValidationFailed\n * Configuration XML:\n * <opStep id=\"ValidationFailed\" implClass=\"com.ibm.il.dse.operations.common.MapErrorByValueAlways\" ErrorCategory=\"10\" ErrorNumber=\"2\" on0Return=\"ErrorBody\" onOtherDo=\"end\" />\n */\npublic class ValidationFailedStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public ValidationFailedStep() {\n        this.errorCategory = \"10\";\n        this.errorNumber = \"2\";\n    }\n\n    public ValidationFailedResult execute(ValidationFailedInput input) {\n        if (input == null) {\n            input = new ValidationFailedInput();\n        }\n        String description = resolveErrorDescription(errorCategory, errorNumber);\n        return new ValidationFailedResult(0, errorCategory, errorNumber, description);\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedInput.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\npublic class ValidationFailedInput {\n    public ValidationFailedInput() {\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedResult.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\npublic class ValidationFailedResult {\n    private final int returnCode;\n    private final String errorCategory;\n    private final String errorNumber;\n    private final String errorDescription;\n\n    public ValidationFailedResult(int returnCode, String errorCategory, String errorNumber, String errorDescription) {\n        this.returnCode = returnCode;\n        this.errorCategory = errorCategory;\n        this.errorNumber = errorNumber;\n        this.errorDescription = errorDescription;\n    }\n\n    public int getReturnCode() {\n        return returnCode;\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public String getErrorDescription() {\n        return errorDescription;\n    }\n}\n"
+    },
+    {
+      "path": "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepTest.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class ValidationFailedStepTest {\n\n    @Test\n    public void testValidationFailedExecution() {\n        ValidationFailedInput input = new ValidationFailedInput();\n        ValidationFailedStep step = new ValidationFailedStep();\n        \n        ValidationFailedResult result = step.execute(input);\n        \n        assertNotNull(result);\n        assertEquals(0, result.getReturnCode());\n        assertEquals(\"10\", result.getErrorCategory());\n        assertEquals(\"2\", result.getErrorNumber());\n        assertEquals(\"Validation failed: required field missing or invalid\", result.getErrorDescription());\n    }\n}\n"
+    }
+  ],
+  "dependencies": [
+    {
+      "group_id": "org.junit.jupiter",
+      "artifact_id": "junit-jupiter",
+      "version": "5.9.3",
+      "scope": "test",
+      "reason": "JUnit 5 for modern unit testing.",
+      "required_classes": [
+        "org.junit.jupiter.api.Test",
+        "org.junit.jupiter.api.Assertions"
+      ]
+    }
+  ],
+  "coverage": {
+    "configured_step-2e52a65fe1cea8c4efb9ba82": [
+      "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepTest.java"
+    ]
+  },
+  "evidence_ids": [
+    "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "com.ibm.dse.base.CCOperationStep",
+    "com.ibm.dse.base.Context",
+    "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+  ],
+  "unresolved_questions": [],
+  "unit_contract": {
+    "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "apis": [
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+        "method_signatures": [
+          "public com.company.generated.units.u2e52a65fe1ce.ValidationFailedResult execute(com.company.generated.units.u2e52a65fe1ce.ValidationFailedInput input)",
+          "public java.lang.String getErrorCategory()",
+          "public java.lang.String getErrorNumber()"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedInput",
+        "method_signatures": [
+          "public ValidationFailedInput()"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedResult",
+        "method_signatures": [
+          "public ValidationFailedResult(int returnCode, java.lang.String errorCategory, java.lang.String errorNumber, java.lang.String errorDescription)",
+          "public int getReturnCode()",
+          "public java.lang.String getErrorCategory()",
+          "public java.lang.String getErrorNumber()",
+          "public java.lang.String getErrorDescription()"
+        ]
+      }
+    ],
+    "dependency_units": [],
+    "requirements": {
+      "business": "Preserve this complete configured unit's evidenced behavior"
+    },
+    "evidence_ids": [
+      "configured_step-2e52a65fe1cea8c4efb9ba82",
+      "com.ibm.dse.base.CCOperationStep",
+      "com.ibm.dse.base.Context",
+      "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+    ]
+  },
+  "input_type": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedInput",
+  "output_type": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedResult",
+  "wire_type": null,
+  "operation_contract": null,
+  "schema_version": "v1"
+}

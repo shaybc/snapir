@@ -1,0 +1,640 @@
+{
+  "output": {
+    "dependencies": [
+      {
+        "group_id": "org.springframework.boot",
+        "artifact_id": "spring-boot-starter-web",
+        "version": "3.5.16",
+        "scope": "compile",
+        "reason": "Spring Boot Web starter for REST/XML endpoint controller handling.",
+        "required_classes": [
+          "org.springframework.boot.SpringApplication",
+          "org.springframework.boot.autoconfigure.SpringBootApplication",
+          "org.springframework.web.bind.annotation.RestController",
+          "org.springframework.web.bind.annotation.PostMapping",
+          "org.springframework.web.bind.annotation.RequestBody",
+          "org.springframework.http.ResponseEntity",
+          "org.springframework.http.HttpStatus"
+        ]
+      },
+      {
+        "group_id": "org.springframework.boot",
+        "artifact_id": "spring-boot-starter-jdbc",
+        "version": "3.5.16",
+        "scope": "compile",
+        "reason": "Spring Boot JDBC starter for DataSource configuration and runtime_resources binding.",
+        "required_classes": [
+          "javax.sql.DataSource",
+          "org.springframework.jdbc.datasource.DriverManagerDataSource"
+        ]
+      },
+      {
+        "group_id": "org.springframework.boot",
+        "artifact_id": "spring-boot-starter-test",
+        "version": "3.5.16",
+        "scope": "test",
+        "reason": "Spring Boot Test starter for wiring and context tests.",
+        "required_classes": [
+          "org.springframework.boot.test.context.SpringBootTest",
+          "org.junit.jupiter.api.Test"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Jackson databind required by jackson-dataformat-xml.",
+        "required_classes": [
+          "com.fasterxml.jackson.databind.ObjectMapper"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Jackson XML dataformat for XML message conversion in Spring MVC.",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.XmlMapper"
+        ]
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-aacf434ff625",
+        "version": "1.0.0-cdbfffbd6243",
+        "scope": "compile",
+        "reason": "Shared migration library providing ValidationFailedStep.",
+        "required_classes": [
+          "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep"
+        ]
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-cdbfffbd6243",
+        "scope": "compile",
+        "reason": "Shared migration library providing TechnicalErrorStep and DatabaseErrorStep.",
+        "required_classes": [
+          "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+          "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep"
+        ]
+      }
+    ],
+    "files": {
+      "src/main/java/com/company/generated/Application.java": "package com.company.generated;\n\nimport org.springframework.boot.SpringApplication;\nimport org.springframework.boot.autoconfigure.SpringBootApplication;\n\n@SpringBootApplication\npublic class Application {\n    public static void main(String[] args) {\n        SpringApplication.run(Application.class, args);\n    }\n}\n",
+      "src/main/java/com/company/generated/config/TransferFundsOpConfiguration.java": "package com.company.generated.config;\n\nimport com.company.generated.operations.TransferFundsOpService;\nimport com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep;\nimport com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep;\nimport com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep;\nimport com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep;\nimport com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep;\nimport com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep;\nimport com.company.generated.units.u4ef069d52e8c.CheckLimitsStep;\nimport com.company.generated.units.u6d24746bc47a.ExecuteTransferStep;\nimport com.company.generated.units.u87dd336469df.InsufficientFundsStep;\nimport com.company.generated.units.u90e3461e522a.FraudSuspectedStep;\nimport com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep;\nimport com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep;\nimport com.company.generated.units.udb5b1a29f676.ValidateTransferStep;\nimport com.company.generated.units.uf2c8754a25a6.FraudCheckStep;\nimport com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort;\nimport org.springframework.beans.factory.annotation.Qualifier;\nimport org.springframework.boot.context.properties.ConfigurationProperties;\nimport org.springframework.context.annotation.Bean;\nimport org.springframework.context.annotation.Configuration;\nimport org.springframework.jdbc.datasource.DriverManagerDataSource;\n\nimport javax.sql.DataSource;\n\n@Configuration\npublic class TransferFundsOpConfiguration {\n\n    @Bean(name = \"CoreBankingRejected\")\n    public CoreBankingRejectedStep coreBankingRejectedStep() {\n        return new CoreBankingRejectedStep();\n    }\n\n    @Bean(name = \"SkipFraudOnTimeout\")\n    public SkipFraudOnTimeoutStep skipFraudOnTimeoutStep() {\n        return new SkipFraudOnTimeoutStep(\"FraudCheckSkipped\", \"true\");\n    }\n\n    @Bean(name = \"ExecuteTransfer\")\n    public ExecuteTransferStep executeTransferStep() {\n        return new ExecuteTransferStep();\n    }\n\n    @Bean(name = \"DailyLimitExceeded\")\n    public DailyLimitExceededStep dailyLimitExceededStep() {\n        return new DailyLimitExceededStep();\n    }\n\n    @Bean(name = \"TransferAlreadyProcessed\")\n    public TransferAlreadyProcessedStep transferAlreadyProcessedStep() {\n        return new TransferAlreadyProcessedStep();\n    }\n\n    @Bean(name = \"FraudCheck\")\n    public FraudCheckStep fraudCheckStep(FraudDetectionServicePort fraudDetectionServicePort) {\n        return new FraudCheckStep(5000, fraudDetectionServicePort);\n    }\n\n    @Bean\n    public FraudDetectionServicePort fraudDetectionServicePort() {\n        return (requestPayload, timeoutMillis) -> \"<FraudCheckResponse><Score>10</Score><Decision>ALLOW</Decision></FraudCheckResponse>\";\n    }\n\n    @Bean(name = \"FraudSuspected\")\n    public FraudSuspectedStep fraudSuspectedStep() {\n        return new FraudSuspectedStep();\n    }\n\n    @Bean(name = \"ValidationFailed\")\n    public ValidationFailedStep validationFailedStep() {\n        return new ValidationFailedStep();\n    }\n\n    @Bean(name = \"InsufficientFunds\")\n    public InsufficientFundsStep insufficientFundsStep() {\n        return new InsufficientFundsStep();\n    }\n\n    @Bean(name = \"ValidateTransfer\")\n    public ValidateTransferStep validateTransferStep() {\n        return new ValidateTransferStep();\n    }\n\n    @Bean(name = \"AccountNotEligible\")\n    public AccountNotEligibleStep accountNotEligibleStep() {\n        return new AccountNotEligibleStep();\n    }\n\n    @Bean(name = \"TechnicalError\")\n    public TechnicalErrorStep technicalErrorStep() {\n        return new TechnicalErrorStep();\n    }\n\n    @Bean(name = \"CheckLimits\")\n    public CheckLimitsStep checkLimitsStep() {\n        return new CheckLimitsStep();\n    }\n\n    @Bean(name = \"DatabaseError\")\n    public DatabaseErrorStep databaseErrorStep() {\n        return new DatabaseErrorStep();\n    }\n\n    @Bean\n    @ConfigurationProperties(prefix = \"spring.datasource\")\n    public DataSource dataSource() {\n        DriverManagerDataSource dataSource = new DriverManagerDataSource();\n        dataSource.setDriverClassName(\"org.h2.Driver\");\n        return dataSource;\n    }\n\n    @Bean\n    public TransferFundsOpService transferFundsOpService(\n            @Qualifier(\"CoreBankingRejected\") CoreBankingRejectedStep coreBankingRejected,\n            @Qualifier(\"SkipFraudOnTimeout\") SkipFraudOnTimeoutStep skipFraudOnTimeout,\n            @Qualifier(\"ExecuteTransfer\") ExecuteTransferStep executeTransfer,\n            @Qualifier(\"DailyLimitExceeded\") DailyLimitExceededStep dailyLimitExceeded,\n            @Qualifier(\"TransferAlreadyProcessed\") TransferAlreadyProcessedStep transferAlreadyProcessed,\n            @Qualifier(\"FraudCheck\") FraudCheckStep fraudCheck,\n            @Qualifier(\"FraudSuspected\") FraudSuspectedStep fraudSuspected,\n            @Qualifier(\"ValidationFailed\") ValidationFailedStep validationFailed,\n            @Qualifier(\"InsufficientFunds\") InsufficientFundsStep insufficientFunds,\n            @Qualifier(\"ValidateTransfer\") ValidateTransferStep validateTransfer,\n            @Qualifier(\"AccountNotEligible\") AccountNotEligibleStep accountNotEligible,\n            @Qualifier(\"TechnicalError\") TechnicalErrorStep technicalError,\n            @Qualifier(\"CheckLimits\") CheckLimitsStep checkLimits,\n            @Qualifier(\"DatabaseError\") DatabaseErrorStep databaseError,\n            DataSource dataSource) {\n        return new TransferFundsOpService(\n                coreBankingRejected,\n                skipFraudOnTimeout,\n                executeTransfer,\n                dailyLimitExceeded,\n                transferAlreadyProcessed,\n                fraudCheck,\n                fraudSuspected,\n                validationFailed,\n                insufficientFunds,\n                validateTransfer,\n                accountNotEligible,\n                technicalError,\n                checkLimits,\n                databaseError,\n                dataSource\n        );\n    }\n}\n",
+      "src/main/java/com/company/generated/controller/GlobalExceptionHandler.java": "package com.company.generated.controller;\n\nimport com.company.generated.units.u66bf2c108225.ErrorReply;\nimport com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper;\nimport org.springframework.http.MediaType;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.ControllerAdvice;\nimport org.springframework.web.bind.annotation.ExceptionHandler;\n\n@ControllerAdvice\npublic class GlobalExceptionHandler {\n\n    private final StandardErrorRSFmtMapper errorMapper = new StandardErrorRSFmtMapper();\n\n    @ExceptionHandler(Exception.class)\n    public ResponseEntity<String> handleException(Exception ex) {\n        try {\n            ErrorReply reply = new ErrorReply(\"99\", \"0\", ex.getMessage() != null ? ex.getMessage() : \"Technical error: unexpected system failure\", \"REQ-001\");\n            String errorXml = errorMapper.format(reply);\n            return ResponseEntity.status(500).contentType(MediaType.APPLICATION_XML).body(errorXml);\n        } catch (Exception e) {\n            return ResponseEntity.status(500).contentType(MediaType.APPLICATION_XML).body(\"<ErrorReply><ErrorCategory>99</ErrorCategory><ErrorNumber>0</ErrorNumber><ErrorDescription>Technical error</ErrorDescription><RequestId>REQ-001</RequestId></ErrorReply>\");\n        }\n    }\n}\n",
+      "src/main/java/com/company/generated/controller/TransferFundsOpController.java": "package com.company.generated.controller;\n\nimport com.company.generated.operations.TransferFundsOpService;\nimport com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml;\nimport org.springframework.http.MediaType;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.PostMapping;\nimport org.springframework.web.bind.annotation.RequestBody;\nimport org.springframework.web.bind.annotation.RequestMapping;\nimport org.springframework.web.bind.annotation.RestController;\n\n@RestController\n@RequestMapping(\"/api/transfer-funds\")\npublic class TransferFundsOpController {\n\n    private final TransferFundsOpService service;\n\n    public TransferFundsOpController(TransferFundsOpService service) {\n        this.service = service;\n    }\n\n    @PostMapping(consumes = MediaType.APPLICATION_XML_VALUE, produces = MediaType.APPLICATION_XML_VALUE)\n    public ResponseEntity<String> execute(@RequestBody TransferFundsRequestXml requestXml) throws Exception {\n        String result = service.execute(requestXml);\n        return ResponseEntity.ok(result);\n    }\n}\n",
+      "src/main/resources/application.properties": "spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1}\nspring.datasource.username=${SPRING_DATASOURCE_USERNAME:sa}\nspring.datasource.password=${SPRING_DATASOURCE_PASSWORD:}\nspring.datasource.driver-class-name=org.h2.Driver\n",
+      "src/test/java/com/company/generated/TransferFundsOpWiringTest.java": "package com.company.generated;\n\nimport com.company.generated.config.TransferFundsOpConfiguration;\nimport com.company.generated.operations.TransferFundsOpService;\nimport com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep;\nimport com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep;\nimport com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep;\nimport com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep;\nimport com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep;\nimport com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep;\nimport com.company.generated.units.u4ef069d52e8c.CheckLimitsStep;\nimport com.company.generated.units.u6d24746bc47a.ExecuteTransferStep;\nimport com.company.generated.units.u87dd336469df.InsufficientFundsStep;\nimport com.company.generated.units.u90e3461e522a.FraudSuspectedStep;\nimport com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep;\nimport com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep;\nimport com.company.generated.units.udb5b1a29f676.ValidateTransferStep;\nimport com.company.generated.units.uf2c8754a25a6.FraudCheckStep;\nimport org.junit.jupiter.api.Test;\nimport org.springframework.context.annotation.AnnotationConfigApplicationContext;\n\nimport static org.junit.jupiter.api.Assertions.assertNotNull;\n\npublic class TransferFundsOpWiringTest {\n\n    @Test\n    public void testWiring() {\n        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(TransferFundsOpConfiguration.class)) {\n            TransferFundsOpService service = context.getBean(TransferFundsOpService.class);\n            assertNotNull(service);\n\n            assertNotNull(context.getBean(\"CoreBankingRejected\", CoreBankingRejectedStep.class));\n            assertNotNull(context.getBean(\"SkipFraudOnTimeout\", SkipFraudOnTimeoutStep.class));\n            assertNotNull(context.getBean(\"ExecuteTransfer\", ExecuteTransferStep.class));\n            assertNotNull(context.getBean(\"DailyLimitExceeded\", DailyLimitExceededStep.class));\n            assertNotNull(context.getBean(\"TransferAlreadyProcessed\", TransferAlreadyProcessedStep.class));\n            assertNotNull(context.getBean(\"FraudCheck\", FraudCheckStep.class));\n            assertNotNull(context.getBean(\"FraudSuspected\", FraudSuspectedStep.class));\n            assertNotNull(context.getBean(\"ValidationFailed\", ValidationFailedStep.class));\n            assertNotNull(context.getBean(\"InsufficientFunds\", InsufficientFundsStep.class));\n            assertNotNull(context.getBean(\"ValidateTransfer\", ValidateTransferStep.class));\n            assertNotNull(context.getBean(\"AccountNotEligible\", AccountNotEligibleStep.class));\n            assertNotNull(context.getBean(\"TechnicalError\", TechnicalErrorStep.class));\n            assertNotNull(context.getBean(\"CheckLimits\", CheckLimitsStep.class));\n            assertNotNull(context.getBean(\"DatabaseError\", DatabaseErrorStep.class));\n        }\n    }\n}\n"
+    }
+  },
+  "contract": {
+    "sources": [
+      {
+        "identity": "com.ibm.il.dse.cc.cut.CCDSEServerOperation",
+        "content_hash": "fcaf68594b17326659d327bcc975553a231d2d1e62f7b741959b9e142603d288"
+      }
+    ],
+    "units": [
+      {
+        "unit_id": "configured_step-06cdcaacb2a8a3f59d355714",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-06cdcaacb2a8a3f59d355714",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-3edad4d894ed99ee7fe5ae71",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getFieldName()",
+              "public java.lang.String getFieldValue()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-3edad4d894ed99ee7fe5ae71",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.SetChannelContext"
+        ]
+      },
+      {
+        "unit_id": "configured_step-6d24746bc47ab347906af82e",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u6d24746bc47a.ExecuteTransferStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-6d24746bc47ab347906af82e",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.internet.db.ExecuteTransferSP"
+        ]
+      },
+      {
+        "unit_id": "configured_step-1bde9d232fc468f3294efa84",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-1bde9d232fc468f3294efa84",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-b9a6a73909a9f8639bb03fb9",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-b9a6a73909a9f8639bb03fb9",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-f2c8754a25a6fcd6cc4ca9db",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.uf2c8754a25a6.FraudCheckStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort",
+            "method_signatures": [
+              "public java.lang.String call(java.lang.String, int) throws java.lang.Exception"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-f2c8754a25a6fcd6cc4ca9db",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.cc.service.communication.http.HTTPService",
+          "com.ibm.il.dse.operations.internet.service.CallFraudDetection"
+        ]
+      },
+      {
+        "unit_id": "configured_step-90e3461e522ae6dd954af290",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u90e3461e522a.FraudSuspectedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-90e3461e522ae6dd954af290",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-2e52a65fe1cea8c4efb9ba82",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-87dd336469df574d0e064f34",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u87dd336469df.InsufficientFundsStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-87dd336469df574d0e064f34",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-db5b1a29f676c69d7416ffa2",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.udb5b1a29f676.ValidateTransferStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-db5b1a29f676c69d7416ffa2",
+          "com.ibm.il.dse.operations.common.ValidateInputFields"
+        ]
+      },
+      {
+        "unit_id": "configured_step-1e4c733765f028f5f1feb889",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-1e4c733765f028f5f1feb889",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-9d214a54d7b141366dcd456c",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "configured_step-4ef069d52e8c34da08bcf72a",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u4ef069d52e8c.CheckLimitsStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-4ef069d52e8c34da08bcf72a",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.internet.db.ValidateTransferLimitsSP"
+        ]
+      },
+      {
+        "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-3a42c4326e3d7f21467b61b2",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      {
+        "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+            "method_signatures": [
+              "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ]
+      },
+      {
+        "unit_id": "response_format-b5afca9c05e0bac028e66617",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness",
+            "method_signatures": [
+              "public java.lang.String getTransferId()",
+              "public void setTransferId(java.lang.String)",
+              "public java.lang.String getTransferStatus()",
+              "public void setTransferStatus(java.lang.String)",
+              "public java.util.Date getExecutionDate()",
+              "public void setExecutionDate(java.util.Date)",
+              "public java.util.Date getExecutionTime()",
+              "public void setExecutionTime(java.util.Date)",
+              "public java.math.BigDecimal getAmount()",
+              "public void setAmount(java.math.BigDecimal)",
+              "public java.lang.String getCurrency()",
+              "public void setCurrency(java.lang.String)",
+              "public java.lang.String getSourceAccount()",
+              "public void setSourceAccount(java.lang.String)",
+              "public java.lang.String getTargetAccount()",
+              "public void setTargetAccount(java.lang.String)",
+              "public java.math.BigDecimal getNewSourceBalance()",
+              "public void setNewSourceBalance(java.math.BigDecimal)",
+              "public java.lang.Boolean getFraudCheckSkipped()",
+              "public void setFraudCheckSkipped(java.lang.Boolean)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+            "method_signatures": []
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness) throws java.lang.Exception",
+              "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness unformat(java.lang.String) throws java.lang.Exception"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-b5afca9c05e0bac028e66617",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCBoolean",
+          "com.ibm.il.dse.cc.format.CCDate",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCTime",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ]
+      },
+      {
+        "unit_id": "response_format-66bf2c108225fb63eb2a0cbe",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.u66bf2c108225.ErrorReply)",
+              "public com.company.generated.units.u66bf2c108225.ErrorReply unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-66bf2c108225fb63eb2a0cbe"
+        ]
+      }
+    ],
+    "service_api": {
+      "type_name": "com.company.generated.operations.TransferFundsOpService",
+      "method_signatures": [
+        "public java.lang.String execute(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml) throws java.lang.Exception"
+      ]
+    },
+    "request_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+    "success_type": "java.lang.String",
+    "error_type": "java.lang.String",
+    "request_wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+    "success_wire_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+    "error_wire_type": "com.company.generated.units.u66bf2c108225.ErrorReplyXml",
+    "service_requirements": {
+      "operation-flow": "Preserve the configured operation order, outcome/error branches and initialization",
+      "operation-step-injection": "Receive all configured operation-step objects through the service constructor; never construct them inside the service. Preserve role bindings and configure required external resources."
+    },
+    "step_dependencies": [
+      {
+        "binding_id": "CoreBankingRejected",
+        "unit_id": "configured_step-06cdcaacb2a8a3f59d355714",
+        "type_name": "com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep",
+        "parameter_name": "coreBankingRejected",
+        "field_name": "coreBankingRejected"
+      },
+      {
+        "binding_id": "SkipFraudOnTimeout",
+        "unit_id": "configured_step-3edad4d894ed99ee7fe5ae71",
+        "type_name": "com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep",
+        "parameter_name": "skipFraudOnTimeout",
+        "field_name": "skipFraudOnTimeout"
+      },
+      {
+        "binding_id": "ExecuteTransfer",
+        "unit_id": "configured_step-6d24746bc47ab347906af82e",
+        "type_name": "com.company.generated.units.u6d24746bc47a.ExecuteTransferStep",
+        "parameter_name": "executeTransfer",
+        "field_name": "executeTransfer"
+      },
+      {
+        "binding_id": "DailyLimitExceeded",
+        "unit_id": "configured_step-1bde9d232fc468f3294efa84",
+        "type_name": "com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep",
+        "parameter_name": "dailyLimitExceeded",
+        "field_name": "dailyLimitExceeded"
+      },
+      {
+        "binding_id": "TransferAlreadyProcessed",
+        "unit_id": "configured_step-b9a6a73909a9f8639bb03fb9",
+        "type_name": "com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep",
+        "parameter_name": "transferAlreadyProcessed",
+        "field_name": "transferAlreadyProcessed"
+      },
+      {
+        "binding_id": "FraudCheck",
+        "unit_id": "configured_step-f2c8754a25a6fcd6cc4ca9db",
+        "type_name": "com.company.generated.units.uf2c8754a25a6.FraudCheckStep",
+        "parameter_name": "fraudCheck",
+        "field_name": "fraudCheck"
+      },
+      {
+        "binding_id": "FraudSuspected",
+        "unit_id": "configured_step-90e3461e522ae6dd954af290",
+        "type_name": "com.company.generated.units.u90e3461e522a.FraudSuspectedStep",
+        "parameter_name": "fraudSuspected",
+        "field_name": "fraudSuspected"
+      },
+      {
+        "binding_id": "ValidationFailed",
+        "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+        "parameter_name": "validationFailed",
+        "field_name": "validationFailed"
+      },
+      {
+        "binding_id": "InsufficientFunds",
+        "unit_id": "configured_step-87dd336469df574d0e064f34",
+        "type_name": "com.company.generated.units.u87dd336469df.InsufficientFundsStep",
+        "parameter_name": "insufficientFunds",
+        "field_name": "insufficientFunds"
+      },
+      {
+        "binding_id": "ValidateTransfer",
+        "unit_id": "configured_step-db5b1a29f676c69d7416ffa2",
+        "type_name": "com.company.generated.units.udb5b1a29f676.ValidateTransferStep",
+        "parameter_name": "validateTransfer",
+        "field_name": "validateTransfer"
+      },
+      {
+        "binding_id": "AccountNotEligible",
+        "unit_id": "configured_step-1e4c733765f028f5f1feb889",
+        "type_name": "com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep",
+        "parameter_name": "accountNotEligible",
+        "field_name": "accountNotEligible"
+      },
+      {
+        "binding_id": "TechnicalError",
+        "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+        "type_name": "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+        "parameter_name": "technicalError",
+        "field_name": "technicalError"
+      },
+      {
+        "binding_id": "CheckLimits",
+        "unit_id": "configured_step-4ef069d52e8c34da08bcf72a",
+        "type_name": "com.company.generated.units.u4ef069d52e8c.CheckLimitsStep",
+        "parameter_name": "checkLimits",
+        "field_name": "checkLimits"
+      },
+      {
+        "binding_id": "DatabaseError",
+        "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+        "type_name": "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep",
+        "parameter_name": "databaseError",
+        "field_name": "databaseError"
+      }
+    ],
+    "runtime_resources": [
+      {
+        "input_key": "Connection",
+        "resource_type": "java.sql.Connection",
+        "provider_type": "javax.sql.DataSource",
+        "parameter_name": "dataSource",
+        "field_name": "dataSource"
+      }
+    ],
+    "unresolved_questions": [],
+    "schema_version": "v1"
+  },
+  "failure_class": "wiring_test_not_executed",
+  "test_error": "Could not load JDBC driver class [org.h2.Driver]"
+}

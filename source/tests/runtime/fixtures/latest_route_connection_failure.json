@@ -1,0 +1,1967 @@
+{
+  "implementation": {
+    "files": [
+      {
+        "path": "src/main/java/com/company/generated/operations/TransferFundsOpService.java",
+        "content": "package com.company.generated.operations;\n\nimport com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep;\nimport com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep;\nimport com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep;\nimport com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep;\nimport com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep;\nimport com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep;\nimport com.company.generated.units.u4ef069d52e8c.CheckLimitsStep;\nimport com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness;\nimport com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper;\nimport com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml;\nimport com.company.generated.units.u66bf2c108225.ErrorReply;\nimport com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper;\nimport com.company.generated.units.u6d24746bc47a.ExecuteTransferStep;\nimport com.company.generated.units.u87dd336469df.InsufficientFundsStep;\nimport com.company.generated.units.u90e3461e522a.FraudSuspectedStep;\nimport com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep;\nimport com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness;\nimport com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapper;\nimport com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep;\nimport com.company.generated.units.udb5b1a29f676.ValidateTransferStep;\nimport com.company.generated.units.uf2c8754a25a6.FraudCheckStep;\nimport com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort;\n\nimport java.math.BigDecimal;\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.concurrent.TimeoutException;\n\npublic class TransferFundsOpService {\n\n    private final TransferFundsRequestMapper requestMapper;\n    private final TransferFundsResponseMapper responseMapper;\n    private final StandardErrorRSFmtMapper errorResponseMapper;\n    \n    private final ValidateTransferStep validateTransferStep;\n    private final CheckLimitsStep checkLimitsStep;\n    private final FraudCheckStep fraudCheckStep;\n    private final SkipFraudOnTimeoutStep skipFraudOnTimeoutStep;\n    private final ExecuteTransferStep executeTransferStep;\n    \n    private final ValidationFailedStep validationFailedStep;\n    private final InsufficientFundsStep insufficientFundsStep;\n    private final DailyLimitExceededStep dailyLimitExceededStep;\n    private final AccountNotEligibleStep accountNotEligibleStep;\n    private final FraudSuspectedStep fraudSuspectedStep;\n    private final CoreBankingRejectedStep coreBankingRejectedStep;\n    private final TransferAlreadyProcessedStep transferAlreadyProcessedStep;\n    private final DatabaseErrorStep databaseErrorStep;\n    private final TechnicalErrorStep technicalErrorStep;\n\n    public TransferFundsOpService(FraudDetectionServicePort fraudDetectionService) {\n        this.requestMapper = new TransferFundsRequestMapper();\n        this.responseMapper = new TransferFundsResponseMapper();\n        this.errorResponseMapper = new StandardErrorRSFmtMapper();\n        \n        this.validateTransferStep = new ValidateTransferStep();\n        this.checkLimitsStep = new CheckLimitsStep();\n        this.fraudCheckStep = new FraudCheckStep(3000, fraudDetectionService);\n        this.skipFraudOnTimeoutStep = new SkipFraudOnTimeoutStep();\n        this.executeTransferStep = new ExecuteTransferStep();\n        \n        this.validationFailedStep = new ValidationFailedStep();\n        this.insufficientFundsStep = new InsufficientFundsStep();\n        this.dailyLimitExceededStep = new DailyLimitExceededStep();\n        this.accountNotEligibleStep = new AccountNotEligibleStep();\n        this.fraudSuspectedStep = new FraudSuspectedStep();\n        this.coreBankingRejectedStep = new CoreBankingRejectedStep();\n        this.transferAlreadyProcessedStep = new TransferAlreadyProcessedStep();\n        this.databaseErrorStep = new DatabaseErrorStep();\n        this.technicalErrorStep = new TechnicalErrorStep();\n    }\n\n    public String execute(String requestXml) throws Exception {\n        TransferFundsRequestXml reqXml = parseRequestXml(requestXml);\n        TransferFundsRequestBusiness reqBiz = requestMapper.toBusinessInput(reqXml);\n        \n        Map<String, Object> context = new HashMap<>();\n        context.put(\"CHANNEL_ID\", \"INTERNET\");\n        context.put(\"MAX_RETRY\", \"3\");\n        context.put(\"TransferStatus\", \"PENDING\");\n        context.put(\"FraudScore\", \"0\");\n        \n        if (reqBiz != null) {\n            context.put(\"SourceAccount\", reqBiz.getSourceAccount());\n            context.put(\"TargetAccount\", reqBiz.getTargetAccount());\n            context.put(\"Amount\", reqBiz.getAmount());\n            context.put(\"Currency\", reqBiz.getCurrency());\n            context.put(\"SessionToken\", reqBiz.getSessionToken());\n            context.put(\"TransferReference\", reqBiz.getTransferReference());\n            context.put(\"ScheduledDate\", reqBiz.getScheduledDate());\n        }\n\n        String currentStep = \"ValidateTransfer\";\n        int rc = 0;\n        boolean errorBodySwitched = false;\n        Object activeErrorStep = null;\n\n        while (currentStep != null && !currentStep.equals(\"end\")) {\n            switch (currentStep) {\n                case \"ValidateTransfer\":\n                    rc = validateTransferStep.execute(context);\n                    if (rc == 0) {\n                        currentStep = \"CheckLimits\";\n                    } else {\n                        currentStep = \"ValidationFailed\";\n                    }\n                    break;\n\n                case \"CheckLimits\":\n                    rc = checkLimitsStep.execute(context);\n                    if (rc == 0) {\n                        currentStep = \"FraudCheck\";\n                    } else if (rc == 3) {\n                        currentStep = \"DailyLimitExceeded\";\n                    } else if (rc == 4) {\n                        currentStep = \"InsufficientFunds\";\n                    } else if (rc == 5) {\n                        currentStep = \"AccountNotEligible\";\n                    } else if (rc == 8) {\n                        currentStep = \"DatabaseError\";\n                    } else {\n                        currentStep = \"TechnicalError\";\n                    }\n                    break;\n\n                case \"FraudCheck\":\n                    try {\n                        rc = fraudCheckStep.execute(context);\n                    } catch (TimeoutException te) {\n                        rc = -99;\n                    } catch (Exception e) {\n                        rc = 8;\n                    }\n                    if (rc == -99) {\n                        currentStep = \"SkipFraudOnTimeout\";\n                    } else if (rc == 0) {\n                        currentStep = \"ExecuteTransfer\";\n                    } else if (rc == 2) {\n                        currentStep = \"FraudSuspected\";\n                    } else {\n                        currentStep = \"TechnicalError\";\n                    }\n                    break;\n\n                case \"SkipFraudOnTimeout\":\n                    try {\n                        rc = skipFraudOnTimeoutStep.execute(context);\n                    } catch (Exception e) {\n                        rc = 1;\n                    }\n                    if (rc == 0) {\n                        currentStep = \"ExecuteTransfer\";\n                    } else {\n                        currentStep = \"TechnicalError\";\n                    }\n                    break;\n\n                case \"ExecuteTransfer\":\n                    rc = executeTransferStep.execute(context);\n                    if (rc == 0) {\n                        currentStep = \"end\";\n                    } else if (rc == 6) {\n                        currentStep = \"CoreBankingRejected\";\n                    } else if (rc == 7) {\n                        currentStep = \"TransferAlreadyProcessed\";\n                    } else if (rc == 8) {\n                        currentStep = \"DatabaseError\";\n                    } else {\n                        currentStep = \"TechnicalError\";\n                    }\n                    break;\n\n                case \"ValidationFailed\":\n                    validationFailedStep.execute(context);\n                    activeErrorStep = validationFailedStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"InsufficientFunds\":\n                    insufficientFundsStep.execute(context);\n                    activeErrorStep = insufficientFundsStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"DailyLimitExceeded\":\n                    dailyLimitExceededStep.execute(context);\n                    activeErrorStep = dailyLimitExceededStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"AccountNotEligible\":\n                    accountNotEligibleStep.execute(context);\n                    activeErrorStep = accountNotEligibleStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"FraudSuspected\":\n                    fraudSuspectedStep.execute(context);\n                    activeErrorStep = fraudSuspectedStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"CoreBankingRejected\":\n                    coreBankingRejectedStep.execute(context);\n                    activeErrorStep = coreBankingRejectedStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"TransferAlreadyProcessed\":\n                    transferAlreadyProcessedStep.execute(context);\n                    activeErrorStep = transferAlreadyProcessedStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"DatabaseError\":\n                    databaseErrorStep.execute(context);\n                    activeErrorStep = databaseErrorStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                case \"TechnicalError\":\n                    technicalErrorStep.execute(context);\n                    activeErrorStep = technicalErrorStep;\n                    errorBodySwitched = true;\n                    currentStep = \"end\";\n                    break;\n\n                default:\n                    currentStep = \"end\";\n                    break;\n            }\n        }\n\n        if (errorBodySwitched && activeErrorStep != null) {\n            ErrorReply errorReply = new ErrorReply();\n            if (activeErrorStep instanceof ValidationFailedStep) {\n                errorReply.setErrorCategory((String) context.get(\"ErrorCategory\"));\n                errorReply.setErrorNumber((String) context.get(\"ErrorNumber\"));\n                errorReply.setErrorDescription((String) context.get(\"ErrorDescription\"));\n            } else {\n                try {\n                    java.lang.reflect.Method catMethod = activeErrorStep.getClass().getMethod(\"getErrorCategory\");\n                    java.lang.reflect.Method numMethod = activeErrorStep.getClass().getMethod(\"getErrorNumber\");\n                    errorReply.setErrorCategory((String) catMethod.invoke(activeErrorStep));\n                    errorReply.setErrorNumber((String) numMethod.invoke(activeErrorStep));\n                } catch (Exception e) {\n                    errorReply.setErrorCategory(\"ERROR\");\n                    errorReply.setErrorNumber(\"999\");\n                }\n                errorReply.setErrorDescription((String) context.get(\"ErrorDescription\"));\n            }\n            errorReply.setRequestId((String) context.get(\"RequestId\"));\n            return errorResponseMapper.format(errorReply);\n        } else {\n            TransferFundsResponseBusiness respBiz = new TransferFundsResponseBusiness();\n            respBiz.setTransferId((String) context.get(\"TransferId\"));\n            respBiz.setTransferStatus((String) context.get(\"TransferStatus\"));\n            if (context.get(\"ExecutionDate\") instanceof java.util.Date) {\n                respBiz.setExecutionDate((java.util.Date) context.get(\"ExecutionDate\"));\n            }\n            if (context.get(\"ExecutionTime\") instanceof String) {\n                try {\n                    respBiz.setExecutionTime(new java.text.SimpleDateFormat(\"HH:mm:ss\").parse((String) context.get(\"ExecutionTime\")));\n                } catch (Exception ignored) {}\n            } else if (context.get(\"ExecutionTime\") instanceof java.util.Date) {\n                respBiz.setExecutionTime((java.util.Date) context.get(\"ExecutionTime\"));\n            }\n            respBiz.setAmount((BigDecimal) context.get(\"Amount\"));\n            respBiz.setCurrency((String) context.get(\"Currency\"));\n            respBiz.setSourceAccount((String) context.get(\"SourceAccount\"));\n            respBiz.setTargetAccount((String) context.get(\"TargetAccount\"));\n            respBiz.setNewSourceBalance((BigDecimal) context.get(\"NewSourceBalance\"));\n            Object fcs = context.get(\"FraudCheckSkipped\");\n            if (fcs instanceof Boolean) {\n                respBiz.setFraudCheckSkipped((Boolean) fcs);\n            }\n            return responseMapper.format(respBiz);\n        }\n    }\n\n    private TransferFundsRequestXml parseRequestXml(String xml) {\n        try {\n            com.fasterxml.jackson.dataformat.xml.XmlMapper xmlMapper = new com.fasterxml.jackson.dataformat.xml.XmlMapper();\n            return xmlMapper.readValue(xml, TransferFundsRequestXml.class);\n        } catch (Exception e) {\n            TransferFundsRequestXml fallback = new TransferFundsRequestXml();\n            return fallback;\n        }\n    }\n}\n"
+      }
+    ],
+    "dependencies": [
+      {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-aacf434ff625",
+        "version": "1.0.0-cdbfffbd6243",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-cdbfffbd6243",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      }
+    ],
+    "coverage": {},
+    "evidence_ids": [
+      "configured_step-06cdcaacb2a8a3f59d355714",
+      "configured_step-3edad4d894ed99ee7fe5ae71",
+      "configured_step-6d24746bc47ab347906af82e",
+      "configured_step-1bde9d232fc468f3294efa84",
+      "configured_step-b9a6a73909a9f8639bb03fb9",
+      "configured_step-f2c8754a25a6fcd6cc4ca9db",
+      "configured_step-90e3461e522ae6dd954af290",
+      "configured_step-2e52a65fe1cea8c4efb9ba82",
+      "configured_step-87dd336469df574d0e064f34",
+      "configured_step-db5b1a29f676c69d7416ffa2",
+      "configured_step-1e4c733765f028f5f1feb889",
+      "configured_step-9d214a54d7b141366dcd456c",
+      "configured_step-4ef069d52e8c34da08bcf72a",
+      "configured_step-3a42c4326e3d7f21467b61b2",
+      "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "response_format-b5afca9c05e0bac028e66617",
+      "response_format-66bf2c108225fb63eb2a0cbe"
+    ],
+    "unresolved_questions": [],
+    "unit_contract": null,
+    "input_type": "java.lang.String",
+    "output_type": "java.lang.String",
+    "wire_type": "java.lang.String",
+    "operation_contract": {
+      "sources": [
+        {
+          "identity": "com.ibm.il.dse.cc.cut.CCDSEServerOperation",
+          "content_hash": "fcaf68594b17326659d327bcc975553a231d2d1e62f7b741959b9e142603d288"
+        }
+      ],
+      "units": [
+        {
+          "unit_id": "configured_step-06cdcaacb2a8a3f59d355714",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-06cdcaacb2a8a3f59d355714",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-3edad4d894ed99ee7fe5ae71",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getFieldName()",
+                "public java.lang.String getFieldValue()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-3edad4d894ed99ee7fe5ae71",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.common.SetChannelContext"
+          ]
+        },
+        {
+          "unit_id": "configured_step-6d24746bc47ab347906af82e",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u6d24746bc47a.ExecuteTransferStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-6d24746bc47ab347906af82e",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.internet.db.ExecuteTransferSP"
+          ]
+        },
+        {
+          "unit_id": "configured_step-1bde9d232fc468f3294efa84",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-1bde9d232fc468f3294efa84",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-b9a6a73909a9f8639bb03fb9",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-b9a6a73909a9f8639bb03fb9",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-f2c8754a25a6fcd6cc4ca9db",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.uf2c8754a25a6.FraudCheckStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)"
+              ]
+            },
+            {
+              "type_name": "com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort",
+              "method_signatures": [
+                "public java.lang.String call(java.lang.String, int) throws java.lang.Exception"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-f2c8754a25a6fcd6cc4ca9db",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.cc.service.communication.http.HTTPService",
+            "com.ibm.il.dse.operations.internet.service.CallFraudDetection"
+          ]
+        },
+        {
+          "unit_id": "configured_step-90e3461e522ae6dd954af290",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u90e3461e522a.FraudSuspectedStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-90e3461e522ae6dd954af290",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-2e52a65fe1cea8c4efb9ba82",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-87dd336469df574d0e064f34",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u87dd336469df.InsufficientFundsStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-87dd336469df574d0e064f34",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-db5b1a29f676c69d7416ffa2",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.udb5b1a29f676.ValidateTransferStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-db5b1a29f676c69d7416ffa2",
+            "com.ibm.il.dse.operations.common.ValidateInputFields"
+          ]
+        },
+        {
+          "unit_id": "configured_step-1e4c733765f028f5f1feb889",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-1e4c733765f028f5f1feb889",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-9d214a54d7b141366dcd456c",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "configured_step-4ef069d52e8c34da08bcf72a",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u4ef069d52e8c.CheckLimitsStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-4ef069d52e8c34da08bcf72a",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.internet.db.ValidateTransferLimitsSP"
+          ]
+        },
+        {
+          "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep",
+              "method_signatures": [
+                "public int execute(java.util.Map)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-3a42c4326e3d7f21467b61b2",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        {
+          "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML",
+            "com.ibm.il.dse.cc.format.NumberFormat"
+          ]
+        },
+        {
+          "unit_id": "response_format-b5afca9c05e0bac028e66617",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness",
+              "method_signatures": [
+                "public java.lang.String getTransferId()",
+                "public void setTransferId(java.lang.String)",
+                "public java.lang.String getTransferStatus()",
+                "public void setTransferStatus(java.lang.String)",
+                "public java.util.Date getExecutionDate()",
+                "public void setExecutionDate(java.util.Date)",
+                "public java.util.Date getExecutionTime()",
+                "public void setExecutionTime(java.util.Date)",
+                "public java.math.BigDecimal getAmount()",
+                "public void setAmount(java.math.BigDecimal)",
+                "public java.lang.String getCurrency()",
+                "public void setCurrency(java.lang.String)",
+                "public java.lang.String getSourceAccount()",
+                "public void setSourceAccount(java.lang.String)",
+                "public java.lang.String getTargetAccount()",
+                "public void setTargetAccount(java.lang.String)",
+                "public java.math.BigDecimal getNewSourceBalance()",
+                "public void setNewSourceBalance(java.math.BigDecimal)",
+                "public java.lang.Boolean getFraudCheckSkipped()",
+                "public void setFraudCheckSkipped(java.lang.Boolean)"
+              ]
+            },
+            {
+              "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+              "method_signatures": []
+            },
+            {
+              "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapper",
+              "method_signatures": [
+                "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness) throws java.lang.Exception",
+                "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness unformat(java.lang.String) throws java.lang.Exception"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "response_format-b5afca9c05e0bac028e66617",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCBoolean",
+            "com.ibm.il.dse.cc.format.CCDate",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCTime",
+            "com.ibm.il.dse.cc.format.CCXML",
+            "com.ibm.il.dse.cc.format.NumberFormat"
+          ]
+        },
+        {
+          "unit_id": "response_format-66bf2c108225fb63eb2a0cbe",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper",
+              "method_signatures": [
+                "public java.lang.String format(com.company.generated.units.u66bf2c108225.ErrorReply)",
+                "public com.company.generated.units.u66bf2c108225.ErrorReply unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "response_format-66bf2c108225fb63eb2a0cbe"
+          ]
+        }
+      ],
+      "service_api": {
+        "type_name": "com.company.generated.operations.TransferFundsOpService",
+        "method_signatures": [
+          "public java.lang.String execute(java.lang.String) throws java.lang.Exception"
+        ]
+      },
+      "request_type": "java.lang.String",
+      "success_type": "java.lang.String",
+      "error_type": "java.lang.String",
+      "request_wire_type": "java.lang.String",
+      "success_wire_type": "java.lang.String",
+      "error_wire_type": "java.lang.String",
+      "service_requirements": {
+        "operation-flow": "Preserve the configured operation order, outcome/error branches and initialization"
+      },
+      "unresolved_questions": [],
+      "schema_version": "v1"
+    },
+    "schema_version": "v1"
+  },
+  "failed_test": {
+    "files": [
+      {
+        "path": "src/test/java/com/company/generated/operations/routing/Routecf4d1511a1e6Test.java",
+        "content": "package com.company.generated.operations.routing;\n\nimport com.company.generated.operations.TransferFundsOpService;\nimport com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort;\nimport org.junit.jupiter.api.Test;\n\nimport static org.junit.jupiter.api.Assertions.assertNotNull;\nimport static org.junit.jupiter.api.Assertions.assertTrue;\nimport static org.mockito.ArgumentMatchers.anyInt;\nimport static org.mockito.ArgumentMatchers.anyString;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.when;\n\npublic class Routecf4d1511a1e6Test {\n\n    @Test\n    public void testValidateTransferSuccessRouting() throws Exception {\n        FraudDetectionServicePort fraudService = mock(FraudDetectionServicePort.class);\n        when(fraudService.call(anyString(), anyInt())).thenReturn(\"0\");\n\n        TransferFundsOpService service = new TransferFundsOpService(fraudService);\n\n        String requestXml = \"<TransferFunds><SourceAccount>ACC001</SourceAccount><TargetAccount>ACC002</TargetAccount><Amount>100.00</Amount><Currency>USD</Currency><SessionToken>token123</SessionToken></TransferFunds>\";\n        \n        String response = service.execute(requestXml);\n        \n        assertNotNull(response);\n        assertTrue(response.contains(\"TransferFundsResponse\") || response.contains(\"transferStatus\"));\n    }\n}\n"
+      }
+    ],
+    "dependencies": [],
+    "evidence_ids": [
+      "configured_step-db5b1a29f676c69d7416ffa2",
+      "configured_step-4ef069d52e8c34da08bcf72a",
+      "configured_step-f2c8754a25a6fcd6cc4ca9db",
+      "configured_step-6d24746bc47ab347906af82e"
+    ],
+    "unresolved_questions": [],
+    "schema_version": "v1"
+  },
+  "scenario": {
+    "scenario_id": "route_validate_transfer_success",
+    "description": "ValidateTransfer succeeds (rc=0) and routes to CheckLimits",
+    "inputs": [
+      "<TransferFunds><SourceAccount>ACC001</SourceAccount><TargetAccount>ACC002</TargetAccount><Amount>100.00</Amount><Currency>USD</Currency><SessionToken>token123</SessionToken></TransferFunds>"
+    ],
+    "dependency_setup": [
+      "ValidateTransfer returns 0",
+      "CheckLimits returns 0",
+      "FraudCheck returns 0",
+      "ExecuteTransfer returns 0"
+    ],
+    "expected_outcome": "Transfer successfully executed and returns response XML",
+    "expected_side_effects": [
+      "Context populated with request fields",
+      "TransferStatus set to PENDING"
+    ],
+    "covers": [
+      "route-ValidateTransfer",
+      "operation-flow"
+    ],
+    "routes": [
+      {
+        "source": "ValidateTransfer",
+        "outcome": "on0Do",
+        "target": "CheckLimits"
+      },
+      {
+        "source": "CheckLimits",
+        "outcome": "on0Do",
+        "target": "FraudCheck"
+      },
+      {
+        "source": "FraudCheck",
+        "outcome": "on0Do",
+        "target": "ExecuteTransfer"
+      },
+      {
+        "source": "ExecuteTransfer",
+        "outcome": "on0Do",
+        "target": "end"
+      }
+    ]
+  },
+  "error": "Candidate validation failed: Maven test: [INFO] Scanning for projects...\n[INFO] \n[INFO] ---------------< com.company.migration:TransferFundsOp >----------------\n[INFO] Building TransferFundsOp 1.0.0-cdbfffbd6243\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- enforcer:3.6.2:enforce (default) @ TransferFundsOp ---\n[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ TransferFundsOp ---\n[INFO] skip non existing resourceDirectory C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-t7je9kpa\\TransferFundsOp\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.14.1:compile (default-compile) @ TransferFundsOp ---\n[INFO] Nothing to compile - all classes are up to date.\n[INFO] \n[INFO] --- resources:3.4.0:testResources (default-testResources) @ TransferFundsOp ---\n[INFO] skip non existing resourceDirectory C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-t7je9kpa\\TransferFundsOp\\src\\test\\resources\n[INFO] \n[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ TransferFundsOp ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 17 source files with javac [debug release 25] to target\\test-classes\n[INFO] \n[INFO] --- surefire:3.5.4:test (default-test) @ TransferFundsOp ---\n[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider\n[INFO] \n[INFO] -------------------------------------------------------\n[INFO]  T E S T S\n[INFO] -------------------------------------------------------\n[INFO] Running com.company.generated.operations.routing.Routecf4d1511a1e6Test\n[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 2.830 s <<< FAILURE! -- in com.company.generated.operations.routing.Routecf4d1511a1e6Test\n[ERROR] com.company.generated.operations.routing.Routecf4d1511a1e6Test.testValidateTransferSuccessRouting -- Time elapsed: 2.751 s <<< ERROR!\njava.lang.IllegalStateException: Configure a JDBC connection before executing a database step\n\tat com.company.generated.units.u4ef069d52e8c.CheckLimitsStep.execute(CheckLimitsStep.java:27)\n\tat com.company.generated.operations.TransferFundsOpService.execute(TransferFundsOpService.java:112)\n\tat com.company.generated.operations.routing.Routecf4d1511a1e6Test.testValidateTransferSuccessRouting(Routecf4d1511a1e6Test.java:25)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:565)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1604)\n\n[INFO] Running com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStepBusinessTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStepBusinessTest\n[INFO] Running com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStepTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStepTest\n[INFO] Running com.company.generated.units.u1e4c733765f0.AccountNotEligibleStepTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.026 s -- in com.company.generated.units.u1e4c733765f0.AccountNotEligibleStepTest\n[INFO] Running com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStepTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStepTest\n[INFO] Running com.company.generated.units.u4ef069d52e8c.CheckLimitsStepAdapterTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.193 s -- in com.company.generated.units.u4ef069d52e8c.CheckLimitsStepAdapterTest\n[INFO] Running com.company.generated.units.u4ef069d52e8c.CheckLimitsStepBusinessTest\n[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.061 s -- in com.company.generated.units.u4ef069d52e8c.CheckLimitsStepBusinessTest\n[INFO] Running com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapperTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapperTest\n[INFO] Running com.company.generated.units.u66bf2c108225.StandardErrorRSFmtTest\n[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.126 s -- in com.company.generated.units.u66bf2c108225.StandardErrorRSFmtTest\n[INFO] Running com.company.generated.units.u6d24746bc47a.ExecuteTransferStepAdapterTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.020 s -- in com.company.generated.units.u6d24746bc47a.ExecuteTransferStepAdapterTest\n[INFO] Running com.company.generated.units.u6d24746bc47a.ExecuteTransferStepBusinessTest\n[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in com.company.generated.units.u6d24746bc47a.ExecuteTransferStepBusinessTest\n[INFO] Running com.company.generated.units.u87dd336469df.InsufficientFundsStepTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in com.company.generated.units.u87dd336469df.InsufficientFundsStepTest\n[INFO] Running com.company.generated.units.u90e3461e522a.FraudSuspectedStepTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.company.generated.units.u90e3461e522a.FraudSuspectedStepTest\n[INFO] Running com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapperTest\n[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.117 s -- in com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapperTest\n[INFO] Running com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStepTest\n[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStepTest\n[INFO] Running com.company.generated.units.udb5b1a29f676.ValidateTransferStepTest\n[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in com.company.generated.units.udb5b1a29f676.ValidateTransferStepTest\n[INFO] Running com.company.generated.units.uf2c8754a25a6.FraudCheckStepTest\n[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.028 s -- in com.company.generated.units.uf2c8754a25a6.FraudCheckStepTest\n[INFO] \n[INFO] Results:\n[INFO] \n[ERROR] Errors: \n[ERROR]   Routecf4d1511a1e6Test.testValidateTransferSuccessRouting:25 \u00bb IllegalState Configure a JDBC connection before executing a database step\n[INFO] \n[ERROR] Tests run: 35, Failures: 0, Errors: 1, Skipped: 0\n[INFO] \n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  12.342 s\n[INFO] Finished at: 2026-10-11T18:52:35+03:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project TransferFundsOp: \n[ERROR] \n[ERROR] See C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-t7je9kpa\\TransferFundsOp\\target\\surefire-reports for the individual test results.\n[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n\nMockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3\nWARNING: A Java agent has been loaded dynamically (C:\\Users\\shayg\\.m2\\repository\\net\\bytebuddy\\byte-buddy-agent\\1.17.7\\byte-buddy-agent-1.17.7.jar)\nWARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning\nWARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information\nWARNING: Dynamic loading of agents will be disallowed by default in a future release\nJava HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended\n",
+  "accepted_units": {
+    "CoreBankingRejected": {
+      "unit_id": "configured_step-06cdcaacb2a8a3f59d355714",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "3c60c96066a23814b73cfcf61c81b0d3512e55b5a5a467157e997b9315885583",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u06cdcaacb2a8/CoreBankingRejectedStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class CoreBankingRejectedStep",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-06cdcaacb2a8a3f59d355714",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u06cdcaacb2a8.CoreBankingRejectedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-06cdcaacb2a8a3f59d355714",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u06cdcaacb2a8/CoreBankingRejectedStep.java": "79b27ab91d7e1d975e3525dca576b8aee85f774cd15651b5a90538a5ff67b90a",
+        "src/test/java/com/company/generated/units/u06cdcaacb2a8/CoreBankingRejectedStepBusinessTest.java": "8e554ee6f41f5e005156d385d743eb64d68a80f73b738e46255230269093a646"
+      }
+    },
+    "SkipFraudOnTimeout": {
+      "unit_id": "configured_step-3edad4d894ed99ee7fe5ae71",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getFieldName()",
+            "public java.lang.String getFieldValue()"
+          ]
+        }
+      ],
+      "fingerprint": "e7a5cdac29c3a50ea89e87aed759e9ae8488a7cb02b802d28d1226ed17aa9e19",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u3edad4d894ed/SkipFraudOnTimeoutStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class SkipFraudOnTimeoutStep",
+            "public SkipFraudOnTimeoutStep()",
+            "public SkipFraudOnTimeoutStep(String fieldName, String fieldValue)",
+            "public String getFieldName()",
+            "public String getFieldValue()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-3edad4d894ed99ee7fe5ae71",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u3edad4d894ed.SkipFraudOnTimeoutStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getFieldName()",
+              "public java.lang.String getFieldValue()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-3edad4d894ed99ee7fe5ae71",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.SetChannelContext"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.SetChannelContext"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u3edad4d894ed/SkipFraudOnTimeoutStep.java": "6a9d74ae940d592d03d90eafb73f4f67b7ebcc3b064c225b91b73d1aac1aa9bc",
+        "src/test/java/com/company/generated/units/u3edad4d894ed/SkipFraudOnTimeoutStepTest.java": "5d20f4570ce246e42ad2ad0097613737373b603fafa69bf8cf7317f7419b5717"
+      }
+    },
+    "ExecuteTransfer": {
+      "unit_id": "configured_step-6d24746bc47ab347906af82e",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u6d24746bc47a.ExecuteTransferStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)"
+          ]
+        }
+      ],
+      "fingerprint": "ccbe37c6662fb09a757670b188266eb5fabfbc9e1faf984fddd6e74d74ff42b5",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u6d24746bc47a/ExecuteTransferStep.java": {
+          "imports": [
+            "import java.math.BigDecimal;",
+            "import java.sql.CallableStatement;",
+            "import java.sql.Connection;",
+            "import java.sql.Types;",
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class ExecuteTransferStep",
+            "public static final int RC_SUCCESS   = 0",
+            "public static final int RC_REJECTED  = 6",
+            "public static final int RC_DUPLICATE = 7",
+            "public static final int RC_DB_ERROR  = 8",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-6d24746bc47ab347906af82e",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u6d24746bc47a.ExecuteTransferStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-6d24746bc47ab347906af82e",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.internet.db.ExecuteTransferSP"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.internet.db.ExecuteTransferSP"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u6d24746bc47a/ExecuteTransferStep.java": "774000ee557fbb750002ebd0448d9384aa150a75eb0cb14eb92419d8b484b210",
+        "src/test/java/com/company/generated/units/u6d24746bc47a/ExecuteTransferStepAdapterTest.java": "33f2645008787d1902dc7913bc5f121a7431ab4f1505461f1b827f46b01fd050",
+        "src/test/java/com/company/generated/units/u6d24746bc47a/ExecuteTransferStepBusinessTest.java": "ffd815de1620f48fd961a5f3759f57041d0bbdec2c4c4dd5dac15b7659795e7c"
+      }
+    },
+    "DailyLimitExceeded": {
+      "unit_id": "configured_step-1bde9d232fc468f3294efa84",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "df6129141d1a005bd3ab569b41aff0e67bf11f5fc7e3c4e8b924ffebfeeb1637",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u1bde9d232fc4/DailyLimitExceededStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class DailyLimitExceededStep",
+            "public DailyLimitExceededStep()",
+            "public DailyLimitExceededStep(String errorCategory, String errorNumber)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-1bde9d232fc468f3294efa84",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u1bde9d232fc4.DailyLimitExceededStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-1bde9d232fc468f3294efa84",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u1bde9d232fc4/DailyLimitExceededStep.java": "d8cec44c0ed2a5c8ba648a3e4b760bd351b0cf8dae33cc7c07c582114f0f9164",
+        "src/test/java/com/company/generated/units/u1bde9d232fc4/DailyLimitExceededStepTest.java": "ee1f0ae352ca43daecd98a28c9887f2d35b3d52befd3cf99508f36f5e1dd1350"
+      }
+    },
+    "TransferAlreadyProcessed": {
+      "unit_id": "configured_step-b9a6a73909a9f8639bb03fb9",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "b6f37e8c82525c93f33afa333de0f0d3bca98160e106904289e98e35396f6ca7",
+      "public_api": {
+        "src/main/java/com/company/generated/units/ub9a6a73909a9/TransferAlreadyProcessedStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class TransferAlreadyProcessedStep",
+            "public TransferAlreadyProcessedStep()",
+            "public TransferAlreadyProcessedStep(String errorCategory, String errorNumber)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-b9a6a73909a9f8639bb03fb9",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub9a6a73909a9.TransferAlreadyProcessedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-b9a6a73909a9f8639bb03fb9",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/ub9a6a73909a9/TransferAlreadyProcessedStep.java": "af39d4c03167cbf0f612130abd86907946b25738816c92dbc0290659d8b93b3f",
+        "src/test/java/com/company/generated/units/ub9a6a73909a9/TransferAlreadyProcessedStepTest.java": "84ffeea6a1f7660e74861f7e4f33a3e255697629d7005a3f7b3638fbe073a252"
+      }
+    },
+    "FraudCheck": {
+      "unit_id": "configured_step-f2c8754a25a6fcd6cc4ca9db",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.uf2c8754a25a6.FraudCheckStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)"
+          ]
+        },
+        {
+          "type_name": "com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort",
+          "method_signatures": [
+            "public java.lang.String call(java.lang.String, int) throws java.lang.Exception"
+          ]
+        }
+      ],
+      "fingerprint": "7b7b9b795dbf769d4d8b8c7e0e1361d87caaedb79bb2da06b28dd6945824198b",
+      "public_api": {
+        "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudCheckStep.java": {
+          "imports": [
+            "import com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort;",
+            "import java.math.BigDecimal;",
+            "import java.util.Map;",
+            "import java.util.Objects;",
+            "import java.util.concurrent.TimeoutException;"
+          ],
+          "public_declarations": [
+            "public class FraudCheckStep",
+            "public FraudCheckStep(int serviceTimeout, FraudDetectionServicePort fraudDetectionService)",
+            "public int execute(Map<String, Object> context) throws Exception"
+          ]
+        },
+        "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudDetectionServicePort.java": {
+          "imports": [],
+          "public_declarations": [
+            "public interface FraudDetectionServicePort"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-f2c8754a25a6fcd6cc4ca9db",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.uf2c8754a25a6.FraudCheckStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort",
+            "method_signatures": [
+              "public java.lang.String call(java.lang.String, int) throws java.lang.Exception"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-f2c8754a25a6fcd6cc4ca9db",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.cc.service.communication.http.HTTPService",
+          "com.ibm.il.dse.operations.internet.service.CallFraudDetection"
+        ]
+      },
+      "input_type": "java.util.Map",
+      "output_type": "java.lang.Integer",
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.cc.service.communication.http.HTTPService",
+        "com.ibm.il.dse.operations.internet.service.CallFraudDetection"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudCheckStep.java": "18dfe9af45eced423fef6b992a257a126b277f2103374e971e559442ecb4d870",
+        "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudDetectionServicePort.java": "ddaa03a588c5aba153c4d6daab75a72d9951abb097f3a4a8262c108b2f338e00",
+        "src/test/java/com/company/generated/units/uf2c8754a25a6/FraudCheckStepTest.java": "fe90bfb51fe88b721d58a1017422b03fb927717f06f6f38003a14a818dd49132"
+      }
+    },
+    "FraudSuspected": {
+      "unit_id": "configured_step-90e3461e522ae6dd954af290",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u90e3461e522a.FraudSuspectedStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "00b08f5647acbd9085f007e7c1fce496d6f22d401c81012d8cf8f5355348955a",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u90e3461e522a/FraudSuspectedStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class FraudSuspectedStep",
+            "public FraudSuspectedStep()",
+            "public FraudSuspectedStep(String errorCategory, String errorNumber)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-90e3461e522ae6dd954af290",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u90e3461e522a.FraudSuspectedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-90e3461e522ae6dd954af290",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u90e3461e522a/FraudSuspectedStep.java": "ba3d857493885acecb393fac3dd3978f72b0f8e4702f8f9a29f9623b5f776a99",
+        "src/test/java/com/company/generated/units/u90e3461e522a/FraudSuspectedStepTest.java": "7e70d84b0fc4ed48d476698122ae41ac2d010680828acc2913f9dc1964d0db60"
+      }
+    },
+    "ValidationFailed": {
+      "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\behavior-libraries\\shared-aacf434ff625",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)"
+          ]
+        }
+      ],
+      "fingerprint": "18e804bd3e12e47e0a2a716dbdca48212fd6041c6c2badbc55f2319664bc7c97",
+      "files": {
+        "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStep.java": "e71be07660b346c56bf02ada185ad25dfe8908364f223edc997a29ae860d78f9",
+        "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepTest.java": "baf071c754ec46352b693902d677f4f750e3d9f03e2c03c723252ce9e2e7d581"
+      },
+      "public_api": {
+        "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStep.java": {
+          "imports": [
+            "import java.util.HashMap;",
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class ValidationFailedStep",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-2e52a65fe1cea8c4efb9ba82",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ]
+    },
+    "InsufficientFunds": {
+      "unit_id": "configured_step-87dd336469df574d0e064f34",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u87dd336469df.InsufficientFundsStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "b43917f5aadb959f43885618ae360f5fea8548d482debfcab77ba2accae4f39e",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u87dd336469df/InsufficientFundsStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class InsufficientFundsStep",
+            "public InsufficientFundsStep()",
+            "public InsufficientFundsStep(String errorCategory, String errorNumber)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-87dd336469df574d0e064f34",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u87dd336469df.InsufficientFundsStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-87dd336469df574d0e064f34",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u87dd336469df/InsufficientFundsStep.java": "72a4fbb8dd789911435ec624bfc4610309b48bc3dad1b8d1b98fde0c4f8a6bb5",
+        "src/test/java/com/company/generated/units/u87dd336469df/InsufficientFundsStepTest.java": "c6b3bba620b53e66e23e6b88aca1319470587ade87e786c521fc8924f80406aa"
+      }
+    },
+    "ValidateTransfer": {
+      "unit_id": "configured_step-db5b1a29f676c69d7416ffa2",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.udb5b1a29f676.ValidateTransferStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)"
+          ]
+        }
+      ],
+      "fingerprint": "c4ab2e5a2a78bb04129a15fdbc8384338f13a92267552dab7c45bbbdcdcbfe80",
+      "public_api": {
+        "src/main/java/com/company/generated/units/udb5b1a29f676/ValidateTransferStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class ValidateTransferStep",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-db5b1a29f676c69d7416ffa2",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.udb5b1a29f676.ValidateTransferStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-db5b1a29f676c69d7416ffa2",
+          "com.ibm.il.dse.operations.common.ValidateInputFields"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.ValidateInputFields"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/udb5b1a29f676/ValidateTransferStep.java": "1cc2a6cf9dbae1bc4d076a3ae87b103f44fe1166022601ccbf41e2e0fdcda68e",
+        "src/test/java/com/company/generated/units/udb5b1a29f676/ValidateTransferStepTest.java": "73ed089e2a380b4ec17607279dcad36dd078965ad4a9504def80eb0a50e3b96e"
+      }
+    },
+    "AccountNotEligible": {
+      "unit_id": "configured_step-1e4c733765f028f5f1feb889",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "7a324318d126e272afea03dfd7e80527b958ed33d542a82f5a8fe5348617f94a",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u1e4c733765f0/AccountNotEligibleStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class AccountNotEligibleStep",
+            "public AccountNotEligibleStep()",
+            "public int execute(Map<String, Object> context)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-1e4c733765f028f5f1feb889",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u1e4c733765f0.AccountNotEligibleStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-1e4c733765f028f5f1feb889",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u1e4c733765f0/AccountNotEligibleStep.java": "dd0a46466aa3d49b277fe33c349348707056d974f03611edf696b0b991f90594",
+        "src/test/java/com/company/generated/units/u1e4c733765f0/AccountNotEligibleStepTest.java": "327bb7957e35a4cbf9877ae81681c35564be213c292fbb9fbe48fb6df1b19b98"
+      }
+    },
+    "TechnicalError": {
+      "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\behavior-libraries\\shared-33e19da28f26",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "3d4e5bcfefca3575d7e6f49ed86742d0d0d03b6c5d19c3649e35afed2ec6ca8a",
+      "files": {
+        "src/main/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStep.java": "9460115374c7cd6e7621867ffae879c73dce1fbabfae8124e72f196c7838b386",
+        "src/test/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStepTest.java": "5b121e77cb4fe6ba95f481319270c4ca27459471d253070f8002e164b1f0e539"
+      },
+      "public_api": {
+        "src/main/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStep.java": {
+          "imports": [
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class TechnicalErrorStep",
+            "public TechnicalErrorStep()",
+            "public TechnicalErrorStep(String errorCategory, String errorNumber)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u9d214a54d7b1.TechnicalErrorStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-9d214a54d7b141366dcd456c",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ]
+    },
+    "CheckLimits": {
+      "unit_id": "configured_step-4ef069d52e8c34da08bcf72a",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u4ef069d52e8c.CheckLimitsStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)"
+          ]
+        }
+      ],
+      "fingerprint": "30d1f5de859a4d47bb6ceaeb4f8ab0ea8d7f53f7e9030ac520a44d1725983156",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u4ef069d52e8c/CheckLimitsStep.java": {
+          "imports": [
+            "import java.math.BigDecimal;",
+            "import java.sql.CallableStatement;",
+            "import java.sql.Connection;",
+            "import java.sql.Types;",
+            "import java.util.Map;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class CheckLimitsStep",
+            "public int execute(Map<String, Object> context)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-4ef069d52e8c34da08bcf72a",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u4ef069d52e8c.CheckLimitsStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-4ef069d52e8c34da08bcf72a",
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.internet.db.ValidateTransferLimitsSP"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.internet.db.ValidateTransferLimitsSP"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u4ef069d52e8c/CheckLimitsStep.java": "843870512f74dd71e84f0bec54149318d82793b9a704567373a58ff6cbc59ba2",
+        "src/test/java/com/company/generated/units/u4ef069d52e8c/CheckLimitsStepAdapterTest.java": "123d06a1a12ec61c26307a1be74682da5084946b30b72b16d4a681afe2080d00",
+        "src/test/java/com/company/generated/units/u4ef069d52e8c/CheckLimitsStepBusinessTest.java": "14057a1a44871d53865f6cd3a40a99d301c05013b7bd452f102a852cc15e7878"
+      }
+    },
+    "DatabaseError": {
+      "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\behavior-libraries\\shared-33e19da28f26",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep",
+          "method_signatures": [
+            "public int execute(java.util.Map)",
+            "public java.lang.String getErrorCategory()",
+            "public java.lang.String getErrorNumber()"
+          ]
+        }
+      ],
+      "fingerprint": "b87f7ca3061a0e591c046d7e0da7109df0af5a2e95a7fee3f2b06fc2c81fb6c7",
+      "files": {
+        "src/main/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorStep.java": "b5341635b684b248b694cd077867e347a6b9052a567808e94f7a201e2cd40ef3",
+        "src/test/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorBusinessTest.java": "857bc6d3427de799ec41397d0e5cb063b4635e0947f41ca4e519f8683eee8bfe"
+      },
+      "public_api": {
+        "src/main/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorStep.java": {
+          "imports": [
+            "import java.util.HashMap;",
+            "import java.util.Map;"
+          ],
+          "public_declarations": [
+            "public class DatabaseErrorStep",
+            "public int execute(Map<String, Object> context)",
+            "public String getErrorCategory()",
+            "public String getErrorNumber()"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u3a42c4326e3d.DatabaseErrorStep",
+            "method_signatures": [
+              "public int execute(java.util.Map)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "configured_step-3a42c4326e3d7f21467b61b2",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ]
+      },
+      "input_type": null,
+      "output_type": null,
+      "wire_type": null,
+      "source_ids": [
+        "com.ibm.dse.base.CCOperationStep",
+        "com.ibm.dse.base.Context",
+        "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      ]
+    },
+    "csRequestFormat": {
+      "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+          "method_signatures": [
+            "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+          ]
+        }
+      ],
+      "fingerprint": "f12782a4d6df0ef29ba271feee507191794d9007467a897fa8b03f27bdd4ee8d",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestBusiness.java": {
+          "imports": [
+            "import java.math.BigDecimal;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsRequestBusiness",
+            "public String getSourceAccount()",
+            "public void setSourceAccount(String sourceAccount)",
+            "public String getTargetAccount()",
+            "public void setTargetAccount(String targetAccount)",
+            "public BigDecimal getAmount()",
+            "public void setAmount(BigDecimal amount)",
+            "public String getCurrency()",
+            "public void setCurrency(String currency)",
+            "public String getSessionToken()",
+            "public void setSessionToken(String sessionToken)",
+            "public String getTransferReference()",
+            "public void setTransferReference(String transferReference)",
+            "public String getScheduledDate()",
+            "public void setScheduledDate(String scheduledDate)"
+          ]
+        },
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java": {
+          "imports": [
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsRequestXml",
+            "public String sourceAccount",
+            "public String targetAccount",
+            "public String amount",
+            "public String currency",
+            "public String sessionToken",
+            "public String transferReference",
+            "public String scheduledDate"
+          ]
+        },
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java": {
+          "imports": [
+            "import java.math.BigDecimal;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsRequestMapper",
+            "public TransferFundsRequestBusiness toBusinessInput(TransferFundsRequestXml wire)"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+            "method_signatures": [
+              "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ]
+      },
+      "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+      "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestBusiness",
+      "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+      "source_ids": [
+        "com.ibm.dse.base.Context",
+        "com.ibm.dse.base.Tag",
+        "com.ibm.il.dse.cc.decorator.CCPadding",
+        "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+        "com.ibm.il.dse.cc.decorator.NilDecorator",
+        "com.ibm.il.dse.cc.format.CCString",
+        "com.ibm.il.dse.cc.format.CCXML",
+        "com.ibm.il.dse.cc.format.NumberFormat"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestBusiness.java": "663cf82229e079f5b71172471e3660ea540029132df63854dada5ae21f647eb5",
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java": "780dd13a1b58cb0a4e4420296f7a8f986ceb88d50ee18b91df65d8d9055aeab3",
+        "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java": "7ee39d957e511934d278ab5c9ff78ceda4a95f4a6d4e3fb62b5d6f53b38b5f79",
+        "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java": "ea6f888d5d25a7ba777bd431b9df447db9e3db16896216803889ffa9f11cc6a9"
+      }
+    },
+    "csReplyFormat": {
+      "unit_id": "response_format-b5afca9c05e0bac028e66617",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness",
+          "method_signatures": [
+            "public java.lang.String getTransferId()",
+            "public void setTransferId(java.lang.String)",
+            "public java.lang.String getTransferStatus()",
+            "public void setTransferStatus(java.lang.String)",
+            "public java.util.Date getExecutionDate()",
+            "public void setExecutionDate(java.util.Date)",
+            "public java.util.Date getExecutionTime()",
+            "public void setExecutionTime(java.util.Date)",
+            "public java.math.BigDecimal getAmount()",
+            "public void setAmount(java.math.BigDecimal)",
+            "public java.lang.String getCurrency()",
+            "public void setCurrency(java.lang.String)",
+            "public java.lang.String getSourceAccount()",
+            "public void setSourceAccount(java.lang.String)",
+            "public java.lang.String getTargetAccount()",
+            "public void setTargetAccount(java.lang.String)",
+            "public java.math.BigDecimal getNewSourceBalance()",
+            "public void setNewSourceBalance(java.math.BigDecimal)",
+            "public java.lang.Boolean getFraudCheckSkipped()",
+            "public void setFraudCheckSkipped(java.lang.Boolean)"
+          ]
+        },
+        {
+          "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+          "method_signatures": []
+        },
+        {
+          "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapper",
+          "method_signatures": [
+            "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness) throws java.lang.Exception",
+            "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness unformat(java.lang.String) throws java.lang.Exception"
+          ]
+        }
+      ],
+      "fingerprint": "c1485603169dc40d1bf50bca5e5fbcff0b3143509e98b9426ca3979386b9382f",
+      "public_api": {
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseBusiness.java": {
+          "imports": [
+            "import java.math.BigDecimal;",
+            "import java.util.Date;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsResponseBusiness",
+            "public TransferFundsResponseBusiness()",
+            "public String getTransferId()",
+            "public void setTransferId(String transferId)",
+            "public String getTransferStatus()",
+            "public void setTransferStatus(String transferStatus)",
+            "public Date getExecutionDate()",
+            "public void setExecutionDate(Date executionDate)",
+            "public Date getExecutionTime()",
+            "public void setExecutionTime(Date executionTime)",
+            "public BigDecimal getAmount()",
+            "public void setAmount(BigDecimal amount)",
+            "public String getCurrency()",
+            "public void setCurrency(String currency)",
+            "public String getSourceAccount()",
+            "public void setSourceAccount(String sourceAccount)",
+            "public String getTargetAccount()",
+            "public void setTargetAccount(String targetAccount)",
+            "public BigDecimal getNewSourceBalance()",
+            "public void setNewSourceBalance(BigDecimal newSourceBalance)",
+            "public Boolean getFraudCheckSkipped()",
+            "public void setFraudCheckSkipped(Boolean fraudCheckSkipped)"
+          ]
+        },
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java": {
+          "imports": [
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;",
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsResponseXml",
+            "public String transferId",
+            "public String transferStatus",
+            "public String executionDate",
+            "public String executionTime",
+            "public String amount",
+            "public String currency",
+            "public String sourceAccount",
+            "public String targetAccount",
+            "public String newSourceBalance",
+            "public NullableBoolean fraudCheckSkipped",
+            "public static class NullableBoolean"
+          ]
+        },
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseMapper.java": {
+          "imports": [
+            "import com.fasterxml.jackson.databind.SerializationFeature;",
+            "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+            "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+            "import java.math.BigDecimal;",
+            "import java.text.SimpleDateFormat;",
+            "import java.util.Date;",
+            "import java.util.Objects;"
+          ],
+          "public_declarations": [
+            "public class TransferFundsResponseMapper",
+            "public TransferFundsResponseMapper()",
+            "public String format(TransferFundsResponseBusiness business) throws Exception",
+            "public TransferFundsResponseBusiness unformat(String xml) throws Exception"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "response_format-b5afca9c05e0bac028e66617",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness",
+            "method_signatures": [
+              "public java.lang.String getTransferId()",
+              "public void setTransferId(java.lang.String)",
+              "public java.lang.String getTransferStatus()",
+              "public void setTransferStatus(java.lang.String)",
+              "public java.util.Date getExecutionDate()",
+              "public void setExecutionDate(java.util.Date)",
+              "public java.util.Date getExecutionTime()",
+              "public void setExecutionTime(java.util.Date)",
+              "public java.math.BigDecimal getAmount()",
+              "public void setAmount(java.math.BigDecimal)",
+              "public java.lang.String getCurrency()",
+              "public void setCurrency(java.lang.String)",
+              "public java.lang.String getSourceAccount()",
+              "public void setSourceAccount(java.lang.String)",
+              "public java.lang.String getTargetAccount()",
+              "public void setTargetAccount(java.lang.String)",
+              "public java.math.BigDecimal getNewSourceBalance()",
+              "public void setNewSourceBalance(java.math.BigDecimal)",
+              "public java.lang.Boolean getFraudCheckSkipped()",
+              "public void setFraudCheckSkipped(java.lang.Boolean)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+            "method_signatures": []
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness) throws java.lang.Exception",
+              "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness unformat(java.lang.String) throws java.lang.Exception"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-b5afca9c05e0bac028e66617",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCBoolean",
+          "com.ibm.il.dse.cc.format.CCDate",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCTime",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ]
+      },
+      "input_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseBusiness",
+      "output_type": "java.lang.String",
+      "wire_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+      "source_ids": [
+        "com.ibm.dse.base.Context",
+        "com.ibm.dse.base.Tag",
+        "com.ibm.il.dse.cc.decorator.CCPadding",
+        "com.ibm.il.dse.cc.decorator.NilDecorator",
+        "com.ibm.il.dse.cc.format.CCBoolean",
+        "com.ibm.il.dse.cc.format.CCDate",
+        "com.ibm.il.dse.cc.format.CCString",
+        "com.ibm.il.dse.cc.format.CCTime",
+        "com.ibm.il.dse.cc.format.CCXML",
+        "com.ibm.il.dse.cc.format.NumberFormat"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseBusiness.java": "d3051367c8218bae0095ffe15124194059ad469b141707bbbb3d0e7648a79718",
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseMapper.java": "d70f7fbfbfc11ce2d312d27c279f8f910166ecd7ed7be07334a0683b85fde88e",
+        "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java": "ee11a7d26d02129934edea618f930fcc6b26e1227f44a55791825d05405bd121",
+        "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseMapperTest.java": "e8c08cbd9f148a4898b2edb20fdec485bf1d97fad11c3f6d41e64376cae56dea"
+      }
+    },
+    "csErrorReplyFormat": {
+      "unit_id": "response_format-66bf2c108225fb63eb2a0cbe",
+      "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\run-a5497077af1e41b6ac936e9ee4877bc0\\generated\\INTERNET\\TransferFundsOp",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper",
+          "method_signatures": [
+            "public java.lang.String format(com.company.generated.units.u66bf2c108225.ErrorReply)",
+            "public com.company.generated.units.u66bf2c108225.ErrorReply unformat(java.lang.String)"
+          ]
+        }
+      ],
+      "fingerprint": "118623a89eb85916d6e6c615751aed945c13e88c40959ca1f4a07b4d07c43df9",
+      "public_api": {
+        "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReplyXml.java": {
+          "imports": [
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+            "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;"
+          ],
+          "public_declarations": [
+            "public class ErrorReplyXml",
+            "public String errorCategory",
+            "public String errorNumber",
+            "public String errorDescription",
+            "public String requestId",
+            "public String xsiNil"
+          ]
+        },
+        "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReply.java": {
+          "imports": [],
+          "public_declarations": [
+            "public class ErrorReply",
+            "public ErrorReply()",
+            "public ErrorReply(String errorCategory, String errorNumber, String errorDescription, String requestId)",
+            "public String getErrorCategory()",
+            "public void setErrorCategory(String errorCategory)",
+            "public String getErrorNumber()",
+            "public void setErrorNumber(String errorNumber)",
+            "public String getErrorDescription()",
+            "public void setErrorDescription(String errorDescription)",
+            "public String getRequestId()",
+            "public void setRequestId(String requestId)"
+          ]
+        },
+        "src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java": {
+          "imports": [
+            "import com.fasterxml.jackson.databind.SerializationFeature;",
+            "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+            "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;"
+          ],
+          "public_declarations": [
+            "public class StandardErrorRSFmtMapper",
+            "public StandardErrorRSFmtMapper()",
+            "public String format(ErrorReply reply) throws Exception",
+            "public ErrorReply unformat(String xml) throws Exception"
+          ]
+        }
+      },
+      "contract": {
+        "unit_id": "response_format-66bf2c108225fb63eb2a0cbe",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.u66bf2c108225.ErrorReply)",
+              "public com.company.generated.units.u66bf2c108225.ErrorReply unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-66bf2c108225fb63eb2a0cbe"
+        ]
+      },
+      "input_type": "com.company.generated.units.u66bf2c108225.ErrorReply",
+      "output_type": "java.lang.String",
+      "wire_type": "com.company.generated.units.u66bf2c108225.ErrorReplyXml",
+      "source_ids": [
+        "com.ibm.dse.base.Context",
+        "com.ibm.dse.base.Tag",
+        "com.ibm.il.dse.cc.decorator.NilDecorator",
+        "com.ibm.il.dse.cc.format.CCString",
+        "com.ibm.il.dse.cc.format.CCXML"
+      ],
+      "files": {
+        "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReply.java": "acdc4408ed395a6e7e25bf82d584d2b478581208c2c5b8f7e40b38085e63177d",
+        "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReplyXml.java": "3dbec363d78dafd4350372faafdab4e83958d830d61306b1baf0776b71b2dbaf",
+        "src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java": "dafcb8fbb648c7f11195d7a2a8b31e6c3869dc201852ad6f00d7894df1d41bc7",
+        "src/test/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtTest.java": "a7f2f7a9475cc1aed2f9ec64c56552a0c5d1dc0c0388e4b19dd56523a822eec3"
+      }
+    }
+  },
+  "accepted_sources": {
+    "src/main/java/com/company/generated/units/u06cdcaacb2a8/CoreBankingRejectedStep.java": "package com.company.generated.units.u06cdcaacb2a8;\n\nimport java.util.Map;\nimport java.util.Objects;\n\n/**\n * Configured unit CoreBankingRejected based on MapErrorByValueAlways.\n * ErrorCategory: 60\n * ErrorNumber: 6\n * on0Return: ErrorBody\n * onOtherDo: end\n */\npublic class CoreBankingRejectedStep {\n\n    private final String errorCategory = \"60\";\n    private final String errorNumber = \"6\";\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context map\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u3edad4d894ed/SkipFraudOnTimeoutStep.java": "package com.company.generated.units.u3edad4d894ed;\n\nimport java.util.Map;\nimport java.util.Objects;\n\n/**\n * Configured step: SkipFraudOnTimeout\n * ImplClass: com.ibm.il.dse.operations.common.SetChannelContext\n * XML attributes: FieldName = \"FraudCheckSkipped\", FieldValue = \"true\"\n * Routing: on0Do = \"ExecuteTransfer\", onOtherDo = \"TechnicalError\"\n */\npublic class SkipFraudOnTimeoutStep {\n\n    private final String fieldName;\n    private final String fieldValue;\n\n    public SkipFraudOnTimeoutStep() {\n        this.fieldName = \"FraudCheckSkipped\";\n        this.fieldValue = \"true\";\n    }\n\n    public SkipFraudOnTimeoutStep(String fieldName, String fieldValue) {\n        this.fieldName = fieldName;\n        this.fieldValue = fieldValue;\n    }\n\n    public String getFieldName() {\n        return fieldName;\n    }\n\n    public String getFieldValue() {\n        return fieldValue;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Map<String, Object> ctx = Objects.requireNonNull(context, \"Operation context map\");\n        if (fieldName != null) {\n            ctx.put(fieldName, fieldValue);\n        }\n        return 0;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u6d24746bc47a/ExecuteTransferStep.java": "package com.company.generated.units.u6d24746bc47a;\n\nimport java.math.BigDecimal;\nimport java.sql.CallableStatement;\nimport java.sql.Connection;\nimport java.sql.Types;\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class ExecuteTransferStep {\n\n    private static final String SP_NAME =\n        \"{call PKG_TRANSFERS.EXECUTE_TRANSFER(?,?,?,?,?,?,?,?,?,?)}\";\n\n    public static final int RC_SUCCESS   = 0;\n    public static final int RC_REJECTED  = 6;\n    public static final int RC_DUPLICATE = 7;\n    public static final int RC_DB_ERROR  = 8;\n\n    public int execute(Map<String, Object> context) {\n        Map<String, Object> ctx = Objects.requireNonNull(context, \"Context map\");\n\n        String     sourceAccount = (String)     ctx.get(\"SourceAccount\");\n        String     targetAccount = (String)     ctx.get(\"TargetAccount\");\n        BigDecimal amount        = (BigDecimal) ctx.get(\"Amount\");\n        String     currency      = (String)     ctx.get(\"Currency\");\n        String     reference     = (String)     ctx.get(\"TransferReference\");\n\n        Connection conn = (Connection) ctx.get(\"Connection\");\n        if (conn == null) {\n            throw new IllegalStateException(\"Configure a JDBC connection before executing a database step\");\n        }\n\n        try (CallableStatement cs = conn.prepareCall(SP_NAME)) {\n            cs.setString(    1, sourceAccount);\n            cs.setString(    2, targetAccount);\n            cs.setBigDecimal(3, amount);\n            cs.setString(    4, currency != null ? currency.trim() : \"ILS\");\n            cs.setString(    5, reference);\n\n            cs.registerOutParameter(6,  Types.VARCHAR);\n            cs.registerOutParameter(7,  Types.VARCHAR);\n            cs.registerOutParameter(8,  Types.VARCHAR);\n            cs.registerOutParameter(9,  Types.DATE);\n            cs.registerOutParameter(10, Types.NUMERIC);\n\n            cs.execute();\n\n            String spRc = cs.getString(6);\n            if (\"REJECTED\".equals(spRc))  return RC_REJECTED;\n            if (\"DUPLICATE\".equals(spRc)) return RC_DUPLICATE;\n\n            ctx.put(\"TransferId\",       cs.getString(7));\n            ctx.put(\"TransferStatus\",   cs.getString(8));\n            ctx.put(\"ExecutionDate\",    cs.getDate(9));\n            ctx.put(\"ExecutionTime\",    new java.util.Date());\n            ctx.put(\"NewSourceBalance\", cs.getBigDecimal(10));\n\n        } catch (Exception e) {\n            ctx.put(\"DatabaseError\", e.getMessage());\n            return RC_DB_ERROR;\n        }\n        return RC_SUCCESS;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u1bde9d232fc4/DailyLimitExceededStep.java": "package com.company.generated.units.u1bde9d232fc4;\n\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class DailyLimitExceededStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public DailyLimitExceededStep() {\n        this.errorCategory = \"40\";\n        this.errorNumber = \"3\";\n    }\n\n    public DailyLimitExceededStep(String errorCategory, String errorNumber) {\n        this.errorCategory = Objects.requireNonNull(errorCategory, \"errorCategory\");\n        this.errorNumber = Objects.requireNonNull(errorNumber, \"errorNumber\");\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"context\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/ub9a6a73909a9/TransferAlreadyProcessedStep.java": "package com.company.generated.units.ub9a6a73909a9;\n\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class TransferAlreadyProcessedStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public TransferAlreadyProcessedStep() {\n        this.errorCategory = \"60\";\n        this.errorNumber = \"7\";\n    }\n\n    public TransferAlreadyProcessedStep(String errorCategory, String errorNumber) {\n        this.errorCategory = Objects.requireNonNull(errorCategory, \"Error category\");\n        this.errorNumber = Objects.requireNonNull(errorNumber, \"Error number\");\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context map\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudCheckStep.java": "package com.company.generated.units.uf2c8754a25a6;\n\nimport com.company.generated.units.uf2c8754a25a6.FraudDetectionServicePort;\nimport java.math.BigDecimal;\nimport java.util.Map;\nimport java.util.Objects;\nimport java.util.concurrent.TimeoutException;\n\npublic class FraudCheckStep {\n    private final int serviceTimeout;\n    private final FraudDetectionServicePort fraudDetectionService;\n\n    public FraudCheckStep(int serviceTimeout, FraudDetectionServicePort fraudDetectionService) {\n        this.serviceTimeout = serviceTimeout;\n        this.fraudDetectionService = Objects.requireNonNull(fraudDetectionService, \"fraudDetectionService\");\n    }\n\n    public int execute(Map<String, Object> context) throws Exception {\n        Objects.requireNonNull(context, \"context\");\n        String sourceAccount = (String) context.get(\"SourceAccount\");\n        String targetAccount = (String) context.get(\"TargetAccount\");\n        BigDecimal amount = (BigDecimal) context.get(\"Amount\");\n        String clientId = (String) context.get(\"ClientId\");\n\n        String requestPayload = buildFraudRequest(clientId, sourceAccount, targetAccount, amount);\n\n        String response;\n        try {\n            response = fraudDetectionService.call(requestPayload, serviceTimeout);\n        } catch (TimeoutException e) {\n            return -99;\n        } catch (Exception e) {\n            context.put(\"ServiceError\", e.getMessage());\n            return 8;\n        }\n\n        int fraudScore = parseFraudScore(response);\n        String decision = parseFraudDecision(response);\n\n        context.put(\"FraudScore\", fraudScore);\n        context.put(\"FraudDecision\", decision);\n\n        return \"BLOCK\".equals(decision) ? 2 : 0;\n    }\n\n    private String buildFraudRequest(String clientId, String src, String tgt, BigDecimal amt) {\n        return \"<FraudCheckRequest>\"\n                + \"<ClientId>\" + clientId + \"</ClientId>\"\n                + \"<SourceAccount>\" + src + \"</SourceAccount>\"\n                + \"<TargetAccount>\" + tgt + \"</TargetAccount>\"\n                + \"<Amount>\" + amt + \"</Amount>\"\n                + \"</FraudCheckRequest>\";\n    }\n\n    private int parseFraudScore(String response) {\n        int start = response.indexOf(\"<Score>\") + 7;\n        int end = response.indexOf(\"</Score>\");\n        if (start > 6 && end > start) {\n            return Integer.parseInt(response.substring(start, end));\n        }\n        return 0;\n    }\n\n    private String parseFraudDecision(String response) {\n        return response.contains(\"<Decision>BLOCK</Decision>\") ? \"BLOCK\" : \"ALLOW\";\n    }\n}\n",
+    "src/main/java/com/company/generated/units/uf2c8754a25a6/FraudDetectionServicePort.java": "package com.company.generated.units.uf2c8754a25a6;\n\npublic interface FraudDetectionServicePort {\n    String call(String requestPayload, int timeoutMillis) throws Exception;\n}\n",
+    "src/main/java/com/company/generated/units/u90e3461e522a/FraudSuspectedStep.java": "package com.company.generated.units.u90e3461e522a;\n\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class FraudSuspectedStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public FraudSuspectedStep() {\n        this.errorCategory = \"50\";\n        this.errorNumber = \"2\";\n    }\n\n    public FraudSuspectedStep(String errorCategory, String errorNumber) {\n        this.errorCategory = Objects.requireNonNull(errorCategory, \"errorCategory\");\n        this.errorNumber = Objects.requireNonNull(errorNumber, \"errorNumber\");\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Map<String, Object> ctx = Objects.requireNonNull(context, \"context\");\n        ctx.put(\"ErrorCategory\", errorCategory);\n        ctx.put(\"ErrorNumber\", errorNumber);\n        ctx.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStep.java": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class ValidationFailedStep {\n    private final String errorCategory = \"10\";\n    private final String errorNumber = \"2\";\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context must not be null\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}",
+    "src/main/java/com/company/generated/units/u87dd336469df/InsufficientFundsStep.java": "package com.company.generated.units.u87dd336469df;\n\nimport java.util.Map;\nimport java.util.Objects;\n\n/**\n * Configured unit for InsufficientFunds error mapping.\n * Sets ErrorCategory=\"40\", ErrorNumber=\"4\", and corresponding ErrorDescription in context.\n */\npublic class InsufficientFundsStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public InsufficientFundsStep() {\n        this.errorCategory = \"40\";\n        this.errorNumber = \"4\";\n    }\n\n    public InsufficientFundsStep(String errorCategory, String errorNumber) {\n        this.errorCategory = Objects.requireNonNull(errorCategory, \"errorCategory\");\n        this.errorNumber = Objects.requireNonNull(errorNumber, \"errorNumber\");\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"context\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/udb5b1a29f676/ValidateTransferStep.java": "package com.company.generated.units.udb5b1a29f676;\n\nimport java.util.Map;\nimport java.util.Objects;\n\n/**\n * Validates that required context fields are present and non-blank:\n * SourceAccount, TargetAccount, Amount, Currency, SessionToken.\n *\n * Returns:\n *   0 - all required fields are present and non-blank\n *   1 - one or more required fields are missing or blank\n */\npublic class ValidateTransferStep {\n\n    private static final String[] REQUIRED_FIELDS = {\n        \"SourceAccount\",\n        \"TargetAccount\",\n        \"Amount\",\n        \"Currency\",\n        \"SessionToken\"\n    };\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context cannot be null\");\n        for (String field : REQUIRED_FIELDS) {\n            Object value = context.get(field);\n            if (value == null || String.valueOf(value).isBlank()) {\n                context.put(\"ValidationFailedField\", field);\n                return 1;\n            }\n        }\n        return 0;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u1e4c733765f0/AccountNotEligibleStep.java": "package com.company.generated.units.u1e4c733765f0;\n\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class AccountNotEligibleStep {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public AccountNotEligibleStep() {\n        this.errorCategory = \"40\";\n        this.errorNumber = \"5\";\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStep.java": "package com.company.generated.units.u9d214a54d7b1;\n\nimport java.util.Map;\nimport java.util.Objects;\n\n/**\n * Native implementation of the configured TechnicalError step (MapErrorByValueAlways).\n * Sets ErrorCategory, ErrorNumber, and ErrorDescription in the context map.\n * XML Configuration: ErrorCategory=\"99\", ErrorNumber=\"0\"\n */\npublic class TechnicalErrorStep {\n\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public TechnicalErrorStep() {\n        this.errorCategory = \"99\";\n        this.errorNumber = \"0\";\n    }\n\n    public TechnicalErrorStep(String errorCategory, String errorNumber) {\n        this.errorCategory = errorCategory != null ? errorCategory : \"99\";\n        this.errorNumber = errorNumber != null ? errorNumber : \"0\";\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context map must not be null\");\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        return switch (key) {\n            case \"10_2\" -> \"Validation failed: required field missing or invalid\";\n            case \"20_1\" -> \"No data found for the provided criteria\";\n            case \"20_4\" -> \"Account not found\";\n            case \"30_5\" -> \"Access denied: insufficient permissions\";\n            case \"40_3\" -> \"Daily transfer limit exceeded\";\n            case \"40_4\" -> \"Insufficient funds\";\n            case \"40_5\" -> \"Account not eligible for this operation\";\n            case \"50_2\" -> \"Transfer blocked: fraud risk detected\";\n            case \"60_6\" -> \"Core banking system rejected the request\";\n            case \"60_7\" -> \"Transfer already processed\";\n            case \"99_0\" -> \"Technical error: unexpected system failure\";\n            case \"99_8\" -> \"Technical error: database connection failure\";\n            default -> \"System error (category=\" + category + \", number=\" + number + \")\";\n        };\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u4ef069d52e8c/CheckLimitsStep.java": "package com.company.generated.units.u4ef069d52e8c;\n\nimport java.math.BigDecimal;\nimport java.sql.CallableStatement;\nimport java.sql.Connection;\nimport java.sql.Types;\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class CheckLimitsStep {\n    private static final String SP_NAME = \"{call PKG_TRANSFERS.VALIDATE_LIMITS(?,?,?,?,?,?)}\";\n\n    private static final int RC_SUCCESS = 0;\n    private static final int RC_LIMIT_EXCEEDED = 3;\n    private static final int RC_INSUFFICIENT = 4;\n    private static final int RC_NOT_ELIGIBLE = 5;\n    private static final int RC_DB_ERROR = 8;\n\n    public int execute(Map<String, Object> context) {\n        Objects.requireNonNull(context, \"Context cannot be null\");\n        String sourceAccount = (String) context.get(\"SourceAccount\");\n        BigDecimal amount = (BigDecimal) context.get(\"Amount\");\n        String clientId = (String) context.get(\"ClientId\");\n\n        Connection conn = (Connection) context.get(\"Connection\");\n        if (conn == null) {\n            throw new IllegalStateException(\"Configure a JDBC connection before executing a database step\");\n        }\n\n        try (CallableStatement cs = conn.prepareCall(SP_NAME)) {\n            cs.setString(1, sourceAccount);\n            cs.setBigDecimal(2, amount);\n            cs.setString(3, clientId);\n\n            cs.registerOutParameter(4, Types.VARCHAR);\n            cs.registerOutParameter(5, Types.NUMERIC);\n            cs.registerOutParameter(6, Types.NUMERIC);\n\n            cs.execute();\n\n            String spRc = cs.getString(4);\n            if (spRc == null) {\n                spRc = \"SUCCESS\";\n            }\n            switch (spRc) {\n                case \"LIMIT_EXCEEDED\":\n                    context.put(\"DailyRemaining\", cs.getBigDecimal(5));\n                    context.put(\"DailyLimit\", cs.getBigDecimal(6));\n                    return RC_LIMIT_EXCEEDED;\n                case \"INSUFFICIENT\":\n                    return RC_INSUFFICIENT;\n                case \"NOT_ELIGIBLE\":\n                    return RC_NOT_ELIGIBLE;\n                default:\n                    return RC_SUCCESS;\n            }\n        } catch (Exception e) {\n            context.put(\"DatabaseError\", e.getMessage());\n            return RC_DB_ERROR;\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorStep.java": "package com.company.generated.units.u3a42c4326e3d;\n\nimport java.util.HashMap;\nimport java.util.Map;\n\n/**\n * Native Java business step equivalent to MapErrorByValueAlways with ErrorCategory=\"99\" and ErrorNumber=\"8\".\n */\npublic class DatabaseErrorStep {\n\n    private final String errorCategory = \"99\";\n    private final String errorNumber = \"8\";\n\n    public int execute(Map<String, Object> context) {\n        if (context == null) {\n            throw new IllegalArgumentException(\"Context map cannot be null\");\n        }\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestBusiness.java": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequestBusiness {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n}",
+    "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequestMapper {\n    public TransferFundsRequestBusiness toBusinessInput(TransferFundsRequestXml wire) {\n        if (wire == null) {\n            return null;\n        }\n        TransferFundsRequestBusiness biz = new TransferFundsRequestBusiness();\n        biz.setSourceAccount(removePadding(wire.sourceAccount, '0', 10, true));\n        biz.setTargetAccount(removePadding(wire.targetAccount, '0', 10, true));\n        \n        if (wire.amount != null && !wire.amount.isBlank()) {\n            String cleanAmount = wire.amount.replace(\",\", \"\").trim();\n            biz.setAmount(new BigDecimal(cleanAmount));\n        } else {\n            biz.setAmount(null);\n        }\n\n        biz.setCurrency(removeRightPadding(wire.currency, ' ', 3));\n        biz.setSessionToken(wire.sessionToken);\n        biz.setTransferReference(wire.transferReference);\n        biz.setScheduledDate(wire.scheduledDate);\n        return biz;\n    }\n\n    private String removePadding(String value, char padChar, int length, boolean padLeft) {\n        if (value == null) {\n            return null;\n        }\n        String res = value;\n        if (padLeft) {\n            res = res.replaceFirst(\"^[\" + java.util.regex.Pattern.quote(String.valueOf(padChar)) + \"]+\", \"\");\n        } else {\n            res = res.replaceFirst(\"[\" + java.util.regex.Pattern.quote(String.valueOf(padChar)) + \"]+$\", \"\");\n        }\n        return res;\n    }\n\n    private String removeRightPadding(String value, char padChar, int length) {\n        if (value == null) {\n            return null;\n        }\n        return value.replaceFirst(\"[\" + java.util.regex.Pattern.quote(String.valueOf(padChar)) + \"]+$\", \"\");\n    }\n}",
+    "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFunds\")\npublic class TransferFundsRequestXml {\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SessionToken\")\n    public String sessionToken;\n\n    @JacksonXmlProperty(localName = \"TransferReference\")\n    public String transferReference;\n\n    @JacksonXmlProperty(localName = \"ScheduledDate\")\n    public String scheduledDate;\n}",
+    "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseBusiness.java": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\n\npublic class TransferFundsResponseBusiness {\n    private String transferId;\n    private String transferStatus;\n    private Date executionDate;\n    private Date executionTime;\n    private BigDecimal amount;\n    private String currency;\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal newSourceBalance;\n    private Boolean fraudCheckSkipped;\n\n    public TransferFundsResponseBusiness() {}\n\n    public String getTransferId() { return transferId; }\n    public void setTransferId(String transferId) { this.transferId = transferId; }\n\n    public String getTransferStatus() { return transferStatus; }\n    public void setTransferStatus(String transferStatus) { this.transferStatus = transferStatus; }\n\n    public Date getExecutionDate() { return executionDate; }\n    public void setExecutionDate(Date executionDate) { this.executionDate = executionDate; }\n\n    public Date getExecutionTime() { return executionTime; }\n    public void setExecutionTime(Date executionTime) { this.executionTime = executionTime; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getNewSourceBalance() { return newSourceBalance; }\n    public void setNewSourceBalance(BigDecimal newSourceBalance) { this.newSourceBalance = newSourceBalance; }\n\n    public Boolean getFraudCheckSkipped() { return fraudCheckSkipped; }\n    public void setFraudCheckSkipped(Boolean fraudCheckSkipped) { this.fraudCheckSkipped = fraudCheckSkipped; }\n}\n",
+    "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseMapper.java": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.databind.SerializationFeature;\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;\n\nimport java.math.BigDecimal;\nimport java.text.SimpleDateFormat;\nimport java.util.Date;\nimport java.util.Objects;\n\npublic class TransferFundsResponseMapper {\n    private final XmlMapper xmlMapper;\n\n    public TransferFundsResponseMapper() {\n        this.xmlMapper = new XmlMapper();\n        this.xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, false);\n    }\n\n    public String format(TransferFundsResponseBusiness business) throws Exception {\n        Objects.requireNonNull(business, \"TransferFundsResponseBusiness cannot be null\");\n        TransferFundsResponseXml wire = new TransferFundsResponseXml();\n        wire.transferId = business.getTransferId();\n        wire.transferStatus = business.getTransferStatus();\n\n        if (business.getExecutionDate() != null) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            wire.executionDate = sdf.format(business.getExecutionDate());\n        }\n\n        wire.executionTime = business.getExecutionTime() != null ? \"00:00:00\" : null;\n\n        if (business.getAmount() != null) {\n            wire.amount = business.getAmount().setScale(2).toPlainString();\n        }\n\n        wire.currency = business.getCurrency();\n\n        String srcAcc = business.getSourceAccount() != null ? business.getSourceAccount() : \"\";\n        if (srcAcc.length() < 3) {\n            srcAcc = \" \".repeat(3 - srcAcc.length()) + srcAcc;\n        }\n        wire.sourceAccount = srcAcc;\n\n        String tgtAcc = business.getTargetAccount() != null ? business.getTargetAccount() : \"\";\n        if (tgtAcc.length() < 10) {\n            tgtAcc = \"0\".repeat(10 - tgtAcc.length()) + tgtAcc;\n        }\n        wire.targetAccount = tgtAcc;\n\n        if (business.getNewSourceBalance() != null) {\n            wire.newSourceBalance = business.getNewSourceBalance().setScale(2).toPlainString();\n        } else {\n            wire.newSourceBalance = null;\n        }\n\n        wire.fraudCheckSkipped = new TransferFundsResponseXml.NullableBoolean();\n        if (business.getFraudCheckSkipped() == null) {\n            wire.fraudCheckSkipped.nil = \"true\";\n        } else {\n            wire.fraudCheckSkipped.value = business.getFraudCheckSkipped().toString();\n        }\n\n        return xmlMapper.writeValueAsString(wire);\n    }\n\n    public TransferFundsResponseBusiness unformat(String xml) throws Exception {\n        TransferFundsResponseXml wire = xmlMapper.readValue(xml, TransferFundsResponseXml.class);\n        Objects.requireNonNull(wire, \"TransferFundsResponseXml cannot be null\");\n\n        TransferFundsResponseBusiness business = new TransferFundsResponseBusiness();\n        business.setTransferId(wire.transferId);\n        business.setTransferStatus(wire.transferStatus);\n\n        if (wire.executionDate != null && !wire.executionDate.isBlank()) {\n            business.setExecutionDate(new SimpleDateFormat(\"yyyyMMdd\").parse(wire.executionDate));\n        }\n\n        if (wire.executionTime != null && !wire.executionTime.isBlank()) {\n            business.setExecutionTime(new Date(0L));\n        }\n\n        if (wire.amount != null && !wire.amount.isBlank()) {\n            business.setAmount(new BigDecimal(wire.amount));\n        }\n\n        business.setCurrency(wire.currency);\n\n        if (wire.sourceAccount != null) {\n            business.setSourceAccount(wire.sourceAccount.replaceFirst(\"^ +\", \"\"));\n        }\n\n        if (wire.targetAccount != null) {\n            business.setTargetAccount(wire.targetAccount.replaceFirst(\"^0+\", \"\"));\n        }\n\n        if (wire.newSourceBalance != null && !wire.newSourceBalance.isBlank()) {\n            business.setNewSourceBalance(new BigDecimal(wire.newSourceBalance));\n        }\n\n        Boolean fraudCheckSkipped = null;\n        if (wire.fraudCheckSkipped != null && !\"true\".equals(wire.fraudCheckSkipped.nil)) {\n            fraudCheckSkipped = Boolean.valueOf(wire.fraudCheckSkipped.value);\n        }\n        business.setFraudCheckSkipped(fraudCheckSkipped);\n\n        return business;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;\n\n@JacksonXmlRootElement(localName = \"TransferFundsResponse\")\npublic class TransferFundsResponseXml {\n    @JacksonXmlProperty(localName = \"TransferId\")\n    public String transferId;\n\n    @JacksonXmlProperty(localName = \"TransferStatus\")\n    public String transferStatus;\n\n    @JacksonXmlProperty(localName = \"ExecutionDate\")\n    public String executionDate;\n\n    @JacksonXmlProperty(localName = \"ExecutionTime\")\n    public String executionTime;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"NewSourceBalance\")\n    public String newSourceBalance;\n\n    @JacksonXmlProperty(localName = \"FraudCheckSkipped\")\n    public NullableBoolean fraudCheckSkipped;\n\n    public static class NullableBoolean {\n        @JacksonXmlText\n        public String value;\n\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReply.java": "package com.company.generated.units.u66bf2c108225;\n\npublic class ErrorReply {\n    private String errorCategory;\n    private String errorNumber;\n    private String errorDescription;\n    private String requestId;\n\n    public ErrorReply() {}\n\n    public ErrorReply(String errorCategory, String errorNumber, String errorDescription, String requestId) {\n        this.errorCategory = errorCategory;\n        this.errorNumber = errorNumber;\n        this.errorDescription = errorDescription;\n        this.requestId = requestId;\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public void setErrorCategory(String errorCategory) {\n        this.errorCategory = errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public void setErrorNumber(String errorNumber) {\n        this.errorNumber = errorNumber;\n    }\n\n    public String getErrorDescription() {\n        return errorDescription;\n    }\n\n    public void setErrorDescription(String errorDescription) {\n        this.errorDescription = errorDescription;\n    }\n\n    public String getRequestId() {\n        return requestId;\n    }\n\n    public void setRequestId(String requestId) {\n        this.requestId = requestId;\n    }\n}\n",
+    "src/main/java/com/company/generated/units/u66bf2c108225/ErrorReplyXml.java": "package com.company.generated.units.u66bf2c108225;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"ErrorReply\")\npublic class ErrorReplyXml {\n    @JacksonXmlProperty(localName = \"ErrorCategory\")\n    public String errorCategory;\n\n    @JacksonXmlProperty(localName = \"ErrorNumber\")\n    public String errorNumber;\n\n    @JacksonXmlProperty(localName = \"ErrorDescription\")\n    public String errorDescription;\n\n    @JacksonXmlProperty(localName = \"RequestId\")\n    public String requestId;\n\n    @JacksonXmlProperty(localName = \"xsi:nil\", isAttribute = true)\n    public String xsiNil;\n}\n",
+    "src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java": "package com.company.generated.units.u66bf2c108225;\n\nimport com.fasterxml.jackson.databind.SerializationFeature;\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;\n\npublic class StandardErrorRSFmtMapper {\n\n    private final XmlMapper xmlMapper;\n\n    public StandardErrorRSFmtMapper() {\n        this.xmlMapper = new XmlMapper();\n        this.xmlMapper.disable(SerializationFeature.WRITE_EMPTY_JSON_ARRAYS);\n        this.xmlMapper.configure(ToXmlGenerator.Feature.WRITE_XML_DECLARATION, false);\n    }\n\n    public String format(ErrorReply reply) throws Exception {\n        if (reply == null) {\n            return \"<ErrorReply xsi:nil=\\\"true\\\"/>\";\n        }\n        ErrorReplyXml wire = new ErrorReplyXml();\n        wire.errorCategory = reply.getErrorCategory();\n        wire.errorNumber = reply.getErrorNumber();\n        wire.errorDescription = reply.getErrorDescription();\n        wire.requestId = reply.getRequestId();\n\n        if (isNil(wire.errorCategory) && isNil(wire.errorNumber) && isNil(wire.errorDescription) && isNil(wire.requestId)) {\n            wire.xsiNil = \"true\";\n        }\n\n        return xmlMapper.writeValueAsString(wire);\n    }\n\n    public ErrorReply unformat(String xml) throws Exception {\n        if (xml == null || xml.isBlank() || xml.contains(\"xsi:nil=\\\"true\\\"\")) {\n            return null;\n        }\n        ErrorReplyXml wire = xmlMapper.readValue(xml, ErrorReplyXml.class);\n        if (wire == null) {\n            return null;\n        }\n        return new ErrorReply(wire.errorCategory, wire.errorNumber, wire.errorDescription, wire.requestId);\n    }\n\n    private boolean isNil(String val) {\n        return val == null || val.isBlank();\n    }\n}\n"
+  },
+  "known_dependencies": [
+    {
+      "group_id": "com.fasterxml.jackson.core",
+      "artifact_id": "jackson-databind",
+      "version": "2.15.2",
+      "scope": "compile",
+      "reason": "Current target POM dependency",
+      "required_classes": []
+    },
+    {
+      "group_id": "com.fasterxml.jackson.dataformat",
+      "artifact_id": "jackson-dataformat-xml",
+      "version": "2.15.2",
+      "scope": "compile",
+      "reason": "Current target POM dependency",
+      "required_classes": []
+    },
+    {
+      "group_id": "org.junit.jupiter",
+      "artifact_id": "junit-jupiter",
+      "version": "5.10.0",
+      "scope": "test",
+      "reason": "Application-owned Java 25 test template",
+      "required_classes": []
+    },
+    {
+      "group_id": "com.company.migration",
+      "artifact_id": "shared-aacf434ff625",
+      "version": "1.0.0-cdbfffbd6243",
+      "scope": "compile",
+      "reason": "Accepted native behavior library for this run",
+      "required_classes": []
+    },
+    {
+      "group_id": "com.company.migration",
+      "artifact_id": "shared-33e19da28f26",
+      "version": "1.0.0-cdbfffbd6243",
+      "scope": "compile",
+      "reason": "Accepted native behavior library for this run",
+      "required_classes": []
+    },
+    {
+      "group_id": "org.mockito",
+      "artifact_id": "mockito-core",
+      "version": "5.23.0",
+      "scope": "test",
+      "reason": "Application-owned Java 25 test template",
+      "required_classes": []
+    },
+    {
+      "group_id": "net.bytebuddy",
+      "artifact_id": "byte-buddy",
+      "version": "1.17.7",
+      "scope": "test",
+      "reason": "Application-owned Java 25 test template",
+      "required_classes": []
+    },
+    {
+      "group_id": "net.bytebuddy",
+      "artifact_id": "byte-buddy-agent",
+      "version": "1.17.7",
+      "scope": "test",
+      "reason": "Application-owned Java 25 test template",
+      "required_classes": []
+    },
+    {
+      "group_id": "org.objenesis",
+      "artifact_id": "objenesis",
+      "version": "3.3",
+      "scope": "test",
+      "reason": "Application-owned Java 25 test template",
+      "required_classes": []
+    }
+  ]
+}

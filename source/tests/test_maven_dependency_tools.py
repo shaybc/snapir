@@ -92,6 +92,11 @@ def test_default_maven_cache_is_discovered_and_required_api_checked(monkeypatch,
     calls = []
     def maven(command, **kwargs):
         calls.append(command)
+        for argument in command:
+            if argument.startswith('-DoutputFile='):
+                from pathlib import Path
+                Path(argument.split('=', 1)[1]).write_text(json.dumps({'children': [dict(
+                    groupId='org.example', artifactId='client', version='1.0.0', type='jar')]}), encoding='utf-8')
         return subprocess.CompletedProcess(command, 0, str(cache) if "help:evaluate" in command else "", "")
     monkeypatch.setattr("tools.maven_dependency_tools.repository_verifier.subprocess.run", maven)
     proposal = dependency()

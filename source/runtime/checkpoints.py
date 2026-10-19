@@ -38,6 +38,15 @@ def resume_pipeline(output_root: str, run_id: str):
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
         logging.getLogger(__name__).info("Resuming saved checkpoint: %s (%s).", run["current_phase"], run["status"])
+        if profile.conversion_strategy == "behavior_units":
+            from runtime.intake_plan import has_intake_plan, resume_intake_plan
+            if has_intake_plan(conn, run_id):
+                if resume_intake_plan(conn, config, profile, directory) == 'approved':
+                    from runtime.operation_coordinator import run_operations
+                    run_operations(conn, config, profile, directory)
+                return directory
+            from runtime.conversion_strategy import resume_behavior_strategy
+            return resume_behavior_strategy(conn, config, profile, directory)
         if run["current_phase"] in {"gate_4_pending", "gate_4_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
             row = conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1", (run_id,)).fetchone()
             if row is None:

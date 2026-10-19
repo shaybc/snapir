@@ -2,6 +2,24 @@
 
 ---
 
+> **Operation-call design update:** The agreed [operation-call workflow](operation_calls.md)
+> and [native implementation revision](../option_two_implementation_plan.md#pending-revision-operation-call-scope-and-sequential-completion)
+> govern native CCComplex operation-to-service conversion. Before generation, check
+> all direct/indirect dependencies against the job scope or trusted converted APIs
+> from this or previous jobs; block and ask for missing dependencies or cycle
+> resolution. Obtain user approval of the whole-job order and waves. Then complete
+> conversion, assembly, packaging, existing tests/validation and API publication for
+> each operation before starting the next. No missing-dependency placeholders or
+> repeated callee conversion validation are introduced. This workflow is pending
+> implementation; the older batch-stage diagrams below are not its execution order.
+> Existing legacy behavior, correction limits and testing policies remain unchanged.
+> Intake includes dependency checks and produces the plan for approval once per
+> conversion run, before the thin wrapper invokes existing conversion stages.
+> Retain all four gates per operation with their current numbers and settings;
+> run-plan approval is separate and reuses the decision machinery. Technical
+> failures and missing dependencies still block when human approval is disabled.
+> Wrapper verification is development-time testing, not another runtime stage.
+
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)

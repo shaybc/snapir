@@ -28,6 +28,8 @@ def validate_migration_plan(
         errors.append(f"Operation appears more than once: {operation_id}")
 
     if conn is not None:
+        from runtime.intake_plan import validate_dependency_order
+        errors.extend(validate_dependency_order(conn, run_config.run_id, plan))
         expected = _operation_ids_from_db(conn, run_config.run_id)
         missing = sorted(expected - set(identities))
         extra = sorted(set(identities) - expected)

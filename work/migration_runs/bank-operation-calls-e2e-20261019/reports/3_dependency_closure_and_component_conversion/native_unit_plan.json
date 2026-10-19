@@ -1,0 +1,68 @@
+{
+  "assignments": {
+    "configured_step-3a42c4326e3d7f21467b61b2": "shared-33e19da28f26",
+    "configured_step-9d214a54d7b141366dcd456c": "shared-33e19da28f26",
+    "configured_step-42b95631a1866d97e7e0cbfa": null,
+    "configured_step-3643d2141e0adb1bddc660d7": null,
+    "request_unformat-561a01497abb3d3133b663f0": null,
+    "response_format-5dfecf09ff9fd30503abf76e": null,
+    "response_format-66bf2c108225fb63eb2a0cbe": "shared-26209c8451ff",
+    "configured_step-15edb87ae7f68ca9aed10a8b": null,
+    "configured_step-866cbe0670f145cea023b630": null,
+    "configured_step-41def216c2ea6be54012fa7a": null
+  },
+  "consumers": {
+    "configured_step-3a42c4326e3d7f21467b61b2": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "configured_step-9d214a54d7b141366dcd456c": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "configured_step-42b95631a1866d97e7e0cbfa": [
+      "INTERNET/GetClientLinksOp"
+    ],
+    "configured_step-3643d2141e0adb1bddc660d7": [
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "request_unformat-561a01497abb3d3133b663f0": [
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "response_format-5dfecf09ff9fd30503abf76e": [
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "response_format-66bf2c108225fb63eb2a0cbe": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/TransferFundsOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "configured_step-15edb87ae7f68ca9aed10a8b": [
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "configured_step-866cbe0670f145cea023b630": [
+      "INTERNET/GetClientOverviewOp"
+    ],
+    "configured_step-41def216c2ea6be54012fa7a": [
+      "INTERNET/GetClientOverviewOp"
+    ]
+  },
+  "fingerprint": "2f39a668f8395f94dac897f2db2b5ebb091eb55ebd7fb29a3ee52eefa85bd0a1"
+}

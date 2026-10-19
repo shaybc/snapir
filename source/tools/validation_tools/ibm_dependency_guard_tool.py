@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+from tools.validation_tools.java_comments import mask_java_comments
 
 
 def scan_for_ibm_dependencies(
@@ -17,7 +18,7 @@ def scan_for_ibm_dependencies(
     for path in paths:
         if path.suffix != ".java":
             continue
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        for line_number, line in enumerate(mask_java_comments(path.read_text(encoding="utf-8")).splitlines(), start=1):
             if not _should_scan_line(line):
                 continue
             for pattern in _matched_patterns(line, forbidden_patterns, allowed_classes):
@@ -28,7 +29,7 @@ def scan_for_ibm_dependencies(
 def scan_source(java_source: str, forbidden_patterns: list[str], *, allowed_classes=()) -> list[str]:
     """Scan one Java source string and return forbidden patterns found."""
     matches = []
-    for line in java_source.splitlines():
+    for line in mask_java_comments(java_source).splitlines():
         if not _should_scan_line(line):
             continue
         for pattern in _matched_patterns(line, forbidden_patterns, allowed_classes):
@@ -44,7 +45,7 @@ def is_clean(generated_path: str, forbidden_patterns: list[str]) -> bool:
 
 def _should_scan_line(line: str) -> bool:
     stripped = line.strip()
-    return stripped.startswith("import ") or '"' in stripped
+    return bool(stripped)
 
 
 def _matched_patterns(line: str, forbidden_patterns: list[str], allowed_classes=()) -> list[str]:

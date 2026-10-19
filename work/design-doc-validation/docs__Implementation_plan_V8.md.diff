@@ -1,0 +1,22 @@
+--- docs/Implementation_plan_V8.md (before)
+
++++ docs/Implementation_plan_V8.md
+
+@@ -2,4 +2,16 @@
+
+ 
+ ---
++
++> **Operation-call design update:** The agreed [operation-call workflow](operation_calls.md)
++> and [native implementation revision](../option_two_implementation_plan.md#pending-revision-operation-call-scope-and-sequential-completion)
++> govern native CCComplex operation-to-service conversion. Before generation, check
++> all direct/indirect dependencies against the job scope or trusted converted APIs
++> from this or previous jobs; block and ask for missing dependencies or cycle
++> resolution. Obtain user approval of the whole-job order and waves. Then complete
++> conversion, assembly, packaging, existing tests/validation and API publication for
++> each operation before starting the next. No missing-dependency placeholders or
++> repeated callee conversion validation are introduced. This workflow is pending
++> implementation; the older batch-stage diagrams below are not its execution order.
++> Existing legacy behavior, correction limits and testing policies remain unchanged.
+ 
+ ## Table of Contents

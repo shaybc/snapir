@@ -1,0 +1,69 @@
+--- option_two_implementation_plan.md (before)
+
++++ option_two_implementation_plan.md
+
+@@ -7,4 +7,8 @@
+
+ The existing implementation is preserved at `option1_stable`.
+ 
++The pending revision's development increments, acceptance checks and proposed
++files are in the [staged implementation plan](docs/plans/operation_conversion_workflow_implementation_plan.md).
++The requirements below describe runtime behavior, not additional runtime phases.
++
+ ## Pending revision: operation-call scope and sequential completion
+ 
+@@ -13,5 +17,5 @@
+
+ is required work, not a record of an already completed implementation.
+ 
+-1. **Preflight the entire job before generation.** Traverse direct and indirect
++1. **Preflight the entire conversion run inside intake.** Traverse direct and indirect
+    CCComplex operation calls before pilot selection or plan approval. Resolve
+    explicitly identified out-of-scope/channel targets without guessing. Preserve
+@@ -26,12 +30,13 @@
+
+    and request user resolution. Recalculate after correction; do not force a
+    sequence or treat a cycle as an automatic combined conversion unit.
+-3. **Generate and approve the dependency plan.** Calculate waves and an explicit
++3. **Produce intake's plan and approval handoff.** Calculate waves and an explicit
+    operation order after preflight passes. Display the complete scope, direct
+    prerequisites, reused services and any pilot. Pilot complexity/grouping rules
+-   must respect dependency order. Use the existing Gate One setting for plan
+-   approval: explicit human approval when enabled, otherwise the configured
+-   automatic/skip decision. Persist the accepted scope, graph, order, API references
+-   and approval evidence; material changes require revised approval under that
+-   policy. Missing dependencies and cycles remain hard blockers.
++   must respect dependency order. Make the plan the final intake output and obtain
++   acceptance once for the conversion run before the thin wrapper starts. Reuse
++   existing approval machinery with a separately saved run-plan policy, defaulting
++   to human review; automatic/skip policy affects only human approval. Persist the
++   accepted scope, graph, order, API references and approval evidence; material
++   changes require renewed acceptance. Missing dependencies/cycles remain blockers.
+ 4. **Coordinate the existing workflow sequentially.** Add a thin outer operation
+    loop in the approved order. Invoke the current conversion workflow for one
+@@ -407,15 +412,16 @@
+
+ job-wide stage barrier.
+ 
+-The sequential coordinator invokes these existing stages and gates rather than
+-duplicating their implementations. All four gates apply per operation. Gate One
+-reviews the plan and current operation scope; it is also the plan-approval entry
+-point, not an additional fifth gate. Reuse the current human/automatic/skip
+-settings for each gate. Manual pauses occur only where enabled, so all-human
+-settings can require four decisions per operation. Automatic/skip policy does not
++The thin wrapper invokes these existing stages and gates rather than duplicating
++their implementations. Intake's run-plan approval precedes the wrapper once per
++conversion run, using the same decision machinery with a separate saved policy.
++All four existing gates then apply per operation with their current numbers and
++human/automatic/skip settings. Their reports reference the accepted plan and
++current operation scope. All-human settings can require four decisions per
++operation in addition to the single run-plan approval. Automatic/skip policy does not
+ bypass failed technical checks, missing dependencies or cycles. Scope gate reports
+ and saved decisions to the current operation and gate; retain the existing
+ content-bound approval behavior and Resume evidence. Pause at a pending/rejected
+-gate without starting the next operation. No new approval-policy mechanism is
+-required. The established responsibilities remain:
++gate without starting the next operation. Reuse the current approval mechanism;
++do not duplicate it for the run-plan handoff. The established responsibilities remain:
+ 
+ - Gate One: selected scope, known boundaries and preliminary contracts/ownership.

@@ -15,7 +15,7 @@ from tools.shared_artifact_classifier_tools.classifier import run_shared_artifac
 from tools.state_store_tools.db import create_all_tables, get_connection
 from tools.state_store_tools.runs import update_run_status
 from tools.workspace_intake_tools.run_factory import create_run_config, persist_run_config
-from runtime.workspace_paths import resolve_run_directory, run_database_path, run_profile_path, run_report_path, run_mapper_log_path
+from runtime.workspace_paths import resolve_run_directory, run_database_path, run_profile_path, run_report_path, run_mapper_log_path, write_run_report
 from tools.source_discovery_tools import discover_java_sources
 from tools.source_discovery_tools.classpath import discover_java_classpath
 from runtime.model_execution.readiness import intake_model_warning
@@ -76,13 +76,20 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         logger.info("Building component inventory.")
         inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index)
         persist_component_inventory(conn, run_id, inventory)
+        if profile.conversion_strategy == 'behavior_units':
+            from tools.component_inventory_tools.service_inventory import service_inventory
+            connections = service_inventory(profile.source_root, profile.channels)
+            conn.execute('CREATE TABLE IF NOT EXISTS service_definition_inventory (run_id TEXT PRIMARY KEY, record_json TEXT)')
+            with conn:
+                conn.execute('INSERT OR REPLACE INTO service_definition_inventory VALUES (?,?)', (run_id, json.dumps(connections)))
+            write_run_report(directory, 'service_definitions.json', json.dumps(connections, indent=2))
         run_report_path(directory, "component_inventory.json").write_text(inventory.model_dump_json(indent=2), encoding="utf-8")
         run_report_path(directory, "java_source_dependencies.json").write_text(inventory.java_dependencies.model_dump_json(indent=2), encoding="utf-8")
         run_report_path(directory, "component_usage.json").write_text(json.dumps(get_implementation_usage(conn, run_id), indent=2), encoding="utf-8")
         run_report_path(directory, "configured_component_usage.json").write_text(json.dumps(get_configured_component_usage(conn, run_id), indent=2), encoding="utf-8")
         command = ["java", "-jar", profile.mapper_jar, "--root", profile.source_root,
                    "--vault", str(vault), "--md"]
-        if len(profile.channels) == 1:
+        if len(profile.channels) == 1 and profile.conversion_strategy != 'behavior_units':
             command.extend(["--channel", profile.channels[0]])
         update_run_status(conn, run_id, "in_progress", "mapper")
         logger.info("Running Composer mapper; output is saved in logs/mapper.log.")
@@ -95,11 +102,23 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         analysis = run_legacy_composer_analysis(conn, config)
         if analysis["paused"]:
             return directory
+        if profile.conversion_strategy == 'behavior_units':
+            from tools.operation_call_tools.preflight import run_intake_preflight
+            preflight = run_intake_preflight(conn, config, profile, directory)
+            if preflight['blockers']:
+                update_run_status(conn, run_id, "paused_awaiting_operator", "dependency_preflight_blocked")
+                print("Dependency preflight blocked: include missing operations or resolve the reported evidence/cycles, then rerun intake. "
+                      "See " + str(directory / 'reports' / '1_intake_and_legacy_analysis' / 'dependency_preflight.md'))
+                return directory
         logger.info("Preparing context hierarchies and planning inputs.")
         build_all_context_hierarchies(conn, run_id)
         run_shared_artifact_classification(conn, run_id)
         operations = get_operations_for_planning(conn, run_id)
         run_report_path(directory, "planning_inputs.json").write_text(json.dumps(operations, indent=2), encoding="utf-8")
+        if profile.conversion_strategy == 'behavior_units':
+            from runtime.intake_plan import prepare_intake_plan
+            prepare_intake_plan(conn, config, profile, directory, operations)
+            return directory
         update_run_status(conn, run_id, "paused", "planning_inputs_ready")
         return directory
     except Exception:

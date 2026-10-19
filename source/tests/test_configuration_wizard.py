@@ -94,12 +94,12 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "output_root": "../work/migration_runs", "channels": ["WEB"],
         "include_operations": ["WebOperation"], "target_languages": ["java"],
         "java_version": 25, "java_home": str(project / "jdk-25"),
-        "external_dependencies": [],
+        "external_dependencies": [], "conversion_strategy": "legacy_components",
     }
     loaded = load_configuration(destination)
     assert loaded.source_root == str((project / "bank-demo/composer/Workspace").resolve())
     assert loaded.output_root == str((project / "work/migration_runs").resolve())
-    assert len(prompts) == 7
+    assert len(prompts) == 8
     assert list(destination.parent.iterdir()) == [destination]
 
 
@@ -117,7 +117,7 @@ def test_java_selection_retries_version_and_mismatched_jdk(project, monkeypatch,
 
 def test_custom_paths_are_preserved_and_config_relative(project, monkeypatch):
     collect_defaults(monkeypatch)
-    values = iter(["custom", "../bank-demo/composer/Workspace", "../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar", "../other-output", "25", str(project / "jdk-25"), "[]", "../docs/comp-manual/wsbcc_developer_manual_v2.md"])
+    values = iter(["custom", "../bank-demo/composer/Workspace", "../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar", "../other-output", "25", str(project / "jdk-25"), "[]", "legacy_components"])
     monkeypatch.setattr(wizard, "prompt_text", lambda *_: next(values))
     destination = wizard.create_configuration()
     assert load_configuration(destination).output_root == str((project / "other-output").resolve())
@@ -129,7 +129,7 @@ def test_absolute_input_paths_are_preserved(project, monkeypatch):
     source = str(project / "bank-demo/composer/Workspace")
     jar = str(project / "source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar")
     output = str(project / "absolute-output")
-    values = iter(["absolute", source, jar, output, "25", str(project / "jdk-25"), "[]", "../docs/comp-manual/wsbcc_developer_manual_v2.md"])
+    values = iter(["absolute", source, jar, output, "25", str(project / "jdk-25"), "[]", "legacy_components"])
     monkeypatch.setattr(wizard, "prompt_text", lambda *_: next(values))
     destination = wizard.create_configuration()
     data = yaml.safe_load(destination.read_text())

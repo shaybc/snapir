@@ -1,0 +1,10 @@
+{
+  "real_http_services": false,
+  "real_requests_completed": 0,
+  "simulated_boundary": "Oracle JDBC procedure and lookup table only",
+  "scenarios": [],
+  "trace": [],
+  "validation_failures": [],
+  "passed": false,
+  "error": "Expected one executable service package for GetClientLinksOp"
+}

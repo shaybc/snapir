@@ -1,0 +1,87 @@
+{
+  "files": [
+    {
+      "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRQFmtXml.java",
+      "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\nimport java.math.BigDecimal;\n\n@JacksonXmlRootElement(localName = \"TransferFunds\")\npublic class TransferFundsRQFmtXml {\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    private String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    private String targetAccount;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    private BigDecimal amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    private String currency;\n\n    @JacksonXmlProperty(localName = \"SessionToken\")\n    private String sessionToken;\n\n    @JacksonXmlProperty(localName = \"TransferReference\")\n    private String transferReference;\n\n    @JacksonXmlProperty(localName = \"ScheduledDate\")\n    private String scheduledDate;\n\n    public String getSourceAccount() {\n        return sourceAccount;\n    }\n\n    public void setSourceAccount(String sourceAccount) {\n        this.sourceAccount = sourceAccount;\n    }\n\n    public String getTargetAccount() {\n        return targetAccount;\n    }\n\n    public void setTargetAccount(String targetAccount) {\n        this.targetAccount = targetAccount;\n    }\n\n    public BigDecimal getAmount() {\n        return amount;\n    }\n\n    public void setAmount(BigDecimal amount) {\n        this.amount = amount;\n    }\n\n    public String getCurrency() {\n        return currency;\n    }\n\n    public void setCurrency(String currency) {\n        this.currency = currency;\n    }\n\n    public String getSessionToken() {\n        return sessionToken;\n    }\n\n    public void setSessionToken(String sessionToken) {\n        this.sessionToken = sessionToken;\n    }\n\n    public String getTransferReference() {\n        return transferReference;\n    }\n\n    public void setTransferReference(String transferReference) {\n        this.transferReference = transferReference;\n    }\n\n    public String getScheduledDate() {\n        return scheduledDate;\n    }\n\n    public void setScheduledDate(String scheduledDate) {\n        this.scheduledDate = scheduledDate;\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRQBusinessInput.java",
+      "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRQBusinessInput {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() {\n        return sourceAccount;\n    }\n\n    public void setSourceAccount(String sourceAccount) {\n        this.sourceAccount = sourceAccount;\n    }\n\n    public String getTargetAccount() {\n        return targetAccount;\n    }\n\n    public void setTargetAccount(String targetAccount) {\n        this.targetAccount = targetAccount;\n    }\n\n    public BigDecimal getAmount() {\n        return amount;\n    }\n\n    public void setAmount(BigDecimal amount) {\n        this.amount = amount;\n    }\n\n    public String getCurrency() {\n        return currency;\n    }\n\n    public void setCurrency(String currency) {\n        this.currency = currency;\n    }\n\n    public String getSessionToken() {\n        return sessionToken;\n    }\n\n    public void setSessionToken(String sessionToken) {\n        this.sessionToken = sessionToken;\n    }\n\n    public String getTransferReference() {\n        return transferReference;\n    }\n\n    public void setTransferReference(String transferReference) {\n        this.transferReference = transferReference;\n    }\n\n    public String getScheduledDate() {\n        return scheduledDate;\n    }\n\n    public void setScheduledDate(String scheduledDate) {\n        this.scheduledDate = scheduledDate;\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRQFmtMapper.java",
+      "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\nimport java.util.regex.Pattern;\n\npublic class TransferFundsRQFmtMapper {\n\n    private static final XmlMapper XML_MAPPER = new XmlMapper();\n\n    public static TransferFundsRQFmtXml parseWire(String xmlContent) throws Exception {\n        return XML_MAPPER.readValue(xmlContent, TransferFundsRQFmtXml.class);\n    }\n\n    public static String serializeWire(TransferFundsRQFmtXml wire) throws Exception {\n        return XML_MAPPER.writeValueAsString(wire);\n    }\n\n    public static TransferFundsRQBusinessInput toBusinessInput(TransferFundsRQFmtXml wire) {\n        if (wire == null) {\n            return null;\n        }\n\n        TransferFundsRQBusinessInput businessInput = new TransferFundsRQBusinessInput();\n\n        // SourceAccount: CCPadding (padChar='0', length=10, padLeft=true), CCMandatory\n        String src = wire.getSourceAccount();\n        src = removePadding(src, '0', 10, true);\n        businessInput.setSourceAccount(src);\n\n        // TargetAccount: CCPadding (padChar='0', length=10, padLeft=true), CCMandatory\n        String tgt = wire.getTargetAccount();\n        tgt = removePadding(tgt, '0', 10, true);\n        businessInput.setTargetAccount(tgt);\n\n        // Amount: NumberFormat (showThousandsSep=no, showDecimalsSep=yes), CCMandatory\n        BigDecimal amt = wire.getAmount();\n        businessInput.setAmount(amt);\n\n        // Currency: CCPadding (padChar=' ', length=3, padLeft=true)\n        String cur = wire.getCurrency();\n        cur = removePadding(cur, ' ', 3, true);\n        businessInput.setCurrency(cur);\n\n        // SessionToken: MaskLogDecorator, CCMandatory\n        String token = wire.getSessionToken();\n        businessInput.setSessionToken(token);\n\n        // TransferReference: nilDecorator\n        String ref = wire.getTransferReference();\n        if (ref == null) {\n            ref = \"\";\n        }\n        businessInput.setTransferReference(ref);\n\n        // ScheduledDate: nilDecorator\n        String date = wire.getScheduledDate();\n        if (date == null) {\n            date = \"\";\n        }\n        businessInput.setScheduledDate(date);\n\n        return businessInput;\n    }\n\n    public static TransferFundsRQFmtXml toWire(TransferFundsRQBusinessInput businessInput) {\n        if (businessInput == null) {\n            return null;\n        }\n\n        TransferFundsRQFmtXml wire = new TransferFundsRQFmtXml();\n\n        // SourceAccount: forward decoration (add CCPadding)\n        String src = businessInput.getSourceAccount();\n        src = addPadding(src, '0', 10, true);\n        wire.setSourceAccount(src);\n\n        // TargetAccount: forward decoration\n        String tgt = businessInput.getTargetAccount();\n        tgt = addPadding(tgt, '0', 10, true);\n        wire.setTargetAccount(tgt);\n\n        // Amount\n        wire.setAmount(businessInput.getAmount());\n\n        // Currency: forward decoration\n        String cur = businessInput.getCurrency();\n        cur = addPadding(cur, ' ', 3, true);\n        wire.setCurrency(cur);\n\n        // SessionToken: MaskLogDecorator addDecoration is pass-through\n        wire.setSessionToken(businessInput.getSessionToken());\n\n        // TransferReference: nilDecorator addDecoration\n        String ref = businessInput.getTransferReference();\n        if (ref != null && ref.isBlank()) {\n            ref = null;\n        }\n        wire.setTransferReference(ref);\n\n        // ScheduledDate: nilDecorator addDecoration\n        String date = businessInput.getScheduledDate();\n        if (date != null && date.isBlank()) {\n            date = null;\n        }\n        wire.setScheduledDate(date);\n\n        return wire;\n    }\n\n    private static String removePadding(String value, char padChar, int length, boolean padLeft) {\n        if (value == null) return null;\n        if (padLeft) {\n            return value.replaceFirst(\"^[\" + Pattern.quote(String.valueOf(padChar)) + \"]+\", \"\");\n        } else {\n            return value.replaceFirst(\"[\" + Pattern.quote(String.valueOf(padChar)) + \"]+$\", \"\");\n        }\n    }\n\n    private static String addPadding(String value, char padChar, int length, boolean padLeft) {\n        if (value == null) value = \"\";\n        if (value.length() >= length) return value;\n        String pad = String.valueOf(padChar).repeat(length - value.length());\n        return padLeft ? pad + value : value + pad;\n    }\n}\n"
+    },
+    {
+      "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRQFmtTest.java",
+      "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRQFmtTest {\n\n    @Test\n    public void testUnformatAndFormatFlow() throws Exception {\n        String xml = \"<TransferFunds>\" +\n                \"<SourceAccount>0000123456</SourceAccount>\" +\n                \"<TargetAccount>0000987654</TargetAccount>\" +\n                \"<Amount>150.50</Amount>\" +\n                \"<Currency>USD</Currency>\" +\n                \"<SessionToken>tok_abc123</SessionToken>\" +\n                \"<TransferReference>REF999</TransferReference>\" +\n                \"<ScheduledDate>2023-12-31</ScheduledDate>\" +\n                \"</TransferFunds>\";\n\n        TransferFundsRQFmtXml wire = TransferFundsRQFmtMapper.parseWire(xml);\n        assertNotNull(wire);\n        assertEquals(\"0000123456\", wire.getSourceAccount());\n\n        TransferFundsRQBusinessInput input = TransferFundsRQFmtMapper.toBusinessInput(wire);\n        assertNotNull(input);\n        assertEquals(\"123456\", input.getSourceAccount());\n        assertEquals(\"987654\", input.getTargetAccount());\n        assertEquals(0, new BigDecimal(\"150.50\").compareTo(input.getAmount()));\n        assertEquals(\"USD\", input.getCurrency());\n        assertEquals(\"tok_abc123\", input.getSessionToken());\n        assertEquals(\"REF999\", input.getTransferReference());\n        assertEquals(\"2023-12-31\", input.getScheduledDate());\n\n        // Roundtrip back to wire\n        TransferFundsRQFmtXml roundtripWire = TransferFundsRQFmtMapper.toWire(input);\n        assertEquals(\"0000123456\", roundtripWire.getSourceAccount());\n        assertEquals(\"0000987654\", roundtripWire.getTargetAccount());\n        assertEquals(\"USD\", roundtripWire.getCurrency());\n        assertEquals(\"REF999\", roundtripWire.getTransferReference());\n\n        String serialized = TransferFundsRQFmtMapper.serializeWire(roundtripWire);\n        assertNotNull(serialized);\n        assertTrue(serialized.contains(\"<SourceAccount>0000123456</SourceAccount>\"));\n    }\n}\n"
+    }
+  ],
+  "unit_contract": {
+    "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+    "apis": [
+      {
+        "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtMapper",
+        "method_signatures": [
+          "public static com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtXml parseWire(java.lang.String)",
+          "public static java.lang.String serializeWire(com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtXml)",
+          "public static com.company.generated.units.u5ce9c9ef500c.TransferFundsRQBusinessInput toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtXml)",
+          "public static com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtXml toWire(com.company.generated.units.u5ce9c9ef500c.TransferFundsRQBusinessInput)"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRQFmtXml",
+        "method_signatures": [
+          "public java.lang.String getSourceAccount()",
+          "public void setSourceAccount(java.lang.String)",
+          "public java.lang.String getTargetAccount()",
+          "public void setTargetAccount(java.lang.String)",
+          "public java.math.BigDecimal getAmount()",
+          "public void setAmount(java.math.BigDecimal)",
+          "public java.lang.String getCurrency()",
+          "public void setCurrency(java.lang.String)",
+          "public java.lang.String getSessionToken()",
+          "public void setSessionToken(java.lang.String)",
+          "public java.lang.String getTransferReference()",
+          "public void setTransferReference(java.lang.String)",
+          "public java.lang.String getScheduledDate()",
+          "public void setScheduledDate(java.lang.String)"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRQBusinessInput",
+        "method_signatures": [
+          "public java.lang.String getSourceAccount()",
+          "public void setSourceAccount(java.lang.String)",
+          "public java.lang.String getTargetAccount()",
+          "public void setTargetAccount(java.lang.String)",
+          "public java.math.BigDecimal getAmount()",
+          "public void setAmount(java.math.BigDecimal)",
+          "public java.lang.String getCurrency()",
+          "public void setCurrency(java.lang.String)",
+          "public java.lang.String getSessionToken()",
+          "public void setSessionToken(java.lang.String)",
+          "public java.lang.String getTransferReference()",
+          "public void setTransferReference(java.lang.String)",
+          "public java.lang.String getScheduledDate()",
+          "public void setScheduledDate(java.lang.String)"
+        ]
+      }
+    ],
+    "dependency_units": [],
+    "requirements": {
+      "business": "Preserve this complete configured unit's evidenced behavior"
+    },
+    "evidence_ids": [
+      "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "com.ibm.dse.base.Context",
+      "com.ibm.dse.base.Tag",
+      "com.ibm.il.dse.cc.decorator.CCPadding",
+      "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+      "com.ibm.il.dse.cc.decorator.NilDecorator",
+      "com.ibm.il.dse.cc.format.CCString",
+      "com.ibm.il.dse.cc.format.CCXML",
+      "com.ibm.il.dse.cc.format.NumberFormat"
+    ]
+  }
+}

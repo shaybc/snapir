@@ -6,6 +6,7 @@ from typing import Literal
 import constants
 from models.deployment_models import DeploymentDefaults
 from models.external_dependency import ExternalDependencyRule
+from models.conversion_requirement import ConversionRequirement
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -14,8 +15,13 @@ class PipelineConfiguration(BaseModel):
     """Describe project inputs and conversion scope without storing credentials."""
 
     model_config = ConfigDict(extra="forbid", validate_default=True)
+    conversion_strategy: Literal["legacy_components", "behavior_units"] = "legacy_components"
+    conversion_requirements: list[ConversionRequirement] = Field(default_factory=list)
+    behavior_context_chars: int = Field(default=180000, ge=60000, le=1000000)
     source_root: str = constants.COMPOSER_ROOT
     source_workspace_id: str | None = Field(default=constants.SOURCE_WORKSPACE_ID, min_length=1)
+    service_registry_path: str | None = Field(default=None, min_length=1)
+    plan_approval_policy: Literal["human", "automatic", "skip"] = "human"
     shared_library_min_usage: int = Field(default=constants.SHARED_LIBRARY_MIN_USAGE, ge=1)
     broad_library_usage_threshold: int = Field(default=constants.BROAD_LIBRARY_USAGE_THRESHOLD, ge=1)
     mapper_jar: str = constants.COMPOSER_MAPPER_JAR

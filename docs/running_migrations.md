@@ -1,5 +1,31 @@
 # Running migration intake
 
+## Option two conversion
+
+Use `conversion_strategy: behavior_units` for complete-format and configured-step
+conversion. `configs/internet_transfer.yaml` selects it. Start a new run with that
+configuration; saved runs keep their captured strategy. The wizard also exposes
+the setting, with `legacy_components` retained as its rollout default.
+
+After intake and Gate One, Resume gathers checked evidence, reconciles typed
+contracts, and generates native bundles. Request/response formats become Jackson
+wire models plus transformations; each configured op-step becomes business code.
+Gate Two reviews bundles and final ownership. The native service flow is assembled
+and reviewed at Gate Three. Spring XML wrappers, tests, packaging and Gate Four
+reuse the existing delivery path. No Composer context engine is regenerated.
+
+New reports in stage three include `native_unit_plan.json` and
+`native_bundle_results.json`. Model logs identify each unit and its queue position.
+Corrections are bounded and persisted. Changed XML/source/build inputs, unresolved
+behavior, missing executed tests, or missing runtime-equivalence evidence remain
+explicit stops. Compile/test success alone does not approve production delivery.
+
+See [the design](../option_two_design.md) and
+[implementation record](../option_two_implementation_plan.md). JSON transport and
+deterministic workflow generation remain future refinements.
+
+## Intake and historical runtime notes
+
 Run from the repository root with Python, PyYAML, Pydantic, and Java available:
 
 ```powershell

@@ -1,0 +1,46 @@
+{
+  "files": [
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepAction.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport java.util.Map;\n\npublic class ValidationFailedStepAction {\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public ValidationFailedStepAction() {\n        this.errorCategory = \"10\";\n        this.errorNumber = \"2\";\n    }\n\n    public int execute(Map<String, Object> context) {\n        context.put(\"ErrorCategory\", errorCategory);\n        context.put(\"ErrorNumber\", errorNumber);\n        context.put(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n"
+    },
+    {
+      "path": "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepActionTest.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport org.junit.jupiter.api.Test;\nimport java.util.HashMap;\nimport java.util.Map;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class ValidationFailedStepActionTest {\n\n    @Test\n    public void testExecuteSetsErrorCategoryAndNumber() {\n        ValidationFailedStepAction action = new ValidationFailedStepAction();\n        Map<String, Object> context = new HashMap<>();\n\n        int result = action.execute(context);\n\n        assertEquals(0, result);\n        assertEquals(\"10\", context.get(\"ErrorCategory\"));\n        assertEquals(\"2\", context.get(\"ErrorNumber\"));\n        assertEquals(\"Validation failed: required field missing or invalid\", context.get(\"ErrorDescription\"));\n    }\n}\n"
+    }
+  ],
+  "dependencies": [],
+  "coverage": {
+    "business": [
+      "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedStepActionTest.java"
+    ]
+  },
+  "evidence_ids": [
+    "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+  ],
+  "unresolved_questions": [],
+  "unit_contract": {
+    "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "apis": [
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedStepAction",
+        "method_signatures": [
+          "public int execute(java.util.Map)"
+        ]
+      }
+    ],
+    "requirements": {
+      "business": "Preserve this complete configured unit's evidenced behavior"
+    },
+    "evidence_ids": [
+      "configured_step-2e52a65fe1cea8c4efb9ba82",
+      "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+    ]
+  },
+  "input_type": null,
+  "output_type": null,
+  "wire_type": null,
+  "operation_contract": null,
+  "schema_version": "v1"
+}

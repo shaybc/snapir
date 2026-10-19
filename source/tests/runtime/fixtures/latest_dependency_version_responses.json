@@ -1,0 +1,296 @@
+{
+  "pom": "<?xml version='1.0' encoding='utf-8'?>\n<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><modelVersion>4.0.0</modelVersion><groupId>com.company.migration</groupId><artifactId>TransferFundsOp</artifactId><version>1.0.0-cdbfffbd6243</version><properties><maven.compiler.release>25</maven.compiler.release><maven.compiler.source>25</maven.compiler.source><maven.compiler.target>25</maven.compiler.target><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties><build><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.1</version></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId><version>3.6.2</version><executions><execution><goals><goal>enforce</goal></goals><configuration><rules><requireJavaVersion><version>[25,26)</version></requireJavaVersion></rules></configuration></execution></executions></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.4</version></plugin></plugins></build><dependencies><dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><version>2.15.2</version><scope>compile</scope></dependency><dependency><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-xml</artifactId><version>2.15.2</version><scope>compile</scope></dependency><dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>5.10.0</version><scope>test</scope></dependency></dependencies></project>",
+  "responses": [
+    {
+      "attempt": 1,
+      "response": {
+        "files": [
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequestMapper {\n\n    private static final XmlMapper XML_MAPPER = new XmlMapper();\n\n    public TransferFundsRequest toBusinessInput(String xml) throws Exception {\n        TransferFundsRequestXml wire = XML_MAPPER.readValue(xml, TransferFundsRequestXml.class);\n        return toBusinessInput(wire);\n    }\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        TransferFundsRequest req = new TransferFundsRequest();\n\n        if (wire != null && wire.transferFunds != null) {\n            TransferFundsXml tf = wire.transferFunds;\n            req.setSourceAccount(unformatSourceAccount(tf.sourceAccount));\n            req.setTargetAccount(unformatTargetAccount(tf.targetAccount));\n            req.setAmount(unformatAmount(tf.amount));\n            req.setCurrency(unformatCurrency(tf.currency));\n            req.setSessionToken(unformatSessionToken(tf.sessionToken));\n            req.setTransferReference(unformatTransferReference(tf.transferReference, tf.transferReferenceNil));\n            req.setScheduledDate(unformatScheduledDate(tf.scheduledDate, tf.scheduledDateNil));\n        }\n\n        return req;\n    }\n\n    private String unformatSourceAccount(String value) {\n        if (value == null) return null;\n        // Reverse CCPadding (padChar='0', length=10, padLeft=true) -> remove leading zeros\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private String unformatTargetAccount(String value) {\n        if (value == null) return null;\n        // Reverse CCPadding (padChar='0', length=10, padLeft=true) -> remove leading zeros\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private BigDecimal unformatAmount(String value) {\n        if (value == null || value.isBlank()) return null;\n        String clean = value.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String unformatCurrency(String value) {\n        if (value == null) return null;\n        // Reverse CCPadding (padChar=' ', length=3, padLeft=true) -> remove leading spaces\n        return value.replaceFirst(\"^ +\", \"\");\n    }\n\n    private String unformatSessionToken(String value) {\n        // MaskLogDecorator unformat is a pass-through\n        return value;\n    }\n\n    private String unformatTransferReference(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        // Reverse NilDecorator: if not nil, return value (or empty string if nil handled as null)\n        return value;\n    }\n\n    private String unformatScheduledDate(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        return value;\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.Objects;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n\n    @Override\n    public boolean equals(Object o) {\n        if (this == o) return true;\n        if (o == null || getClass() != o.getClass()) return false;\n        TransferFundsRequest that = (TransferFundsRequest) o;\n        return Objects.equals(sourceAccount, that.sourceAccount) &&\n                Objects.equals(targetAccount, that.targetAccount) &&\n                Objects.equals(amount, that.amount) &&\n                Objects.equals(currency, that.currency) &&\n                Objects.equals(sessionToken, that.sessionToken) &&\n                Objects.equals(transferReference, that.transferReference) &&\n                Objects.equals(scheduledDate, that.scheduledDate);\n    }\n\n    @Override\n    public int hashCode() {\n        return Objects.hash(sourceAccount, targetAccount, amount, currency, sessionToken, transferReference, scheduledDate);\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsRequest\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"TransferFunds\")\n    public TransferFundsXml transferFunds;\n\n    public static class TransferFundsXml {\n\n        @JacksonXmlProperty(localName = \"SourceAccount\")\n        public String sourceAccount;\n\n        @JacksonXmlProperty(localName = \"TargetAccount\")\n        public String targetAccount;\n\n        @JacksonXmlProperty(localName = \"Amount\")\n        public String amount;\n\n        @JacksonXmlProperty(localName = \"Currency\")\n        public String currency;\n\n        @JacksonXmlProperty(localName = \"SessionToken\")\n        public String sessionToken;\n\n        @JacksonXmlProperty(localName = \"TransferReference\")\n        public String transferReference;\n\n        @JacksonXmlProperty(localName = \"nil:nil\")\n        public Boolean transferReferenceNil;\n\n        @JacksonXmlProperty(localName = \"ScheduledDate\")\n        public String scheduledDate;\n\n        @JacksonXmlProperty(localName = \"xsi:nil\")\n        public Boolean scheduledDateNil;\n    }\n}"
+          },
+          {
+            "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void testUnformatTransferFundsRequest() throws Exception {\n        String xml = \"<TransferFundsRequest>\" +\n                \"<TransferFunds>\" +\n                \"<SourceAccount>0001234567</SourceAccount>\" +\n                \"<TargetAccount>0000987654</TargetAccount>\" +\n                \"<Amount>1500.50</Amount>\" +\n                \"<Currency>USD</Currency>\" +\n                \"<SessionToken>secret-token</SessionToken>\" +\n                \"<TransferReference>REF123</TransferReference>\" +\n                \"<ScheduledDate xsi:nil=\\\"true\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\"/>\" +\n                \"</TransferFunds>\" +\n                \"</TransferFundsRequest>\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(xml);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"987654\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"1500.50\"), result.getAmount());\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF123\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n\n    @Test\n    public void testUnformatWithWireModelDirectly() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.transferFunds = new TransferFundsRequestXml.TransferFundsXml();\n        wire.transferFunds.sourceAccount = \"0000000111\";\n        wire.transferFunds.targetAccount = \"0000000222\";\n        wire.transferFunds.amount = \"100.00\";\n        wire.transferFunds.currency = \"EUR\";\n        wire.transferFunds.sessionToken = \"tok\";\n        wire.transferFunds.transferReference = null;\n        wire.transferFunds.transferReferenceNil = true;\n        wire.transferFunds.scheduledDate = \"2023-12-31\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"111\", result.getSourceAccount());\n        assertEquals(\"222\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"100.00\"), result.getAmount());\n        assertEquals(\"EUR\", result.getCurrency());\n        assertEquals(\"tok\", result.getSessionToken());\n        assertNull(result.getTransferReference());\n        assertEquals(\"2023-12-31\", result.getScheduledDate());\n    }\n}"
+          }
+        ],
+        "dependencies": [
+          {
+            "group_id": "org.junit.jupiter",
+            "artifact_id": "junit-jupiter",
+            "version": "5.10.2",
+            "scope": "test",
+            "reason": "JUnit Jupiter tests and execution engine",
+            "required_classes": [
+              "org.junit.jupiter.api.Test",
+              "org.junit.jupiter.api.Assertions"
+            ]
+          },
+          {
+            "group_id": "com.fasterxml.jackson.dataformat",
+            "artifact_id": "jackson-dataformat-xml",
+            "version": "2.17.2",
+            "scope": "compile",
+            "reason": "XML parsing wire models",
+            "required_classes": [
+              "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+            ]
+          }
+        ],
+        "coverage": {
+          "business": [
+            "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+          ]
+        },
+        "evidence_ids": [
+          "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ],
+        "unresolved_questions": [],
+        "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+        "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "unit_contract": {
+          "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(java.lang.String) throws java.lang.Exception",
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML",
+            "com.ibm.il.dse.cc.format.NumberFormat"
+          ]
+        },
+        "schema_version": "v1"
+      },
+      "error": "Dependency version/scope conflict: org.junit.jupiter:junit-jupiter"
+    },
+    {
+      "attempt": 2,
+      "response": {
+        "files": [
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequestMapper {\n\n    private static final XmlMapper XML_MAPPER = new XmlMapper();\n\n    public TransferFundsRequest toBusinessInput(String xml) throws Exception {\n        TransferFundsRequestXml wire = XML_MAPPER.readValue(xml, TransferFundsRequestXml.class);\n        return toBusinessInput(wire);\n    }\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        TransferFundsRequest req = new TransferFundsRequest();\n\n        if (wire != null && wire.transferFunds != null) {\n            TransferFundsRequestXml.TransferFundsXml tf = wire.transferFunds;\n            req.setSourceAccount(unformatSourceAccount(tf.sourceAccount));\n            req.setTargetAccount(unformatTargetAccount(tf.targetAccount));\n            req.setAmount(unformatAmount(tf.amount));\n            req.setCurrency(unformatCurrency(tf.currency));\n            req.setSessionToken(unformatSessionToken(tf.sessionToken));\n            req.setTransferReference(unformatTransferReference(tf.transferReference, tf.transferReferenceNil));\n            req.setScheduledDate(unformatScheduledDate(tf.scheduledDate, tf.scheduledDateNil));\n        }\n\n        return req;\n    }\n\n    private String unformatSourceAccount(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private String unformatTargetAccount(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private BigDecimal unformatAmount(String value) {\n        if (value == null || value.isBlank()) return null;\n        String clean = value.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String unformatCurrency(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^ +\", \"\");\n    }\n\n    private String unformatSessionToken(String value) {\n        return value;\n    }\n\n    private String unformatTransferReference(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        return value;\n    }\n\n    private String unformatScheduledDate(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        return value;\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.Objects;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n\n    @Override\n    public boolean equals(Object o) {\n        if (this == o) return true;\n        if (o == null || getClass() != o.getClass()) return false;\n        TransferFundsRequest that = (TransferFundsRequest) o;\n        return Objects.equals(sourceAccount, that.sourceAccount) &&\n                Objects.equals(targetAccount, that.targetAccount) &&\n                Objects.equals(amount, that.amount) &&\n                Objects.equals(currency, that.currency) &&\n                Objects.equals(sessionToken, that.sessionToken) &&\n                Objects.equals(transferReference, that.transferReference) &&\n                Objects.equals(scheduledDate, that.scheduledDate);\n    }\n\n    @Override\n    public int hashCode() {\n        return Objects.hash(sourceAccount, targetAccount, amount, currency, sessionToken, transferReference, scheduledDate);\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsRequest\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"TransferFunds\")\n    public TransferFundsXml transferFunds;\n\n    public static class TransferFundsXml {\n\n        @JacksonXmlProperty(localName = \"SourceAccount\")\n        public String sourceAccount;\n\n        @JacksonXmlProperty(localName = \"TargetAccount\")\n        public String targetAccount;\n\n        @JacksonXmlProperty(localName = \"Amount\")\n        public String amount;\n\n        @JacksonXmlProperty(localName = \"Currency\")\n        public String currency;\n\n        @JacksonXmlProperty(localName = \"SessionToken\")\n        public String sessionToken;\n\n        @JacksonXmlProperty(localName = \"TransferReference\")\n        public String transferReference;\n\n        @JacksonXmlProperty(localName = \"nil:nil\")\n        public Boolean transferReferenceNil;\n\n        @JacksonXmlProperty(localName = \"ScheduledDate\")\n        public String scheduledDate;\n\n        @JacksonXmlProperty(localName = \"xsi:nil\")\n        public Boolean scheduledDateNil;\n    }\n}"
+          },
+          {
+            "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void testUnformatTransferFundsRequest() throws Exception {\n        String xml = \"<TransferFundsRequest>\" +\n                \"<TransferFunds>\" +\n                \"<SourceAccount>0001234567</SourceAccount>\" +\n                \"<TargetAccount>0000987654</TargetAccount>\" +\n                \"<Amount>1500.50</Amount>\" +\n                \"<Currency>USD</Currency>\" +\n                \"<SessionToken>secret-token</SessionToken>\" +\n                \"<TransferReference>REF123</TransferReference>\" +\n                \"<ScheduledDate xsi:nil=\\\"true\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\"/>\" +\n                \"</TransferFunds>\" +\n                \"</TransferFundsRequest>\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(xml);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"987654\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"1500.50\"), result.getAmount());\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF123\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n\n    @Test\n    public void testUnformatWithWireModelDirectly() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.transferFunds = new TransferFundsRequestXml.TransferFundsXml();\n        wire.transferFunds.sourceAccount = \"0000000111\";\n        wire.transferFunds.targetAccount = \"0000000222\";\n        wire.transferFunds.amount = \"100.00\";\n        wire.transferFunds.currency = \"EUR\";\n        wire.transferFunds.sessionToken = \"tok\";\n        wire.transferFunds.transferReference = null;\n        wire.transferFunds.transferReferenceNil = true;\n        wire.transferFunds.scheduledDate = \"2023-12-31\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"111\", result.getSourceAccount());\n        assertEquals(\"222\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"100.00\"), result.getAmount());\n        assertEquals(\"EUR\", result.getCurrency());\n        assertEquals(\"tok\", result.getSessionToken());\n        assertNull(result.getTransferReference());\n        assertEquals(\"2023-12-31\", result.getScheduledDate());\n    }\n}"
+          }
+        ],
+        "dependencies": [
+          {
+            "group_id": "org.junit.jupiter",
+            "artifact_id": "junit-jupiter",
+            "version": "5.10.2",
+            "scope": "test",
+            "reason": "JUnit Jupiter tests and execution engine",
+            "required_classes": [
+              "org.junit.jupiter.api.Test",
+              "org.junit.jupiter.api.Assertions"
+            ]
+          },
+          {
+            "group_id": "com.fasterxml.jackson.dataformat",
+            "artifact_id": "jackson-dataformat-xml",
+            "version": "2.17.2",
+            "scope": "compile",
+            "reason": "XML parsing wire models",
+            "required_classes": [
+              "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+            ]
+          }
+        ],
+        "coverage": {
+          "business": [
+            "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+          ]
+        },
+        "evidence_ids": [
+          "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ],
+        "unresolved_questions": [],
+        "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+        "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "unit_contract": {
+          "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(java.lang.String) throws java.lang.Exception",
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML",
+            "com.ibm.il.dse.cc.format.NumberFormat"
+          ]
+        },
+        "schema_version": "v1"
+      },
+      "error": "Dependency version/scope conflict: org.junit.jupiter:junit-jupiter"
+    },
+    {
+      "attempt": 3,
+      "response": {
+        "files": [
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequestMapper {\n\n    private static final XmlMapper XML_MAPPER = new XmlMapper();\n\n    public TransferFundsRequest toBusinessInput(String xml) throws Exception {\n        TransferFundsRequestXml wire = XML_MAPPER.readValue(xml, TransferFundsRequestXml.class);\n        return toBusinessInput(wire);\n    }\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        TransferFundsRequest req = new TransferFundsRequest();\n\n        if (wire != null && wire.transferFunds != null) {\n            TransferFundsRequestXml.TransferFundsXml tf = wire.transferFunds;\n            req.setSourceAccount(unformatSourceAccount(tf.sourceAccount));\n            req.setTargetAccount(unformatTargetAccount(tf.targetAccount));\n            req.setAmount(unformatAmount(tf.amount));\n            req.setCurrency(unformatCurrency(tf.currency));\n            req.setSessionToken(unformatSessionToken(tf.sessionToken));\n            req.setTransferReference(unformatTransferReference(tf.transferReference, tf.transferReferenceNil));\n            req.setScheduledDate(unformatScheduledDate(tf.scheduledDate, tf.scheduledDateNil));\n        }\n\n        return req;\n    }\n\n    private String unformatSourceAccount(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private String unformatTargetAccount(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^0+\", \"\");\n    }\n\n    private BigDecimal unformatAmount(String value) {\n        if (value == null || value.isBlank()) return null;\n        String clean = value.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String unformatCurrency(String value) {\n        if (value == null) return null;\n        return value.replaceFirst(\"^ +\", \"\");\n    }\n\n    private String unformatSessionToken(String value) {\n        return value;\n    }\n\n    private String unformatTransferReference(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        return value;\n    }\n\n    private String unformatScheduledDate(String value, Boolean nil) {\n        if (Boolean.TRUE.equals(nil) || value == null) {\n            return null;\n        }\n        return value;\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.Objects;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n\n    @Override\n    public boolean equals(Object o) {\n        if (this == o) return true;\n        if (o == null || getClass() != o.getClass()) return false;\n        TransferFundsRequest that = (TransferFundsRequest) o;\n        return Objects.equals(sourceAccount, that.sourceAccount) &&\n                Objects.equals(targetAccount, that.targetAccount) &&\n                Objects.equals(amount, that.amount) &&\n                Objects.equals(currency, that.currency) &&\n                Objects.equals(sessionToken, that.sessionToken) &&\n                Objects.equals(transferReference, that.transferReference) &&\n                Objects.equals(scheduledDate, that.scheduledDate);\n    }\n\n    @Override\n    public int hashCode() {\n        return Objects.hash(sourceAccount, targetAccount, amount, currency, sessionToken, transferReference, scheduledDate);\n    }\n}"
+          },
+          {
+            "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsRequest\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"TransferFunds\")\n    public TransferFundsXml transferFunds;\n\n    public static class TransferFundsXml {\n\n        @JacksonXmlProperty(localName = \"SourceAccount\")\n        public String sourceAccount;\n\n        @JacksonXmlProperty(localName = \"TargetAccount\")\n        public String targetAccount;\n\n        @JacksonXmlProperty(localName = \"Amount\")\n        public String amount;\n\n        @JacksonXmlProperty(localName = \"Currency\")\n        public String currency;\n\n        @JacksonXmlProperty(localName = \"SessionToken\")\n        public String sessionToken;\n\n        @JacksonXmlProperty(localName = \"TransferReference\")\n        public String transferReference;\n\n        @JacksonXmlProperty(localName = \"nil:nil\")\n        public Boolean transferReferenceNil;\n\n        @JacksonXmlProperty(localName = \"ScheduledDate\")\n        public String scheduledDate;\n\n        @JacksonXmlProperty(localName = \"xsi:nil\")\n        public Boolean scheduledDateNil;\n    }\n}"
+          },
+          {
+            "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+            "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void testUnformatTransferFundsRequest() throws Exception {\n        String xml = \"<TransferFundsRequest>\" +\n                \"<TransferFunds>\" +\n                \"<SourceAccount>0001234567</SourceAccount>\" +\n                \"<TargetAccount>0000987654</TargetAccount>\" +\n                \"<Amount>1500.50</Amount>\" +\n                \"<Currency>USD</Currency>\" +\n                \"<SessionToken>secret-token</SessionToken>\" +\n                \"<TransferReference>REF123</TransferReference>\" +\n                \"<ScheduledDate xsi:nil=\\\"true\\\" xmlns:xsi=\\\"http://www.w3.org/2001/XMLSchema-instance\\\"/>\" +\n                \"</TransferFunds>\" +\n                \"</TransferFundsRequest>\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(xml);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"987654\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"1500.50\"), result.getAmount());\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF123\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n\n    @Test\n    public void testUnformatWithWireModelDirectly() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.transferFunds = new TransferFundsRequestXml.TransferFundsXml();\n        wire.transferFunds.sourceAccount = \"0000000111\";\n        wire.transferFunds.targetAccount = \"0000000222\";\n        wire.transferFunds.amount = \"100.00\";\n        wire.transferFunds.currency = \"EUR\";\n        wire.transferFunds.sessionToken = \"tok\";\n        wire.transferFunds.transferReference = null;\n        wire.transferFunds.transferReferenceNil = true;\n        wire.transferFunds.scheduledDate = \"2023-12-31\";\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"111\", result.getSourceAccount());\n        assertEquals(\"222\", result.getTargetAccount());\n        assertEquals(new BigDecimal(\"100.00\"), result.getAmount());\n        assertEquals(\"EUR\", result.getCurrency());\n        assertEquals(\"tok\", result.getSessionToken());\n        assertNull(result.getTransferReference());\n        assertEquals(\"2023-12-31\", result.getScheduledDate());\n    }\n}"
+          }
+        ],
+        "dependencies": [
+          {
+            "group_id": "org.junit.jupiter",
+            "artifact_id": "junit-jupiter",
+            "version": "5.10.2",
+            "scope": "test",
+            "reason": "JUnit Jupiter tests and execution engine",
+            "required_classes": [
+              "org.junit.jupiter.api.Test",
+              "org.junit.jupiter.api.Assertions"
+            ]
+          },
+          {
+            "group_id": "com.fasterxml.jackson.dataformat",
+            "artifact_id": "jackson-dataformat-xml",
+            "version": "2.17.2",
+            "scope": "compile",
+            "reason": "XML parsing wire models",
+            "required_classes": [
+              "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+              "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+            ]
+          }
+        ],
+        "coverage": {
+          "business": [
+            "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+          ]
+        },
+        "evidence_ids": [
+          "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML",
+          "com.ibm.il.dse.cc.format.NumberFormat"
+        ],
+        "unresolved_questions": [],
+        "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+        "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+        "unit_contract": {
+          "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(java.lang.String) throws java.lang.Exception",
+                "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML",
+            "com.ibm.il.dse.cc.format.NumberFormat"
+          ]
+        },
+        "schema_version": "v1"
+      },
+      "error": "Dependency version/scope conflict: org.junit.jupiter:junit-jupiter"
+    }
+  ]
+}

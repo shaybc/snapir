@@ -2,8 +2,28 @@
 
 import hashlib
 import sqlite3
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from tools.state_store_tools._json import utc_now
+
+_operation_scope = ContextVar('operation_gate_scope', default='')
+
+
+@contextmanager
+def operation_gate_scope(operation):
+    """Bind existing gate decisions to one operation without renumbering gates."""
+    token = _operation_scope.set(operation)
+    try:
+        yield
+    finally:
+        _operation_scope.reset(token)
+
+
+def gate_report_hash(report):
+    """Hash the current operation identity with its report; preserve old unscoped hashes."""
+    scope = _operation_scope.get()
+    return hashlib.sha256(((scope + '\n' if scope else '') + report).encode()).hexdigest()
 
 
 def initialize_gates(conn: sqlite3.Connection) -> None:
@@ -25,7 +45,7 @@ def record_decision(conn, run_id: str, gate_number: int, report: str,
     conn.execute("""INSERT INTO runtime_gate_decisions VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(run_id, gate_number, report_hash) DO UPDATE SET
         decision=excluded.decision, policy=excluded.policy, decided_at=excluded.decided_at""",
-        (run_id, gate_number, hashlib.sha256(report.encode()).hexdigest(), decision, policy, utc_now()))
+        (run_id, gate_number, gate_report_hash(report), decision, policy, utc_now()))
     conn.commit()
 
 
@@ -35,7 +55,7 @@ def evaluate_gate(conn, run_id: str, gate_number: int, report: str,
     if not checks_passed:
         return "blocked"
     initialize_gates(conn)
-    digest = hashlib.sha256(report.encode()).hexdigest()
+    digest = gate_report_hash(report)
     row = conn.execute("""SELECT decision FROM runtime_gate_decisions
         WHERE run_id=? AND gate_number=? AND report_hash=?""", (run_id, gate_number, digest)).fetchone()
     if row:

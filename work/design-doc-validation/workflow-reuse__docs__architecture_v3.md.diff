@@ -1,0 +1,14 @@
+--- docs/architecture_v3.md (before)
+
++++ docs/architecture_v3.md
+
+@@ -11,4 +11,8 @@
+
+ > below do not describe its required native operation scheduling. Legacy behavior
+ > and existing testing/correction policies are not changed by this document update.
++> A thin sequential coordinator invokes the existing converter; it does not
++> duplicate it. Apply all four existing gates per operation using their configured
++> human/automatic/skip settings. Gate One handles plan approval; no fifth gate is
++> added and failed technical/dependency checks still block under every policy.
+ 
+ > **Revision history**

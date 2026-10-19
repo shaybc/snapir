@@ -115,6 +115,12 @@ def import_vault(
     )
 
     _populate_operations_table(conn, run_config)
+    from tools.operation_call_tools.discovery import discover_operation_calls
+    from tools.state_store_tools.operation_calls import save_graph, plan_contracts
+    graph = discover_operation_calls(vault_root)
+    save_graph(conn, run_config.run_id, graph)
+    plan_contracts(conn, run_config.run_id, graph, vault_root)
+    summary.unresolved_references.extend(issue['operation'] + ': ' + issue['detail'] for issue in graph['issues'])
     return summary
 
 

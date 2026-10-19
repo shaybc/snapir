@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XML>
+  <!-- B calls C. The demo dispatcher shares context and propagates return codes. -->
+  <CCDSEServerOperation id="ValidateClientLinksOp" operationContext="GetClientLinksCtxt">
+    <opStep id="ValidateClientLinksFetch"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="GetClientLinksOp"
+            on0Do="end" onOtherDo="end"/>
+    <refFormat name="csRequestFormat" refid="GetClientLinksRQFmt"/>
+    <refFormat name="csReplyFormat" refid="GetClientLinksRSFmt"/>
+    <refFormat name="csErrorReplyFormat" refid="StandardErrorRSFmt"/>
+  </CCDSEServerOperation>
+</XML>

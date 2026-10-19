@@ -117,9 +117,13 @@ def create_configuration() -> Path:
         raise ValueError("Select at least one channel, operation, and target language")
     java_version, java_home = collect_java_configuration(configs, prompt_text)
     external_settings = collect_external_dependencies(prompt_text)
+    strategy = prompt_text("conversion_strategy (legacy_components or behavior_units)", "legacy_components")
+    while strategy not in {"legacy_components", "behavior_units"}:
+        print("Choose legacy_components or behavior_units")
+        strategy = prompt_text("conversion_strategy (legacy_components or behavior_units)", "legacy_components")
     data = dict(source_root=source_root, mapper_jar=mapper_jar, output_root=output_root,
                 channels=channels, include_operations=included, target_languages=languages,
-                java_version=java_version, java_home=java_home)
+                java_version=java_version, java_home=java_home, conversion_strategy=strategy)
     data.update(external_settings)
     save_configuration(destination, data, overwrite=overwrite)
     print(f"Configuration saved: {destination}")

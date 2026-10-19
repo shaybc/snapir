@@ -32,6 +32,56 @@ def test_ibm_guard_catches_class_for_name_string_literal():
     assert scan_source(source, ["com.ibm"]) == ["com.ibm"]
 
 
+def test_ibm_guard_ignores_line_block_and_javadoc_comments():
+    source = '''// import com.ibm.Legacy;
+/* Class.forName("com.ibm.Legacy"); */
+/**
+ * <opStep implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways" />
+ */
+public class NativeStep {}'''
+    assert scan_source(source, ["com.ibm"]) == []
+
+
+def test_ibm_guard_preserves_line_numbers_and_checks_code_after_comments(tmp_path):
+    source = '''/** implClass="com.ibm.Legacy" */
+// com.ibm.Legacy
+/* documentation */ import com.ibm.Legacy;
+public class Loader { void run() { com.ibm.Legacy.invoke(); } }
+'''
+    path = tmp_path / 'Loader.java'
+    path.write_text(source, encoding='utf-8')
+    findings = scan_for_ibm_dependencies(str(path), ['com.ibm'])
+    assert findings == [f'{path}:3:com.ibm', f'{path}:4:com.ibm']
+
+
+def test_ibm_guard_keeps_comment_like_text_inside_runtime_strings():
+    source = r'''public class Loader {
+ String value = "http://example/*literal*/\"";
+ Class<?> type = Class.forName("com.ibm.Legacy");
+}'''
+    assert scan_source(source, ['com.ibm']) == ['com.ibm']
+
+
+def test_ibm_guard_keeps_runtime_text_block_content():
+    source = '''public class Loader {
+ String value = """
+ // com.ibm.Legacy
+ /* literal text, not a comment */
+ """;
+}'''
+    assert scan_source(source, ['com.ibm']) == ['com.ibm']
+
+
+def test_comment_masking_preserves_literals_and_offsets():
+    from tools.validation_tools.java_comments import mask_java_comments
+    source = 'String x = "/* literal */ // literal"; char c = \'/\'; /* hidden */\r\n// hidden\r\n'
+    masked = mask_java_comments(source)
+    assert '"/* literal */ // literal"' in masked and "char c = '/'" in masked
+    assert len(masked) == len(source)
+    assert masked.count('\r\n') == source.count('\r\n')
+    assert 'hidden' not in masked
+
+
 def test_xml_diff_identical_xml_passes():
     result = compare_xml("<root><id>1</id></root>", "<root><id>1</id></root>")
 

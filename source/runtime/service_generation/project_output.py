@@ -30,7 +30,7 @@ def configure_executable_build(context):
         path.write_bytes(ElementTree.tostring(root, encoding="utf-8", xml_declaration=True))
 
 
-def validate_wrapper_output(output, protected, operation_id, context):
+def validate_wrapper_output(output, protected, operation_id, context, *, behavior_units=False, operation_contract=None):
     """Accept source/resources only and validate the complete protected project."""
     files = parse_generated_project_output(output)
     normalized = {}
@@ -48,7 +48,24 @@ def validate_wrapper_output(output, protected, operation_id, context):
             raise ValueError("Duplicate normalized wrapper path")
         normalized[name] = content
     combined = {**protected, **normalized, "pom.xml": Path(context.pom_path).read_text(encoding="utf-8")}
-    issues = validate_generated_project(combined, operation_id, build_context=context)
+    if behavior_units:
+        from runtime.service_generation.operation_wiring import validate_operation_wiring
+        validate_operation_wiring(normalized, operation_contract)
+        from tools.validation_tools.ibm_dependency_guard_tool import scan_source
+        from constants import FORBIDDEN_DEPENDENCIES
+        issues = ["Prohibited wrapper dependency: " + finding for content in normalized.values()
+                  for finding in scan_source(content, FORBIDDEN_DEPENDENCIES, allowed_classes=context.allowed_ibm_classes)]
+        if not any(name.endswith("application.properties") for name in combined):
+            issues.append("Native service configuration is missing")
+        if not any(name.startswith("src/test/java/") for name in combined):
+            issues.append("Native service tests are missing")
+        java = "\n".join(normalized.values())
+        from runtime.service_generation.xml_media_types import has_xml_media_type
+        if not any(has_xml_media_type(content) for name, content in normalized.items()
+                   if name.endswith(".java")) or "jakarta.xml.bind" in java:
+            issues.append("Native service must configure Jackson XML request/response binding")
+    else:
+        issues = validate_generated_project(combined, operation_id, build_context=context)
     # Assembly owns the real Service class; generation must wrap, not rename it.
     issues = [issue for issue in issues if issue != f"missing required file: service/{operation_id}ServiceImpl.java"]
     if issues:

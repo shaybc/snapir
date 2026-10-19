@@ -135,7 +135,11 @@ def merge_dependencies(pom_path: str, proposals, verifier, *, allowed_ibm_artifa
             key = (dependency.group_id, dependency.artifact_id)
             value = (dependency.version, dependency.scope)
             if key in existing and existing[key] != value:
-                raise ValueError(f"Dependency version/scope conflict: {dependency.group_id}:{dependency.artifact_id}")
+                raise ValueError(f"Dependency version/scope conflict: {dependency.group_id}:{dependency.artifact_id}. "
+                                 f"Proposed version {dependency.version}, scope {dependency.scope}; "
+                                 f"required by the current POM: version {existing[key][0]}, scope {existing[key][1]}. "
+                                 f"Return this dependency with version={existing[key][0]} and scope={existing[key][1]}; "
+                                 "keep its actual required_classes. Do not change the existing POM or guess another version.")
             if key not in existing:
                 node = ElementTree.SubElement(container, ns + "dependency")
                 for name, text in (("groupId", dependency.group_id), ("artifactId", dependency.artifact_id),

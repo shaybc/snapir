@@ -66,10 +66,21 @@ def get_operations_for_planning(conn: sqlite3.Connection, run_id: str) -> list[d
         """,
         (run_id,),
     ).fetchall()
-    return [
+    operations = [
         _operation_indicators(conn, run_id, row["operation_id"], row["channel"])
         for row in rows
     ]
+    from tools.state_store_tools.operation_calls import load_graph
+    graph = load_graph(conn, run_id)
+    if graph and graph['calls']:
+        from tools.operation_call_tools.ordering import operation_waves
+        waves = operation_waves(graph)
+        for item in operations:
+            key = item['channel'] + '/' + item['operation_id']
+            if key in waves:
+                item['operation_dependencies'] = waves[key]
+        operations.sort(key=lambda item: (item.get('operation_dependencies', {}).get('wave') or float('inf'), item['channel'], item['operation_id']))
+    return operations
 
 
 def write_migration_plan(conn: sqlite3.Connection, plan: MigrationPlan) -> None:

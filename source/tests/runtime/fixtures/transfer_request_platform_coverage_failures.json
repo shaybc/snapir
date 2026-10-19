@@ -1,0 +1,380 @@
+[
+  {
+    "files": [
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;\n\n@JacksonXmlRootElement(localName = \"TransferFunds\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SessionToken\")\n    public String sessionToken;\n\n    @JacksonXmlProperty(localName = \"TransferReference\")\n    public TransferReferenceXml transferReference;\n\n    @JacksonXmlProperty(localName = \"ScheduledDate\")\n    public ScheduledDateXml scheduledDate;\n\n    public static class TransferReferenceXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n\n    public static class ScheduledDateXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.regex.Pattern;\n\npublic class TransferFundsRequestMapper {\n\n    private static final Pattern LEADING_ZEROS_PATTERN = Pattern.compile(\"^0+\");\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        if (wire == null) {\n            return null;\n        }\n        TransferFundsRequest req = new TransferFundsRequest();\n        req.setSourceAccount(removePadding(wire.sourceAccount, '0', true));\n        req.setTargetAccount(removePadding(wire.targetAccount, '0', true));\n        req.setAmount(parseAmount(wire.amount));\n        req.setCurrency(removePadding(wire.currency, ' ', false));\n        req.setSessionToken(wire.sessionToken);\n        req.setTransferReference(extractNilOrValue(wire.transferReference != null ? wire.transferReference.nil : null,\n                wire.transferReference != null ? wire.transferReference.value : null));\n        req.setScheduledDate(extractNilOrValue(wire.scheduledDate != null ? wire.scheduledDate.nil : null,\n                wire.scheduledDate != null ? wire.scheduledDate.value : null));\n        return req;\n    }\n\n    private String removePadding(String value, char padChar, boolean padLeft) {\n        if (value == null) {\n            return null;\n        }\n        String quotedPad = Pattern.quote(String.valueOf(padChar));\n        if (padLeft) {\n            return value.replaceFirst(\"^[\" + quotedPad + \"]+\", \"\");\n        } else {\n            return value.replaceFirst(\"[\" + quotedPad + \"]+$\", \"\");\n        }\n    }\n\n    private BigDecimal parseAmount(String amountStr) {\n        if (amountStr == null || amountStr.isBlank()) {\n            return null;\n        }\n        String clean = amountStr.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String extractNilOrValue(String nilAttr, String val) {\n        if (\"true\".equalsIgnoreCase(nilAttr)) {\n            return null;\n        }\n        if (val == null) {\n            return \"\";\n        }\n        return val;\n    }\n}"
+      },
+      {
+        "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void unformatsAndStripsDecoratorsSuccessfully() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.sourceAccount = \"0001234567\";\n        wire.targetAccount = \"0000765432\";\n        wire.amount = \"1500.50\";\n        wire.currency = \"USD\";\n        wire.sessionToken = \"secret-token\";\n        \n        TransferFundsRequestXml.TransferReferenceXml ref = new TransferFundsRequestXml.TransferReferenceXml();\n        ref.value = \"REF-999\";\n        wire.transferReference = ref;\n\n        TransferFundsRequestXml.ScheduledDateXml date = new TransferFundsRequestXml.ScheduledDateXml();\n        date.nil = \"true\";\n        date.value = null;\n        wire.scheduledDate = date;\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"765432\", result.getTargetAccount());\n        assertEquals(0, new BigDecimal(\"1500.50\").compareTo(result.getAmount()));\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF-999\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n}"
+      }
+    ],
+    "dependencies": [
+      {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.databind.ObjectMapper"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText"
+        ]
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": [
+          "org.junit.jupiter.api.Test"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy-agent",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.objenesis",
+        "artifact_id": "objenesis",
+        "version": "3.3",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      }
+    ],
+    "coverage": {
+      "business": [
+        "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+      ]
+    },
+    "evidence_ids": [
+      "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "com.ibm.dse.base.Context",
+      "com.ibm.dse.base.Tag",
+      "com.ibm.il.dse.cc.decorator.CCPadding",
+      "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+      "com.ibm.il.dse.cc.decorator.NilDecorator",
+      "com.ibm.il.dse.cc.format.CCString",
+      "com.ibm.il.dse.cc.format.CCXML",
+      "com.ibm.il.dse.cc.format.NumberFormat"
+    ],
+    "unresolved_questions": [],
+    "unit_contract": {
+      "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+          "method_signatures": [
+            "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+          ]
+        }
+      ],
+      "dependency_units": [],
+      "requirements": {
+        "business": "Preserve this complete configured unit's evidenced behavior"
+      },
+      "evidence_ids": [
+        "request_unformat-5ce9c9ef500cb53c8bf03e7d"
+      ]
+    },
+    "schema_version": "v1",
+    "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+    "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+    "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml"
+  },
+  {
+    "files": [
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;\n\n@JacksonXmlRootElement(localName = \"TransferFunds\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SessionToken\")\n    public String sessionToken;\n\n    @JacksonXmlProperty(localName = \"TransferReference\")\n    public TransferReferenceXml transferReference;\n\n    @JacksonXmlProperty(localName = \"ScheduledDate\")\n    public ScheduledDateXml scheduledDate;\n\n    public static class TransferReferenceXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n\n    public static class ScheduledDateXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.regex.Pattern;\n\npublic class TransferFundsRequestMapper {\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        if (wire == null) {\n            return null;\n        }\n        TransferFundsRequest req = new TransferFundsRequest();\n        req.setSourceAccount(removePadding(wire.sourceAccount, '0', true));\n        req.setTargetAccount(removePadding(wire.targetAccount, '0', true));\n        req.setAmount(parseAmount(wire.amount));\n        req.setCurrency(removePadding(wire.currency, ' ', false));\n        req.setSessionToken(wire.sessionToken);\n        req.setTransferReference(extractNilOrValue(wire.transferReference != null ? wire.transferReference.nil : null,\n                wire.transferReference != null ? wire.transferReference.value : null));\n        req.setScheduledDate(extractNilOrValue(wire.scheduledDate != null ? wire.scheduledDate.nil : null,\n                wire.scheduledDate != null ? wire.scheduledDate.value : null));\n        return req;\n    }\n\n    private String removePadding(String value, char padChar, boolean padLeft) {\n        if (value == null) {\n            return null;\n        }\n        String quotedPad = Pattern.quote(String.valueOf(padChar));\n        if (padLeft) {\n            return value.replaceFirst(\"^[\" + quotedPad + \"]+\", \"\");\n        } else {\n            return value.replaceFirst(\"[\" + quotedPad + \"]+$\", \"\");\n        }\n    }\n\n    private BigDecimal parseAmount(String amountStr) {\n        if (amountStr == null || amountStr.isBlank()) {\n            return null;\n        }\n        String clean = amountStr.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String extractNilOrValue(String nilAttr, String val) {\n        if (\"true\".equalsIgnoreCase(nilAttr)) {\n            return null;\n        }\n        if (val == null) {\n            return \"\";\n        }\n        return val;\n    }\n}"
+      },
+      {
+        "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void unformatsAndStripsDecoratorsSuccessfully() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.sourceAccount = \"0001234567\";\n        wire.targetAccount = \"0000765432\";\n        wire.amount = \"1500.50\";\n        wire.currency = \"USD\";\n        wire.sessionToken = \"secret-token\";\n        \n        TransferFundsRequestXml.TransferReferenceXml ref = new TransferFundsRequestXml.TransferReferenceXml();\n        ref.value = \"REF-999\";\n        wire.transferReference = ref;\n\n        TransferFundsRequestXml.ScheduledDateXml date = new TransferFundsRequestXml.ScheduledDateXml();\n        date.nil = \"true\";\n        date.value = null;\n        wire.scheduledDate = date;\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"765432\", result.getTargetAccount());\n        assertEquals(0, new BigDecimal(\"1500.50\").compareTo(result.getAmount()));\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF-999\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n\n    @Test\n    public void testJava25TestTemplateContractCompliance() {\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        assertNotNull(mapper);\n    }\n}"
+      }
+    ],
+    "dependencies": [
+      {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.databind.ObjectMapper"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText"
+        ]
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": [
+          "org.junit.jupiter.api.Test"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy-agent",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.objenesis",
+        "artifact_id": "objenesis",
+        "version": "3.3",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      }
+    ],
+    "coverage": {
+      "business": [
+        "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+      ]
+    },
+    "evidence_ids": [
+      "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "com.ibm.dse.base.Context",
+      "com.ibm.dse.base.Tag",
+      "com.ibm.il.dse.cc.decorator.CCPadding",
+      "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+      "com.ibm.il.dse.cc.decorator.NilDecorator",
+      "com.ibm.il.dse.cc.format.CCString",
+      "com.ibm.il.dse.cc.format.CCXML",
+      "com.ibm.il.dse.cc.format.NumberFormat"
+    ],
+    "unresolved_questions": [],
+    "unit_contract": {
+      "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+          "method_signatures": [
+            "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+          ]
+        }
+      ],
+      "dependency_units": [],
+      "requirements": {
+        "business": "Preserve this complete configured unit's evidenced behavior",
+        "java25-test-template": "Use the verified Java 25 JUnit/Mockito testing platform with small focused behavior tests and separate adapter contract tests; mock external interfaces rather than hand implement them."
+      },
+      "evidence_ids": [
+        "request_unformat-5ce9c9ef500cb53c8bf03e7d"
+      ]
+    },
+    "schema_version": "v1",
+    "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+    "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+    "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml"
+  },
+  {
+    "files": [
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestXml.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;\n\n@JacksonXmlRootElement(localName = \"TransferFunds\")\npublic class TransferFundsRequestXml {\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SessionToken\")\n    public String sessionToken;\n\n    @JacksonXmlProperty(localName = \"TransferReference\")\n    public TransferReferenceXml transferReference;\n\n    @JacksonXmlProperty(localName = \"ScheduledDate\")\n    public ScheduledDateXml scheduledDate;\n\n    public static class TransferReferenceXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n\n    public static class ScheduledDateXml {\n        @JacksonXmlProperty(localName = \"nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n        public String nil;\n\n        @JacksonXmlText\n        public String value;\n    }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\n\npublic class TransferFundsRequest {\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal amount;\n    private String currency;\n    private String sessionToken;\n    private String transferReference;\n    private String scheduledDate;\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSessionToken() { return sessionToken; }\n    public void setSessionToken(String sessionToken) { this.sessionToken = sessionToken; }\n\n    public String getTransferReference() { return transferReference; }\n    public void setTransferReference(String transferReference) { this.transferReference = transferReference; }\n\n    public String getScheduledDate() { return scheduledDate; }\n    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }\n}"
+      },
+      {
+        "path": "src/main/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapper.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport java.math.BigDecimal;\nimport java.util.regex.Pattern;\n\npublic class TransferFundsRequestMapper {\n\n    public TransferFundsRequest toBusinessInput(TransferFundsRequestXml wire) {\n        if (wire == null) {\n            return null;\n        }\n        TransferFundsRequest req = new TransferFundsRequest();\n        req.setSourceAccount(removePadding(wire.sourceAccount, '0', true));\n        req.setTargetAccount(removePadding(wire.targetAccount, '0', true));\n        req.setAmount(parseAmount(wire.amount));\n        req.setCurrency(removePadding(wire.currency, ' ', false));\n        req.setSessionToken(wire.sessionToken);\n        req.setTransferReference(extractNilOrValue(wire.transferReference != null ? wire.transferReference.nil : null,\n                wire.transferReference != null ? wire.transferReference.value : null));\n        req.setScheduledDate(extractNilOrValue(wire.scheduledDate != null ? wire.scheduledDate.nil : null,\n                wire.scheduledDate != null ? wire.scheduledDate.value : null));\n        return req;\n    }\n\n    private String removePadding(String value, char padChar, boolean padLeft) {\n        if (value == null) {\n            return null;\n        }\n        String quotedPad = Pattern.quote(String.valueOf(padChar));\n        if (padLeft) {\n            return value.replaceFirst(\"^[\" + quotedPad + \"]+\", \"\");\n        } else {\n            return value.replaceFirst(\"[\" + quotedPad + \"]+$\", \"\");\n        }\n    }\n\n    private BigDecimal parseAmount(String amountStr) {\n        if (amountStr == null || amountStr.isBlank()) {\n            return null;\n        }\n        String clean = amountStr.replace(\",\", \"\");\n        return new BigDecimal(clean);\n    }\n\n    private String extractNilOrValue(String nilAttr, String val) {\n        if (\"true\".equalsIgnoreCase(nilAttr)) {\n            return null;\n        }\n        if (val == null) {\n            return \"\";\n        }\n        return val;\n    }\n}"
+      },
+      {
+        "path": "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java",
+        "content": "package com.company.generated.units.u5ce9c9ef500c;\n\nimport org.junit.jupiter.api.Test;\nimport java.math.BigDecimal;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRequestMapperTest {\n\n    @Test\n    public void unformatsAndStripsDecoratorsSuccessfully() {\n        TransferFundsRequestXml wire = new TransferFundsRequestXml();\n        wire.sourceAccount = \"0001234567\";\n        wire.targetAccount = \"0000765432\";\n        wire.amount = \"1500.50\";\n        wire.currency = \"USD\";\n        wire.sessionToken = \"secret-token\";\n        \n        TransferFundsRequestXml.TransferReferenceXml ref = new TransferFundsRequestXml.TransferReferenceXml();\n        ref.value = \"REF-999\";\n        wire.transferReference = ref;\n\n        TransferFundsRequestXml.ScheduledDateXml date = new TransferFundsRequestXml.ScheduledDateXml();\n        date.nil = \"true\";\n        date.value = null;\n        wire.scheduledDate = date;\n\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        TransferFundsRequest result = mapper.toBusinessInput(wire);\n\n        assertNotNull(result);\n        assertEquals(\"1234567\", result.getSourceAccount());\n        assertEquals(\"765432\", result.getTargetAccount());\n        assertEquals(0, new BigDecimal(\"1500.50\").compareTo(result.getAmount()));\n        assertEquals(\"USD\", result.getCurrency());\n        assertEquals(\"secret-token\", result.getSessionToken());\n        assertEquals(\"REF-999\", result.getTransferReference());\n        assertNull(result.getScheduledDate());\n    }\n\n    @Test\n    public void testJava25TestTemplateContractCompliance() {\n        TransferFundsRequestMapper mapper = new TransferFundsRequestMapper();\n        assertNotNull(mapper);\n    }\n}"
+      }
+    ],
+    "dependencies": [
+      {
+        "group_id": "com.fasterxml.jackson.core",
+        "artifact_id": "jackson-databind",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.databind.ObjectMapper"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Current target POM dependency",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText"
+        ]
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy-agent",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.objenesis",
+        "artifact_id": "objenesis",
+        "version": "3.3",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": []
+      }
+    ],
+    "coverage": {
+      "business": [
+        "src/test/java/com/company/generated/units/u5ce9c9ef500c/TransferFundsRequestMapperTest.java"
+      ]
+    },
+    "evidence_ids": [
+      "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "com.ibm.dse.base.Context",
+      "com.ibm.dse.base.Tag",
+      "com.ibm.il.dse.cc.decorator.CCPadding",
+      "com.ibm.il.dse.cc.decorator.MaskLogDecorator",
+      "com.ibm.il.dse.cc.decorator.NilDecorator",
+      "com.ibm.il.dse.cc.format.CCString",
+      "com.ibm.il.dse.cc.format.CCXML",
+      "com.ibm.il.dse.cc.format.NumberFormat"
+    ],
+    "unresolved_questions": [],
+    "unit_contract": {
+      "unit_id": "request_unformat-5ce9c9ef500cb53c8bf03e7d",
+      "apis": [
+        {
+          "type_name": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestMapper",
+          "method_signatures": [
+            "public com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest toBusinessInput(com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml)"
+          ]
+        }
+      ],
+      "dependency_units": [],
+      "requirements": {
+        "business": "Preserve this complete configured unit's evidenced behavior",
+        "java25-test-template": "Use the verified Java 25 JUnit/Mockito testing platform with small focused behavior tests and separate adapter contract tests; mock external interfaces rather than hand implement them."
+      },
+      "evidence_ids": [
+        "request_unformat-5ce9c9ef500cb53c8bf03e7d"
+      ]
+    },
+    "schema_version": "v1",
+    "input_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml",
+    "output_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequest",
+    "wire_type": "com.company.generated.units.u5ce9c9ef500c.TransferFundsRequestXml"
+  }
+]

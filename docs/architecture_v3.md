@@ -1,5 +1,22 @@
 # WSBCC → Spring Boot Microservices: Final Architecture (v3)
 
+> **Operation-call design update:** For native CCComplex operation-to-service
+> conversion, use the agreed [operation-call workflow](operation_calls.md) and
+> [native converter design](../option_two_design.md#operation-dependencies-and-approved-sequential-conversion).
+> They require whole-job dependency preflight, user approval of waves/order and
+> completion of each service through packaging, existing tests and API publication
+> before its callers. Reuse trusted converted APIs across jobs; missing targets or
+> cycles block with user-facing resolution details. No dependency placeholders are
+> permitted. This is a pending design revision: the batch/parallel phase descriptions
+> below do not describe its required native operation scheduling. Legacy behavior
+> and existing testing/correction policies are not changed by this document update.
+> Intake includes dependency checks and produces the plan for one run-level
+> approval before the thin wrapper invokes the existing converter. The wrapper
+> does not duplicate conversion stages. Keep all four existing gates per operation
+> with their current numbers and human/automatic/skip settings; run-plan approval
+> is separate and uses the same decision machinery. Failed technical/dependency
+> checks still block. Development tests of the wrapper add no runtime stage.
+
 > **Revision history**
 > - v1: Initial proposed architecture
 > - v2: ADK primitive corrections, roster/diagram reconciliation, hash-check mechanism,

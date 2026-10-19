@@ -22,7 +22,7 @@ server framework types still require their own implementations.
 | Workspace | Channel | Operations |
 |---|---|---|
 | `WSBCC_XML` | XML | None — shared base definitions only |
-| `WSBCC_INTERNET` | INTERNET | GetClientAccountsOp, GetAccountDetailsOp, TransferFundsOp, GetClientLinksOp |
+| `WSBCC_INTERNET` | INTERNET | GetClientAccountsOp, GetAccountDetailsOp, TransferFundsOp, GetClientLinksOp, ValidateClientLinksOp, GetClientOverviewOp |
 | `WSBCC_IVR` | IVR | GetClientAccountsOp (IVR variant), GetAccountBalanceOp |
 
 ## Operation Summary
@@ -47,6 +47,19 @@ DB lookups, date range input.
 Most complex operation. Demonstrates: iniValue pre-population, multi-step
 branching, onTimeoutDo routing, on{N}Return error body switching, MaskLogDecorator
 on sensitive fields, fraud detection backend service call.
+
+## Nested operation examples
+
+`GetClientOverviewOp` calls both `ValidateClientLinksOp` and `GetClientLinksOp`.
+`ValidateClientLinksOp` also calls `GetClientLinksOp`. All three use INTERNET.
+The dependency-first waves are GetClientLinksOp (1), ValidateClientLinksOp (2),
+and GetClientOverviewOp (3). The two new operations reuse the existing links
+request/reply/error formats and context without changing the original operation.
+
+The demo `com.ibm.il.dse.cc.cut.CCComplexOpStep` resolves the configured
+`opExecuteName` through a registered operation executor, shares the caller context,
+and propagates its return code. Native conversion replaces that dispatch with an
+HTTP client. See [operation-call conversion](../docs/operation_calls.md).
 
 ## Shared Components
 
@@ -90,11 +103,11 @@ java -jar composer-mapper.jar \
 ```
 
 Expected output:
-- 4 operation notes (GetClientAccountsOp, GetAccountDetailsOp,
-  TransferFundsOp, GetClientLinksOp)
-- 17 opStep notes
+- 6 operation notes (GetClientAccountsOp, GetAccountDetailsOp,
+  TransferFundsOp, GetClientLinksOp, ValidateClientLinksOp, GetClientOverviewOp)
+- 28 opStep notes
 - ~10 format notes
 - 6 context notes
-- ~12 Java class notes
+- ~32 Java class notes
 - channels/INTERNET.md
 - analysis/channel-operation-registry.md

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XML>
+  <!-- A calls both B and C: multiple prerequisites plus a three-operation chain. -->
+  <CCDSEServerOperation id="GetClientOverviewOp" operationContext="GetClientLinksCtxt">
+    <opStep id="OverviewValidateLinks"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="ValidateClientLinksOp"
+            on0Do="OverviewRefreshLinks" onOtherDo="end"/>
+    <opStep id="OverviewRefreshLinks"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="GetClientLinksOp"
+            on0Do="end" onOtherDo="end"/>
+    <refFormat name="csRequestFormat" refid="GetClientLinksRQFmt"/>
+    <refFormat name="csReplyFormat" refid="GetClientLinksRSFmt"/>
+    <refFormat name="csErrorReplyFormat" refid="StandardErrorRSFmt"/>
+  </CCDSEServerOperation>
+</XML>

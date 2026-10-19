@@ -1,0 +1,39 @@
+--- option_two_design.md (before)
+
++++ option_two_design.md
+
+@@ -58,6 +58,8 @@
+
+ 3. **Approve the plan.** After scope resolution, show dependency-first waves,
+    explicit operation order, prerequisites and reused API contracts for the entire
+-   job. Any pilot follows the same dependencies. Wait for user approval; save the
+-   approved scope, graph, order and contract references. Reapprove material changes.
++   job. Any pilot follows the same dependencies. Apply the existing Gate One
++   policy: request explicit approval in human mode or record approval according
++   to the automatic/skip setting. Save the accepted scope, graph, order, contract
++   references and approval evidence. Reapprove material changes under that policy.
+ 4. **Finish each operation.** Execute the existing per-operation conversion,
+    assembly, service generation, packaging, tests, validation and required review
+@@ -66,4 +68,21 @@
+
+    calling C, C completes first, then B, then A; do not generate every caller's
+    units first or defer packaging until a whole batch finishes.
++
++The new sequential coordinator wraps the existing conversion workflow; it does
++not replace or duplicate it. Select one operation from the accepted plan, provide
++its resolved dependency contracts, invoke the current workflow through completion,
++publish its service record/checkpoint, then advance. Keep existing conversion,
++generation, assembly, packaging, test, review and bounded-correction behavior;
++adapt only the entry points needed to run that workflow for the current operation.
++
++Apply the existing four gates per operation with their current configurable
++human/automatic/skip policies. Gate One carries plan approval and the operation's
++scope, rather than adding a fifth job-approval gate. Gate evidence identifies the
++operation as well as the gate. All-human settings can require four approvals per
++operation; users may disable individual human pauses using the existing settings.
++Failed technical checks or dependency blockers still stop conversion, regardless
++of gate policy. Pause the coordinator at a pending/rejected gate and retain its
++current operation for Resume. Gate placement is settled by this reuse rule, not
++an open requirement for another approval mechanism.
+ 
+ A CCComplex step identifies an operation call, not a request to reproduce the

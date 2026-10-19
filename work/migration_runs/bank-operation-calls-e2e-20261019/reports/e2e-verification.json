@@ -1,0 +1,86 @@
+{
+  "run_id": "bank-operation-calls-e2e-20261019",
+  "recorded_at": "2026-10-19T12:28:56.872688+00:00",
+  "result": "blocked_before_live_http_verification",
+  "run_status": "failed",
+  "phase": "conversion_pending",
+  "last_failed_task": {
+    "category": "unit",
+    "identity": "configured_step-866cbe0670f145cea023b630",
+    "attempt": 3,
+    "error": "Unit response must declare its own native interface contract"
+  },
+  "actual_service_packages": 0,
+  "real_http_services": false,
+  "real_requests_completed": 0,
+  "http_precondition_error": "Expected one executable service package for GetClientLinksOp",
+  "regression_tests": {
+    "passed": 98,
+    "failed": 0
+  },
+  "service_contract_readiness": {
+    "INTERNET/GetAccountDetailsOp": "planned",
+    "INTERNET/GetClientAccountsOp": "planned",
+    "INTERNET/GetClientLinksOp": "assembled",
+    "INTERNET/GetClientOverviewOp": "planned",
+    "INTERNET/TransferFundsOp": "planned",
+    "INTERNET/ValidateClientLinksOp": "planned"
+  },
+  "model_attempts_by_category": {
+    "review": 13,
+    "route_scenario_test": 5,
+    "route_test_plan": 6,
+    "service_implementation": 5,
+    "unit": 37
+  },
+  "task_changes": [
+    {
+      "path": "source/runtime/behavior_conversion/method_contracts.py",
+      "reason": "Resolve declared nested Java member types consistently in native method contracts."
+    },
+    {
+      "path": "source/runtime/behavior_conversion/compiler_feedback.py",
+      "reason": "Explain Mockito generic-return compiler errors, including saved feedback reused on resume."
+    },
+    {
+      "path": "source/runtime/behavior_conversion/route_test_plan.py",
+      "reason": "Report invalid routing triples and the exact allowed original triples without relaxing routing validation."
+    },
+    {
+      "path": "source/runtime/behavior_conversion/operation_dependencies.py",
+      "reason": "Accept requireNonNull message overloads while requiring the supplied step argument to be stored."
+    },
+    {
+      "path": "source/tools/conversion_tools/operation_call_closure.py",
+      "reason": "Exclude mutable readiness status from caller API evidence; retain actual contract fingerprints and database readiness."
+    },
+    {
+      "path": "source/runtime/behavior_conversion/operation_calls.py",
+      "reason": "Recognize a matching-base, slash-normalizing join of the saved HTTP path; reject wrong targets and wrong joins."
+    },
+    {
+      "path": "source/tests/runtime/test_method_contracts.py",
+      "reason": "Regression coverage for nested member types and unrelated dollar identifiers."
+    },
+    {
+      "path": "source/tests/runtime/test_compiler_feedback.py",
+      "reason": "Regression coverage for generic Mockito mismatch diagnostics and saved-feedback upgrades."
+    },
+    {
+      "path": "source/tests/runtime/test_operation_route_plan.py",
+      "reason": "Regression coverage for exact routing-key correction diagnostics."
+    },
+    {
+      "path": "source/tests/runtime/test_operation_dependencies.py",
+      "reason": "Regression coverage for null-check overloads and rejection of the wrong supplied role."
+    },
+    {
+      "path": "source/tests/test_operation_calls.py",
+      "reason": "Regression coverage for readiness-independent caller evidence, real contract changes and normalized URL joins."
+    },
+    {
+      "path": "configs/bank_operation_calls_validation.yaml",
+      "reason": "Isolated three-operation native conversion profile; existing profiles left unchanged."
+    }
+  ]
+}

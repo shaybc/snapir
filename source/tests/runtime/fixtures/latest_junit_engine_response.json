@@ -1,0 +1,102 @@
+{
+  "files": [
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedHandler.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport java.util.Objects;\n\n/**\n * Configured unit ValidationFailed (configured_step-2e52a65fe1cea8c4efb9ba82).\n * Implements MapErrorByValueAlways behavior with ErrorCategory=\"10\" and ErrorNumber=\"2\".\n */\npublic class ValidationFailedHandler {\n\n    private final String errorCategory;\n    private final String errorNumber;\n\n    public ValidationFailedHandler() {\n        this.errorCategory = \"10\";\n        this.errorNumber = \"2\";\n    }\n\n    public ValidationResult handle(ValidationContext context) {\n        Objects.requireNonNull(context, \"ValidationContext\");\n        context.setErrorCategory(errorCategory);\n        context.setErrorNumber(errorNumber);\n        context.setErrorDescription(resolveErrorDescription(errorCategory, errorNumber));\n        return new ValidationResult(0, errorCategory, errorNumber, context.getErrorDescription());\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationContext.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport java.util.HashMap;\nimport java.util.Map;\n\npublic class ValidationContext {\n    private final Map<String, Object> values = new HashMap<>();\n\n    public Object getValueAt(String name) {\n        return values.get(name);\n    }\n\n    public void setValueAt(String name, Object value) {\n        if (name != null) {\n            values.put(name, value);\n        }\n    }\n\n    public String getErrorCategory() {\n        return (String) values.get(\"ErrorCategory\");\n    }\n\n    public void setErrorCategory(String category) {\n        values.put(\"ErrorCategory\", category);\n    }\n\n    public String getErrorNumber() {\n        return (String) values.get(\"ErrorNumber\");\n    }\n\n    public void setErrorNumber(String number) {\n        values.put(\"ErrorNumber\", number);\n    }\n\n    public String getErrorDescription() {\n        return (String) values.get(\"ErrorDescription\");\n    }\n\n    public void setErrorDescription(String description) {\n        values.put(\"ErrorDescription\", description);\n    }\n}\n"
+    },
+    {
+      "path": "src/main/java/com/company/generated/units/u2e52a65fe1ce/ValidationResult.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\npublic class ValidationResult {\n    private final int returnCode;\n    private final String errorCategory;\n    private final String errorNumber;\n    private final String errorDescription;\n\n    public ValidationResult(int returnCode, String errorCategory, String errorNumber, String errorDescription) {\n        this.returnCode = returnCode;\n        this.errorCategory = errorCategory;\n        this.errorNumber = errorNumber;\n        this.errorDescription = errorDescription;\n    }\n\n    public int getReturnCode() {\n        return returnCode;\n    }\n\n    public String getErrorCategory() {\n        return errorCategory;\n    }\n\n    public String getErrorNumber() {\n        return errorNumber;\n    }\n\n    public String getErrorDescription() {\n        return errorDescription;\n    }\n}\n"
+    },
+    {
+      "path": "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedHandlerTest.java",
+      "content": "package com.company.generated.units.u2e52a65fe1ce;\n\nimport org.junit.jupiter.api.Test;\n\nimport static org.junit.jupiter.api.Assertions.assertEquals;\n\npublic class ValidationFailedHandlerTest {\n\n    @Test\n    public void testValidationFailedExecution() {\n        ValidationFailedHandler handler = new ValidationFailedHandler();\n        ValidationContext context = new ValidationContext();\n\n        ValidationResult result = handler.handle(context);\n\n        assertEquals(0, result.getReturnCode());\n        assertEquals(\"10\", context.getErrorCategory());\n        assertEquals(\"2\", context.getErrorNumber());\n        assertEquals(\"Validation failed: required field missing or invalid\", context.getErrorDescription());\n        assertEquals(\"10\", result.getErrorCategory());\n        assertEquals(\"2\", result.getErrorNumber());\n        assertEquals(\"Validation failed: required field missing or invalid\", result.getErrorDescription());\n    }\n}\n"
+    }
+  ],
+  "dependencies": [
+    {
+      "group_id": "org.junit.jupiter",
+      "artifact_id": "junit-jupiter-api",
+      "version": "5.10.2",
+      "scope": "test",
+      "reason": "JUnit 5 API for unit testing",
+      "required_classes": [
+        "org.junit.jupiter.api.Test"
+      ]
+    },
+    {
+      "group_id": "org.junit.jupiter",
+      "artifact_id": "junit-jupiter-engine",
+      "version": "5.10.2",
+      "scope": "test",
+      "reason": "JUnit 5 Engine for test execution",
+      "required_classes": [
+        "org.junit.jupiter.api.Test"
+      ]
+    }
+  ],
+  "coverage": {
+    "business": [
+      "src/test/java/com/company/generated/units/u2e52a65fe1ce/ValidationFailedHandlerTest.java"
+    ]
+  },
+  "evidence_ids": [
+    "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "com.ibm.dse.base.CCOperationStep",
+    "com.ibm.dse.base.Context",
+    "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+  ],
+  "unresolved_questions": [],
+  "unit_contract": {
+    "unit_id": "configured_step-2e52a65fe1cea8c4efb9ba82",
+    "apis": [
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationFailedHandler",
+        "method_signatures": [
+          "public com.company.generated.units.u2e52a65fe1ce.ValidationResult handle(com.company.generated.units.u2e52a65fe1ce.ValidationContext context)"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationContext",
+        "method_signatures": [
+          "public java.lang.Object getValueAt(java.lang.String name)",
+          "public void setValueAt(java.lang.String name, java.lang.Object value)",
+          "public java.lang.String getErrorCategory()",
+          "public void setErrorCategory(java.lang.String category)",
+          "public java.lang.String getErrorNumber()",
+          "public void setErrorNumber(java.lang.String number)",
+          "public java.lang.String getErrorDescription()",
+          "public void setErrorDescription(java.lang.String description)"
+        ]
+      },
+      {
+        "type_name": "com.company.generated.units.u2e52a65fe1ce.ValidationResult",
+        "method_signatures": [
+          "public int getReturnCode()",
+          "public java.lang.String getErrorCategory()",
+          "public java.lang.String getErrorNumber()",
+          "public java.lang.String getErrorDescription()"
+        ]
+      }
+    ],
+    "dependency_units": [],
+    "requirements": {
+      "business": "Preserve this complete configured unit's evidenced behavior"
+    },
+    "evidence_ids": [
+      "configured_step-2e52a65fe1cea8c4efb9ba82",
+      "com.ibm.dse.base.CCOperationStep",
+      "com.ibm.dse.base.Context",
+      "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+    ]
+  },
+  "input_type": "com.company.generated.units.u2e52a65fe1ce.ValidationContext",
+  "output_type": "com.company.generated.units.u2e52a65fe1ce.ValidationResult",
+  "wire_type": null,
+  "operation_contract": null,
+  "schema_version": "v1"
+}

@@ -1,0 +1,491 @@
+[
+  {
+    "response": {
+      "files": [
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponse.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\n\npublic class TransferFundsResponse {\n    private String transferId;\n    private String transferStatus;\n    private Date executionDate;\n    private Date executionTime;\n    private BigDecimal amount;\n    private String currency;\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal newSourceBalance;\n    private Boolean fraudCheckSkipped;\n\n    public TransferFundsResponse() {}\n\n    public String getTransferId() { return transferId; }\n    public void setTransferId(String transferId) { this.transferId = transferId; }\n\n    public String getTransferStatus() { return transferStatus; }\n    public void setTransferStatus(String transferStatus) { this.transferStatus = transferStatus; }\n\n    public Date getExecutionDate() { return executionDate; }\n    public void setExecutionDate(Date executionDate) { this.executionDate = executionDate; }\n\n    public Date getExecutionTime() { return executionTime; }\n    public void setExecutionTime(Date executionTime) { this.executionTime = executionTime; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getNewSourceBalance() { return newSourceBalance; }\n    public void setNewSourceBalance(BigDecimal newSourceBalance) { this.newSourceBalance = newSourceBalance; }\n\n    public Boolean getFraudCheckSkipped() { return fraudCheckSkipped; }\n    public void setFraudCheckSkipped(Boolean fraudCheckSkipped) { this.fraudCheckSkipped = fraudCheckSkipped; }\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsResponse\")\npublic class TransferFundsResponseXml {\n\n    @JacksonXmlProperty(localName = \"TransferId\")\n    public String transferId;\n\n    @JacksonXmlProperty(localName = \"TransferStatus\")\n    public String transferStatus;\n\n    @JacksonXmlProperty(localName = \"ExecutionDate\")\n    public String executionDate;\n\n    @JacksonXmlProperty(localName = \"ExecutionTime\")\n    public String executionTime;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"NewSourceBalance\")\n    public String newSourceBalance;\n\n    @JacksonXmlProperty(localName = \"FraudCheckSkipped\")\n    public String fraudCheckSkipped;\n\n    @JacksonXmlProperty(localName = \"xsi:nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n    public String xsiNil;\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.databind.SerializationFeature;\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;\nimport java.math.BigDecimal;\nimport java.text.DecimalFormat;\nimport java.text.DecimalFormatSymbols;\nimport java.text.SimpleDateFormat;\nimport java.util.Locale;\nimport java.util.TimeZone;\n\npublic class TransferFundsRSFmtMapper {\n\n    public String format(TransferFundsResponse reply) throws Exception {\n        if (reply == null) {\n            TransferFundsResponseXml wire = new TransferFundsResponseXml();\n            wire.xsiNil = \"true\";\n            XmlMapper mapper = new XmlMapper();\n            mapper.configure(SerializationFeature.WRITE_XML_DECLARATION, false);\n            mapper.configure(ToXmlGenerator.Feature.WRITE_XML_1_1, false);\n            return mapper.writeValueAsString(wire);\n        }\n\n        TransferFundsResponseXml wire = new TransferFundsResponseXml();\n        wire.transferId = reply.getTransferId();\n        wire.transferStatus = reply.getTransferStatus();\n\n        if (reply.getExecutionDate() != null) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionDate = sdf.format(reply.getExecutionDate());\n        }\n\n        if (reply.getExecutionTime() != null) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionTime = stf.format(reply.getExecutionTime());\n        } else {\n            wire.executionTime = \"00:00:00\";\n        }\n\n        if (reply.getAmount() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.amount = df.format(reply.getAmount());\n        }\n\n        wire.currency = reply.getCurrency();\n\n        String src = reply.getSourceAccount() != null ? reply.getSourceAccount() : \"\";\n        if (src.length() < 3) {\n            src = \" \".repeat(3 - src.length()) + src;\n        } else if (src.length() > 3) {\n            src = src.substring(src.length() - 3);\n        }\n        wire.sourceAccount = src;\n\n        String tgtAcc = reply.getTargetAccount() != null ? reply.getTargetAccount() : \"\";\n        if (tgtAcc.length() < 10) {\n            tgtAcc = \"0\".repeat(10 - tgtAcc.length()) + tgtAcc;\n        } else if (tgtAcc.length() > 10) {\n            tgtAcc = tgtAcc.substring(tgtAcc.length() - 10);\n        }\n        wire.targetAccount = tgtAcc;\n\n        if (reply.getNewSourceBalance() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.newSourceBalance = df.format(reply.getNewSourceBalance());\n        }\n\n        if (reply.getFraudCheckSkipped() != null) {\n            wire.fraudCheckSkipped = reply.getFraudCheckSkipped() ? \"true\" : \"false\";\n        } else {\n            wire.fraudCheckSkipped = \"false\";\n        }\n\n        XmlMapper mapper = new XmlMapper();\n        mapper.configure(SerializationFeature.WRITE_XML_DECLARATION, false);\n        mapper.configure(ToXmlGenerator.Feature.WRITE_XML_1_1, false);\n        return mapper.writeValueAsString(wire);\n    }\n\n    public TransferFundsResponse unformat(String xml) throws Exception {\n        XmlMapper mapper = new XmlMapper();\n        TransferFundsResponseXml wire = mapper.readValue(xml, TransferFundsResponseXml.class);\n\n        if (\"true\".equalsIgnoreCase(wire.xsiNil)) {\n            return null;\n        }\n\n        TransferFundsResponse reply = new TransferFundsResponse();\n        reply.setTransferId(wire.transferId);\n        reply.setTransferStatus(wire.transferStatus);\n\n        if (wire.executionDate != null && !wire.executionDate.isBlank()) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionDate(sdf.parse(wire.executionDate));\n        }\n\n        if (wire.executionTime != null && !wire.executionTime.isBlank()) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionTime(stf.parse(wire.executionTime));\n        }\n\n        if (wire.amount != null && !wire.amount.isBlank()) {\n            reply.setAmount(new BigDecimal(wire.amount));\n        }\n\n        reply.setCurrency(wire.currency);\n\n        if (wire.sourceAccount != null) {\n            String s = wire.sourceAccount.replaceFirst(\"^ +\", \"\");\n            reply.setSourceAccount(s);\n        }\n\n        if (wire.targetAccount != null) {\n            String t = wire.targetAccount.replaceFirst(\"^0+\", \"\");\n            reply.setTargetAccount(t.isEmpty() ? \"0\" : t);\n        }\n\n        if (wire.newSourceBalance != null && !wire.newSourceBalance.isBlank()) {\n            reply.setNewSourceBalance(new BigDecimal(wire.newSourceBalance));\n        }\n\n        if (wire.fraudCheckSkipped != null && !wire.fraudCheckSkipped.isBlank()) {\n            reply.setFraudCheckSkipped(Boolean.parseBoolean(wire.fraudCheckSkipped));\n        }\n\n        return reply;\n    }\n}\n"
+        },
+        {
+          "path": "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRSFmtBusinessTest {\n\n    @Test\n    public void testFormatAndUnformatSuccess() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        TransferFundsResponse response = new TransferFundsResponse();\n        response.setTransferId(\"TX12345\");\n        response.setTransferStatus(\"SUCCESS\");\n        response.setExecutionDate(new Date(1711929600000L));\n        response.setExecutionTime(new Date(0L));\n        response.setAmount(new BigDecimal(\"150.00\"));\n        response.setCurrency(\"USD\");\n        response.setSourceAccount(\"12\");\n        response.setTargetAccount(\"99\");\n        response.setNewSourceBalance(new BigDecimal(\"850.00\"));\n        response.setFraudCheckSkipped(true);\n\n        String xml = mapper.format(response);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"TX12345\"));\n        assertTrue(xml.contains(\"SUCCESS\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNotNull(unformatted);\n        assertEquals(\"TX12345\", unformatted.getTransferId());\n        assertEquals(\"SUCCESS\", unformatted.getTransferStatus());\n        assertEquals(\"USD\", unformatted.getCurrency());\n        assertEquals(new BigDecimal(\"150.00\"), unformatted.getAmount());\n        assertEquals(\"12\", unformatted.getSourceAccount());\n        assertEquals(\"99\", unformatted.getTargetAccount());\n        assertEquals(new BigDecimal(\"850.00\"), unformatted.getNewSourceBalance());\n        assertTrue(unformatted.getFraudCheckSkipped());\n    }\n\n    @Test\n    public void testNilDecoratorFormat() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        String xml = mapper.format(null);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"xsi:nil=\\\"true\\\"\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNull(unformatted);\n    }\n}\n"
+        }
+      ],
+      "dependencies": [
+        {
+          "group_id": "com.fasterxml.jackson.core",
+          "artifact_id": "jackson-databind",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.databind.SerializationFeature"
+          ]
+        },
+        {
+          "group_id": "com.fasterxml.jackson.dataformat",
+          "artifact_id": "jackson-dataformat-xml",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+          ]
+        },
+        {
+          "group_id": "org.junit.jupiter",
+          "artifact_id": "junit-jupiter",
+          "version": "5.10.0",
+          "scope": "test",
+          "reason": "JUnit Jupiter tests and execution engine",
+          "required_classes": [
+            "org.junit.jupiter.api.Test",
+            "org.junit.jupiter.api.Assertions"
+          ]
+        },
+        {
+          "group_id": "org.mockito",
+          "artifact_id": "mockito-core",
+          "version": "5.23.0",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy-agent",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "org.objenesis",
+          "artifact_id": "objenesis",
+          "version": "3.3",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-aacf434ff625",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-33e19da28f26",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        }
+      ],
+      "coverage": {
+        "business": [
+          "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java"
+        ]
+      },
+      "evidence_ids": [
+        "response_format-b5afca9c05e0bac028e66617"
+      ],
+      "unresolved_questions": [],
+      "input_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+      "output_type": "java.lang.String",
+      "wire_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+      "unit_contract": {
+        "unit_id": "response_format-b5afca9c05e0bac028e66617",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponse)",
+              "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponse unformat(java.lang.String)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+            "method_signatures": [
+              "public java.lang.String getTransferId()",
+              "public void setTransferId(java.lang.String)",
+              "public java.lang.String getTransferStatus()",
+              "public void setTransferStatus(java.lang.String)",
+              "public java.util.Date getExecutionDate()",
+              "public void setExecutionDate(java.util.Date)",
+              "public java.util.Date getExecutionTime()",
+              "public void setExecutionTime(java.util.Date)",
+              "public java.math.BigDecimal getAmount()",
+              "public void setAmount(java.math.BigDecimal)",
+              "public java.lang.String getCurrency()",
+              "public void setCurrency(java.lang.String)",
+              "public java.lang.String getSourceAccount()",
+              "public void setSourceAccount(java.lang.String)",
+              "public java.lang.String getTargetAccount()",
+              "public void setTargetAccount(java.lang.String)",
+              "public java.math.BigDecimal getNewSourceBalance()",
+              "public void setNewSourceBalance(java.math.BigDecimal)",
+              "public java.lang.Boolean getFraudCheckSkipped()",
+              "public void setFraudCheckSkipped(java.lang.Boolean)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-b5afca9c05e0bac028e66617"
+        ]
+      },
+      "schema_version": "v1"
+    },
+    "error": "Candidate validation failed: Maven compile: [INFO] Scanning for projects...\n[INFO] \n[INFO] ---------------< com.company.migration:TransferFundsOp >----------------\n[INFO] Building TransferFundsOp 1.0.0-cdbfffbd6243\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- enforcer:3.6.2:enforce (default) @ TransferFundsOp ---\n[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ TransferFundsOp ---\n[INFO] skip non existing resourceDirectory C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-n9kteplc\\TransferFundsOp\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.14.1:compile (default-compile) @ TransferFundsOp ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 21 source files with javac [debug release 25] to target\\classes\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-n9kteplc\\TransferFundsOp\\src\\main\\java\\com\\company\\generated\\units\\u66bf2c108225\\StandardErrorRSFmtMapper.java uses or overrides a deprecated API.\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: Recompile with -Xlint:deprecation for details.\n[INFO] -------------------------------------------------------------\n[ERROR] COMPILATION ERROR : \n[INFO] -------------------------------------------------------------\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[20,50] cannot find symbol\n  symbol:   variable WRITE_XML_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[82,46] cannot find symbol\n  symbol:   variable WRITE_XML_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[INFO] 2 errors \n[INFO] -------------------------------------------------------------\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  3.064 s\n[INFO] Finished at: 2026-10-11T16:37:32+03:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project TransferFundsOp: Compilation failure: Compilation failure: \n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[20,50] cannot find symbol\n[ERROR]   symbol:   variable WRITE_XML_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-n9kteplc/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[82,46] cannot find symbol\n[ERROR]   symbol:   variable WRITE_XML_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n\n\nXML null mapping and correction checks:\nPreserve absent, empty and nil values according to the supplied format configuration and\nsupporting behavior evidence. Apply xsi:nil to the specific element whose value is null,\nnot its parent, siblings or document root. A nil root is valid only when the entire root\nvalue is evidenced to be null; a nullable child must not make a populated response nil.\nModel nullable child elements at their own XML scope, using an element wrapper or explicit\nelement-level serialization when needed. Declare the XML Schema instance namespace correctly.\nOn input, interpret an element's nil marker at that element only; preserve its siblings.\nDo not use a root-level nil attribute as a global flag for a nullable child.\nTest the actual serialized XML structure and attribute placement independently of round-trips:\na null child leaves the populated root and siblings intact, and deserialization preserves\ntheir values. Test evidenced non-null, missing, empty and nil cases without inventing rules.\nWhen correcting a parsing/test failure, trace the serialized element and its annotations\nback to the evidenced field. Fix incorrect nil placement or mapping rather than merely\nadding a null guard, changing the exception, discarding data or weakening the test.\n"
+  },
+  {
+    "response": {
+      "files": [
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponse.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\n\npublic class TransferFundsResponse {\n    private String transferId;\n    private String transferStatus;\n    private Date executionDate;\n    private Date executionTime;\n    private BigDecimal amount;\n    private String currency;\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal newSourceBalance;\n    private Boolean fraudCheckSkipped;\n\n    public TransferFundsResponse() {}\n\n    public String getTransferId() { return transferId; }\n    public void setTransferId(String transferId) { this.transferId = transferId; }\n\n    public String getTransferStatus() { return transferStatus; }\n    public void setTransferStatus(String transferStatus) { this.transferStatus = transferStatus; }\n\n    public Date getExecutionDate() { return executionDate; }\n    public void setExecutionDate(Date executionDate) { this.executionDate = executionDate; }\n\n    public Date getExecutionTime() { return executionTime; }\n    public void setExecutionTime(Date executionTime) { this.executionTime = executionTime; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getNewSourceBalance() { return newSourceBalance; }\n    public void setNewSourceBalance(BigDecimal newSourceBalance) { this.newSourceBalance = newSourceBalance; }\n\n    public Boolean getFraudCheckSkipped() { return fraudCheckSkipped; }\n    public void setFraudCheckSkipped(Boolean fraudCheckSkipped) { this.fraudCheckSkipped = fraudCheckSkipped; }\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsResponse\")\npublic class TransferFundsResponseXml {\n\n    @JacksonXmlProperty(localName = \"TransferId\")\n    public String transferId;\n\n    @JacksonXmlProperty(localName = \"TransferStatus\")\n    public String transferStatus;\n\n    @JacksonXmlProperty(localName = \"ExecutionDate\")\n    public String executionDate;\n\n    @JacksonXmlProperty(localName = \"ExecutionTime\")\n    public String executionTime;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"NewSourceBalance\")\n    public String newSourceBalance;\n\n    @JacksonXmlProperty(localName = \"FraudCheckSkipped\")\n    public String fraudCheckSkipped;\n\n    @JacksonXmlProperty(localName = \"xsi:nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n    public String xsiNil;\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.databind.SerializationFeature;\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\nimport java.text.DecimalFormat;\nimport java.text.DecimalFormatSymbols;\nimport java.text.SimpleDateFormat;\nimport java.util.Locale;\nimport java.util.TimeZone;\n\npublic class TransferFundsRSFmtMapper {\n\n    public String format(TransferFundsResponse reply) throws Exception {\n        if (reply == null) {\n            TransferFundsResponseXml wire = new TransferFundsResponseXml();\n            wire.xsiNil = \"true\";\n            XmlMapper mapper = new XmlMapper();\n            mapper.configure(SerializationFeature.WRITE_DOC_DECLARATION, false);\n            return mapper.writeValueAsString(wire);\n        }\n\n        TransferFundsResponseXml wire = new TransferFundsResponseXml();\n        wire.transferId = reply.getTransferId();\n        wire.transferStatus = reply.getTransferStatus();\n\n        if (reply.getExecutionDate() != null) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionDate = sdf.format(reply.getExecutionDate());\n        }\n\n        if (reply.getExecutionTime() != null) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionTime = stf.format(reply.getExecutionTime());\n        } else {\n            wire.executionTime = \"00:00:00\";\n        }\n\n        if (reply.getAmount() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.amount = df.format(reply.getAmount());\n        }\n\n        wire.currency = reply.getCurrency();\n\n        String src = reply.getSourceAccount() != null ? reply.getSourceAccount() : \"\";\n        if (src.length() < 3) {\n            src = \" \".repeat(3 - src.length()) + src;\n        } else if (src.length() > 3) {\n            src = src.substring(src.length() - 3);\n        }\n        wire.sourceAccount = src;\n\n        String tgtAcc = reply.getTargetAccount() != null ? reply.getTargetAccount() : \"\";\n        if (tgtAcc.length() < 10) {\n            tgtAcc = \"0\".repeat(10 - tgtAcc.length()) + tgtAcc;\n        } else if (tgtAcc.length() > 10) {\n            tgtAcc = tgtAcc.substring(tgtAcc.length() - 10);\n        }\n        wire.targetAccount = tgtAcc;\n\n        if (reply.getNewSourceBalance() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.newSourceBalance = df.format(reply.getNewSourceBalance());\n        }\n\n        if (reply.getFraudCheckSkipped() != null) {\n            wire.fraudCheckSkipped = reply.getFraudCheckSkipped() ? \"true\" : \"false\";\n        } else {\n            wire.fraudCheckSkipped = \"false\";\n        }\n\n        XmlMapper mapper = new XmlMapper();\n        mapper.configure(SerializationFeature.WRITE_DOC_DECLARATION, false);\n        return mapper.writeValueAsString(wire);\n    }\n\n    public TransferFundsResponse unformat(String xml) throws Exception {\n        XmlMapper mapper = new XmlMapper();\n        TransferFundsResponseXml wire = mapper.readValue(xml, TransferFundsResponseXml.class);\n\n        if (\"true\".equalsIgnoreCase(wire.xsiNil)) {\n            return null;\n        }\n\n        TransferFundsResponse reply = new TransferFundsResponse();\n        reply.setTransferId(wire.transferId);\n        reply.setTransferStatus(wire.transferStatus);\n\n        if (wire.executionDate != null && !wire.executionDate.isBlank()) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionDate(sdf.parse(wire.executionDate));\n        }\n\n        if (wire.executionTime != null && !wire.executionTime.isBlank()) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionTime(stf.parse(wire.executionTime));\n        }\n\n        if (wire.amount != null && !wire.amount.isBlank()) {\n            reply.setAmount(new BigDecimal(wire.amount));\n        }\n\n        reply.setCurrency(wire.currency);\n\n        if (wire.sourceAccount != null) {\n            String s = wire.sourceAccount.replaceFirst(\"^ +\", \"\");\n            reply.setSourceAccount(s);\n        }\n\n        if (wire.targetAccount != null) {\n            String t = wire.targetAccount.replaceFirst(\"^0+\", \"\");\n            reply.setTargetAccount(t.isEmpty() ? \"0\" : t);\n        }\n\n        if (wire.newSourceBalance != null && !wire.newSourceBalance.isBlank()) {\n            reply.setNewSourceBalance(new BigDecimal(wire.newSourceBalance));\n        }\n\n        if (wire.fraudCheckSkipped != null && !wire.fraudCheckSkipped.isBlank()) {\n            reply.setFraudCheckSkipped(Boolean.parseBoolean(wire.fraudCheckSkipped));\n        }\n\n        return reply;\n    }\n}\n"
+        },
+        {
+          "path": "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRSFmtBusinessTest {\n\n    @Test\n    public void testFormatAndUnformatSuccess() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        TransferFundsResponse response = new TransferFundsResponse();\n        response.setTransferId(\"TX12345\");\n        response.setTransferStatus(\"SUCCESS\");\n        response.setExecutionDate(new Date(1711929600000L));\n        response.setExecutionTime(new Date(0L));\n        response.setAmount(new BigDecimal(\"150.00\"));\n        response.setCurrency(\"USD\");\n        response.setSourceAccount(\"12\");\n        response.setTargetAccount(\"99\");\n        response.setNewSourceBalance(new BigDecimal(\"850.00\"));\n        response.setFraudCheckSkipped(true);\n\n        String xml = mapper.format(response);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"TX12345\"));\n        assertTrue(xml.contains(\"SUCCESS\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNotNull(unformatted);\n        assertEquals(\"TX12345\", unformatted.getTransferId());\n        assertEquals(\"SUCCESS\", unformatted.getTransferStatus());\n        assertEquals(\"USD\", unformatted.getCurrency());\n        assertEquals(new BigDecimal(\"150.00\"), unformatted.getAmount());\n        assertEquals(\"12\", unformatted.getSourceAccount());\n        assertEquals(\"99\", unformatted.getTargetAccount());\n        assertEquals(new BigDecimal(\"850.00\"), unformatted.getNewSourceBalance());\n        assertTrue(unformatted.getFraudCheckSkipped());\n    }\n\n    @Test\n    public void testNilDecoratorFormat() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        String xml = mapper.format(null);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"xsi:nil=\\\"true\\\"\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNull(unformatted);\n    }\n}\n"
+        }
+      ],
+      "dependencies": [
+        {
+          "group_id": "com.fasterxml.jackson.core",
+          "artifact_id": "jackson-databind",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.databind.SerializationFeature"
+          ]
+        },
+        {
+          "group_id": "com.fasterxml.jackson.dataformat",
+          "artifact_id": "jackson-dataformat-xml",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+          ]
+        },
+        {
+          "group_id": "org.junit.jupiter",
+          "artifact_id": "junit-jupiter",
+          "version": "5.10.0",
+          "scope": "test",
+          "reason": "JUnit Jupiter tests and execution engine",
+          "required_classes": [
+            "org.junit.jupiter.api.Test",
+            "org.junit.jupiter.api.Assertions"
+          ]
+        },
+        {
+          "group_id": "org.mockito",
+          "artifact_id": "mockito-core",
+          "version": "5.23.0",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy-agent",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "org.objenesis",
+          "artifact_id": "objenesis",
+          "version": "3.3",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-aacf434ff625",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-33e19da28f26",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        }
+      ],
+      "coverage": {
+        "business": [
+          "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java"
+        ]
+      },
+      "evidence_ids": [
+        "response_format-b5afca9c05e0bac028e66617"
+      ],
+      "unresolved_questions": [],
+      "input_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+      "output_type": "java.lang.String",
+      "wire_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+      "unit_contract": {
+        "unit_id": "response_format-b5afca9c05e0bac028e66617",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponse)",
+              "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponse unformat(java.lang.String)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+            "method_signatures": [
+              "public java.lang.String getTransferId()",
+              "public void setTransferId(java.lang.String)",
+              "public java.lang.String getTransferStatus()",
+              "public void setTransferStatus(java.lang.String)",
+              "public java.util.Date getExecutionDate()",
+              "public void setExecutionDate(java.util.Date)",
+              "public java.util.Date getExecutionTime()",
+              "public void setExecutionTime(java.util.Date)",
+              "public java.math.BigDecimal getAmount()",
+              "public void setAmount(java.math.BigDecimal)",
+              "public java.lang.String getCurrency()",
+              "public void setCurrency(java.lang.String)",
+              "public java.lang.String getSourceAccount()",
+              "public void setSourceAccount(java.lang.String)",
+              "public java.lang.String getTargetAccount()",
+              "public void setTargetAccount(java.lang.String)",
+              "public java.math.BigDecimal getNewSourceBalance()",
+              "public void setNewSourceBalance(java.math.BigDecimal)",
+              "public java.lang.Boolean getFraudCheckSkipped()",
+              "public void setFraudCheckSkipped(java.lang.Boolean)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-b5afca9c05e0bac028e66617"
+        ]
+      },
+      "schema_version": "v1"
+    },
+    "error": "Candidate validation failed: Maven compile: [INFO] Scanning for projects...\n[INFO] \n[INFO] ---------------< com.company.migration:TransferFundsOp >----------------\n[INFO] Building TransferFundsOp 1.0.0-cdbfffbd6243\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- enforcer:3.6.2:enforce (default) @ TransferFundsOp ---\n[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ TransferFundsOp ---\n[INFO] skip non existing resourceDirectory C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-01sy4mo8\\TransferFundsOp\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.14.1:compile (default-compile) @ TransferFundsOp ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 21 source files with javac [debug release 25] to target\\classes\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-01sy4mo8\\TransferFundsOp\\src\\main\\java\\com\\company\\generated\\units\\u66bf2c108225\\StandardErrorRSFmtMapper.java uses or overrides a deprecated API.\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: Recompile with -Xlint:deprecation for details.\n[INFO] -------------------------------------------------------------\n[ERROR] COMPILATION ERROR : \n[INFO] -------------------------------------------------------------\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[19,50] cannot find symbol\n  symbol:   variable WRITE_DOC_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[80,46] cannot find symbol\n  symbol:   variable WRITE_DOC_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[INFO] 2 errors \n[INFO] -------------------------------------------------------------\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  2.955 s\n[INFO] Finished at: 2026-10-11T16:40:41+03:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project TransferFundsOp: Compilation failure: Compilation failure: \n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[19,50] cannot find symbol\n[ERROR]   symbol:   variable WRITE_DOC_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-01sy4mo8/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[80,46] cannot find symbol\n[ERROR]   symbol:   variable WRITE_DOC_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n\n\nXML null mapping and correction checks:\nPreserve absent, empty and nil values according to the supplied format configuration and\nsupporting behavior evidence. Apply xsi:nil to the specific element whose value is null,\nnot its parent, siblings or document root. A nil root is valid only when the entire root\nvalue is evidenced to be null; a nullable child must not make a populated response nil.\nModel nullable child elements at their own XML scope, using an element wrapper or explicit\nelement-level serialization when needed. Declare the XML Schema instance namespace correctly.\nOn input, interpret an element's nil marker at that element only; preserve its siblings.\nDo not use a root-level nil attribute as a global flag for a nullable child.\nTest the actual serialized XML structure and attribute placement independently of round-trips:\na null child leaves the populated root and siblings intact, and deserialization preserves\ntheir values. Test evidenced non-null, missing, empty and nil cases without inventing rules.\nWhen correcting a parsing/test failure, trace the serialized element and its annotations\nback to the evidenced field. Fix incorrect nil placement or mapping rather than merely\nadding a null guard, changing the exception, discarding data or weakening the test.\n"
+  },
+  {
+    "response": {
+      "files": [
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponse.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\n\npublic class TransferFundsResponse {\n    private String transferId;\n    private String transferStatus;\n    private Date executionDate;\n    private Date executionTime;\n    private BigDecimal amount;\n    private String currency;\n    private String sourceAccount;\n    private String targetAccount;\n    private BigDecimal newSourceBalance;\n    private Boolean fraudCheckSkipped;\n\n    public TransferFundsResponse() {}\n\n    public String getTransferId() { return transferId; }\n    public void setTransferId(String transferId) { this.transferId = transferId; }\n\n    public String getTransferStatus() { return transferStatus; }\n    public void setTransferStatus(String transferStatus) { this.transferStatus = transferStatus; }\n\n    public Date getExecutionDate() { return executionDate; }\n    public void setExecutionDate(Date executionDate) { this.executionDate = executionDate; }\n\n    public Date getExecutionTime() { return executionTime; }\n    public void setExecutionTime(Date executionTime) { this.executionTime = executionTime; }\n\n    public BigDecimal getAmount() { return amount; }\n    public void setAmount(BigDecimal amount) { this.amount = amount; }\n\n    public String getCurrency() { return currency; }\n    public void setCurrency(String currency) { this.currency = currency; }\n\n    public String getSourceAccount() { return sourceAccount; }\n    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }\n\n    public String getTargetAccount() { return targetAccount; }\n    public void setTargetAccount(String targetAccount) { this.targetAccount = targetAccount; }\n\n    public BigDecimal getNewSourceBalance() { return newSourceBalance; }\n    public void setNewSourceBalance(BigDecimal newSourceBalance) { this.newSourceBalance = newSourceBalance; }\n\n    public Boolean getFraudCheckSkipped() { return fraudCheckSkipped; }\n    public void setFraudCheckSkipped(Boolean fraudCheckSkipped) { this.fraudCheckSkipped = fraudCheckSkipped; }\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsResponseXml.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;\nimport com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;\n\n@JacksonXmlRootElement(localName = \"TransferFundsResponse\")\npublic class TransferFundsResponseXml {\n\n    @JacksonXmlProperty(localName = \"TransferId\")\n    public String transferId;\n\n    @JacksonXmlProperty(localName = \"TransferStatus\")\n    public String transferStatus;\n\n    @JacksonXmlProperty(localName = \"ExecutionDate\")\n    public String executionDate;\n\n    @JacksonXmlProperty(localName = \"ExecutionTime\")\n    public String executionTime;\n\n    @JacksonXmlProperty(localName = \"Amount\")\n    public String amount;\n\n    @JacksonXmlProperty(localName = \"Currency\")\n    public String currency;\n\n    @JacksonXmlProperty(localName = \"SourceAccount\")\n    public String sourceAccount;\n\n    @JacksonXmlProperty(localName = \"TargetAccount\")\n    public String targetAccount;\n\n    @JacksonXmlProperty(localName = \"NewSourceBalance\")\n    public String newSourceBalance;\n\n    @JacksonXmlProperty(localName = \"FraudCheckSkipped\")\n    public String fraudCheckSkipped;\n\n    @JacksonXmlProperty(localName = \"xsi:nil\", isAttribute = true, namespace = \"http://www.w3.org/2001/XMLSchema-instance\")\n    public String xsiNil;\n}\n"
+        },
+        {
+          "path": "src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport com.fasterxml.jackson.databind.SerializationFeature;\nimport com.fasterxml.jackson.dataformat.xml.XmlMapper;\nimport java.math.BigDecimal;\nimport java.text.DecimalFormat;\nimport java.text.DecimalFormatSymbols;\nimport java.text.SimpleDateFormat;\nimport java.util.Locale;\nimport java.util.TimeZone;\n\npublic class TransferFundsRSFmtMapper {\n\n    public String format(TransferFundsResponse reply) throws Exception {\n        if (reply == null) {\n            TransferFundsResponseXml wire = new TransferFundsResponseXml();\n            wire.xsiNil = \"true\";\n            XmlMapper mapper = new XmlMapper();\n            mapper.configure(SerializationFeature.WRITE_XML_DECLARATION, false);\n            return mapper.writeValueAsString(wire);\n        }\n\n        TransferFundsResponseXml wire = new TransferFundsResponseXml();\n        wire.transferId = reply.getTransferId();\n        wire.transferStatus = reply.getTransferStatus();\n\n        if (reply.getExecutionDate() != null) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionDate = sdf.format(reply.getExecutionDate());\n        }\n\n        if (reply.getExecutionTime() != null) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            wire.executionTime = stf.format(reply.getExecutionTime());\n        } else {\n            wire.executionTime = \"00:00:00\";\n        }\n\n        if (reply.getAmount() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.amount = df.format(reply.getAmount());\n        }\n\n        wire.currency = reply.getCurrency();\n\n        String src = reply.getSourceAccount() != null ? reply.getSourceAccount() : \"\";\n        if (src.length() < 3) {\n            src = \" \".repeat(3 - src.length()) + src;\n        } else if (src.length() > 3) {\n            src = src.substring(src.length() - 3);\n        }\n        wire.sourceAccount = src;\n\n        String tgtAcc = reply.getTargetAccount() != null ? reply.getTargetAccount() : \"\";\n        if (tgtAcc.length() < 10) {\n            tgtAcc = \"0\".repeat(10 - tgtAcc.length()) + tgtAcc;\n        } else if (tgtAcc.length() > 10) {\n            tgtAcc = tgtAcc.substring(tgtAcc.length() - 10);\n        }\n        wire.targetAccount = tgtAcc;\n\n        if (reply.getNewSourceBalance() != null) {\n            DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);\n            symbols.setDecimalSeparator('.');\n            DecimalFormat df = new DecimalFormat(\"0.00\", symbols);\n            wire.newSourceBalance = df.format(reply.getNewSourceBalance());\n        }\n\n        if (reply.getFraudCheckSkipped() != null) {\n            wire.fraudCheckSkipped = reply.getFraudCheckSkipped() ? \"true\" : \"false\";\n        } else {\n            wire.fraudCheckSkipped = \"false\";\n        }\n\n        XmlMapper mapper = new XmlMapper();\n        mapper.configure(SerializationFeature.WRITE_XML_DECLARATION, false);\n        return mapper.writeValueAsString(wire);\n    }\n\n    public TransferFundsResponse unformat(String xml) throws Exception {\n        XmlMapper mapper = new XmlMapper();\n        TransferFundsResponseXml wire = mapper.readValue(xml, TransferFundsResponseXml.class);\n\n        if (\"true\".equalsIgnoreCase(wire.xsiNil)) {\n            return null;\n        }\n\n        TransferFundsResponse reply = new TransferFundsResponse();\n        reply.setTransferId(wire.transferId);\n        reply.setTransferStatus(wire.transferStatus);\n\n        if (wire.executionDate != null && !wire.executionDate.isBlank()) {\n            SimpleDateFormat sdf = new SimpleDateFormat(\"yyyyMMdd\");\n            sdf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionDate(sdf.parse(wire.executionDate));\n        }\n\n        if (wire.executionTime != null && !wire.executionTime.isBlank()) {\n            SimpleDateFormat stf = new SimpleDateFormat(\"HH:mm:ss\");\n            stf.setTimeZone(TimeZone.getTimeZone(\"UTC\"));\n            reply.setExecutionTime(stf.parse(wire.executionTime));\n        }\n\n        if (wire.amount != null && !wire.amount.isBlank()) {\n            reply.setAmount(new BigDecimal(wire.amount));\n        }\n\n        reply.setCurrency(wire.currency);\n\n        if (wire.sourceAccount != null) {\n            String s = wire.sourceAccount.replaceFirst(\"^ +\", \"\");\n            reply.setSourceAccount(s);\n        }\n\n        if (wire.targetAccount != null) {\n            String t = wire.targetAccount.replaceFirst(\"^0+\", \"\");\n            reply.setTargetAccount(t.isEmpty() ? \"0\" : t);\n        }\n\n        if (wire.newSourceBalance != null && !wire.newSourceBalance.isBlank()) {\n            reply.setNewSourceBalance(new BigDecimal(wire.newSourceBalance));\n        }\n\n        if (wire.fraudCheckSkipped != null && !wire.fraudCheckSkipped.isBlank()) {\n            reply.setFraudCheckSkipped(Boolean.parseBoolean(wire.fraudCheckSkipped));\n        }\n\n        return reply;\n    }\n}\n"
+        },
+        {
+          "path": "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java",
+          "content": "package com.company.generated.units.ub5afca9c05e0;\n\nimport java.math.BigDecimal;\nimport java.util.Date;\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\npublic class TransferFundsRSFmtBusinessTest {\n\n    @Test\n    public void testFormatAndUnformatSuccess() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        TransferFundsResponse response = new TransferFundsResponse();\n        response.setTransferId(\"TX12345\");\n        response.setTransferStatus(\"SUCCESS\");\n        response.setExecutionDate(new Date(1711929600000L));\n        response.setExecutionTime(new Date(0L));\n        response.setAmount(new BigDecimal(\"150.00\"));\n        response.setCurrency(\"USD\");\n        response.setSourceAccount(\"12\");\n        response.setTargetAccount(\"99\");\n        response.setNewSourceBalance(new BigDecimal(\"850.00\"));\n        response.setFraudCheckSkipped(true);\n\n        String xml = mapper.format(response);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"TX12345\"));\n        assertTrue(xml.contains(\"SUCCESS\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNotNull(unformatted);\n        assertEquals(\"TX12345\", unformatted.getTransferId());\n        assertEquals(\"SUCCESS\", unformatted.getTransferStatus());\n        assertEquals(\"USD\", unformatted.getCurrency());\n        assertEquals(new BigDecimal(\"150.00\"), unformatted.getAmount());\n        assertEquals(\"12\", unformatted.getSourceAccount());\n        assertEquals(\"99\", unformatted.getTargetAccount());\n        assertEquals(new BigDecimal(\"850.00\"), unformatted.getNewSourceBalance());\n        assertTrue(unformatted.getFraudCheckSkipped());\n    }\n\n    @Test\n    public void testNilDecoratorFormat() throws Exception {\n        TransferFundsRSFmtMapper mapper = new TransferFundsRSFmtMapper();\n        String xml = mapper.format(null);\n        assertNotNull(xml);\n        assertTrue(xml.contains(\"xsi:nil=\\\"true\\\"\"));\n\n        TransferFundsResponse unformatted = mapper.unformat(xml);\n        assertNull(unformatted);\n    }\n}\n"
+        }
+      ],
+      "dependencies": [
+        {
+          "group_id": "com.fasterxml.jackson.core",
+          "artifact_id": "jackson-databind",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.databind.SerializationFeature"
+          ]
+        },
+        {
+          "group_id": "com.fasterxml.jackson.dataformat",
+          "artifact_id": "jackson-dataformat-xml",
+          "version": "2.15.2",
+          "scope": "compile",
+          "reason": "Current target POM dependency",
+          "required_classes": [
+            "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+            "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement"
+          ]
+        },
+        {
+          "group_id": "org.junit.jupiter",
+          "artifact_id": "junit-jupiter",
+          "version": "5.10.0",
+          "scope": "test",
+          "reason": "JUnit Jupiter tests and execution engine",
+          "required_classes": [
+            "org.junit.jupiter.api.Test",
+            "org.junit.jupiter.api.Assertions"
+          ]
+        },
+        {
+          "group_id": "org.mockito",
+          "artifact_id": "mockito-core",
+          "version": "5.23.0",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "net.bytebuddy",
+          "artifact_id": "byte-buddy-agent",
+          "version": "1.17.7",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "org.objenesis",
+          "artifact_id": "objenesis",
+          "version": "3.3",
+          "scope": "test",
+          "reason": "Application-owned Java 25 test template",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-aacf434ff625",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        },
+        {
+          "group_id": "com.company.migration",
+          "artifact_id": "shared-33e19da28f26",
+          "version": "1.0.0-cdbfffbd6243",
+          "scope": "compile",
+          "reason": "Accepted native behavior library for this run",
+          "required_classes": []
+        }
+      ],
+      "coverage": {
+        "business": [
+          "src/test/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtBusinessTest.java"
+        ]
+      },
+      "evidence_ids": [
+        "response_format-b5afca9c05e0bac028e66617"
+      ],
+      "unresolved_questions": [],
+      "input_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+      "output_type": "java.lang.String",
+      "wire_type": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponseXml",
+      "unit_contract": {
+        "unit_id": "response_format-b5afca9c05e0bac028e66617",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.ub5afca9c05e0.TransferFundsResponse)",
+              "public com.company.generated.units.ub5afca9c05e0.TransferFundsResponse unformat(java.lang.String)"
+            ]
+          },
+          {
+            "type_name": "com.company.generated.units.ub5afca9c05e0.TransferFundsResponse",
+            "method_signatures": [
+              "public java.lang.String getTransferId()",
+              "public void setTransferId(java.lang.String)",
+              "public java.lang.String getTransferStatus()",
+              "public void setTransferStatus(java.lang.String)",
+              "public java.util.Date getExecutionDate()",
+              "public void setExecutionDate(java.util.Date)",
+              "public java.util.Date getExecutionTime()",
+              "public void setExecutionTime(java.util.Date)",
+              "public java.math.BigDecimal getAmount()",
+              "public void setAmount(java.math.BigDecimal)",
+              "public java.lang.String getCurrency()",
+              "public void setCurrency(java.lang.String)",
+              "public java.lang.String getSourceAccount()",
+              "public void setSourceAccount(java.lang.String)",
+              "public java.lang.String getTargetAccount()",
+              "public void setTargetAccount(java.lang.String)",
+              "public java.math.BigDecimal getNewSourceBalance()",
+              "public void setNewSourceBalance(java.math.BigDecimal)",
+              "public java.lang.Boolean getFraudCheckSkipped()",
+              "public void setFraudCheckSkipped(java.lang.Boolean)"
+            ]
+          }
+        ],
+        "dependency_units": [],
+        "requirements": {
+          "business": "Preserve this complete configured unit's evidenced behavior"
+        },
+        "evidence_ids": [
+          "response_format-b5afca9c05e0bac028e66617"
+        ]
+      },
+      "schema_version": "v1"
+    },
+    "error": "Candidate validation failed: Maven compile: [INFO] Scanning for projects...\n[INFO] \n[INFO] ---------------< com.company.migration:TransferFundsOp >----------------\n[INFO] Building TransferFundsOp 1.0.0-cdbfffbd6243\n[INFO]   from pom.xml\n[INFO] --------------------------------[ jar ]---------------------------------\n[INFO] \n[INFO] --- enforcer:3.6.2:enforce (default) @ TransferFundsOp ---\n[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed\n[INFO] \n[INFO] --- resources:3.4.0:resources (default-resources) @ TransferFundsOp ---\n[INFO] skip non existing resourceDirectory C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-jzltm1ka\\TransferFundsOp\\src\\main\\resources\n[INFO] \n[INFO] --- compiler:3.14.1:compile (default-compile) @ TransferFundsOp ---\n[INFO] Recompiling the module because of changed source code.\n[INFO] Compiling 21 source files with javac [debug release 25] to target\\classes\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: C:\\Users\\shayg\\AppData\\Local\\Temp\\snapir-native-bundle-jzltm1ka\\TransferFundsOp\\src\\main\\java\\com\\company\\generated\\units\\u66bf2c108225\\StandardErrorRSFmtMapper.java uses or overrides a deprecated API.\n[INFO] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java: Recompile with -Xlint:deprecation for details.\n[INFO] -------------------------------------------------------------\n[ERROR] COMPILATION ERROR : \n[INFO] -------------------------------------------------------------\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[19,50] cannot find symbol\n  symbol:   variable WRITE_XML_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[80,46] cannot find symbol\n  symbol:   variable WRITE_XML_DECLARATION\n  location: class com.fasterxml.jackson.databind.SerializationFeature\n[INFO] 2 errors \n[INFO] -------------------------------------------------------------\n[INFO] ------------------------------------------------------------------------\n[INFO] BUILD FAILURE\n[INFO] ------------------------------------------------------------------------\n[INFO] Total time:  3.017 s\n[INFO] Finished at: 2026-10-11T16:43:47+03:00\n[INFO] ------------------------------------------------------------------------\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project TransferFundsOp: Compilation failure: Compilation failure: \n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[19,50] cannot find symbol\n[ERROR]   symbol:   variable WRITE_XML_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] /C:/Users/shayg/AppData/Local/Temp/snapir-native-bundle-jzltm1ka/TransferFundsOp/src/main/java/com/company/generated/units/ub5afca9c05e0/TransferFundsRSFmtMapper.java:[80,46] cannot find symbol\n[ERROR]   symbol:   variable WRITE_XML_DECLARATION\n[ERROR]   location: class com.fasterxml.jackson.databind.SerializationFeature\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException\n\n\nXML null mapping and correction checks:\nPreserve absent, empty and nil values according to the supplied format configuration and\nsupporting behavior evidence. Apply xsi:nil to the specific element whose value is null,\nnot its parent, siblings or document root. A nil root is valid only when the entire root\nvalue is evidenced to be null; a nullable child must not make a populated response nil.\nModel nullable child elements at their own XML scope, using an element wrapper or explicit\nelement-level serialization when needed. Declare the XML Schema instance namespace correctly.\nOn input, interpret an element's nil marker at that element only; preserve its siblings.\nDo not use a root-level nil attribute as a global flag for a nullable child.\nTest the actual serialized XML structure and attribute placement independently of round-trips:\na null child leaves the populated root and siblings intact, and deserialization preserves\ntheir values. Test evidenced non-null, missing, empty and nil cases without inventing rules.\nWhen correcting a parsing/test failure, trace the serialized element and its annotations\nback to the evidenced field. Fix incorrect nil placement or mapping rather than merely\nadding a null guard, changing the exception, discarding data or weakening the test.\n"
+  }
+]

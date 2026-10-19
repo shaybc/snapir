@@ -11,6 +11,15 @@ from runtime.model_execution.mock_executor import MockExecutor
 
 def prepare_plan(conn, config, profile, operations) -> MigrationPlan:
     """Produce a validated plan, preserving channel identities and run ownership."""
+    if profile.conversion_strategy == 'behavior_units':
+        from tools.operation_call_tools.preflight import require_preflight_passed
+        require_preflight_passed(conn, config.run_id)
+        from runtime.intake_plan import dependency_plan_context
+        context = dependency_plan_context(conn, config.run_id)
+        if context:
+            by_key = {item['channel'] + '/' + item['operation_id']: item for item in operations}
+            dependencies = {item['operation']: item for item in context['operations']}
+            operations = [dict(by_key[key], operation_dependencies=dependencies[key]) for key in context['order']]
     if not operations:
         raise ValueError("Conversion scope contains no operations")
     if profile.model_provider == "mock":
@@ -28,6 +37,10 @@ def prepare_plan(conn, config, profile, operations) -> MigrationPlan:
         executor = AdkExecutor(profile)
     instruction = PLANNING_INSTRUCTION.replace("{max_ops_per_batch}", str(config.max_operations_per_batch))
     instruction += "\nFor a scope smaller than three operations, include the whole scope in the pilot."
+    if any(item.get('operation_dependencies') for item in operations):
+        instruction += '\nRespect operation_dependencies: schedule lower build waves before their callers. Keep each circular group together and flag unresolved dependencies; do not infer that shared classes are operation calls.'
+    if profile.conversion_strategy == 'behavior_units' and context:
+        instruction += '\nThe supplied operation order is mandatory across and within batches. Do not move a pilot or unusual operation ahead of a prerequisite. Cycles have already been blocked by intake.'
     payload = json.dumps(dict(run_id=config.run_id, operations=operations, schema=MigrationPlan.model_json_schema()))
     plan = MigrationPlan.model_validate_json(executor.execute(instruction, payload))
     packets = [packet for batch in plan.batches for packet in batch.task_packets]

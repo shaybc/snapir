@@ -18,7 +18,7 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
     for name in ("source_root", "mapper_jar", "output_root"):
         setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))
     config.classpath_jars = [str(((profile_path.parent if "classpath_jars" in config.model_fields_set else project_directory) / path).resolve()) for path in config.classpath_jars]
-    for name in ("maven_settings_path", "maven_local_repository", "deployment_template_dir", "java_home"):
+    for name in ("maven_settings_path", "maven_local_repository", "deployment_template_dir", "java_home", "service_registry_path"):
         if getattr(config, name):
             setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))
     config.eclipse_classpath_variables = {
@@ -29,4 +29,8 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
         raise ValueError("source_root must identify an existing directory")
     if not Path(config.mapper_jar).is_file():
         raise ValueError("mapper_jar must identify an existing file")
+    if config.conversion_strategy == "behavior_units" or config.service_registry_path:
+        from tools.converted_service_registry_tools.location import resolve_registry_settings
+        config.source_workspace_id, registry_path = resolve_registry_settings(config)
+        config.service_registry_path = str(registry_path)
     return config

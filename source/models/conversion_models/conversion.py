@@ -145,6 +145,7 @@ class OperationClosure(SnapirBaseModel):
     ref_formats: dict[str, str] = Field(default_factory=dict)
     return_body_switches: dict[str, str] = Field(default_factory=dict)
     included_opstep_ids: list[str] = Field(default_factory=list)
+    operation_calls: list[dict] = Field(default_factory=list, exclude_if=lambda value: not value)
     excluded_opsteps: list[ExcludedOpStep] = Field(default_factory=list)
     routing_graph: dict[str, dict] = Field(default_factory=dict)
     java_classes: list[JavaClassRef] = Field(default_factory=list)

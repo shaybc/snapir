@@ -54,7 +54,7 @@ class MavenRepositoryVerifier:
         return result
 
     def __call__(self, dependency) -> None:
-        """Fetch a pinned target artifact and confirm requested classes exist in its JAR."""
+        """Confirm required classes exist in the selected JDK, declared JAR or transitives."""
         with tempfile.TemporaryDirectory(prefix="snapir-maven-verification-") as directory:
             result = self._run(self._arguments() + [
                 "org.apache.maven.plugins:maven-dependency-plugin:3.8.1:get",
@@ -75,9 +75,42 @@ class MavenRepositoryVerifier:
                                                  dependency.version, f"{dependency.artifact_id}-{dependency.version}.jar")
         with ZipFile(artifact) as jar:
             names = set(jar.namelist())
-            for class_name in dependency.required_classes:
-                if class_name.replace(".", "/") + ".class" not in names:
-                    raise ValueError(f"Required API missing from {dependency.coordinates}: {class_name}")
+        missing = [name for name in dependency.required_classes if name.replace(".", "/") + ".class" not in names]
+        if missing:
+            from tools.maven_dependency_tools.platform_classes import platform_class_owners
+            platform = platform_class_owners(missing, self.environment)
+            for name, locations in platform.items():
+                logger.debug("Verified required API %s in selected JDK %s; no Maven class owner is needed", name, locations)
+            missing = [name for name in missing if name not in platform]
+        if missing:
+            from tools.maven_dependency_tools.class_ownership import discover_class_owners, class_owner_feedback
+            with tempfile.TemporaryDirectory(prefix="snapir-maven-class-ownership-") as directory:
+                owners = discover_class_owners(dependency, missing, repository, directory, self._arguments(), self._run)
+            unresolved = {name: candidates for name, candidates in owners.items() if len(candidates) != 1}
+            if unresolved:
+                raise ValueError(class_owner_feedback(dependency, unresolved))
+            for name, candidates in owners.items():
+                logger.debug("Verified required API %s for %s in resolved transitive artifact %s (%s)",
+                             name, dependency.coordinates, candidates[0]["coordinates"], candidates[0]["jar"])
+
+    def resolved_runtime_classpath(self, dependency):
+        """Resolve a proposed runtime dependency and its transitives for a JDK load probe."""
+        from xml.etree import ElementTree
+        import os
+        with tempfile.TemporaryDirectory(prefix='snapir-driver-classpath-') as directory:
+            root = ElementTree.Element('project', xmlns='http://maven.apache.org/POM/4.0.0')
+            for key, value in (('modelVersion', '4.0.0'), ('groupId', 'snapir.verification'), ('artifactId', 'driver-probe'), ('version', '1')):
+                ElementTree.SubElement(root, key).text = value
+            node = ElementTree.SubElement(ElementTree.SubElement(root, 'dependencies'), 'dependency')
+            for key, value in (('groupId', dependency.group_id), ('artifactId', dependency.artifact_id), ('version', dependency.version)):
+                ElementTree.SubElement(node, key).text = value
+            ElementTree.ElementTree(root).write(Path(directory) / 'pom.xml', encoding='utf-8', xml_declaration=True)
+            output = Path(directory) / 'classpath.txt'
+            result = self._run(self._arguments() + ['org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath',
+                '-DincludeScope=runtime', '-Dmdep.outputFile=' + str(output)], directory)
+            if result.returncode or not output.is_file():
+                raise ValueError('Cannot resolve runtime classpath for driver ' + dependency.coordinates)
+            return output.read_text(encoding='utf-8').strip().split(os.pathsep)
 
     def compile_project(self, project_root, allowed_ibm_artifacts=(), *, goal="compile"):
         """Inspect resolved transitives before compiling with the user's Maven configuration."""

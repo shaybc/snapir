@@ -13,6 +13,9 @@ from tools.state_store_tools._json import loads
 
 def collect_operation_evidence(conn, config, profile, plan):
     """Require intact compiled assembly snapshots for every selected operation."""
+    if profile.conversion_strategy == "behavior_units":
+        from runtime.behavior_conversion.evidence import collect_native_operation_evidence
+        return collect_native_operation_evidence(conn, config, profile, plan)
     components = collect_component_evidence(conn, config, profile)
     items = []
     for batch in plan.batches:

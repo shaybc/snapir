@@ -44,6 +44,8 @@ def build_operation_closure(
     rules = profile.external_dependencies if profile else []
     document = profile.composer_behavior_document if profile else None
     included_opsteps, excluded_opsteps = filter_opsteps_for_channel(conn, operation_id, channel, run_id)
+    from tools.conversion_tools.operation_call_closure import resolve_operation_calls
+    operation_calls, operation_call_issues = resolve_operation_calls(conn, run_id, operation_id, channel, included_opsteps, profile)
     java_classes, java_issues = resolve_java_impls(conn, included_opsteps, run_id, composer_root, classpath_index,
                                                 rules, document, external_records)
     formats = resolve_format_dependencies(conn, list(metadata.get("ref_formats", {}).values()), run_id, vault_root)
@@ -62,7 +64,7 @@ def build_operation_closure(
         channel=channel,
         run_id=run_id,
         status=ClosureStatus.BLOCKED_UNRESOLVED_REFERENCE,
-        blocking_issues=[*java_issues, *format_issues, *context_issues],
+        blocking_issues=[*java_issues, *format_issues, *context_issues, *operation_call_issues],
         source_xml_path=metadata.get("source_file", ""),
         operation_fields=metadata.get("operation_fields"),
         ini_values=list(metadata.get("ini_values", [])),
@@ -70,6 +72,7 @@ def build_operation_closure(
         ref_formats=dict(metadata.get("ref_formats", {})),
         return_body_switches=return_body_switches,
         included_opstep_ids=included_opsteps,
+        operation_calls=operation_calls,
         excluded_opsteps=excluded_opsteps,
         routing_graph=routing_graph,
         java_classes=java_classes,
@@ -92,7 +95,8 @@ def build_operation_closure(
     source_index = discover_java_sources(composer_root)
     classpath_index = classpath_index or discover_java_classpath(composer_root)
     components, dependency_issues = resolve_conversion_components(conn, closure, composer_root, source_index,
-        rules, document, external_records)
+        rules, document, external_records,
+        service_classpath=classpath_index if profile and profile.conversion_strategy == 'behavior_units' else None)
     implementations, _, _ = get_conversion_inventory(conn, run_id, operation_id, channel)
     expected_hashes = {str((Path(composer_root) / item['source_path']).resolve()): item['source_hash']
                        for item in implementations.values()}

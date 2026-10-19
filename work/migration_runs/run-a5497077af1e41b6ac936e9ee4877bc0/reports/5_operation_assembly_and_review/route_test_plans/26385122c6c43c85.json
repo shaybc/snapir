@@ -1,0 +1,693 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "transfer_success",
+      "description": "Successful fund transfer path through ValidateTransfer, CheckLimits, FraudCheck, and ExecuteTransfer to end.",
+      "inputs": [
+        "Valid request XML containing source account, target account, amount, and valid session token"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 0",
+        "ExecuteTransfer returns 0"
+      ],
+      "expected_outcome": "Formatted success response XML containing transfer ID, status, and updated balances",
+      "expected_side_effects": [
+        "Database connection used to execute transfer stored procedure",
+        "Transfer status set to PENDING or SUCCESS"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-ExecuteTransfer",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "on0Do",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "validation_failed",
+      "description": "Validation fails during ValidateTransfer step, leading to ValidationFailed and ending the operation.",
+      "inputs": [
+        "Request XML with missing or blank required fields"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 1 (other outcome)"
+      ],
+      "expected_outcome": "Error reply response XML with validation error category and number",
+      "expected_side_effects": [
+        "ValidationFailed step executed to populate error context fields"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-ValidationFailed",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "onOtherDo",
+          "target": "ValidationFailed"
+        },
+        {
+          "source": "ValidationFailed",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "check_limits_daily_exceeded",
+      "description": "CheckLimits returns limit exceeded status (3), routing to DailyLimitExceeded and ending.",
+      "inputs": [
+        "Request XML with transfer amount exceeding daily limits"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 3"
+      ],
+      "expected_outcome": "Error reply response XML for daily limit exceeded",
+      "expected_side_effects": [
+        "DailyLimitExceeded step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-DailyLimitExceeded",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on3Do",
+          "target": "DailyLimitExceeded"
+        },
+        {
+          "source": "DailyLimitExceeded",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "check_limits_insufficient_funds",
+      "description": "CheckLimits returns insufficient funds status (4), routing to InsufficientFunds and ending.",
+      "inputs": [
+        "Request XML with amount exceeding available account balance"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 4"
+      ],
+      "expected_outcome": "Error reply response XML for insufficient funds",
+      "expected_side_effects": [
+        "InsufficientFunds step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-InsufficientFunds",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on4Do",
+          "target": "InsufficientFunds"
+        },
+        {
+          "source": "InsufficientFunds",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "check_limits_account_not_eligible",
+      "description": "CheckLimits returns account not eligible status (5), routing to AccountNotEligible and ending.",
+      "inputs": [
+        "Request XML with source account ineligible for transfers"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 5"
+      ],
+      "expected_outcome": "Error reply response XML for account not eligible",
+      "expected_side_effects": [
+        "AccountNotEligible step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-AccountNotEligible",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on5Do",
+          "target": "AccountNotEligible"
+        },
+        {
+          "source": "AccountNotEligible",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "check_limits_database_error",
+      "description": "CheckLimits returns database error status (8), routing to DatabaseError and ending.",
+      "inputs": [
+        "Valid request XML under database connectivity failure conditions"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 8"
+      ],
+      "expected_outcome": "Error reply response XML for database error",
+      "expected_side_effects": [
+        "DatabaseError step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-DatabaseError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on8Do",
+          "target": "DatabaseError"
+        },
+        {
+          "source": "DatabaseError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "check_limits_technical_error",
+      "description": "CheckLimits returns an unmapped status code, routing to TechnicalError and ending.",
+      "inputs": [
+        "Valid request XML triggering unknown limit check response"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns -1"
+      ],
+      "expected_outcome": "Error reply response XML for technical error",
+      "expected_side_effects": [
+        "TechnicalError step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-TechnicalError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "onOtherDo",
+          "target": "TechnicalError"
+        },
+        {
+          "source": "TechnicalError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "fraud_check_suspected",
+      "description": "FraudCheck returns fraud suspected status (2), routing to FraudSuspected and ending.",
+      "inputs": [
+        "Valid request XML flagged by fraud detection service"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 2"
+      ],
+      "expected_outcome": "Error reply response XML for fraud suspected",
+      "expected_side_effects": [
+        "FraudSuspected step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-FraudSuspected",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on2Do",
+          "target": "FraudSuspected"
+        },
+        {
+          "source": "FraudSuspected",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "fraud_check_technical_error",
+      "description": "FraudCheck returns an unexpected error code, routing to TechnicalError and ending.",
+      "inputs": [
+        "Valid request XML encountering fraud service error response"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 8"
+      ],
+      "expected_outcome": "Error reply response XML for technical error",
+      "expected_side_effects": [
+        "TechnicalError step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-TechnicalError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "onOtherDo",
+          "target": "TechnicalError"
+        },
+        {
+          "source": "TechnicalError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "fraud_check_timeout_skip_success",
+      "description": "FraudCheck times out (-99), invoking SkipFraudOnTimeout which returns 0, proceeding to ExecuteTransfer and succeeding.",
+      "inputs": [
+        "Valid request XML where fraud detection service times out"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck throws TimeoutException",
+        "SkipFraudOnTimeout returns 0",
+        "ExecuteTransfer returns 0"
+      ],
+      "expected_outcome": "Formatted success response XML with fraud check skipped indicator true",
+      "expected_side_effects": [
+        "SkipFraudOnTimeout step executed successfully",
+        "ExecuteTransfer executed successfully"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-SkipFraudOnTimeout",
+        "route-ExecuteTransfer",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "onTimeoutDo",
+          "target": "SkipFraudOnTimeout"
+        },
+        {
+          "source": "SkipFraudOnTimeout",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "on0Do",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "fraud_check_timeout_skip_failure",
+      "description": "FraudCheck times out (-99), invoking SkipFraudOnTimeout which returns non-zero, routing to TechnicalError and ending.",
+      "inputs": [
+        "Valid request XML where fraud detection service times out and skip action fails"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck throws TimeoutException",
+        "SkipFraudOnTimeout returns 1"
+      ],
+      "expected_outcome": "Error reply response XML for technical error",
+      "expected_side_effects": [
+        "SkipFraudOnTimeout step executed",
+        "TechnicalError step executed"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-SkipFraudOnTimeout",
+        "route-TechnicalError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "onTimeoutDo",
+          "target": "SkipFraudOnTimeout"
+        },
+        {
+          "source": "SkipFraudOnTimeout",
+          "outcome": "onOtherDo",
+          "target": "TechnicalError"
+        },
+        {
+          "source": "TechnicalError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "execute_transfer_core_banking_rejected",
+      "description": "ExecuteTransfer returns core banking rejection code (6), routing to CoreBankingRejected and ending.",
+      "inputs": [
+        "Valid request XML rejected by core banking rules during execution"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 0",
+        "ExecuteTransfer returns 6"
+      ],
+      "expected_outcome": "Error reply response XML for core banking rejection",
+      "expected_side_effects": [
+        "CoreBankingRejected step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-ExecuteTransfer",
+        "route-CoreBankingRejected",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "on6Do",
+          "target": "CoreBankingRejected"
+        },
+        {
+          "source": "CoreBankingRejected",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "execute_transfer_already_processed",
+      "description": "ExecuteTransfer returns duplicate reference code (7), routing to TransferAlreadyProcessed and ending.",
+      "inputs": [
+        "Request XML with a transfer reference that was already processed"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 0",
+        "ExecuteTransfer returns 7"
+      ],
+      "expected_outcome": "Error reply response XML for duplicate transfer",
+      "expected_side_effects": [
+        "TransferAlreadyProcessed step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-ExecuteTransfer",
+        "route-TransferAlreadyProcessed",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "on7Do",
+          "target": "TransferAlreadyProcessed"
+        },
+        {
+          "source": "TransferAlreadyProcessed",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "execute_transfer_database_error",
+      "description": "ExecuteTransfer returns database error code (8), routing to DatabaseError and ending.",
+      "inputs": [
+        "Valid request XML encountering database failure during execution"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 0",
+        "ExecuteTransfer returns 8"
+      ],
+      "expected_outcome": "Error reply response XML for database error",
+      "expected_side_effects": [
+        "DatabaseError step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-ExecuteTransfer",
+        "route-DatabaseError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "on8Do",
+          "target": "DatabaseError"
+        },
+        {
+          "source": "DatabaseError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    },
+    {
+      "scenario_id": "execute_transfer_technical_error",
+      "description": "ExecuteTransfer returns unexpected error code, routing to TechnicalError and ending.",
+      "inputs": [
+        "Valid request XML resulting in unmapped execution error"
+      ],
+      "dependency_setup": [
+        "ValidateTransfer returns 0",
+        "CheckLimits returns 0",
+        "FraudCheck returns 0",
+        "ExecuteTransfer returns 99"
+      ],
+      "expected_outcome": "Error reply response XML for technical error",
+      "expected_side_effects": [
+        "TechnicalError step executed to populate error details"
+      ],
+      "covers": [
+        "route-ValidateTransfer",
+        "route-CheckLimits",
+        "route-FraudCheck",
+        "route-ExecuteTransfer",
+        "route-TechnicalError",
+        "operation-flow",
+        "operation-step-injection"
+      ],
+      "routes": [
+        {
+          "source": "ValidateTransfer",
+          "outcome": "on0Do",
+          "target": "CheckLimits"
+        },
+        {
+          "source": "CheckLimits",
+          "outcome": "on0Do",
+          "target": "FraudCheck"
+        },
+        {
+          "source": "FraudCheck",
+          "outcome": "on0Do",
+          "target": "ExecuteTransfer"
+        },
+        {
+          "source": "ExecuteTransfer",
+          "outcome": "onOtherDo",
+          "target": "TechnicalError"
+        },
+        {
+          "source": "TechnicalError",
+          "outcome": "onOtherDo",
+          "target": "end"
+        }
+      ]
+    }
+  ],
+  "unresolved_questions": []
+}

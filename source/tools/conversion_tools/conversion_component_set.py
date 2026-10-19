@@ -10,7 +10,7 @@ from models.conversion_models import ClosureBlockingIssue, ClosureStatus
 from tools.state_store_tools.component_inventory import get_conversion_inventory
 
 
-def resolve_conversion_components(conn, closure, workspace, source_index, external_rules=(), behavior_document=None, external_records=None):
+def resolve_conversion_components(conn, closure, workspace, source_index, external_rules=(), behavior_document=None, external_records=None, service_classpath=None):
     """Collect mapped implementations, recursive source dependencies, contexts, and formats."""
     components, issues, origins = {}, [], {}
     implementations, uses, graph = get_conversion_inventory(conn, closure.run_id, closure.operation_id, closure.channel)
@@ -96,6 +96,9 @@ def resolve_conversion_components(conn, closure, workspace, source_index, extern
     outgoing = {}
     for edge in graph.get("dependencies", []):
         outgoing.setdefault(edge["caller_implementation_id"], []).append(edge["target_implementation_id"])
+    if service_classpath is not None:
+        from tools.conversion_tools.service_source_closure import include_service_sources
+        include_service_sources(workspace, closure.channel, uses, implementations, outgoing, source_index, service_classpath, add)
     visited = set()
     external_ids = set()
     while pending:

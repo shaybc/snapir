@@ -59,6 +59,8 @@ COMPOSER_FRAMEWORK_PACKAGES = [
     "com.ibm.dse.base",
     "com.ibm.il.dse.cc.format",
     "com.ibm.il.dse.cc.decorator",
+    "com.ibm.il.dse.cc.service.database",
+    "com.ibm.dse.services.jdbc",
 ]
 
 # IBM guard
@@ -99,6 +101,9 @@ SUPPORTED_TARGET_LANGUAGES = ("java",)
 
 # Deployment fallback values, merged before writing a run snapshot.
 DEPLOYMENT_PLATFORM = "openshift"
+# Approved driver replacement proposals keyed by driver_class and java_versions.
+# Empty by default: workspace versions are preferred and vendor versions are not guessed.
+SERVICE_DRIVER_DEPENDENCY_CANDIDATES = []
 DEPLOYMENT_ENVIRONMENT = "prod"
 DEPLOYMENT_CONTAINER_PORT = 8080
 DEPLOYMENT_HEALTH_PATHS = {"liveness": "/actuator/health", "readiness": "/actuator/health"}

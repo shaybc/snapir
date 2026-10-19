@@ -16,6 +16,7 @@
 12. [Complete Operation Example](#12-complete-operation-example)
 13. [Conversion Guide — WSBCC to Native Java](#13-conversion-guide--wsbcc-to-native-java)
 14. [Best Practices](#14-best-practices)
+15. [Services and Connector Identification](#15-services-and-connector-identification)
 
 ---
 
@@ -1029,6 +1030,200 @@ GetClientLinksOp in IVR channel     → GetClientLinksService (ivr package)
 > `skills/python_generation_skills/fastapi_structure.md` for Python/FastAPI.
 > Language-agnostic conversion rules (evaluate don't translate, channel-first, shared components, etc.)
 > are in `skills/conversion_rules_skill.md`.
+
+---
+
+## 15. Services and Connector Identification
+
+### What a Service Is
+
+A Composer service is a configured Java object that exposes a reusable capability to operation steps and other components. A database service provides connections and database operations; another service may provide HTTP communication, a mainframe call, or a different external capability. The operation step contains the business action. The service supplies the configured access mechanism used by that action.
+
+**The key distinction:** a service tag identifies an implementation, a service definition configures an instance, and an operation step looks up that instance by its runtime name. These are separate identities. The same Java implementation can be configured as several services that connect to different systems.
+
+As with other Composer tags, the XML is interpreted by the runtime to instantiate and configure Java objects. A tag does not require a newly generated Java source file for each occurrence: its implementation may already exist in application source or a framework JAR.
+
+### Service Definition Chain
+
+For the database example, the complete relationship is:
+
+```text
+Operation / configured opStep
+    → service lookup name
+    → service instance definition
+    → service tag → Java implementation mapping in dse.ini
+    → service implementation and its base/helper classes
+    → poolName reference
+    → connector / connection pool definition
+    → database type, JDBC driver and deployment connection settings
+```
+
+The database example in this section is based on the supplied connector XML and the `StoredProcedureService`, `TransactionStoredProcedureService`, and stored-procedure opStep source excerpts. Example IDs are made consistent below to illustrate the relationship. Real workspaces must retain their actual IDs and lookup rules.
+
+### dse.ini — Service Tag Registry
+
+Service tag mappings belong to the channel's `settings/tags/services` collection. The mapping connects an XML tag name to its implementing Java class:
+
+```xml
+<kColl id="tags">
+  <kColl id="services">
+    <field id="StoredProcedureService"
+           value="composer.igsi.dvlp.operations.transfer.StoredProcedureService"/>
+    <field id="TransactionStoredProcedureService"
+           value="composer.igsi.dvlp.operations.transfer.TransactionStoredProcedureService"/>
+  </kColl>
+</kColl>
+```
+
+This fragment belongs inside the channel configuration described in Section 3; it is not a complete dse.ini. Resolve imported registries and channel-specific mappings before selecting an implementation. Connector-manager tags also need their effective registry mappings; their class names must be obtained from the workspace rather than inferred from the XML tag name.
+
+**A registry entry does not identify the database.** It identifies the Java implementation that interprets the service configuration. Follow the configured instance and its connector references to determine the target system.
+
+### Connector Definitions and Service Instances
+
+The supplied database configuration separates the connection manager/pool from the service that uses it. The definition files must be loaded through the channel's effective definition-file configuration. A file being present somewhere in the workspace does not by itself establish that the channel loads it.
+
+An illustrative connector definition is:
+
+```xml
+<XML>
+  <JDBCServicesConnectionManagerIDB id="connectionManager"
+                                    delay="300" errorDelay="60">
+    <column id="transactionPool"
+            isWSManaged="true"
+            dbType="Oracle"
+            size="10" maxSize="10"
+            user="DEPLOYMENT_USER"
+            password="DEPLOYMENT_PASSWORD"
+            type="Develop"
+            databaseURL="DEPLOYMENT_DATABASE_URL"
+            JDBCDriver="oracle.jdbc.driver.OracleDriver"/>
+  </JDBCServicesConnectionManagerIDB>
+</XML>
+```
+
+The `DEPLOYMENT_*` values above are documentation placeholders, not a claim that Composer expands environment variables with that syntax. Use the workspace's actual deployment/configuration mechanism. Do not copy credentials into generated source or model evidence.
+
+The corresponding service definition is:
+
+```xml
+<XML>
+  <TransactionStoredProcedureService
+      id="transactionStoredProcedureService"
+      autoCommit="false"
+      poolName="transactionPool"/>
+</XML>
+```
+
+| Item | Role |
+|---|---|
+| `TransactionStoredProcedureService` tag | Selects the registered Java implementation |
+| Service `id` | Identifies this configured service instance |
+| `poolName` | References the connector's configured pool |
+| Pool `id` | Identifies the referenced connection resource |
+| `dbType` | Declares the database technology in this connector definition |
+| `JDBCDriver` | Identifies the JDBC driver class used by the connector |
+| `databaseURL`, `user`, `password` | Configure the connection target and credentials |
+| `autoCommit` | Supplies transaction configuration interpreted by the service/framework |
+| Pool sizing, delay and management attributes | Supply connector configuration whose exact semantics come from its implementation/documentation |
+
+Do not assume that every attribute is implemented by a setter or that its meaning follows from its name. Inspect the service initialization method and, where the implementation is proprietary, the documented framework contract.
+
+### Java Service Implementation
+
+The supplied `StoredProcedureService` extends Composer's `Service` class and owns a `JDBCTableIDB` helper. Its initialization delegates the service tag to that helper:
+
+```java
+public Object initializeFrom(Tag tag) throws IOException {
+    jdbcTableIdb.initializeFrom(tag);
+    return this;
+}
+
+public Connection getConnection() throws com.ibm.dse.base.DSEException {
+    return jdbcTableIdb.getConnect();
+}
+```
+
+These are excerpts from the supplied implementation, not a standalone class. The implementation also exposes information such as the pool name, database URL, user and query timeout through the helper. This shows why reading only the opStep is insufficient: connection configuration is interpreted by supporting service code.
+
+The supplied `TransactionStoredProcedureService` extends `StoredProcedureService`. Its `getConnection()` retains a connection in an instance field and requests one from the base service only when that field is null or the connection is closed. Its cleanup methods release a connection; the supplied code also resets auto-commit before closing. A `setAutoCommit(boolean)` method changes that state on an existing connection.
+
+**Transaction behavior must be read from the whole implementation.** The XML's `autoCommit="false"`, the inherited initialization, connection reuse, explicit commit/rollback calls, and cleanup behavior all contribute. An attribute alone does not prove where a transaction begins or ends.
+
+The supplied class contains a `finalize()` fallback that attempts rollback and connection release. That is evidence of legacy cleanup intent, not a recommended lifecycle pattern for generated Java. Native conversion must use explicit ownership and cleanup while preserving the required transaction behavior.
+
+### Service Lookup from an opStep
+
+An operation step obtains a service through the Composer context:
+
+```java
+StoredProcedureService service = (StoredProcedureService)
+        getContext().getService("transactionStoredProcedureService");
+Connection connection = service.getConnection();
+```
+
+This illustrative lookup uses the instance ID from the definition above. The supplied real step chooses between a transactional service and a regular stored-procedure service. Its decision reads the `spService` parameter through `getParams().tryGetValueAt(...)`; the selected service is then retrieved through `getContext().getService(...)`.
+
+Identification therefore requires both Java and configuration evidence:
+
+1. Locate the service lookup and the type receiving its result.
+2. Follow variables, helper methods and conditions that determine the lookup name.
+3. Read the configured opStep parameters used by those conditions.
+4. Resolve the selected runtime name to its service instance in the effective channel configuration.
+5. Resolve that instance's tag to the registered implementation and its supporting classes.
+6. Follow `poolName` or the equivalent implementation-defined resource reference.
+
+Do not merge names merely because they differ only in capitalization. The supplied excerpts use service identifiers and lookup strings with differing capitalization; actual aliases and lookup behavior must be established from the effective configuration or documented runtime rules. A Java cast identifies an expected type, but does not uniquely identify an instance of that type.
+
+### Database Calls and Connection Ownership
+
+After obtaining a connection, the supplied step prepares a stored-procedure call, supplies an XML input parameter, registers a CLOB output parameter, sets a query timeout, executes the call and reads the returned CLOB. Its use of `OracleTypes.CLOB` is additional Oracle-specific evidence alongside the connector's database type and driver declaration.
+
+The step closes its statements in `finally`. It disconnects the service connection on the non-global path, but leaves the transactional/global connection available on the other path. These are different ownership paths, not interchangeable cleanup styles.
+
+| Path | Observed behavior in the supplied example | What must be established |
+|---|---|---|
+| Regular service connection | Step releases the connection after its work | Actual release method and error behavior |
+| Transactional/global connection | Step leaves the connection available for reuse | Service lifetime, transaction owner, commit/rollback boundaries and eventual release |
+
+Do not close a reused transactional connection after every step merely because the native implementation uses try-with-resources. First establish which component owns it and how long it must remain available. Likewise, do not infer that a cached connection is process-wide or safe for concurrent requests; instance lifetime and concurrency rules require separate evidence.
+
+### Identifying the Database and Driver Version
+
+The connector is the primary configuration evidence for the database. Driver classes, connection URLs and vendor-specific API usage provide supporting evidence. If these disagree, report the conflict rather than selecting whichever value is easiest to convert.
+
+Driver class identity and driver JAR version are separate facts:
+
+1. Read the effective Eclipse classpath, Maven configuration, or other workspace dependency settings.
+2. Identify the referenced JAR that actually contains the configured driver class.
+3. Inspect its Maven metadata and manifest for coordinates and version information; treat filenames as supporting evidence rather than proof.
+4. Verify that the selected dependency and its APIs support the configured target Java version.
+5. If a replacement version is necessary, select a verified version under the approved dependency policy and record the change.
+6. Ask the user only when required coordinates, compatibility constraints, or an ambiguous choice cannot be resolved from available evidence.
+
+**Java 25 does not imply one universal JDBC driver version.** Compatibility must be verified for the selected vendor, driver artifact and required behavior. Do not silently change the database technology to obtain a convenient dependency.
+
+### Other Service Types
+
+The same identification pattern applies to other registered services: find the runtime lookup, resolve the configured service instance, locate its Java implementation, and follow the configuration that selects its external resource.
+
+The resource model is service-specific. An HTTP service may reference an endpoint and authentication configuration rather than a connection pool. A mainframe or messaging service may have different acquisition, timeout, session and release semantics. A MongoDB service requires its own client API and configuration; it is not a JDBC service with a different driver name.
+
+Use the implementation and its documented contract to determine these details. Do not assume that every service exposes `getConnection()` and `disconnect()` just because the database example does.
+
+### Conversion Guide — Services to Native Code
+
+The native application should preserve the configured integration and business behavior without recreating Composer's service registry or context lookup mechanism.
+
+- **Discovery**: Record the operation/step → service instance → implementation → connector/resource relationship, with channel scope and source locations.
+- **Conversion evidence**: Supply the selected service configuration, relevant application service/helper source, framework semantics and verified dependency information to the affected unit request. Redact credentials while retaining the configuration keys needed for wiring.
+- **Native interfaces**: Replace context service lookup with explicit constructor dependencies or method inputs. Use a configured `DataSource` for JDBC where appropriate, or a suitable native client for another integration type.
+- **Assembly**: Preserve distinctions between separate resources and between regular and transactional connection lifetimes. Two operations using the same service type do not necessarily use the same database.
+- **Production wiring**: Generate the real providers from deployment settings and include the matching verified dependencies. Do not invent a database vendor, endpoint or credentials. Helm values must be passed into the application's settings through the deployment templates.
+- **Startup tests**: Substitute external providers while instantiating the real service and step objects. These tests prove wiring, not stored-procedure compatibility with a live database.
+- **Unresolved evidence**: Report missing definitions, dynamic lookup names, conflicting mappings or unverified transaction semantics explicitly. Group questions by the unresolved resource so shared consumers do not require repeated user decisions.
+
+This section documents Composer service behavior and the required evidence for conversion. It does not imply that the converter already discovers all service/connector relationships automatically.
 
 ---
 

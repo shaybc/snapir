@@ -16,7 +16,7 @@ from tools.state_store_tools.generated_artifacts import upsert_generated_artifac
 from tools.state_store_tools.runs import update_run_status
 
 
-def run_finalization(conn, config, profile, plan, directory):
+def run_finalization(conn, config, profile, plan, directory, *, complete_run=True):
     """Write manifest/docs inventories and require evidence-complete approval at Gate 4."""
     directory = Path(directory)
     evidence = collect_operation_evidence(conn, config, profile, plan)
@@ -108,6 +108,11 @@ def run_finalization(conn, config, profile, plan, directory):
     write_run_report(directory, "gate_4_report.txt", report)
     decision = evaluate_gate(conn, config.run_id, 4, report, profile.gate_policies.get("4", "human"), bool(evidence) and not blockers)
     phase = "migration_approved" if decision == "approved" else "finalization_blocked" if decision == "blocked" else "gate_4_" + decision
-    update_run_status(conn, config.run_id, "completed" if decision == "approved" else "blocked" if decision == "blocked" else
+    if decision == 'approved' and not complete_run:
+        phase = 'operation_workflow_completed'
+        from tools.state_store_tools.operation_progress import save_progress
+        packet = plan.batches[0].task_packets[0]
+        save_progress(conn, config.run_id, packet.channel + '/' + packet.operation_id, 'workflow_completed', phase)
+    update_run_status(conn, config.run_id, ("completed" if complete_run else "paused") if decision == "approved" else "blocked" if decision == "blocked" else
                       "stopped" if decision == "rejected" else "paused", phase)
     return phase

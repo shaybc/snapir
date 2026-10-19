@@ -18,13 +18,15 @@ class _ConsoleFormatter(logging.Formatter):
             separator = "-" * 68
             return "\n" + separator if boundary == "start" else separator + "\n"
         if self.verbose:
-            return sanitize_diagnostic(super().format(record))
+            message = sanitize_diagnostic(super().format(record))
+            return "\n!! " + message + "\n" if record.levelno == logging.WARNING else message
         # Format a copy so file handlers retain the original exception evidence.
         concise = logging.makeLogRecord(record.__dict__.copy())
         concise.exc_info = None
         concise.exc_text = None
         concise.stack_info = None
-        return sanitize_diagnostic(super().format(concise))
+        message = sanitize_diagnostic(super().format(concise))
+        return "\n!! " + message + "\n" if record.levelno == logging.WARNING else message
 
 
 @contextmanager

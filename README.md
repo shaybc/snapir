@@ -6,6 +6,36 @@ Generated components, shared libraries, and operation services default to Java 2
 
 ## Project layout and direct commands
 
+### Option two: native behavior units
+
+Set `conversion_strategy: behavior_units` to use the new conversion path. The
+Internet Transfer configuration selects it explicitly. The configuration wizard
+offers both strategies; existing profiles without this field remain on
+`legacy_components`. Start a new run to use Option Two: changing a YAML file does
+not replace the strategy saved in an existing run.
+
+Discovery still gathers the operation's XML and supporting source. Conversion
+then handles complete request/response formats and configured op-steps rather
+than generating one class for each legacy component. Formats produce Jackson XML
+wire models and explicit mapping methods. Steps produce native business code.
+Shared typed contracts connect those bundles to an ordinary Java service flow;
+Spring wrappers call the request mapper, service, and response mapper.
+
+The existing seven stages, review gates, placement thresholds, selected JDK,
+Maven repository settings, and grouped model diagnostics remain. Compatible
+complete units count distinct operation/channel consumers across the discovered
+workspace. Contract-incompatible uses split before final ownership is assigned.
+Native projects pin a JUnit-capable test runner. Candidate bundles must compile,
+execute their required tests, and pass behavior review before approval. Saved
+attempts and source/build manifests support Resume and reject changed evidence.
+
+The [design](option_two_design.md) and
+[implementation record](option_two_implementation_plan.md) describe the new
+modules and contracts. XML is the initial transport; JSON mapping and deterministic
+workflow generation remain future refinements. Offline fixtures validate the
+pipeline and representative Jackson behavior, but do not establish full
+bank-demo or production equivalence.
+
 Application packages, tests, templates, and the mapper live in `source/`.
 Project data stays in root `configs/`, `bank-demo/`, `docs/`, and `work/`;
 `requirements.txt`, `.venv/`, and `run.cmd` also stay at the root.

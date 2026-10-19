@@ -2,8 +2,11 @@
 
 import json
 import sqlite3
+import pytest
 
 from cli.workflow_progress import display_workflow_progress
+from runtime.workspace_paths import run_report_path
+from runtime.human_gates import record_decision
 
 
 def make_run(tmp_path, phase, status="paused", profile=None):
@@ -15,6 +18,32 @@ def make_run(tmp_path, phase, status="paused", profile=None):
         conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
         conn.execute("INSERT INTO runs VALUES (?, ?, ?)", (directory.name, status, phase))
     return directory
+
+
+@pytest.mark.parametrize('decision,changed,advances', [('approved', False, True), ('rejected', False, False), ('approved', True, False)])
+def test_gate_three_moves_display_only_after_current_report_approval(tmp_path, capsys, decision, changed, advances):
+    directory = make_run(tmp_path, 'gate_3_pending')
+    report = run_report_path(directory, 'gate_3_report.txt')
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text('Current operation review', encoding='utf-8')
+    database = directory / 'state/migration.db'
+    with sqlite3.connect(database) as conn:
+        record_decision(conn, directory.name, 3, report.read_text(), decision)
+    if changed:
+        report.write_text('Changed operation review', encoding='utf-8')
+    before = database.read_bytes()
+    display_workflow_progress(directory)
+    text = capsys.readouterr().out
+    if advances:
+        assert '[V] 5. Operation assembly and review (COMPLETED)' in text
+        assert '→ 6. Service generation and validation (WAITING FOR RESUME)' in text
+        assert 'Approve operation' not in text
+        assert 'checkpoint detail unavailable' not in text
+        assert 'Resume this run to start service generation' in text
+    else:
+        assert '→ 5. Operation assembly and review (WAITING)' in text
+        assert '[ ] 6. Service generation and validation (PENDING)' in text
+    assert database.read_bytes() == before
 
 
 def test_conversion_guidance_preserves_state(tmp_path, capsys):
@@ -38,6 +67,14 @@ def test_configured_maven_does_not_claim_missing_settings(tmp_path, capsys):
     text = capsys.readouterr().out
     assert "requires a configured Maven" not in text
     assert "ready for component conversion" in text
+
+
+def test_behavior_unit_failure_guidance_uses_saved_strategy(tmp_path, capsys):
+    directory = make_run(tmp_path, "conversion_pending", "failed", profile={"conversion_strategy": "behavior_units"})
+    before = (directory / "state/migration.db").read_bytes()
+    display_workflow_progress(directory)
+    assert "Native behavior-unit conversion failed" in capsys.readouterr().out
+    assert (directory / "state/migration.db").read_bytes() == before
 
 
 def test_blocked_dependencies_and_future_stages(tmp_path, capsys):

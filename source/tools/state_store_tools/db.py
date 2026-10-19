@@ -24,6 +24,8 @@ def create_all_tables(conn: sqlite3.Connection) -> None:
     for statement in SCHEMA_STATEMENTS:
         conn.execute(statement)
     conn.commit()
+    from tools.state_store_tools.behavior_units import initialize
+    initialize(conn)
 
 
 def reconcile_on_startup(conn: sqlite3.Connection, run_id: str) -> None:

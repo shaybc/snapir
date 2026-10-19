@@ -1,0 +1,1399 @@
+[
+  {
+    "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+    "logical_id": "GetClientLinksRQFmt",
+    "kind": "request_unformat",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+    "consumers": [
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "fingerprint": "b7d07df162501d4dfe62e9bc34a1dd0fdce280a731ea8ca23334de5af931e1d3",
+    "review_fingerprint": "ab69c211633a6e30e550fa31c03b11e6d60fd9d28940b34217ec98eed2b368d0",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": "a426d1fe54641a7cb638639cf9a82b07b80899fec9a826f6fc74874e5a8dd051",
+      "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": "5d84b57593cff4e4da039d6f35d66f1b625dda6c885e2a9bc609f5f533d03651",
+      "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": "d63005768ee4a1c2db11c776aab2e9d793b73123d4dead5a1c774eb5d9ebd573",
+      "src/test/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapperTest.java": "159647e86a5decf5592924701c114c7c4bc1debd1da3f8f88643f06f1a2f60ec"
+    },
+    "local_instances": {
+      "INTERNET/GetClientLinksOp": {
+        "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+            "method_signatures": [
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "b7d07df162501d4dfe62e9bc34a1dd0fdce280a731ea8ca23334de5af931e1d3",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": {
+            "imports": [],
+            "public_declarations": [
+              "public class GetClientLinksRequest",
+              "public GetClientLinksRequest()",
+              "public GetClientLinksRequest(String clientId, String bankId)",
+              "public String getClientId()",
+              "public void setClientId(String clientId)",
+              "public String getBankId()",
+              "public void setBankId(String bankId)"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestXml",
+              "public String clientId",
+              "public String bankId"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestUnformatMapper",
+              "public GetClientLinksRequestUnformatMapper()",
+              "public GetClientLinksRequest toBusinessInput(GetClientLinksRequestXml wire)",
+              "public GetClientLinksRequest unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-561a01497abb3d3133b663f0",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "output_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequest",
+        "wire_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": "a426d1fe54641a7cb638639cf9a82b07b80899fec9a826f6fc74874e5a8dd051",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": "5d84b57593cff4e4da039d6f35d66f1b625dda6c885e2a9bc609f5f533d03651",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": "d63005768ee4a1c2db11c776aab2e9d793b73123d4dead5a1c774eb5d9ebd573",
+          "src/test/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapperTest.java": "159647e86a5decf5592924701c114c7c4bc1debd1da3f8f88643f06f1a2f60ec"
+        }
+      },
+      "INTERNET/GetClientOverviewOp": {
+        "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientOverviewOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+            "method_signatures": [
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "b7d07df162501d4dfe62e9bc34a1dd0fdce280a731ea8ca23334de5af931e1d3",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": {
+            "imports": [],
+            "public_declarations": [
+              "public class GetClientLinksRequest",
+              "public GetClientLinksRequest()",
+              "public GetClientLinksRequest(String clientId, String bankId)",
+              "public String getClientId()",
+              "public void setClientId(String clientId)",
+              "public String getBankId()",
+              "public void setBankId(String bankId)"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestXml",
+              "public String clientId",
+              "public String bankId"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestUnformatMapper",
+              "public GetClientLinksRequestUnformatMapper()",
+              "public GetClientLinksRequest toBusinessInput(GetClientLinksRequestXml wire)",
+              "public GetClientLinksRequest unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-561a01497abb3d3133b663f0",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "output_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequest",
+        "wire_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": "a426d1fe54641a7cb638639cf9a82b07b80899fec9a826f6fc74874e5a8dd051",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": "5d84b57593cff4e4da039d6f35d66f1b625dda6c885e2a9bc609f5f533d03651",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": "d63005768ee4a1c2db11c776aab2e9d793b73123d4dead5a1c774eb5d9ebd573",
+          "src/test/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapperTest.java": "159647e86a5decf5592924701c114c7c4bc1debd1da3f8f88643f06f1a2f60ec"
+        }
+      },
+      "INTERNET/ValidateClientLinksOp": {
+        "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\ValidateClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+            "method_signatures": [
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+              "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "b7d07df162501d4dfe62e9bc34a1dd0fdce280a731ea8ca23334de5af931e1d3",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": {
+            "imports": [],
+            "public_declarations": [
+              "public class GetClientLinksRequest",
+              "public GetClientLinksRequest()",
+              "public GetClientLinksRequest(String clientId, String bankId)",
+              "public String getClientId()",
+              "public void setClientId(String clientId)",
+              "public String getBankId()",
+              "public void setBankId(String bankId)"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestXml",
+              "public String clientId",
+              "public String bankId"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksRequestUnformatMapper",
+              "public GetClientLinksRequestUnformatMapper()",
+              "public GetClientLinksRequest toBusinessInput(GetClientLinksRequestXml wire)",
+              "public GetClientLinksRequest unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "request_unformat-561a01497abb3d3133b663f0",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper",
+              "method_signatures": [
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest toBusinessInput(com.company.generated.units.u561a01497abb.GetClientLinksRequestXml)",
+                "public com.company.generated.units.u561a01497abb.GetClientLinksRequest unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "request_unformat-561a01497abb3d3133b663f0",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.CCPadding",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "output_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequest",
+        "wire_type": "com.company.generated.units.u561a01497abb.GetClientLinksRequestXml",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.CCPadding",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequest.java": "a426d1fe54641a7cb638639cf9a82b07b80899fec9a826f6fc74874e5a8dd051",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapper.java": "5d84b57593cff4e4da039d6f35d66f1b625dda6c885e2a9bc609f5f533d03651",
+          "src/main/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestXml.java": "d63005768ee4a1c2db11c776aab2e9d793b73123d4dead5a1c774eb5d9ebd573",
+          "src/test/java/com/company/generated/units/u561a01497abb/GetClientLinksRequestUnformatMapperTest.java": "159647e86a5decf5592924701c114c7c4bc1debd1da3f8f88643f06f1a2f60ec"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito for testing",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Byte-buddy for Mockito agent",
+        "required_classes": []
+      },
+      {
+        "group_id": "net.bytebuddy",
+        "artifact_id": "byte-buddy-agent",
+        "version": "1.17.7",
+        "scope": "test",
+        "reason": "Byte-buddy agent for Mockito",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.objenesis",
+        "artifact_id": "objenesis",
+        "version": "3.3",
+        "scope": "test",
+        "reason": "Objenesis for Mockito",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.17.2",
+        "scope": "compile",
+        "reason": "Jackson XML support",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-3a42c4326e3d7f21467b61b2",
+    "logical_id": "DatabaseError",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\behavior-libraries\\shared-33e19da28f26",
+    "consumers": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "fingerprint": "d2cf5e3b867db51f83dff8d3a358e569e29eb9905aa575b60a963a1d652981b2",
+    "review_fingerprint": "a9e96357b20d86e190fd19e855ab7084f4995524f39201019e643e3de94ff49a",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorStep.java": "ab9e1d774181c214f211d190a10d9ef0d2b4821342a339d59bde6085d5987592",
+      "src/main/java/com/company/generated/units/u3a42c4326e3d/OperationContext.java": "944abbe61227324d5e75cabab560829497eae2e476013c269d7f9c93d9b1d440",
+      "src/test/java/com/company/generated/units/u3a42c4326e3d/DatabaseErrorStepTest.java": "704e72349eb1e2464f2ca09fb17b83da0dbddf59e97ae42fb59d487dacb66d58"
+    },
+    "local_instances": {},
+    "dependencies": [
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-9d214a54d7b141366dcd456c",
+    "logical_id": "TechnicalError",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\behavior-libraries\\shared-33e19da28f26",
+    "consumers": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/TransferFundsOp",
+      "IVR/GetAccountBalanceOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "fingerprint": "1a2a5b27cffd779eea0d9abb9df951e183bedf13e9abe341e125eff1b9886b28",
+    "review_fingerprint": "cc53c7fac532aff1f6023788995a557e44a9a70d2df35c30ee6b5e0a0edb5dcf",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStep.java": "ce8b076fd4f6569fcacbfc8f0ae0db8fa8fc6644e9bdebe351dac50711722901",
+      "src/test/java/com/company/generated/units/u9d214a54d7b1/TechnicalErrorStepTest.java": "55386a69da5c6aec0850dfc5ae7906c222b5e4bfd668340c2bf179b271fdae8e"
+    },
+    "local_instances": {},
+    "dependencies": [
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito mocking framework",
+        "required_classes": []
+      }
+    ]
+  },
+  {
+    "unit_id": "response_format-66bf2c108225fb63eb2a0cbe",
+    "logical_id": "StandardErrorRSFmt",
+    "kind": "response_format",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\behavior-libraries\\shared-26209c8451ff",
+    "consumers": [
+      "INTERNET/GetAccountDetailsOp",
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/TransferFundsOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "fingerprint": "a00ea8c54cd4dc004c37d2a813445edbf29255107cd05bbdb59719c35980ce8f",
+    "review_fingerprint": "f5f8895532af523c55376f040523657036ce95931e1751e9831319c66ed57905",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtMapper.java": "901b536bfe443c2c124a153fdb8138827c25ba727550bcfa851456f676c4c3fc",
+      "src/test/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtAdapterTest.java": "c0ab4f1eced98f895532a11bd375f7d0bd6e9a3f4dd5610e8ad202cd72df65b8",
+      "src/test/java/com/company/generated/units/u66bf2c108225/StandardErrorRSFmtBusinessTest.java": "c6c957b96c09b3e638e409bed499833947c970110b76f5aec7bfafddb098127b"
+    },
+    "local_instances": {},
+    "dependencies": [
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito for mocking",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.15.2",
+        "scope": "compile",
+        "reason": "Jackson XML serialization and deserialization",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText",
+          "com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-3643d2141e0adb1bddc660d7",
+    "logical_id": "NoLinksFound",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+    "consumers": [
+      "INTERNET/GetClientAccountsOp",
+      "INTERNET/GetClientLinksOp",
+      "IVR/GetClientAccountsOp"
+    ],
+    "fingerprint": "d8b250ade257ae35966ef03a97ed533ad8123115a0a58459a50001adb3caf543",
+    "review_fingerprint": "9872873a94a3407fa5e76563a1eb976ccedbfbcea0a878be84276bd82fff53b1",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u3643d2141e0a/NoLinksFoundStep.java": "92ca519782871be98f300de3e67df55da55a89473af6d930f8f5e27a445b7d05",
+      "src/test/java/com/company/generated/units/u3643d2141e0a/NoLinksFoundStepBusinessTest.java": "41224c838eef763183000127c3ee439f5f21240fda363416de2c3942269851b0"
+    },
+    "local_instances": {
+      "INTERNET/GetClientLinksOp": {
+        "unit_id": "configured_step-3643d2141e0adb1bddc660d7",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u3643d2141e0a.NoLinksFoundStep",
+            "method_signatures": [
+              "public int execute(com.company.generated.units.u3a42c4326e3d.OperationContext)",
+              "public java.lang.String getErrorCategory()",
+              "public java.lang.String getErrorNumber()"
+            ]
+          }
+        ],
+        "fingerprint": "d8b250ade257ae35966ef03a97ed533ad8123115a0a58459a50001adb3caf543",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u3643d2141e0a/NoLinksFoundStep.java": {
+            "imports": [
+              "import com.company.generated.units.u3a42c4326e3d.OperationContext;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class NoLinksFoundStep",
+              "public NoLinksFoundStep()",
+              "public NoLinksFoundStep(String errorCategory, String errorNumber)",
+              "public String getErrorCategory()",
+              "public String getErrorNumber()",
+              "public int execute(OperationContext context)"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "configured_step-3643d2141e0adb1bddc660d7",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u3643d2141e0a.NoLinksFoundStep",
+              "method_signatures": [
+                "public int execute(com.company.generated.units.u3a42c4326e3d.OperationContext)",
+                "public java.lang.String getErrorCategory()",
+                "public java.lang.String getErrorNumber()"
+              ]
+            }
+          ],
+          "dependency_units": [
+            "configured_step-3a42c4326e3d7f21467b61b2"
+          ],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-3643d2141e0adb1bddc660d7",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+          ]
+        },
+        "input_type": "com.company.generated.units.u3a42c4326e3d.OperationContext",
+        "output_type": "java.lang.Integer",
+        "wire_type": null,
+        "source_ids": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u3643d2141e0a/NoLinksFoundStep.java": "92ca519782871be98f300de3e67df55da55a89473af6d930f8f5e27a445b7d05",
+          "src/test/java/com/company/generated/units/u3643d2141e0a/NoLinksFoundStepBusinessTest.java": "41224c838eef763183000127c3ee439f5f21240fda363416de2c3942269851b0"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "Application-owned Java 25 test template",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-42b95631a1866d97e7e0cbfa",
+    "logical_id": "GetClientLinks",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+    "consumers": [
+      "INTERNET/GetClientLinksOp"
+    ],
+    "fingerprint": "b8149193cb647ff2c843c020adb2a746f63a7b03cf8b3ee563eb9b131f38899f",
+    "review_fingerprint": "f2e26f4556e5ad1540c3bc426fefd898793c51353a9b7ca0b37e0f754032bf07",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u42b95631a186/GetClientLinksStep.java": "439df95a82cb3e6433d60f90ae30fc817b43cc19bbf6df39deed771cbc267782",
+      "src/test/java/com/company/generated/units/u42b95631a186/GetClientLinksAdapterContractTest.java": "e5201da4b815febd509f3ca621b7a5f94f056a4f2ff96208cb74d5032744a56f",
+      "src/test/java/com/company/generated/units/u42b95631a186/GetClientLinksStepBusinessTest.java": "ba5ce9cac0b37278da423e0535e35079760527b39cecc1f1acc13eb86fa12bdf"
+    },
+    "local_instances": {
+      "INTERNET/GetClientLinksOp": {
+        "unit_id": "configured_step-42b95631a1866d97e7e0cbfa",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u42b95631a186.GetClientLinksStep",
+            "method_signatures": [
+              "public int execute(com.company.generated.units.u3a42c4326e3d.OperationContext)"
+            ]
+          }
+        ],
+        "fingerprint": "b8149193cb647ff2c843c020adb2a746f63a7b03cf8b3ee563eb9b131f38899f",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u42b95631a186/GetClientLinksStep.java": {
+            "imports": [
+              "import com.company.generated.units.u3a42c4326e3d.OperationContext;",
+              "import java.sql.CallableStatement;",
+              "import java.sql.Connection;",
+              "import java.sql.ResultSet;",
+              "import java.util.ArrayList;",
+              "import java.util.LinkedHashMap;",
+              "import java.util.List;",
+              "import java.util.Map;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class GetClientLinksStep",
+              "public static final int RC_SUCCESS = 0",
+              "public static final int RC_NOT_FOUND = 4",
+              "public static final int RC_DB_ERROR = 8",
+              "public int execute(OperationContext context) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "configured_step-42b95631a1866d97e7e0cbfa",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u42b95631a186.GetClientLinksStep",
+              "method_signatures": [
+                "public int execute(com.company.generated.units.u3a42c4326e3d.OperationContext)"
+              ]
+            }
+          ],
+          "dependency_units": [
+            "configured_step-3a42c4326e3d7f21467b61b2"
+          ],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "configured_step-42b95631a1866d97e7e0cbfa",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.operations.internet.db.GetClientLinksSP"
+          ]
+        },
+        "input_type": "com.company.generated.units.u3a42c4326e3d.OperationContext",
+        "output_type": "java.lang.Integer",
+        "wire_type": null,
+        "source_ids": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.operations.internet.db.GetClientLinksSP"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u42b95631a186/GetClientLinksStep.java": "439df95a82cb3e6433d60f90ae30fc817b43cc19bbf6df39deed771cbc267782",
+          "src/test/java/com/company/generated/units/u42b95631a186/GetClientLinksAdapterContractTest.java": "e5201da4b815febd509f3ca621b7a5f94f056a4f2ff96208cb74d5032744a56f",
+          "src/test/java/com/company/generated/units/u42b95631a186/GetClientLinksStepBusinessTest.java": "ba5ce9cac0b37278da423e0535e35079760527b39cecc1f1acc13eb86fa12bdf"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito mocking framework",
+        "required_classes": [
+          "org.mockito.Mockito"
+        ]
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-33e19da28f26",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native OperationContext dependency",
+        "required_classes": [
+          "com.company.generated.units.u3a42c4326e3d.OperationContext"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+    "logical_id": "GetClientLinksRSFmt",
+    "kind": "response_format",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+    "consumers": [
+      "INTERNET/GetClientLinksOp",
+      "INTERNET/GetClientOverviewOp",
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "fingerprint": "79b7bbddcae389b9198a763f1924c5701a3db7eb8852862c5a7b5e2afa139574",
+    "review_fingerprint": "275f28c1c59addcf4b4e6aaece8e276554f683ae9430f6fba56bf924aba21c26",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": "a0e7ae91d892fdf2d9ef179f0b1ff78eb7ecafb72c7daee975ccba6481b6cbcc",
+      "src/test/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtTest.java": "66be3d2941e0a20cddc3553b1b4fb898986df38db3cfc7db06588244f01de166"
+    },
+    "local_instances": {
+      "INTERNET/GetClientLinksOp": {
+        "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+              "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "79b7bbddcae389b9198a763f1924c5701a3db7eb8852862c5a7b5e2afa139574",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.ArrayList;",
+              "import java.util.List;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public final class GetClientLinksRSFmtMapper",
+              "public GetClientLinksRSFmtMapper()",
+              "public static class LinkDescriptionWire",
+              "public static class LinkWire",
+              "public static class GetClientLinksResponseWire",
+              "public static class LinksWrapper",
+              "public record LinkDto(String linkId, String linkDescription, String linkUrl, Boolean isExternal, String iconCode)",
+              "public record GetClientLinksResponse(String clientId, List<LinkDto> links)",
+              "public String format(GetClientLinksResponse response) throws Exception",
+              "public GetClientLinksResponse unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+              "method_signatures": [
+                "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+                "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "response_format-5dfecf09ff9fd30503abf76e",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCBoolean",
+            "com.ibm.il.dse.cc.format.CCIColl",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCTableFormat",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse",
+        "output_type": "java.lang.String",
+        "wire_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponseWire",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCBoolean",
+          "com.ibm.il.dse.cc.format.CCIColl",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCTableFormat",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": "a0e7ae91d892fdf2d9ef179f0b1ff78eb7ecafb72c7daee975ccba6481b6cbcc",
+          "src/test/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtTest.java": "66be3d2941e0a20cddc3553b1b4fb898986df38db3cfc7db06588244f01de166"
+        }
+      },
+      "INTERNET/GetClientOverviewOp": {
+        "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientOverviewOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+              "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "79b7bbddcae389b9198a763f1924c5701a3db7eb8852862c5a7b5e2afa139574",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.ArrayList;",
+              "import java.util.List;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public final class GetClientLinksRSFmtMapper",
+              "public GetClientLinksRSFmtMapper()",
+              "public static class LinkDescriptionWire",
+              "public static class LinkWire",
+              "public static class GetClientLinksResponseWire",
+              "public static class LinksWrapper",
+              "public record LinkDto(String linkId, String linkDescription, String linkUrl, Boolean isExternal, String iconCode)",
+              "public record GetClientLinksResponse(String clientId, List<LinkDto> links)",
+              "public String format(GetClientLinksResponse response) throws Exception",
+              "public GetClientLinksResponse unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+              "method_signatures": [
+                "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+                "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "response_format-5dfecf09ff9fd30503abf76e",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCBoolean",
+            "com.ibm.il.dse.cc.format.CCIColl",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCTableFormat",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse",
+        "output_type": "java.lang.String",
+        "wire_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponseWire",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCBoolean",
+          "com.ibm.il.dse.cc.format.CCIColl",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCTableFormat",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": "a0e7ae91d892fdf2d9ef179f0b1ff78eb7ecafb72c7daee975ccba6481b6cbcc",
+          "src/test/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtTest.java": "66be3d2941e0a20cddc3553b1b4fb898986df38db3cfc7db06588244f01de166"
+        }
+      },
+      "INTERNET/ValidateClientLinksOp": {
+        "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\ValidateClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+            "method_signatures": [
+              "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+              "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+            ]
+          }
+        ],
+        "fingerprint": "79b7bbddcae389b9198a763f1924c5701a3db7eb8852862c5a7b5e2afa139574",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": {
+            "imports": [
+              "import com.fasterxml.jackson.dataformat.xml.XmlMapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;",
+              "import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText;",
+              "import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;",
+              "import java.util.ArrayList;",
+              "import java.util.List;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public final class GetClientLinksRSFmtMapper",
+              "public GetClientLinksRSFmtMapper()",
+              "public static class LinkDescriptionWire",
+              "public static class LinkWire",
+              "public static class GetClientLinksResponseWire",
+              "public static class LinksWrapper",
+              "public record LinkDto(String linkId, String linkDescription, String linkUrl, Boolean isExternal, String iconCode)",
+              "public record GetClientLinksResponse(String clientId, List<LinkDto> links)",
+              "public String format(GetClientLinksResponse response) throws Exception",
+              "public GetClientLinksResponse unformat(String xml) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "response_format-5dfecf09ff9fd30503abf76e",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper",
+              "method_signatures": [
+                "public java.lang.String format(com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse)",
+                "public com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse unformat(java.lang.String)"
+              ]
+            }
+          ],
+          "dependency_units": [],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior"
+          },
+          "evidence_ids": [
+            "response_format-5dfecf09ff9fd30503abf76e",
+            "com.ibm.dse.base.Context",
+            "com.ibm.dse.base.Tag",
+            "com.ibm.il.dse.cc.decorator.NilDecorator",
+            "com.ibm.il.dse.cc.format.CCBoolean",
+            "com.ibm.il.dse.cc.format.CCIColl",
+            "com.ibm.il.dse.cc.format.CCString",
+            "com.ibm.il.dse.cc.format.CCTableFormat",
+            "com.ibm.il.dse.cc.format.CCXML"
+          ]
+        },
+        "input_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponse",
+        "output_type": "java.lang.String",
+        "wire_type": "com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper$GetClientLinksResponseWire",
+        "source_ids": [
+          "com.ibm.dse.base.Context",
+          "com.ibm.dse.base.Tag",
+          "com.ibm.il.dse.cc.decorator.NilDecorator",
+          "com.ibm.il.dse.cc.format.CCBoolean",
+          "com.ibm.il.dse.cc.format.CCIColl",
+          "com.ibm.il.dse.cc.format.CCString",
+          "com.ibm.il.dse.cc.format.CCTableFormat",
+          "com.ibm.il.dse.cc.format.CCXML"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtMapper.java": "a0e7ae91d892fdf2d9ef179f0b1ff78eb7ecafb72c7daee975ccba6481b6cbcc",
+          "src/test/java/com/company/generated/units/u5dfecf09ff9f/GetClientLinksRSFmtTest.java": "66be3d2941e0a20cddc3553b1b4fb898986df38db3cfc7db06588244f01de166"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.17.2",
+        "scope": "compile",
+        "reason": "Jackson XML serialization and deserialization",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.XmlMapper",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper",
+          "com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText",
+          "com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator"
+        ]
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-15edb87ae7f68ca9aed10a8b",
+    "logical_id": "ValidateClientLinksFetch",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\ValidateClientLinksOp",
+    "consumers": [
+      "INTERNET/ValidateClientLinksOp"
+    ],
+    "fingerprint": "4eb9cf46babb761871846270386b6b7ae40f2c16bee430ab2efe50607e1400a0",
+    "review_fingerprint": "d078c489c924478e167ccd0af8a48e07efd2c784c0a476510e203021dec97f1e",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStep.java": "61106c96d93f61a4ab106543f4b68f0bb642eba2d77e3a7e329b62cc0c0b0071",
+      "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchOperationCallTest.java": "ecd97649389ddb7ffd962570c309ce91193131022e72b214a3c98095888ac185",
+      "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStepAdapterTest.java": "371e70003215fd95a018b20eeed425792bee7287ce289f4200535e68fd7c0edc",
+      "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStepBusinessTest.java": "5c82ef8d6865635160369125b85c767486da16629395ec6d5d0d3c0f7666e1fd"
+    },
+    "local_instances": {
+      "INTERNET/ValidateClientLinksOp": {
+        "unit_id": "configured_step-15edb87ae7f68ca9aed10a8b",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\ValidateClientLinksOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u15edb87ae7f6.ValidateClientLinksFetchStep",
+            "method_signatures": [
+              "public int execute(java.lang.String, java.lang.String) throws java.lang.Exception"
+            ]
+          }
+        ],
+        "fingerprint": "4eb9cf46babb761871846270386b6b7ae40f2c16bee430ab2efe50607e1400a0",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStep.java": {
+            "imports": [
+              "import com.company.generated.units.u561a01497abb.GetClientLinksRequest;",
+              "import com.company.generated.units.u561a01497abb.GetClientLinksRequestUnformatMapper;",
+              "import com.company.generated.units.u561a01497abb.GetClientLinksRequestXml;",
+              "import com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper;",
+              "import com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper;",
+              "import java.net.URI;",
+              "import java.net.http.HttpClient;",
+              "import java.net.http.HttpRequest;",
+              "import java.net.http.HttpResponse;",
+              "import java.time.Duration;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class ValidateClientLinksFetchStep",
+              "public ValidateClientLinksFetchStep(String baseUrl,\n                                         HttpClient httpClient,\n                                         GetClientLinksRequestUnformatMapper requestMapper,\n                                         GetClientLinksRSFmtMapper successMapper,\n                                         StandardErrorRSFmtMapper errorMapper)",
+              "public int execute(String clientId, String bankId) throws Exception"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "configured_step-15edb87ae7f68ca9aed10a8b",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u15edb87ae7f6.ValidateClientLinksFetchStep",
+              "method_signatures": [
+                "public int execute(java.lang.String, java.lang.String) throws java.lang.Exception"
+              ]
+            }
+          ],
+          "dependency_units": [
+            "request_unformat-561a01497abb3d3133b663f0",
+            "response_format-66bf2c108225fb63eb2a0cbe",
+            "response_format-5dfecf09ff9fd30503abf76e"
+          ],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior",
+            "native-operation-calls": "Replace Composer dispatch with saved native HTTP contracts; test request/reply mapping, business errors, transport failures and timeouts"
+          },
+          "evidence_ids": [
+            "configured_step-15edb87ae7f68ca9aed10a8b",
+            "com.ibm.dse.base.CCOperationStep",
+            "com.ibm.dse.base.Context",
+            "com.ibm.il.dse.cc.cut.CCComplexOpStep"
+          ]
+        },
+        "input_type": null,
+        "output_type": null,
+        "wire_type": null,
+        "source_ids": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.cc.cut.CCComplexOpStep"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStep.java": "61106c96d93f61a4ab106543f4b68f0bb642eba2d77e3a7e329b62cc0c0b0071",
+          "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchOperationCallTest.java": "ecd97649389ddb7ffd962570c309ce91193131022e72b214a3c98095888ac185",
+          "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStepAdapterTest.java": "371e70003215fd95a018b20eeed425792bee7287ce289f4200535e68fd7c0edc",
+          "src/test/java/com/company/generated/units/u15edb87ae7f6/ValidateClientLinksFetchStepBusinessTest.java": "5c82ef8d6865635160369125b85c767486da16629395ec6d5d0d3c0f7666e1fd"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions",
+          "org.junit.jupiter.api.BeforeEach"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito mocking framework",
+        "required_classes": [
+          "org.mockito.Mockito",
+          "org.mockito.ArgumentMatchers"
+        ]
+      }
+    ]
+  },
+  {
+    "unit_id": "configured_step-41def216c2ea6be54012fa7a",
+    "logical_id": "OverviewValidateLinks",
+    "kind": "configured_step",
+    "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientOverviewOp",
+    "consumers": [
+      "INTERNET/GetClientOverviewOp"
+    ],
+    "fingerprint": "79100cfa033fb431d6fbe256af0967013b573570b51ff9412eda6f458fdb7d12",
+    "review_fingerprint": "8dcd9f2cfebf7f4633b1ee97b541de29cec5ec9c836f68efc23a476eca003b8f",
+    "review": {
+      "approved": true,
+      "issues": [],
+      "unresolved_questions": []
+    },
+    "files": {
+      "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksResult.java": "9fde7248116d395367bc37d10b96a1e4f81842c801ea0d30e17398fef36db2ee",
+      "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksStep.java": "6e67d2cf3c997c5fe6a292ffad3ef9e5acf5186b71dfb528546ac4370359cda2",
+      "src/test/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksStepTest.java": "975d47caba5e6b2cdc7f3452a5806275e403bf739cf5e3b3c7284500336fb973"
+    },
+    "local_instances": {
+      "INTERNET/GetClientOverviewOp": {
+        "unit_id": "configured_step-41def216c2ea6be54012fa7a",
+        "project": "C:\\GitHub\\shaybc\\snapir\\work\\migration_runs\\bank-operation-calls-e2e-20261019\\generated\\INTERNET\\GetClientOverviewOp",
+        "apis": [
+          {
+            "type_name": "com.company.generated.units.u41def216c2ea.OverviewValidateLinksStep",
+            "method_signatures": [
+              "public com.company.generated.units.u41def216c2ea.OverviewValidateLinksResult execute(com.company.generated.units.u561a01497abb.GetClientLinksRequest)"
+            ]
+          }
+        ],
+        "fingerprint": "79100cfa033fb431d6fbe256af0967013b573570b51ff9412eda6f458fdb7d12",
+        "public_api": {
+          "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksStep.java": {
+            "imports": [
+              "import com.company.generated.units.u561a01497abb.GetClientLinksRequest;",
+              "import com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper;",
+              "import com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper;",
+              "import java.net.URI;",
+              "import java.net.http.HttpClient;",
+              "import java.net.http.HttpRequest;",
+              "import java.net.http.HttpResponse;",
+              "import java.time.Duration;",
+              "import java.util.Objects;"
+            ],
+            "public_declarations": [
+              "public class OverviewValidateLinksStep",
+              "public OverviewValidateLinksStep(String baseUrl, HttpClient httpClient, GetClientLinksRSFmtMapper successMapper, StandardErrorRSFmtMapper errorMapper)",
+              "public OverviewValidateLinksResult execute(GetClientLinksRequest request) throws Exception"
+            ]
+          },
+          "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksResult.java": {
+            "imports": [
+              "import com.company.generated.units.u5dfecf09ff9f.GetClientLinksRSFmtMapper;",
+              "import com.company.generated.units.u66bf2c108225.StandardErrorRSFmtMapper;"
+            ],
+            "public_declarations": [
+              "public record OverviewValidateLinksResult(int returnCode, GetClientLinksRSFmtMapper.GetClientLinksResponse successResponse, StandardErrorRSFmtMapper.ErrorReply errorReply)",
+              "public boolean isSuccess()",
+              "public String nextTransition()"
+            ]
+          }
+        },
+        "contract": {
+          "unit_id": "configured_step-41def216c2ea6be54012fa7a",
+          "apis": [
+            {
+              "type_name": "com.company.generated.units.u41def216c2ea.OverviewValidateLinksStep",
+              "method_signatures": [
+                "public com.company.generated.units.u41def216c2ea.OverviewValidateLinksResult execute(com.company.generated.units.u561a01497abb.GetClientLinksRequest)"
+              ]
+            }
+          ],
+          "dependency_units": [
+            "request_unformat-561a01497abb3d3133b663f0",
+            "response_format-66bf2c108225fb63eb2a0cbe",
+            "response_format-5dfecf09ff9fd30503abf76e"
+          ],
+          "requirements": {
+            "business": "Preserve this complete configured unit's evidenced behavior",
+            "native-operation-calls": "Replace Composer dispatch with saved native HTTP contracts; test request/reply mapping, business errors, transport failures and timeouts"
+          },
+          "evidence_ids": [
+            "configured_step-41def216c2ea6be54012fa7a"
+          ]
+        },
+        "input_type": null,
+        "output_type": null,
+        "wire_type": null,
+        "source_ids": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context",
+          "com.ibm.il.dse.cc.cut.CCComplexOpStep"
+        ],
+        "files": {
+          "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksResult.java": "9fde7248116d395367bc37d10b96a1e4f81842c801ea0d30e17398fef36db2ee",
+          "src/main/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksStep.java": "6e67d2cf3c997c5fe6a292ffad3ef9e5acf5186b71dfb528546ac4370359cda2",
+          "src/test/java/com/company/generated/units/u41def216c2ea/OverviewValidateLinksStepTest.java": "975d47caba5e6b2cdc7f3452a5806275e403bf739cf5e3b3c7284500336fb973"
+        }
+      }
+    },
+    "dependencies": [
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      },
+      {
+        "group_id": "org.junit.jupiter",
+        "artifact_id": "junit-jupiter",
+        "version": "5.10.0",
+        "scope": "test",
+        "reason": "JUnit Jupiter tests and execution engine",
+        "required_classes": [
+          "org.junit.jupiter.api.Test",
+          "org.junit.jupiter.api.Assertions",
+          "org.junit.jupiter.api.BeforeEach",
+          "org.junit.jupiter.api.AfterEach"
+        ]
+      },
+      {
+        "group_id": "org.mockito",
+        "artifact_id": "mockito-core",
+        "version": "5.23.0",
+        "scope": "test",
+        "reason": "Mockito for mocking",
+        "required_classes": [
+          "org.mockito.Mockito"
+        ]
+      },
+      {
+        "group_id": "com.fasterxml.jackson.dataformat",
+        "artifact_id": "jackson-dataformat-xml",
+        "version": "2.17.2",
+        "scope": "compile",
+        "reason": "XML serialization for client request/response",
+        "required_classes": [
+          "com.fasterxml.jackson.dataformat.xml.XmlMapper"
+        ]
+      },
+      {
+        "group_id": "com.company.migration",
+        "artifact_id": "shared-26209c8451ff",
+        "version": "1.0.0-4d092659baf5",
+        "scope": "compile",
+        "reason": "Accepted native behavior library for this run",
+        "required_classes": []
+      }
+    ]
+  }
+]
