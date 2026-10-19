@@ -1,0 +1,1230 @@
+[
+  {
+    "implementation": {
+      "implementation_id": "023bcbaa2e2f991f29436f797bfa8711e2ca3fea09660761e6151c893d109a07",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCBoolean.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCBoolean",
+      "method_signature": null,
+      "source_hash": "46f468039799b2adf37f65ccb229b4146daf2c071d1301b25b0bd8aaad54f1b6"
+    },
+    "reference_count": 6,
+    "direct_reference_count": 6,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "12d40be59be2beec4d127c1ad0b01d933e0fb2ffcb37f8593efce2b8a00848aa",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCTableFormat.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCTableFormat",
+      "method_signature": null,
+      "source_hash": "7ff7d2a1f9260f0d88b6c865a48854bde91f7bbe3ee9f2bff3d42e78fcc06e44"
+    },
+    "reference_count": 6,
+    "direct_reference_count": 6,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "223b85f25edeab1b539942ad5cfe5794078e7eb7834d994121a9bedaa418a81f",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/CCOperationStep.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "CCOperationStep",
+      "method_signature": null,
+      "source_hash": "bdba80eb19b1472b584f9e327d0e51c64249bc354b6f84f97ab3828e3e026bff"
+    },
+    "reference_count": 56,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 56,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "22bea27948cbc20d8884b9f75581772409090b09b5abe68e1331b640c88aaf49",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/Tag.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "Tag",
+      "method_signature": null,
+      "source_hash": "1e9e41364576b476c2d0fe656fae4afbf4b9660ebfab4a89fcaf9ce30eac3c5c"
+    },
+    "reference_count": 189,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 189,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "26b60679bc51d4a64eb8683ad0110973b599403fbb763b6c9ecaa4309f149b18",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/CCPadding.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "CCPadding",
+      "method_signature": null,
+      "source_hash": "8796f326980c6ce43fcf0bef0380df973a7156b47cbb3742a2c8e2030b4da72a"
+    },
+    "reference_count": 22,
+    "direct_reference_count": 22,
+    "indirect_reference_count": 0,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "288f0d5329cb161ce107e977e8c91f9f6893b22fbb3b6e1408957ac91d309255",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/GetClientAccountsIvrSP.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "GetClientAccountsIvrSP",
+      "method_signature": null,
+      "source_hash": "c2fbea5032a597f6b02c1822bbe401aacb1a0696ad1c841bb88f2f5c7be0ed3a"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "3ba8739db7399e4b6c9af4c7728f5f8f8057365538db047ecb198d1b357e02f8",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetClientAccountsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetClientAccountsSP",
+      "method_signature": null,
+      "source_hash": "109d3ccbac7adc4cf4baeb5227767952517a3d9988bf7204b5eb78901b7489ad"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "3e72b5f65a2edaf91ee789557604261f448b51731972ceff09e033ed707af8ab",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/NilDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "NilDecorator",
+      "method_signature": null,
+      "source_hash": "53ce014a9aa60009126eb4ca0ae6c22b4b1c86c25052e2f477c43d4c9cfebf42"
+    },
+    "reference_count": 29,
+    "direct_reference_count": 29,
+    "indirect_reference_count": 0,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "4645430dc625dc8fe3a0a7edc2a5a84e1ff19ac89bd170e6d8a4968d387c2b10",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCIColl.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCIColl",
+      "method_signature": null,
+      "source_hash": "ac389a07d8ae1a86cda4356c16d02606a9800ae4e5e5e52ecb6e985dca557091"
+    },
+    "reference_count": 6,
+    "direct_reference_count": 6,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "5277e7473101a79f2969aa653398d19136d6275f68d6aef12e0695985ba63857",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetAccountDetailsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetAccountDetailsSP",
+      "method_signature": null,
+      "source_hash": "6468b1df9864424487f6dd2fc6b112fc4e7de830717b2adfa7c4fd0cf3a738df"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "58b3ff120b37b40925ee22849bc87aeaff924178d5713b9aa319814c06641355",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/MaskLogDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "MaskLogDecorator",
+      "method_signature": null,
+      "source_hash": "fa4fa8f7545d2031baeb77e7d3845ca079b0cabcd572e9a267bc98ab385dd2fa"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "6886fc5ee06d0e4c87baa108c429e0f80e53480129d3834c890fc44477737e94",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetAccountTransactionsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetAccountTransactionsSP",
+      "method_signature": null,
+      "source_hash": "b8ac688669c736e65040d543d75b6f4da88a6fb8b8686f0d5fd0844c9a742365"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "6accfe3eafd94f55cd2b00e93cc769468ed220302445e2e33a9d855de81b425f",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/ValidateInputFields.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "ValidateInputFields",
+      "method_signature": null,
+      "source_hash": "0481dd3f3b2bce30fbfba96d2f23daefc016f076cae0fcbab2ce4f3b1846b07b"
+    },
+    "reference_count": 5,
+    "direct_reference_count": 5,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "6d22d5f9887c5445690b99478669669398c78d434a81e47961e01e5017a148fa",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/dse/base/Context.java",
+      "package_name": "com.ibm.dse.base",
+      "class_name": "Context",
+      "method_signature": null,
+      "source_hash": "2ecbe34eb7f561dab6bdbe5d9949b56e652f33c8a8e792994fdba33114cacf71"
+    },
+    "reference_count": 616,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 616,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "7176ffc3efc05c2e8c4d156a182ca1f293392505b3d22bf130c7a138a677f3f4",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/GetAccountBalanceSP.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "GetAccountBalanceSP",
+      "method_signature": null,
+      "source_hash": "f59e733ef7bcbfe92c77e1213f242cdd50126058bbde230ce245c2177851ad32"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "72bb85b9c65449a7336d46a7cc95d734eb208c613d7e1067f5b092cab27d204f",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/MapErrorByValueAlways.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "MapErrorByValueAlways",
+      "method_signature": null,
+      "source_hash": "728019a09f6eaca78ce390b7464dc3b102fb895c35486189fc8b5fd6ff340aad"
+    },
+    "reference_count": 29,
+    "direct_reference_count": 29,
+    "indirect_reference_count": 0,
+    "operation_count": 6,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "7fccaa99dd7d1696ae6ae1d3b63518b0cec78877f7fbc56f62060815bf381f63",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/cut/CCDSEServerOperation.java",
+      "package_name": "com.ibm.il.dse.cc.cut",
+      "class_name": "CCDSEServerOperation",
+      "method_signature": null,
+      "source_hash": "fcaf68594b17326659d327bcc975553a231d2d1e62f7b741959b9e142603d288"
+    },
+    "reference_count": 8,
+    "direct_reference_count": 8,
+    "indirect_reference_count": 0,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "862200b9f2504b8bcc0a2df258e7ec84b4a3065b0b97f3985744a73032838487",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/service/communication/http/HTTPService.java",
+      "package_name": "com.ibm.il.dse.cc.service.communication.http",
+      "class_name": "HTTPService",
+      "method_signature": null,
+      "source_hash": "8c37d2dee87e1a9d301f767805bdf66e2ad5ec78976dc0b6fc82589752a4a425"
+    },
+    "reference_count": 2,
+    "direct_reference_count": 0,
+    "indirect_reference_count": 2,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "875340628c0b1ad1fc9b8dd31914a8434f797cce7f128a03d494a134e9a0b618",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCString.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCString",
+      "method_signature": null,
+      "source_hash": "ea468aff40ac74ec3555cd7464e729d0fd1f42f83a6652e388be733c4d153cc4"
+    },
+    "reference_count": 97,
+    "direct_reference_count": 97,
+    "indirect_reference_count": 0,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "976c6917ecff01b745b0dcd242be1d34838f03642c496b0466e6ef2e32ba7fab",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCXML.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCXML",
+      "method_signature": null,
+      "source_hash": "e732cb3877944fcb8f24a7c2a74b182372df732f988bc1d7fd48f20283fbc0d2"
+    },
+    "reference_count": 30,
+    "direct_reference_count": 30,
+    "indirect_reference_count": 0,
+    "operation_count": 8,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "988736265feb25ba6aeb95bd5cfdb95ba29d0bef8002d273dc0056b77fe3daa4",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/common/SetChannelContext.java",
+      "package_name": "com.ibm.il.dse.operations.common",
+      "class_name": "SetChannelContext",
+      "method_signature": null,
+      "source_hash": "f6f0e6d9b8f7f67fa6900ad55ec8ea842c17769880bd1a8d6f197064fc80f95f"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "9d4cb51e021d98537a498d1ac23dcb9d014933f523fb72a9107bab8723444936",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCKColl.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCKColl",
+      "method_signature": null,
+      "source_hash": "e83e9b57eeea86540a90aa6b7ecbebf406affa9edb9f0ee6e42bb06864d360f8"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "a11fb0cdcddaa0caba1faa8f038e0cc7d64887b00eafbb37860d9cace0eec1aa",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCTime.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCTime",
+      "method_signature": null,
+      "source_hash": "790a5807d4c0b972b11e111e5344c37613d746798e4f8f12ded61b9bedfca9b2"
+    },
+    "reference_count": 2,
+    "direct_reference_count": 2,
+    "indirect_reference_count": 0,
+    "operation_count": 2,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "a8d409bdbdf3740f424f433acf59554b19812af2209ef10aebf93394eaec9871",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/service/CallFraudDetection.java",
+      "package_name": "com.ibm.il.dse.operations.internet.service",
+      "class_name": "CallFraudDetection",
+      "method_signature": null,
+      "source_hash": "2347391cff69706616aa4c191746ed4e3aced3969987948e115b13c0f720c40c"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "b71eeb30ee6681f26824b9c15dbb2216602aeafbf0d4b1984591a9089b6d996b",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/NumberFormat.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "NumberFormat",
+      "method_signature": null,
+      "source_hash": "e66a40fafe7e6eaf760111243c71bf175b8f09b68a4afaa87dccd75dedb7014f"
+    },
+    "reference_count": 11,
+    "direct_reference_count": 11,
+    "indirect_reference_count": 0,
+    "operation_count": 5,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "b7c4cbd55827dbceaa145fab75bab7af62c00ab23fab082538861d451cece6fa",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_IVR/src",
+      "source_path": "WSBCC_IVR/src/com/ibm/il/dse/operations/ivr/db/LogIvrSession.java",
+      "package_name": "com.ibm.il.dse.operations.ivr.db",
+      "class_name": "LogIvrSession",
+      "method_signature": null,
+      "source_hash": "f63dfa8cf6154b4083e13ab63a74c7076e88aca70ead0e166932fa2fdfae951e"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 3,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "1d47460e4075f054f59841b7dbf4762a49853a569780630ca6be4288730762bd",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "c291eb93564317e72a8a6f76d9a4e46a9d7fb3d6cc3a1561f99eac24b3c0c8ae",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/decorator/RemoveLeadingZerosDecorator.java",
+      "package_name": "com.ibm.il.dse.cc.decorator",
+      "class_name": "RemoveLeadingZerosDecorator",
+      "method_signature": null,
+      "source_hash": "f576cbef9580be2edd0804b45a5d4f1d4b9b1c4cf99103c89128a2a9d5d6e1c9"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 2,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "cb211affa2310a69342ebef3d8cb8a6d6b38071db2c1c8967237135fd5438249",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/GetClientLinksSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "GetClientLinksSP",
+      "method_signature": null,
+      "source_hash": "3236d23fe5afcbd68284a7bb29a470e440668d66fcea8e8e62b69c4035259fc2"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "c803412bd482d10fd56460130f5ecd7b94834c7b7e2b1021ceccc47b3e26b8c0",
+        "operation_id": "GetClientLinksOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "cf0a6a1faa554d217c3ba038fbdffb990bc9bd606c9f48ed9a2e89f5da9267f8",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/ExecuteTransferSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "ExecuteTransferSP",
+      "method_signature": null,
+      "source_hash": "a2e3037c57693fba711306a9605165ab05b5abcd41dfc9d8169ea99ee38d2bcd"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "d3541801384319ce13221e90793b677f99dbd93fb8b6a759b965f3196745d6ed",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/cut/CCComplexOpStep.java",
+      "package_name": "com.ibm.il.dse.cc.cut",
+      "class_name": "CCComplexOpStep",
+      "method_signature": null,
+      "source_hash": "1950e5fc713b62993c02033c3436f49e8eed764b6b243f801640baaa0c17e7ca"
+    },
+    "reference_count": 3,
+    "direct_reference_count": 3,
+    "indirect_reference_count": 0,
+    "operation_count": 2,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "788c118a0d1927d745ab65ae1a41b09dc3f70f12bf3afc7b82c43394e3f4389a",
+        "operation_id": "ValidateClientLinksOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "f0d716fd7fa3269774db1f372bb86081189b38ede596130af269f9602e5782cf",
+        "operation_id": "GetClientOverviewOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "dd0c0d3c33505bd133f06d0d40f3d69207c9f8c61b43a5153f60be19d2a8a752",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_XML/src",
+      "source_path": "WSBCC_XML/src/com/ibm/il/dse/cc/format/CCDate.java",
+      "package_name": "com.ibm.il.dse.cc.format",
+      "class_name": "CCDate",
+      "method_signature": null,
+      "source_hash": "e63d0cb718572ced0c42cc89c4d3bb3f3162d922d27366769b2be8b8bebdc92a"
+    },
+    "reference_count": 8,
+    "direct_reference_count": 8,
+    "indirect_reference_count": 0,
+    "operation_count": 4,
+    "channel_count": 2,
+    "consumers": [
+      {
+        "operation_key": "05fac13af843bbbe2d85d506e75b960b03f2d920db793f3a561bd2f9b264864c",
+        "operation_id": "GetAccountDetailsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "3c8757c094f24b0415cccea08ec4739f77ed6f0971e70259cda026fcec3fa258",
+        "operation_id": "GetClientAccountsOp",
+        "channel": "INTERNET"
+      },
+      {
+        "operation_key": "44e2a4085b64852c53e4831a5cbf5a5a3768c78f6c5902619168bbce0e9c414a",
+        "operation_id": "GetAccountBalanceOp",
+        "channel": "IVR"
+      },
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  },
+  {
+    "implementation": {
+      "implementation_id": "ed0cc0249f82157feafb35646ed548ee381eb90fca6b2261f6400a8b6fb284be",
+      "workspace_id": "bank-stage-five-20261019-173555-be7749",
+      "source_root": "WSBCC_INTERNET/src",
+      "source_path": "WSBCC_INTERNET/src/com/ibm/il/dse/operations/internet/db/ValidateTransferLimitsSP.java",
+      "package_name": "com.ibm.il.dse.operations.internet.db",
+      "class_name": "ValidateTransferLimitsSP",
+      "method_signature": null,
+      "source_hash": "9d53db5a089f95744959a557e6c43811faa0636cdc8ed9cd26c0e8c9d12fc8bb"
+    },
+    "reference_count": 1,
+    "direct_reference_count": 1,
+    "indirect_reference_count": 0,
+    "operation_count": 1,
+    "channel_count": 1,
+    "consumers": [
+      {
+        "operation_key": "706ae42f74ffd3b63afe1622728fb7b74ba20b11b39dd19c52d1ba1ad6253875",
+        "operation_id": "TransferFundsOp",
+        "channel": "INTERNET"
+      }
+    ]
+  }
+]

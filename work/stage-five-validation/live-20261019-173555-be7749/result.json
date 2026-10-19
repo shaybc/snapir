@@ -1,0 +1,57 @@
+{
+  "budget_seconds": 480,
+  "dummy_runtime_validation": false,
+  "deployment_performed": false,
+  "live_http_verification": false,
+  "second_run": null,
+  "chain_run": {
+    "run": "work\\stage-five-validation\\live-20261019-173555-be7749\\runs\\chain-be7749",
+    "commands": [
+      {
+        "command": "start",
+        "exit_code": 0,
+        "timed_out": false,
+        "error": null,
+        "log": "work\\stage-five-validation\\live-20261019-173555-be7749\\chain-start.log"
+      },
+      {
+        "command": "resume",
+        "exit_code": 1,
+        "timed_out": true,
+        "error": "Verification time budget exhausted",
+        "log": "work\\stage-five-validation\\live-20261019-173555-be7749\\chain-resume.log"
+      }
+    ],
+    "status": "paused",
+    "current_phase": "conversion_pending",
+    "operations": [
+      {
+        "operation_key": "INTERNET/GetClientLinksOp",
+        "status": "paused",
+        "phase": "conversion_pending"
+      },
+      {
+        "operation_key": "INTERNET/ValidateClientLinksOp",
+        "status": "pending",
+        "phase": "operation_pending"
+      },
+      {
+        "operation_key": "INTERNET/GetClientOverviewOp",
+        "status": "pending",
+        "phase": "operation_pending"
+      }
+    ],
+    "last_unit": {
+      "position": "3",
+      "total": "7",
+      "name": "TechnicalError"
+    }
+  },
+  "result": "blocked",
+  "dependency_verification_seconds": [
+    130.7,
+    144.7
+  ],
+  "accepted_native_units": 2,
+  "published_services": 0
+}

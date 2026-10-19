@@ -1,9 +1,10 @@
 # Operation Conversion Workflow — Staged Implementation Plan
 
-Status: Stages 1–4 implemented; Stage 5 verification remains pending. The
-complete sequential conversion workflow is not yet connected. The existing converter is implemented; the new work surrounds it with
-intake checks, an approved run plan, shared service registration and a thin
-sequential wrapper. It must not duplicate or replace the converter.
+Status: Stages 1–4 implemented. Stage 5 verification tooling and offline checks
+are implemented; complete live bank verification remains blocked by the bounded
+run's time limit. The sequential wrapper invokes the existing converter with
+intake checks, an approved plan and shared service registration. It does not
+duplicate or replace the existing conversion workflow.
 
 Design references: [operation-call design](../operation_calls.md),
 [native converter design](../../option_two_design.md#operation-dependencies-and-approved-sequential-conversion)
@@ -283,6 +284,38 @@ operations completed and the exact remaining blocker. Existing generator or
 business-conversion failures must not turn this task into unrelated debugging.
 Do not add a requirement to launch every service or enumerate every possible
 chain in a large conversion run.
+
+Stage 5 verification record:
+
+- Added a real-bank Mapper/intake integration test using two independent run
+  databases and one shared fixture registry. Explicitly controlled converter
+  fixtures verify leaf completion/publication before the later run's callers,
+  exact API revision reuse, actual CCComplex call resolution and both direct
+  targets of the overview operation. These are not claimed as real services.
+- The combined focused suite passed 141 tests (four preexisting diagnostic cases
+  excluded). The added verification-timeout checkpoint test also passed, proving
+  accepted work survives pausing an interrupted verification run. The real-bank
+  integration test was rerun successfully after its JDK availability guard.
+- Added `work/stage-five-validation/verify_bank_demo.py`, an isolated live-run
+  supervisor with an eight-minute cap, captured CLI output, explicit demo-only
+  deployment values, automatic test-profile approval policies and one transport
+  attempt. Existing conversion correction limits remain in place. Original
+  profiles and runtime conversion code were not changed.
+- Live run `chain-be7749`: real intake and model-driven planning passed. Only
+  `GetClientLinksOp` began. Two of its seven native units passed compilation,
+  executable tests and review. The cap stopped conversion during dependency
+  verification of unit 3 (`TechnicalError`); accepted units and the approved
+  plan were retained, and the stopped run was marked paused at
+  `conversion_pending`.
+- Completed dependency-verification steps consumed 130.7 and 144.7 seconds.
+  Neither `ValidateClientLinksOp` nor `GetClientOverviewOp` started. No operation
+  completed, no service was published, no live HTTP-chain check ran, and the
+  separate live API-reuse run was not started. No dummy validation or unrelated
+  generator/build repairs were used. No second live attempt was made.
+- Evidence: [verification summary](../../work/stage-five-validation/verification.md),
+  [live report](../../work/stage-five-validation/live-20261019-173555-be7749/report.md)
+  and its machine result/logs. Completing the real bank conversion and separate
+  live reuse check remains outstanding; verification is not marked fully passed.
 
 ## Expected files to change:
 

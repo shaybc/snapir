@@ -1,0 +1,983 @@
+[
+  {
+    "operation_id": "GetClientLinksOp",
+    "channel": "INTERNET",
+    "run_id": "chain-be7749",
+    "status": "READY",
+    "blocking_issues": [],
+    "source_xml_path": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\Xml Definition\\Channel\\INTERNET\\selfDefOper\\GetClientLinks.xml",
+    "operation_fields": null,
+    "ini_values": [],
+    "host_key": "GCLN",
+    "ref_formats": {
+      "csErrorReplyFormat": "StandardErrorRSFmt",
+      "csReplyFormat": "GetClientLinksRSFmt",
+      "csRequestFormat": "GetClientLinksRQFmt"
+    },
+    "return_body_switches": {
+      "0": "ErrorBody"
+    },
+    "included_opstep_ids": [
+      "GetClientLinks",
+      "NoLinksFound",
+      "DatabaseError",
+      "TechnicalError"
+    ],
+    "excluded_opsteps": [],
+    "routing_graph": {
+      "GetClientLinks": {
+        "on0Do": "end",
+        "on4Do": "NoLinksFound",
+        "on8Do": "DatabaseError",
+        "onOtherDo": "TechnicalError"
+      },
+      "NoLinksFound": {
+        "onOtherDo": "end"
+      },
+      "DatabaseError": {
+        "onOtherDo": "end"
+      },
+      "TechnicalError": {
+        "onOtherDo": "end"
+      }
+    },
+    "java_classes": [
+      {
+        "fqcn": "com.ibm.il.dse.operations.internet.db.GetClientLinksSP",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\com\\ibm\\il\\dse\\operations\\internet\\db\\GetClientLinksSP.java",
+        "parent_class": "com.ibm.dse.base.CCOperationStep",
+        "interfaces": [],
+        "has_ibm_dependency": true,
+        "ibm_imports": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context"
+        ],
+        "return_codes": {
+          "0": [
+            "links found and loaded",
+            "rc success"
+          ],
+          "4": [
+            "no links configured for this client",
+            "rc not found"
+          ],
+          "8": [
+            "database error",
+            "rc db error"
+          ]
+        },
+        "shared": false
+      },
+      {
+        "fqcn": "com.ibm.il.dse.operations.common.MapErrorByValueAlways",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\com\\ibm\\il\\dse\\operations\\common\\MapErrorByValueAlways.java",
+        "parent_class": "com.ibm.dse.base.CCOperationStep",
+        "interfaces": [],
+        "has_ibm_dependency": true,
+        "ibm_imports": [
+          "com.ibm.dse.base.CCOperationStep",
+          "com.ibm.dse.base.Context"
+        ],
+        "return_codes": {
+          "0": [
+            "always (mapping always succeeds)"
+          ]
+        },
+        "shared": true
+      }
+    ],
+    "conversion_components": [
+      {
+        "kind": "xml_context",
+        "logical_id": "GetClientLinksCtxt",
+        "source_file": null,
+        "source_hash": "d1eaa1d8582682e0d7c17de0ea5a448e503ac2c23d4b687ebac0532e9954bab7",
+        "source_content": "[{\"name\": \"ErrorReply\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"StandardErrorRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"ErrorCategory\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"StandardErrorRSFmt\", \"NoLinksFound\", \"DatabaseError\", \"TechnicalError\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"ErrorNumber\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"StandardErrorRSFmt\", \"NoLinksFound\", \"DatabaseError\", \"TechnicalError\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"ErrorDescription\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"StandardErrorRSFmt\", \"NoLinksFound\", \"DatabaseError\", \"TechnicalError\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"RequestId\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"StandardErrorRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"GetClientLinksResponse\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"ClientId\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\", \"GetClientLinksRQFmt\"], \"read_by\": [\"GetClientLinks\"], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"Links\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\", \"GetClientLinks\"], \"read_by\": [], \"inferred_type\": \"List<Object>\", \"inherited\": false}, {\"name\": \"Link\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"LinkId\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"LinkDescription\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"LinkUrl\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"IsExternal\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"boolean\", \"inherited\": false}, {\"name\": \"IconCode\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRSFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"GetClientLinks\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRQFmt\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"BankId\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"formatter\", \"written_by\": [\"GetClientLinksRQFmt\"], \"read_by\": [\"GetClientLinks\"], \"inferred_type\": \"String\", \"inherited\": false}, {\"name\": \"DatabaseError\", \"context_level\": \"GetClientLinksCtxt\", \"source\": \"implclass\", \"written_by\": [\"GetClientLinks\"], \"read_by\": [], \"inferred_type\": \"String\", \"inherited\": false}]",
+        "shared": false,
+        "origin": "Operation context"
+      },
+      {
+        "kind": "xml_fmtdef",
+        "logical_id": "StandardErrorRSFmt",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\work\\stage-five-validation\\live-20261019-173555-be7749\\runs\\chain-be7749\\vault\\formats\\StandardErrorRSFmt.md",
+        "source_hash": "b80890df755fc6f1c5e16ac192431dcc6c4e39f50f7fa9ef31fefdfb8c9cbe3d",
+        "source_content": "# StandardErrorRSFmt\n\n---\nentity_type: format\nentity_id: StandardErrorRSFmt\nconversion_status: not_started\nshared: true\nused_by_operations:\n  - GetAccountBalanceOp\n  - GetAccountDetailsOp\n  - GetClientAccountsOp\n  - GetClientLinksOp\n  - GetClientOverviewOp\n  - TransferFundsOp\n  - ValidateClientLinksOp\nsource_file: C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\Xml Definition\\Channel\\XML\\defaultFile\\dseformat.xml\nsource_hash: c1896648708bc8b2fcef4dfea7b956580922d56268c6a6947c807ccec9063f52\n---\n\n## Structure\n```xml\n<CCXML dataName=\"ErrorReply\">\n  <CCString dataName=\"ErrorCategory\"/>\n  <CCString dataName=\"ErrorNumber\"/>\n  <CCString dataName=\"ErrorDescription\">\n  </CCString>\n    decorator: <nilDecorator/>\n  <CCString dataName=\"RequestId\"/>\n</CCXML>\n```\n\n\n## Referenced Tags\n- [CCXML](formats/CCXML.md)\n- [CCString](formats/CCString.md)\n- [nilDecorator](formats/nilDecorator.md)\n\n## Mapped Java Classes\n- [com.ibm.il.dse.cc.format.CCXML](classes/com/ibm/il/dse/cc/format/CCXML.md)\n- [com.ibm.il.dse.cc.format.CCString](classes/com/ibm/il/dse/cc/format/CCString.md)\n- [com.ibm.il.dse.cc.decorator.NilDecorator](classes/com/ibm/il/dse/cc/decorator/NilDecorator.md)\n\n## Inferred External Dependencies\n- None\n",
+        "shared": true,
+        "origin": "Referenced format"
+      },
+      {
+        "kind": "xml_fmtdef",
+        "logical_id": "GetClientLinksRSFmt",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\work\\stage-five-validation\\live-20261019-173555-be7749\\runs\\chain-be7749\\vault\\formats\\GetClientLinksRSFmt.md",
+        "source_hash": "f8ae973f89e43a448874816b21349704b32eb10b899868bd92910045614c5124",
+        "source_content": "# GetClientLinksRSFmt\n\n---\nentity_type: format\nentity_id: GetClientLinksRSFmt\nconversion_status: not_started\nshared: true\nused_by_operations:\n  - GetClientLinksOp\n  - GetClientOverviewOp\n  - ValidateClientLinksOp\nsource_file: C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\Xml Definition\\Channel\\INTERNET\\selfDefOper\\GetClientLinks.xml\nsource_hash: 5e8b0678d1d4e8c4d53ee6e1e39a933baff92bdd194e0ec8b9634c6d93faac88\n---\n\n## Structure\n```xml\n<CCXML dataName=\"GetClientLinksResponse\" transparent=\"true\">\n  <CCString dataName=\"ClientId\"/>\n  <CCIColl dataName=\"Links\" times=\"*\">\n    <CCXML dataName=\"Link\">\n      <CCString dataName=\"LinkId\">\n      </CCString>\n        decorator: <CCMandatory/>\n      <CCTableFormat dataName=\"LinkDescription\" fromColumn=\"DESCRIPTION\" fromTable=\"LINK_TYPES\" keyValue=\"LinkId\">\n      </CCTableFormat>\n        decorator: <nilDecorator/>\n      <CCString dataName=\"LinkUrl\"/>\n      <CCBoolean dataName=\"IsExternal\"/>\n      <CCString dataName=\"IconCode\">\n      </CCString>\n        decorator: <nilDecorator/>\n    </CCXML>\n  </CCIColl>\n</CCXML>\n```\n\n## Serialization Notes\n- This format contains CCXML serialization flags that affect the XML wire shape.\n- `GetClientLinksResponse transparent=true`\n\n## Database Lookups\n> These lookups were encoded inside the WSBCC format definition. In the converted service they must be moved to the service layer, not the serializer.\n\n- CCTableFormat: fromTable `LINK_TYPES`, fromColumn `DESCRIPTION`, keyValue `LinkId`\n\n\n## Referenced Tags\n- [CCXML](formats/CCXML.md)\n- [CCString](formats/CCString.md)\n- [CCIColl](formats/CCIColl.md)\n- [CCMandatory](formats/CCMandatory.md)\n- [CCTableFormat](formats/CCTableFormat.md)\n- [nilDecorator](formats/nilDecorator.md)\n- [CCBoolean](formats/CCBoolean.md)\n\n## Mapped Java Classes\n- [com.ibm.il.dse.cc.format.CCXML](classes/com/ibm/il/dse/cc/format/CCXML.md)\n- [com.ibm.il.dse.cc.format.CCString](classes/com/ibm/il/dse/cc/format/CCString.md)\n- [com.ibm.il.dse.cc.format.CCIColl](classes/com/ibm/il/dse/cc/format/CCIColl.md)\n- com.ibm.il.dse.cc.decorator.CCMandatory\n- [com.ibm.il.dse.cc.format.CCTableFormat](classes/com/ibm/il/dse/cc/format/CCTableFormat.md)\n- [com.ibm.il.dse.cc.decorator.NilDecorator](classes/com/ibm/il/dse/cc/decorator/NilDecorator.md)\n- [com.ibm.il.dse.cc.format.CCBoolean](classes/com/ibm/il/dse/cc/format/CCBoolean.md)\n\n## Inferred External Dependencies\n- Database\n- API/Service\n",
+        "shared": true,
+        "origin": "Referenced format"
+      },
+      {
+        "kind": "xml_fmtdef",
+        "logical_id": "GetClientLinksRQFmt",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\work\\stage-five-validation\\live-20261019-173555-be7749\\runs\\chain-be7749\\vault\\formats\\GetClientLinksRQFmt.md",
+        "source_hash": "ccadb9da0ae27400e989e7a851027ff5205feeb65685c00f33d85461e5d9bae2",
+        "source_content": "# GetClientLinksRQFmt\n\n---\nentity_type: format\nentity_id: GetClientLinksRQFmt\nconversion_status: not_started\nshared: true\nused_by_operations:\n  - GetClientLinksOp\n  - GetClientOverviewOp\n  - ValidateClientLinksOp\nsource_file: C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\Xml Definition\\Channel\\INTERNET\\selfDefOper\\GetClientLinks.xml\nsource_hash: 5e8b0678d1d4e8c4d53ee6e1e39a933baff92bdd194e0ec8b9634c6d93faac88\n---\n\n## Structure\n```xml\n<CCXML dataName=\"GetClientLinks\">\n  <CCString dataName=\"ClientId\">\n  </CCString>\n    decorator: <CCMandatory/>\n  <CCString dataName=\"BankId\">\n  </CCString>\n    decorator: <CCPadding length=\"4\" padChar=\"0\"/>\n</CCXML>\n```\n\n\n## Referenced Tags\n- [CCXML](formats/CCXML.md)\n- [CCString](formats/CCString.md)\n- [CCMandatory](formats/CCMandatory.md)\n- [CCPadding](formats/CCPadding.md)\n\n## Mapped Java Classes\n- [com.ibm.il.dse.cc.format.CCXML](classes/com/ibm/il/dse/cc/format/CCXML.md)\n- [com.ibm.il.dse.cc.format.CCString](classes/com/ibm/il/dse/cc/format/CCString.md)\n- com.ibm.il.dse.cc.decorator.CCMandatory\n- [com.ibm.il.dse.cc.decorator.CCPadding](classes/com/ibm/il/dse/cc/decorator/CCPadding.md)\n\n## Inferred External Dependencies\n- None\n",
+        "shared": true,
+        "origin": "Referenced format"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.operations.internet.db.GetClientLinksSP",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\com\\ibm\\il\\dse\\operations\\internet\\db\\GetClientLinksSP.java",
+        "source_hash": "3236d23fe5afcbd68284a7bb29a470e440668d66fcea8e8e62b69c4035259fc2",
+        "source_content": "package com.ibm.il.dse.operations.internet.db;\n\nimport com.ibm.dse.base.CCOperationStep;\nimport com.ibm.dse.base.Context;\n\nimport java.sql.CallableStatement;\nimport java.sql.Connection;\nimport java.sql.ResultSet;\nimport java.util.ArrayList;\nimport java.util.LinkedHashMap;\nimport java.util.List;\nimport java.util.Map;\n\n/**\n * Fetches personalised navigation links for a client.\n * Simple reference operation \u2014 good as a pilot example.\n *\n * Context reads: ClientId, BankId\n * Context writes: Links (List of Map)\n *\n * Returns:\n *   0 - links found and loaded\n *   4 - no links configured for this client\n *   8 - database error\n */\npublic class GetClientLinksSP extends CCOperationStep {\n\n    private static final String SP_NAME = \"{call PKG_PORTAL.GET_CLIENT_LINKS(?,?,?,?)}\";\n    private static final int RC_SUCCESS   = 0;\n    private static final int RC_NOT_FOUND = 4;\n    private static final int RC_DB_ERROR  = 8;\n\n    @Override\n    public int execute() throws Exception {\n        Context ctx      = getContext();\n        String clientId  = (String) ctx.getValueAt(\"ClientId\");\n        String bankId    = (String) ctx.getValueAt(\"BankId\");\n\n        Connection conn  = ctx.getConnection();\n        try (CallableStatement cs = conn.prepareCall(SP_NAME)) {\n            cs.setString(1, clientId);\n            cs.setString(2, bankId);\n            cs.registerOutParameter(3, java.sql.Types.VARCHAR);\n            cs.registerOutParameter(4, java.sql.Types.REF_CURSOR);\n            cs.execute();\n\n            String spRc = cs.getString(3);\n            if (\"NOT_FOUND\".equals(spRc)) return RC_NOT_FOUND;\n\n            try (ResultSet rs = (ResultSet) cs.getObject(4)) {\n                List<Map<String, Object>> links = new ArrayList<>();\n                while (rs.next()) {\n                    Map<String, Object> link = new LinkedHashMap<>();\n                    link.put(\"LinkId\",   rs.getString(\"LINK_ID\"));\n                    link.put(\"LinkUrl\",  rs.getString(\"LINK_URL\"));\n                    link.put(\"IsExternal\", \"Y\".equals(rs.getString(\"IS_EXTERNAL\")));\n                    link.put(\"IconCode\", rs.getString(\"ICON_CODE\"));\n                    links.add(link);\n                }\n                if (links.isEmpty()) return RC_NOT_FOUND;\n                ctx.setValueAt(\"Links\", links);\n            }\n\n        } catch (Exception e) {\n            ctx.setValueAt(\"DatabaseError\", e.getMessage());\n            return RC_DB_ERROR;\n        }\n        return RC_SUCCESS;\n    }\n}\n",
+        "shared": false,
+        "origin": "opStep GetClientLinks: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1]/opStep[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.operations.common.MapErrorByValueAlways",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_INTERNET\\src\\com\\ibm\\il\\dse\\operations\\common\\MapErrorByValueAlways.java",
+        "source_hash": "728019a09f6eaca78ce390b7464dc3b102fb895c35486189fc8b5fd6ff340aad",
+        "source_content": "package com.ibm.il.dse.operations.common;\n\nimport com.ibm.dse.base.CCOperationStep;\nimport com.ibm.dse.base.Context;\n\n/**\n * Shared utility opStep. Sets ErrorCategory and ErrorNumber in context.\n * Used by virtually every operation for error handling.\n *\n * XML attributes (passed via setter methods):\n *   ErrorCategory - string category code (e.g. \"10\", \"99\")\n *   ErrorNumber   - string error number within category (e.g. \"0\", \"4\")\n *\n * Returns:\n *   0 - always (mapping always succeeds)\n */\npublic class MapErrorByValueAlways extends CCOperationStep {\n\n    private String errorCategory = \"99\";\n    private String errorNumber   = \"0\";\n\n    public void setErrorCategory(String errorCategory) {\n        this.errorCategory = errorCategory;\n    }\n\n    public void setErrorNumber(String errorNumber) {\n        this.errorNumber = errorNumber;\n    }\n\n    @Override\n    public int execute() throws Exception {\n        Context ctx = getContext();\n        ctx.setValueAt(\"ErrorCategory\",   errorCategory);\n        ctx.setValueAt(\"ErrorNumber\",     errorNumber);\n        ctx.setValueAt(\"ErrorDescription\", resolveErrorDescription(errorCategory, errorNumber));\n        return 0;\n    }\n\n    private String resolveErrorDescription(String category, String number) {\n        // Lookup from error message catalog (simplified for demo)\n        String key = category + \"_\" + number;\n        switch (key) {\n            case \"10_2\": return \"Validation failed: required field missing or invalid\";\n            case \"20_1\": return \"No data found for the provided criteria\";\n            case \"20_4\": return \"Account not found\";\n            case \"30_5\": return \"Access denied: insufficient permissions\";\n            case \"40_3\": return \"Daily transfer limit exceeded\";\n            case \"40_4\": return \"Insufficient funds\";\n            case \"40_5\": return \"Account not eligible for this operation\";\n            case \"50_2\": return \"Transfer blocked: fraud risk detected\";\n            case \"60_6\": return \"Core banking system rejected the request\";\n            case \"60_7\": return \"Transfer already processed\";\n            case \"99_0\": return \"Technical error: unexpected system failure\";\n            case \"99_8\": return \"Technical error: database connection failure\";\n            default:     return \"System error (category=\" + category + \", number=\" + number + \")\";\n        }\n    }\n}\n",
+        "shared": false,
+        "origin": "opStep NoLinksFound: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1]/opStep[2]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.dse.base.CCOperationStep",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\dse\\base\\CCOperationStep.java",
+        "source_hash": "bdba80eb19b1472b584f9e327d0e51c64249bc354b6f84f97ab3828e3e026bff",
+        "source_content": "package com.ibm.dse.base;\n\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.Objects;\n\n/** Demo step contract with a shared operation context and explicitly registered services. */\npublic abstract class CCOperationStep {\n    private Context context;\n    private final Map<String, Object> services = new HashMap<>();\n\n    public abstract int execute() throws Exception;\n\n    public void setContext(Context context) {\n        this.context = Objects.requireNonNull(context, \"Operation context\");\n    }\n\n    public Context getContext() {\n        if (context == null) {\n            throw new IllegalStateException(\"Configure an operation context before executing a step\");\n        }\n        return context;\n    }\n\n    public void setService(String name, Object service) {\n        services.put(Objects.requireNonNull(name, \"Service name\"), Objects.requireNonNull(service, \"Service\"));\n    }\n\n    public Object getService(String name) {\n        Object service = services.get(Objects.requireNonNull(name, \"Service name\"));\n        if (service == null) {\n            throw new IllegalStateException(\"Configure the named service before executing a step: \" + name);\n        }\n        return service;\n    }\n}\n",
+        "shared": false,
+        "origin": "opStep NoLinksFound: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1]/opStep[2] -> dependency of com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.dse.base.Context",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\dse\\base\\Context.java",
+        "source_hash": "2ecbe34eb7f561dab6bdbe5d9949b56e652f33c8a8e792994fdba33114cacf71",
+        "source_content": "package com.ibm.dse.base;\n\nimport java.sql.Connection;\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.Objects;\n\n/** Demo operation context containing named values and an externally supplied JDBC connection. */\npublic class Context {\n    private final Map<String, Object> values = new HashMap<>();\n    private Connection connection;\n\n    public Object getValueAt(String name) {\n        return values.get(Objects.requireNonNull(name, \"Context field name\"));\n    }\n\n    public void setValueAt(String name, Object value) {\n        values.put(Objects.requireNonNull(name, \"Context field name\"), value);\n    }\n\n    /** The caller owns the connection and its transaction lifecycle. */\n    public void setConnection(Connection connection) {\n        this.connection = Objects.requireNonNull(connection, \"JDBC connection\");\n    }\n\n    public Connection getConnection() {\n        if (connection == null) {\n            throw new IllegalStateException(\"Configure a JDBC connection before executing a database step\");\n        }\n        return connection;\n    }\n}\n",
+        "shared": false,
+        "origin": "opStep NoLinksFound: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1]/opStep[2] -> dependency of com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.decorator.NilDecorator",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\decorator\\NilDecorator.java",
+        "source_hash": "53ce014a9aa60009126eb4ca0ae6c22b4b1c86c25052e2f477c43d4c9cfebf42",
+        "source_content": "package com.ibm.il.dse.cc.decorator;\n\nimport com.ibm.dse.base.FormatDecoratorHolder;\n\n/**\n * Sets xsi:nil=\"true\" attribute when value is null or empty.\n * Implements Type 1 decorator contract (FormatDecoratorHolder).\n *\n * Format direction (addDecoration):   null/empty -> add xsi:nil=\"true\" attribute\n * Unformat direction (removeDecoration): xsi:nil value -> return null\n */\npublic class NilDecorator extends FormatDecoratorHolder {\n\n    /** Called during FORMAT. If value is null/empty, adds nil attribute. */\n    @Override\n    public String addDecoration(String value) {\n        if (value == null || value.isBlank()) {\n            // Signal to parent formatter to emit xsi:nil=\"true\"\n            return null;\n        }\n        return value;\n    }\n\n    /** Called during UNFORMAT (in reverse chain order). Null value -> empty string. */\n    @Override\n    public String removeDecoration(String value) {\n        if (value == null) return \"\";\n        return value;\n    }\n}\n",
+        "shared": false,
+        "origin": "decorator nilDecorator: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/nilDecorator[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.format.CCString",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\format\\CCString.java",
+        "source_hash": "ea468aff40ac74ec3555cd7464e729d0fd1f42f83a6652e388be733c4d153cc4",
+        "source_content": "package com.ibm.il.dse.cc.format;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.Tag;\n\n/**\n * String field formatter. Maps a single XML element to/from a context field.\n *\n * Attributes:\n *   dataName - the XML element name AND the context field name\n *\n * Any decorators that immediately follow this tag in the XML definition\n * are applied to the string value (addDecoration on format, removeDecoration\n * in reverse order on unformat).\n */\npublic class CCString extends AbstractFormatElement {\n\n    private String dataName;\n\n    @Override\n    public void initializeFrom(Tag tag) {\n        this.dataName = tag.getAttribute(\"dataName\");\n    }\n\n    /** format: reads context[dataName] -> applies decorators -> emits XML element */\n    @Override\n    public String format(Context ctx) throws Exception {\n        String value = (String) ctx.getValueAt(dataName);\n        value = applyDecorators(value);          // addDecoration chain (forward order)\n        return \"<\" + dataName + \">\" + value + \"</\" + dataName + \">\";\n    }\n\n    /** unformat: reads XML element -> applies decorators in reverse -> writes context[dataName] */\n    @Override\n    public void unformat(String xml, Context ctx) throws Exception {\n        String value = extractElement(xml, dataName);\n        value = removeDecorators(value);         // removeDecoration chain (reverse order)\n        ctx.setValueAt(dataName, value);\n    }\n\n    private String applyDecorators(String v)  { throw new UnsupportedOperationException(); }\n    private String removeDecorators(String v)  { throw new UnsupportedOperationException(); }\n    private String extractElement(String xml, String name) { throw new UnsupportedOperationException(); }\n}\n",
+        "shared": false,
+        "origin": "formatter CCString: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/CCString[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.dse.base.Tag",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\dse\\base\\Tag.java",
+        "source_hash": "1e9e41364576b476c2d0fe656fae4afbf4b9660ebfab4a89fcaf9ce30eac3c5c",
+        "source_content": "package com.ibm.dse.base;\n\nimport java.util.HashMap;\nimport java.util.Map;\n\n/** Minimal demo configuration tag containing string attributes. */\npublic class Tag {\n    private final Map<String, String> attributes = new HashMap<>();\n\n    public Tag() {\n    }\n\n    public Tag(Map<String, String> attributes) {\n        this.attributes.putAll(attributes);\n    }\n\n    public String getAttribute(String name) {\n        return attributes.get(name);\n    }\n\n    public void setAttribute(String name, String value) {\n        attributes.put(name, value);\n    }\n}\n",
+        "shared": false,
+        "origin": "formatter CCString: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/CCString[1] -> dependency of com.ibm.il.dse.cc.format.CCString"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.format.CCXML",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\format\\CCXML.java",
+        "source_hash": "e732cb3877944fcb8f24a7c2a74b182372df732f988bc1d7fd48f20283fbc0d2",
+        "source_content": "package com.ibm.il.dse.cc.format;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.Tag;\n\n/**\n * XML container formatter. Groups child formatter tags into an XML element.\n *\n * Key attributes:\n *   dataName       - the XML element name\n *   transparent    - when \"true\", the wrapper element is NOT emitted on the wire;\n *                    child fields appear at the parent level\n *   unnamed        - controls whether dataName appears as the element name\n *\n * Any formatter type (including CCXML itself) can have decorators following it.\n */\npublic class CCXML extends AbstractFormatElement {\n\n    private String  dataName;\n    private boolean transparent = false;\n    private boolean unnamed     = false;\n\n    @Override\n    public void initializeFrom(Tag tag) {\n        this.dataName    = tag.getAttribute(\"dataName\");\n        String t = tag.getAttribute(\"transparent\");\n        if (\"true\".equalsIgnoreCase(t)) this.transparent = true;\n        String u = tag.getAttribute(\"unnamed\");\n        if (\"true\".equalsIgnoreCase(u)) this.unnamed = true;\n        super.initializeFrom(tag);\n    }\n\n    @Override\n    public String format(Context ctx) throws Exception {\n        // If transparent=true, do not emit the wrapper element\n        if (transparent) {\n            return formatChildren(ctx);\n        }\n        return \"<\" + dataName + \">\" + formatChildren(ctx) + \"</\" + dataName + \">\";\n    }\n\n    @Override\n    public void unformat(String xml, Context ctx) throws Exception {\n        // If transparent=true, parse children directly from the parent level\n        if (transparent) {\n            unformatChildren(xml, ctx);\n        } else {\n            String inner = extractElement(xml, dataName);\n            unformatChildren(inner, ctx);\n        }\n    }\n\n    private String formatChildren(Context ctx) throws Exception {\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n    private void unformatChildren(String xml, Context ctx) throws Exception {\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n    private String extractElement(String xml, String name) {\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n}\n",
+        "shared": false,
+        "origin": "formatter CCXML: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.format.CCIColl",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\format\\CCIColl.java",
+        "source_hash": "ac389a07d8ae1a86cda4356c16d02606a9800ae4e5e5e52ecb6e985dca557091",
+        "source_content": "package com.ibm.il.dse.cc.format;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.Tag;\nimport java.util.List;\n\n/**\n * Index-based collection formatter. Iterates a List stored in the context\n * and applies child formatters to each element.\n *\n * Attributes:\n *   dataName - context field name holding the List, and the XML element wrapper\n *   times    - maximum iterations (\"*\" = unlimited)\n *\n * On format: iterates context[dataName] List, formats each item using child formatters.\n * On unformat: collects child XML blocks into a List, stores in context[dataName].\n *\n * Any formatter type can have decorators \u2014 including CCIColl itself.\n */\npublic class CCIColl extends AbstractFormatElement {\n\n    private String dataName;\n    private int    maxTimes = Integer.MAX_VALUE;\n\n    @Override\n    public void initializeFrom(Tag tag) {\n        this.dataName = tag.getAttribute(\"dataName\");\n        String times = tag.getAttribute(\"times\");\n        if (times != null && !\"*\".equals(times)) {\n            this.maxTimes = Integer.parseInt(times);\n        }\n    }\n\n    @Override\n    public String format(Context ctx) throws Exception {\n        List<?> items = (List<?>) ctx.getValueAt(dataName);\n        if (items == null) return \"\";\n        StringBuilder sb = new StringBuilder();\n        int count = Math.min(items.size(), maxTimes);\n        for (int i = 0; i < count; i++) {\n            sb.append(formatItem(items.get(i), ctx, i));\n        }\n        return sb.toString();\n    }\n\n    @Override\n    public void unformat(String xml, Context ctx) throws Exception {\n        // Parse repeated child elements into a List, store in context[dataName]\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n\n    private String formatItem(Object item, Context ctx, int index) { throw new UnsupportedOperationException(); }\n}\n",
+        "shared": false,
+        "origin": "formatter CCIColl: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.format.CCBoolean",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\format\\CCBoolean.java",
+        "source_hash": "46f468039799b2adf37f65ccb229b4146daf2c071d1301b25b0bd8aaad54f1b6",
+        "source_content": "package com.ibm.il.dse.cc.format;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.Tag;\n\n/**\n * Boolean field formatter. Maps \"true\"/\"false\" XML values to/from context.\n *\n * Attributes:\n *   dataName - the XML element name and context field name\n *   trueValue  - XML string representing true  (default: \"true\")\n *   falseValue - XML string representing false (default: \"false\")\n */\npublic class CCBoolean extends AbstractFormatElement {\n\n    private String dataName;\n    private String trueValue  = \"true\";\n    private String falseValue = \"false\";\n\n    @Override\n    public void initializeFrom(Tag tag) {\n        this.dataName   = tag.getAttribute(\"dataName\");\n        String tv = tag.getAttribute(\"trueValue\");\n        if (tv != null) this.trueValue = tv;\n        String fv = tag.getAttribute(\"falseValue\");\n        if (fv != null) this.falseValue = fv;\n    }\n\n    @Override\n    public String format(Context ctx) throws Exception {\n        Object val = ctx.getValueAt(dataName);\n        boolean b = Boolean.TRUE.equals(val) || \"true\".equalsIgnoreCase(String.valueOf(val));\n        return \"<\" + dataName + \">\" + (b ? trueValue : falseValue) + \"</\" + dataName + \">\";\n    }\n\n    @Override\n    public void unformat(String xml, Context ctx) throws Exception {\n        String value = extractElement(xml, dataName);\n        ctx.setValueAt(dataName, trueValue.equalsIgnoreCase(value));\n    }\n\n    private String extractElement(String xml, String name) { throw new UnsupportedOperationException(); }\n}\n",
+        "shared": false,
+        "origin": "formatter CCBoolean: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]/CCXML[1]/CCBoolean[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.cut.CCDSEServerOperation",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\cut\\CCDSEServerOperation.java",
+        "source_hash": "fcaf68594b17326659d327bcc975553a231d2d1e62f7b741959b9e142603d288",
+        "source_content": "package com.ibm.il.dse.cc.cut;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.DSEServerOperation;\nimport com.ibm.dse.base.KeyedCollection;\nimport com.ibm.dse.base.Tag;\n\nimport java.util.Hashtable;\n\n/**\n * Base class for all WSBCC operations.\n * Loaded from XML via initializeFrom(Tag). Channel handler calls:\n *   1. unformat(requestXml)\n *   2. execute()\n *   3. format() -> returns response XML\n *\n * DO NOT instantiate directly. Defined as 'compound' in dse.ini operations section.\n */\npublic class CCDSEServerOperation extends DSEServerOperation {\n\n    private static final int RC_TIMEOUT = -99;\n\n    private String  operationName;\n    private String  hostKey;\n    private String  operationFields;\n    private boolean writeToLog       = false;\n    private boolean writeToOfecStat  = false;\n    private boolean isSelectiveJournalising = false;\n\n    private boolean returnedErrorBodyChanged = false;\n    private String  returnedErrorBodyChanger = null;\n\n    private Hashtable formats  = new Hashtable();\n\n    /**\n     * Main execution loop. Called by channel handler after unformat().\n     * Runs the opStep chain according to RC routing attributes.\n     */\n    @Override\n    public void execute() throws Exception {\n        // Pre-populate context with operationFields (key=value pairs)\n        if (operationFields != null && !operationFields.isBlank()) {\n            setFields(operationFields);\n        }\n\n        // Remove opSteps that are not applicable to this channel (onlyFor filtering)\n        removeOpStepsNotForThisChannel();\n\n        // Run the opStep chain\n        int index = 0;\n        do {\n            KeyedCollection kc = getOperationStep(index);\n            index = processOpStep(kc, operationName, index);\n        } while (index != -1);\n\n        // Substitute error reply format if on{N}Return was triggered\n        if (isReturnedErrorBodyChanged() && getReturnedErrorBodyChanger() != null) {\n            // The channel handler reads csErrorReplyFormat instead of csReplyFormat\n            substituteErrorReplyFormat();\n        }\n    }\n\n    /**\n     * Routes from one opStep to the next based on the return code.\n     * Priority order:\n     *   1. on{N}Return  -- switch error reply format body before routing\n     *   2. onTimeoutDo  -- if RC == RC_TIMEOUT\n     *   3. on{N}Do      -- exact RC match\n     *   4. onOtherDo    -- default when no on{N}Do matches\n     *   5. onOtherDoDefault -- final fallback (logs warning)\n     */\n    private int processOpStep(KeyedCollection kc, String opName, int currentIndex) {\n        // Implementation provided by WAS runtime\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n\n    private void removeOpStepsNotForThisChannel() {\n        // Reads onlyFor attribute on each opStep; removes non-matching steps\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n\n    private void setFields(String operationFields) {\n        // Parses \"KEY=VALUE,KEY2=VALUE2\" and sets each in context\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n\n    private void substituteErrorReplyFormat() {\n        throw new UnsupportedOperationException(\"Runtime method\");\n    }\n\n    public boolean isReturnedErrorBodyChanged()  { return returnedErrorBodyChanged; }\n    public String  getReturnedErrorBodyChanger() { return returnedErrorBodyChanger; }\n    public Hashtable getFormats()                { return formats; }\n    public String getHostKey()                   { return hostKey; }\n    public void setHostKey(String v)             { this.hostKey = v; }\n    public String getOperationFields()           { return operationFields; }\n    public void setOperationFields(String v)     { this.operationFields = v; }\n    public boolean isWriteToLog()                { return writeToLog; }\n    public void setWriteToLog(boolean v)         { this.writeToLog = v; }\n}\n",
+        "shared": false,
+        "origin": "operation GetClientLinksOp: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.decorator.CCPadding",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\decorator\\CCPadding.java",
+        "source_hash": "8796f326980c6ce43fcf0bef0380df973a7156b47cbb3742a2c8e2030b4da72a",
+        "source_content": "package com.ibm.il.dse.cc.decorator;\n\nimport com.ibm.dse.base.FormatDecoratorHolder;\nimport com.ibm.dse.base.Tag;\n\n/**\n * Pads a string to a fixed length using a specified pad character.\n *\n * Attributes:\n *   padChar  - character to use for padding (default '0')\n *   length   - target length after padding\n *   padLeft  - \"true\" to pad on left (default), \"false\" to pad on right\n *\n * Format direction (addDecoration):    pad value to target length\n * Unformat direction (removeDecoration): strip the padding characters\n *\n * Decorator chain example with two decorators:\n *   <CCString dataName=\"AccountNumber\"/>\n *   <RemoveLeadingZerosDecorator/>\n *   <CCPadding padChar=\"0\" length=\"10\"/>\n *\n *   format:   \"12345\" -> RemoveLeadingZeros.add (no-op) -> CCPadding.add -> \"0000012345\"\n *   unformat: \"0000012345\" -> CCPadding.remove -> \"12345\" -> RemoveLeadingZeros.remove -> \"12345\"\n */\npublic class CCPadding extends FormatDecoratorHolder {\n\n    private char    padChar = '0';\n    private int     length  = 0;\n    private boolean padLeft = true;\n\n    @Override\n    public Object initializeFrom(Tag tag) {\n        String pc = tag.getAttribute(\"padChar\");\n        if (pc != null && !pc.isBlank()) this.padChar = pc.charAt(0);\n        String len = tag.getAttribute(\"length\");\n        if (len != null) this.length = Integer.parseInt(len.trim());\n        String pl = tag.getAttribute(\"padLeft\");\n        if (\"false\".equalsIgnoreCase(pl)) this.padLeft = false;\n        return this;\n    }\n\n    @Override\n    public String addDecoration(String value) {\n        if (value == null) value = \"\";\n        if (value.length() >= length) return value;\n        String pad = String.valueOf(padChar).repeat(length - value.length());\n        return padLeft ? pad + value : value + pad;\n    }\n\n    @Override\n    public String removeDecoration(String value) {\n        if (value == null) return null;\n        if (padLeft) {\n            return value.replaceFirst(\"^[\" + java.util.regex.Pattern.quote(String.valueOf(padChar)) + \"]+\", \"\");\n        } else {\n            return value.replaceFirst(\"[\" + java.util.regex.Pattern.quote(String.valueOf(padChar)) + \"]+$\", \"\");\n        }\n    }\n}\n",
+        "shared": false,
+        "origin": "decorator CCPadding: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[1]/CCXML[1]/CCPadding[1]"
+      },
+      {
+        "kind": "ibm_java",
+        "logical_id": "com.ibm.il.dse.cc.format.CCTableFormat",
+        "source_file": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace\\WSBCC_XML\\src\\com\\ibm\\il\\dse\\cc\\format\\CCTableFormat.java",
+        "source_hash": "7ff7d2a1f9260f0d88b6c865a48854bde91f7bbe3ee9f2bff3d42e78fcc06e44",
+        "source_content": "package com.ibm.il.dse.cc.format;\n\nimport com.ibm.dse.base.Context;\nimport com.ibm.dse.base.Tag;\nimport java.sql.Connection;\nimport java.sql.PreparedStatement;\nimport java.sql.ResultSet;\n\n/**\n * Database lookup formatter. Queries a DB table during the FORMAT process.\n *\n * IMPORTANT for migration: This is a DB call embedded inside a format definition.\n * In the converted service, this lookup MUST be moved to the service layer.\n * The JAXB DTO must NOT contain this logic.\n *\n * Attributes:\n *   dataName    - XML element name\n *   fromTable   - DB table to query\n *   fromColumn  - column to retrieve\n *   keyValue    - context field name holding the lookup key\n */\npublic class CCTableFormat extends AbstractFormatElement {\n\n    private String dataName;\n    private String fromTable;\n    private String fromColumn;\n    private String keyValue;\n\n    @Override\n    public void initializeFrom(Tag tag) {\n        this.dataName   = tag.getAttribute(\"dataName\");\n        this.fromTable  = tag.getAttribute(\"fromTable\");\n        this.fromColumn = tag.getAttribute(\"fromColumn\");\n        this.keyValue   = tag.getAttribute(\"keyValue\");\n    }\n\n    @Override\n    public String format(Context ctx) throws Exception {\n        // Reads key from context, queries DB, writes result as XML element\n        String key = (String) ctx.getValueAt(keyValue);\n        if (key == null) return \"<\" + dataName + \"/>\";\n\n        Connection conn = ctx.getConnection();\n        String sql = \"SELECT \" + fromColumn + \" FROM \" + fromTable + \" WHERE KEY = ?\";\n        try (PreparedStatement ps = conn.prepareStatement(sql)) {\n            ps.setString(1, key);\n            try (ResultSet rs = ps.executeQuery()) {\n                if (rs.next()) {\n                    String result = rs.getString(1);\n                    result = applyDecorators(result);\n                    return \"<\" + dataName + \">\" + result + \"</\" + dataName + \">\";\n                }\n            }\n        }\n        return \"<\" + dataName + \"/>\";\n    }\n\n    @Override\n    public void unformat(String xml, Context ctx) throws Exception {\n        // CCTableFormat is output-only \u2014 typically not unformatted\n        String value = extractElement(xml, dataName);\n        if (value != null) ctx.setValueAt(dataName, value);\n    }\n\n    private String applyDecorators(String v) { throw new UnsupportedOperationException(); }\n    private String extractElement(String x, String n) { throw new UnsupportedOperationException(); }\n}\n",
+        "shared": false,
+        "origin": "formatter CCTableFormat: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]/CCXML[1]/CCTableFormat[1]"
+      }
+    ],
+    "conversion_components_checked": true,
+    "external_dependencies": [
+      {
+        "class_name": "com.ibm.il.dse.cc.decorator.CCMandatory",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator CCMandatory: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]/CCXML[1]/CCMandatory[1]"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.decorator.CCMandatory",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator CCMandatory: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[1]/CCXML[1]/CCMandatory[1]"
+      },
+      {
+        "class_name": "com.ibm.dse.base.DSEServerOperation",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "operation GetClientLinksOp: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1] -> com.ibm.il.dse.cc.cut.CCDSEServerOperation requires DSEServerOperation"
+      },
+      {
+        "class_name": "com.ibm.dse.base.KeyedCollection",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "operation GetClientLinksOp: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1] -> com.ibm.il.dse.cc.cut.CCDSEServerOperation requires KeyedCollection"
+      },
+      {
+        "class_name": "com.ibm.dse.base.DSEServerOperation",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "operation GetClientLinksOp: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1] -> com.ibm.il.dse.cc.cut.CCDSEServerOperation requires com.ibm.dse.base.DSEServerOperation"
+      },
+      {
+        "class_name": "com.ibm.dse.base.KeyedCollection",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "operation GetClientLinksOp: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/CCDSEServerOperation[1] -> com.ibm.il.dse.cc.cut.CCDSEServerOperation requires com.ibm.dse.base.KeyedCollection"
+      },
+      {
+        "class_name": "com.ibm.dse.base.FormatDecoratorHolder",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator CCPadding: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[1]/CCXML[1]/CCPadding[1] -> com.ibm.il.dse.cc.decorator.CCPadding requires FormatDecoratorHolder"
+      },
+      {
+        "class_name": "com.ibm.dse.base.FormatDecoratorHolder",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator CCPadding: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[1]/CCXML[1]/CCPadding[1] -> com.ibm.il.dse.cc.decorator.CCPadding requires com.ibm.dse.base.FormatDecoratorHolder"
+      },
+      {
+        "class_name": "com.ibm.dse.base.FormatDecoratorHolder",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator nilDecorator: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/nilDecorator[1] -> com.ibm.il.dse.cc.decorator.NilDecorator requires FormatDecoratorHolder"
+      },
+      {
+        "class_name": "com.ibm.dse.base.FormatDecoratorHolder",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "decorator nilDecorator: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/nilDecorator[1] -> com.ibm.il.dse.cc.decorator.NilDecorator requires com.ibm.dse.base.FormatDecoratorHolder"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.format.AbstractFormatElement",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "formatter CCBoolean: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]/CCXML[1]/CCBoolean[1] -> com.ibm.il.dse.cc.format.CCBoolean requires AbstractFormatElement"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.format.AbstractFormatElement",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "formatter CCIColl: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1] -> com.ibm.il.dse.cc.format.CCIColl requires AbstractFormatElement"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.format.AbstractFormatElement",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "formatter CCString: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1]/CCString[1] -> com.ibm.il.dse.cc.format.CCString requires AbstractFormatElement"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.format.AbstractFormatElement",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "formatter CCTableFormat: WSBCC_INTERNET/src/Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml /XML[1]/fmtDef[2]/CCXML[1]/CCIColl[1]/CCXML[1]/CCTableFormat[1] -> com.ibm.il.dse.cc.format.CCTableFormat requires AbstractFormatElement"
+      },
+      {
+        "class_name": "com.ibm.il.dse.cc.format.AbstractFormatElement",
+        "treatment": "replace",
+        "maven_coordinates": null,
+        "behavior_description": "Replace Composer runtime behavior using the embedded component contracts",
+        "behavior_evidence": [
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "4. Runtime Execution Model",
+            "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "5. Context",
+            "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "6. Formats and the Format/Unformat Process",
+            "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+          },
+          {
+            "document": "embedded:composer_conversion_knowledge",
+            "heading": "7. Decorators",
+            "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+          }
+        ],
+        "origin": "formatter CCXML: WSBCC_XML/src/Xml Definition/Channel/XML/defaultFile/dseformat.xml /XML[1]/fmtDef[3]/CCXML[1] -> com.ibm.il.dse.cc.format.CCXML requires AbstractFormatElement"
+      }
+    ],
+    "composer_behavior_evidence": [
+      {
+        "document": "embedded:composer_conversion_knowledge",
+        "heading": "4. Runtime Execution Model",
+        "content": "## 4. Runtime Execution Model\n\n### High-Level Flow\n\nWhen a channel handler receives an HTTP/service request for operation `GetClientLinksOp`:\n\n```\n1. Channel Handler receives request XML\n2. Looks up \"GetClientLinksOp\" in dse.ini selfDefOper \u2192 finds XML file path\n3. Loads and initializes CCDSEServerOperation from that XML file\n4. Channel Handler calls: operation.unformat(requestXml)\n   \u2192 request format cascades through the fmtDef structure\n   \u2192 each formatter tag reads its value from the XML and writes it to context\n   \u2192 each decorator in the chain transforms the value before/after the formatter\n5. Channel Handler calls: operation.execute()\n   \u2192 opStep chain runs according to RC routing\n   \u2192 opSteps read from / write to context\n6. Channel Handler calls: operation.format()\n   \u2192 response format cascades through the reply fmtDef\n   \u2192 each formatter tag reads its value from context and builds XML output\n   \u2192 each decorator transforms the value\n7. Channel Handler returns the formatted XML response\n```\n\n**Important:** Steps 4, 5, and 6 are managed by the channel handler infrastructure. The developer defines what happens inside each step, not the orchestration between them.\n\n### CCDSEServerOperation.execute() \u2014 The opStep Loop\n\nThe execute() method runs the opStep chain:\n\n```java\n// Pseudocode of CCDSEServerOperation.execute()\npublic void execute() throws Exception {\n    // 1. Set channel context values\n    setValueAt(\"HOST_HEADER.HOST_KEY\", getHostKey());\n    setFields(getOperationfields());\n\n    // 2. Filter opSteps not applicable to this channel\n    removeOpStepsNotForThisChannel();\n\n    // 3. Run the opStep chain\n    int index = 0;\n    KeyedCollection end_opstep = null;\n    if (isFinallyOpStepExist()) {\n        end_opstep = getFinallyOpStep();  // the \"End\" step if defined\n    }\n\n    do {\n        KeyedCollection kc = getOperationStep(index);\n        index = processOpStep(kc, operationName, index);\n    } while (index != -1);\n\n    // 4. Run the \"End\" step if it exists\n    if (end_opstep != null) {\n        processOpStep(end_opstep, operationName, index);\n    }\n\n    // 5. Error body substitution (if an opStep switched the reply format)\n    if (isReturnedErrorBodyChanged() && getReturnedErrorBodyChanger() != null) {\n        // substitute csErrorReplyFormat for csReplyFormat\n    }\n}\n```\n\n### processOpStep() \u2014 RC Routing\n\nThe RC routing priority for each opStep result:\n\n```\n1. Check \"on{RC}Return\" \u2192 if set, switch the error reply format body\n2. If RC == RC_TIMEOUT \u2192 check \"onTimeoutDo\" first\n3. Check \"on{RC}Do\" \u2192 if found, go to that step name\n4. Check \"onOtherDo\" \u2192 if found, go to that step name\n5. Check \"onOtherDoDefault\" \u2192 if found, use it (with warning log)\n6. If next == \"next\" \u2192 increment index, continue loop\n7. If next == \"end\"  \u2192 return -1, break loop\n8. Otherwise \u2192 look up step by name, jump to it\n```\n\n### Channel Filtering \u2014 onlyFor\n\nBefore execute() runs, `removeOpStepsNotForThisChannel()` scans all opSteps and removes any that have an `onlyFor` attribute whose value does not match the current channel name.\n\n```xml\n<!-- This step only runs on the INTERNET channel -->\n<opStep id=\"InternetOnlyValidation\"\n        implClass=\"operations.InternetValidation\"\n        onlyFor=\"internet\"\n        on0Do=\"end\"\n        onOtherDo=\"OperationFailed\"/>\n```\n\n**Conversion rule:** When converting an operation XML to native code for a specific channel, opSteps with `onlyFor` values that do not match the target channel are simply omitted from the generated code. The generated class reflects only the steps that actually run for that channel.\n\n---",
+        "content_hash": "dee87849ddd2a8bf3ecb387db49b4302c23c852b54f4850643bb8f7c2bb63e4a"
+      },
+      {
+        "document": "embedded:composer_conversion_knowledge",
+        "heading": "5. Context",
+        "content": "## 5. Context\n\n### What Context Is\n\nThe context is a hierarchical runtime data store. It is the central communication mechanism between all components of an operation \u2014 formatters read from and write to it, opSteps read from and write to it, decorators do not directly access it (they transform string values, not context fields).\n\nAt runtime, the context is essentially a nested map:\n```\ncontext[\"ClientId\"]      = \"123456\"\ncontext[\"ClientName\"]    = \"John Doe\"\ncontext[\"links\"]         = [list of link objects]\ncontext[\"ERROR_CODE\"]    = \"10\"\ncontext[\"ERROR_NUMBER\"]  = \"0\"\n```\n\nIn practice, any Java object can be stored in a context field \u2014 strings, numbers, collections, custom objects. The formatter tags define how those objects are serialized to/from XML.\n\n### Context Inheritance Chain\n\nContexts form an inheritance hierarchy via the `parent` attribute:\n\n```xml\n<context id=\"BaseOpCtxt\"     parent=\"nil\"         type=\"op\"/>\n<context id=\"InternetCtxt\"   parent=\"BaseOpCtxt\"  type=\"op\"/>\n<context id=\"GetLinksCtxt\"   parent=\"InternetCtxt\" type=\"op\"/>\n```\n\nWhen `GetLinksCtxt` is active:\n- An opStep or formatter can read/write fields in `GetLinksCtxt`\n- It can also read/write fields in `InternetCtxt` (parent)\n- It can also read/write fields in `BaseOpCtxt` (grandparent)\n- Each context has its **own isolated namespace** \u2014 there is no collision between field names in different levels\n- Access traverses up the chain: if a field is not found in the current context, the runtime looks in the parent, then grandparent, up to `nil`\n\n### Context Access Rules\n\n- **Formatters** (CCString, CCDate, CCXML, etc.): read from and write to context fields identified by their `dataName` attribute\n- **opStep implClasses**: have full access to the context chain \u2014 can read any field and write any field at any level they have access to\n- **Decorators**: do NOT directly access context \u2014 they receive a string value from the formatter and return a transformed string\n- **No component can access context fields from a sibling context** \u2014 only from its own context and its ancestors\n\n### Context in the Operation XML\n\n```xml\n<context id=\"GetLinksCtxt\" parent=\"nil\" type=\"op\"/>\n\n<CCDSEServerOperation id=\"GetLinksOp\" operationContext=\"GetLinksCtxt\">\n    ...\n</CCDSEServerOperation>\n```\n\nThe `operationContext` attribute binds the operation to its context. The context is instantiated once when the operation starts and lives until the operation completes.\n\n---",
+        "content_hash": "37f170488586f0f792209cd78d6f595dd1f87d9fdf777e36a9b334bed6a2cec8"
+      },
+      {
+        "document": "embedded:composer_conversion_knowledge",
+        "heading": "6. Formats and the Format/Unformat Process",
+        "content": "## 6. Formats and the Format/Unformat Process\n\n### What a Format Is\n\nA `fmtDef` is a declarative description of an XML data structure. It is not a DTO class \u2014 it is a recursive tree of formatter tags, each of which knows how to:\n- **unformat**: read its value from incoming XML and write it to the context\n- **format**: read its value from context and write it to the output XML\n\nThe format tree is walked recursively. Each node in the tree is a formatter tag instance.\n\n### Format and Unformat Direction\n\n**Unformat (parsing \u2014 XML \u2192 context):**\n```\nIncoming XML string\n  \u2192 root formatter tag's unformat() is called\n  \u2192 root tag parses its children recursively\n  \u2192 each leaf formatter reads its XML element value\n  \u2192 (if decorators present: removeDecoration() chain applied first)\n  \u2192 final value written to context[dataName]\n```\n\n**Format (serializing \u2014 context \u2192 XML):**\n```\ncontext[dataName] value\n  \u2192 (if decorators present: addDecoration() chain applied first)\n  \u2192 leaf formatter writes its value as an XML element\n  \u2192 parent formatters build the XML structure up the tree\n  \u2192 result is the complete XML output string\n```\n\n### Decorator Chain Direction\n\n**During unformat (parsing incoming XML):**\n```\nXML string value\n  \u2192 last decorator in chain: removeDecoration(value)\n  \u2192 second-to-last decorator: removeDecoration(previous result)\n  \u2192 ... (chain runs in reverse order)\n  \u2192 first decorator: removeDecoration(...)\n  \u2192 result passed to formatter for context write\n```\n\n**During format (building outgoing XML):**\n```\ncontext value (string from formatter)\n  \u2192 first decorator in chain: addDecoration(value)\n  \u2192 second decorator: addDecoration(previous result)\n  \u2192 ... (chain runs in forward order)\n  \u2192 last decorator: addDecoration(...)\n  \u2192 result written to XML output\n```\n\nThe decorator chain is defined by the order of decorator tags after the formatter tag in the XML.\n\n### Format Execution Contexts\n\nThe format/unformat process is not limited to request/response. It occurs whenever data needs to be serialized or deserialized:\n\n- **Request reception**: channel handler calls unformat on `csRequestFormat`\n- **Response building**: channel handler calls format on `csReplyFormat` (or `csErrorReplyFormat` if error body was switched)\n- **Backend request**: an opStep builds a request to a backend system using a format\n- **Backend response**: an opStep parses a response from a backend system using a format\n- **Logging**: some opSteps serialize context data to log using a format\n\n### refFormat \u2014 Format Reuse\n\n```xml\n<!-- In CCDSEServerOperation: -->\n<refFormat name=\"csRequestFormat\"  refid=\"GetLinksRQFmt\"/>\n<refFormat name=\"csReplyFormat\"    refid=\"GetLinksRSFmt\"/>\n<refFormat name=\"csErrorReplyFormat\" refid=\"StandardErrorFmt\"/>\n```\n\nThe `name` attribute is the role the format plays in this operation. The conventional names are:\n- `csRequestFormat` \u2014 the incoming request XML structure\n- `csReplyFormat` \u2014 the success response XML structure\n- `csErrorReplyFormat` \u2014 the error response XML structure (substituted when an opStep signals an error body change via `on{RC}Return`)\n\nThe `refid` points to a `fmtDef` id, which may be defined in the same XML file, in `dseformat.xml`, or in any other file loaded via `defaultFile`.\n\n### CCTableFormat \u2014 Database Lookup During Format\n\n`CCTableFormat` is a special formatter that performs a database lookup during the format process. When the format tree reaches a `CCTableFormat` node during format (building outgoing XML):\n1. It reads the key value from context (identified by `keyValue` attribute)\n2. Queries `fromTable` column `fromColumn` where the key matches\n3. Writes the result as the field's XML value\n\nThis means database calls can happen during response building, not just during opStep execution.\n\n---",
+        "content_hash": "8a0189fb3052b2fd2255f282277a4446377b592483378da3f02c0ffca162826c"
+      },
+      {
+        "document": "embedded:composer_conversion_knowledge",
+        "heading": "7. Decorators",
+        "content": "## 7. Decorators\n\n### What a Decorator Is\n\nA decorator is a value transformer chained after a formatter tag. It operates on the string result of the formatter, not on the context directly.\n\n**XML syntax:**\n```xml\n<CCString dataName=\"AccountId\"/>\n<CCPadding padChar=\"0\" length=\"9\"/>\n```\n\n`CCPadding` is a decorator that follows `CCString`. The decorator tag appears as a sibling immediately after the formatter's self-closing tag.\n\n### Decorator Contracts\n\nThere are two decorator base classes with different contracts:\n\n**Type 1 \u2014 Value Decorator** (extends `FormatDecoratorHolder`):\n```java\npublic String addDecoration(String s);     // called during FORMAT\npublic String removeDecoration(String s);  // called during UNFORMAT\npublic Object initializeFrom(Tag tag);     // reads this tag's own attributes\n```\n\nExample \u2014 `CCPadding`:\n- `addDecoration(\"1234567\")` \u2192 `\"001234567\"` (pad to length 9 with '0')\n- `removeDecoration(\"001234567\")` \u2192 `\"1234567\"` (strip leading zeros)\n\n**Type 2 \u2014 Attribute Decorator** (extends `AttributeXmlFormatDecoratorImpl`):\n```java\npublic Hashtable formatXmlAttributes(Context ctx, DataElement de, FormatElement fe);\npublic Object initializeFrom(Tag tag);\n```\n\nThis type operates at the XML attribute level rather than the string value level. It can add XML attributes (like `xsi:nil=\"true\"`) to the output element. Example: `NilDecorator`.\n\n### Decorator Chain Rules\n\n1. A decorator applies only to the immediately preceding formatter tag\n2. Multiple decorators can be chained after one formatter \u2014 each receives the previous one's output\n3. During **format**: chain runs in order (first decorator \u2192 last decorator)\n4. During **unformat**: chain runs in reverse order (last decorator \u2192 first decorator)\n5. `initializeFrom(Tag tag)` reads only this decorator's own XML attributes \u2014 never the formatter's attributes or sibling tags\n6. A decorator can be placed after a complex formatter (like `CCXML`) \u2014 in that case it decorates the entire XML subtree produced by that formatter\n\n### Example \u2014 Multiple Decorators\n\n```xml\n<CCString dataName=\"Amount\"/>\n<RemoveLeadingZerosDecorator/>\n<CCPadding padChar=\" \" length=\"12\"/>\n```\n\n**During unformat** (input XML: `<Amount>   0001234</Amount>`):\n1. `CCPadding.removeDecoration(\"   0001234\")` \u2192 strips right-padding \u2192 `\"0001234\"`\n2. `RemoveLeadingZerosDecorator.removeDecoration(\"0001234\")` \u2192 `\"1234\"`\n3. `CCString` writes `\"1234\"` to context[\"Amount\"]\n\n**During format** (context[\"Amount\"] = \"1234\"):\n1. `CCString` reads `\"1234\"` from context\n2. `RemoveLeadingZerosDecorator.addDecoration(\"1234\")` \u2192 (no-op in format) \u2192 `\"1234\"`\n3. `CCPadding.addDecoration(\"1234\")` \u2192 `\"        1234\"` (12 chars, space-padded left)\n4. XML output: `<Amount>        1234</Amount>`\n\n### All Decorator Tags (from XML channel dse.ini)\n\n| Tag | Class | Description |\n|---|---|---|\n| `nilDecorator` | `...decorator.NilDecorator` | Sets `xsi:nil=\"true\"` when value is null/empty |\n| `RemoveLeadingZerosDecorator` | `...decorator.RemoveLeadingZerosDecorator` | Strips leading zeros |\n| `CCPadding` | `...decorator.CCPadding` | Pads string to fixed length |\n| `CCFixedLength` | `...decorator.CCFixedLength` | Enforces fixed string length |\n| `CCMandatory` | `...decorator.CCMandatory` | Validates field is not empty |\n| `CCNotNull` | `...decorator.CCNotNull` | Validates field is not null |\n| `CCZeroToNull` | `...decorator.CCZeroToNull` | Converts zero value to null |\n| `CCNullToZero` | `...decorator.CCNullToZero` | Converts null to zero |\n| `fZeroToDecimalIDB` | `...decorator.ZeroToDecimalIDB` | Handles zero decimal display |\n| `fFixedLengthTranIDB` | `...decorator.FixedLengthTranIDB` | Fixed-length transform |\n| `fStringDateIDB` | `...decorator.StringDateIDB` | String-to-date conversion |\n| `fZeroToNullIDB` | `...decorator.ZeroToNullIDB` | Zero-to-null for IDB |\n| `fTrimIDB` | `...decorator.TrimIDB` | Trim whitespace for IDB |\n| `SmartMirror` | `...decorator.SmartMirror` | Hebrew/Latin text mirroring |\n| `HebrewWHF` | `...decorator.HebrewWHF` | Hebrew character handling |\n| `MF2Hebrew` | `...decorator.MF2Hebrew` | Mainframe-to-Hebrew conversion |\n| `Base64Decorator` | `...decorator.Base64Decorator` | Base64 encode/decode |\n| `ArithmaticAction` | `...decorator.ArithmaticAction` | Arithmetic on value |\n| `CCRegExp` | `...decorator.CCRegExp` | Regex validation |\n| `CCRegExpReplace` | `...decorator.CCRegExpReplace` | Regex replace |\n| `MaskLogDecorator` | `...decorator.MaskLogDecorator` | Masks value in logs |\n| `TypeReceive` | `...decorator.TypeReceive` | Type conversion on receive |\n| `SetCenturyFor2DigitsYear` | `...decorator.SetCenturyFor2DigitsYear` | Y2K year handling |\n| `CCPhoneNumberDecorator` | `...decorator.CCPhoneNumberDecorator` | Phone number formatting |\n| `AltamiraChannelDecorator` | `...decorator.AltamiraChannelDecorator` | Altamira channel transform |\n| `HebrewLogicalToVisualDecorator` | `...decorator.HebrewLogicalToVisualDecorator` | Hebrew visual order |\n| `unicodeDecorator` | `...decorator.UnicodeDecorator` | Unicode handling |\n| `convertReservedTags` | `...decorator.ConvertReservedTags` | XML reserved char escaping |\n| `delimS` | `...decorator.DelimiterStr` | Delimiter-based splitting |\n\n---",
+        "content_hash": "0dae02d0709a670195856f35ecba11496c6e6987d38f2be86dd13838877833fd"
+      }
+    ],
+    "dependency_analysis_scope": "Static Java type references; reflection, runtime dispatch, and method overload compatibility require review",
+    "formats": {
+      "request_format_id": "GetClientLinksRQFmt",
+      "reply_format_id": "GetClientLinksRSFmt",
+      "error_reply_format_id": "StandardErrorRSFmt",
+      "all_format_ids": [
+        "StandardErrorRSFmt",
+        "GetClientLinksRSFmt",
+        "GetClientLinksRQFmt"
+      ],
+      "formatter_tags": [
+        "CCXML",
+        "CCString",
+        "CCIColl",
+        "CCTableFormat",
+        "CCBoolean"
+      ],
+      "decorator_chains": {
+        "ErrorDescription/CCString": [
+          "nilDecorator"
+        ],
+        "LinkId/CCString": [
+          "CCMandatory"
+        ],
+        "LinkDescription/CCTableFormat": [
+          "nilDecorator"
+        ],
+        "IconCode/CCString": [
+          "nilDecorator"
+        ],
+        "ClientId/CCString": [
+          "CCMandatory"
+        ],
+        "BankId/CCString": [
+          "CCPadding"
+        ]
+      },
+      "transparent_ccxml_nodes": [
+        "ErrorReply",
+        "GetClientLinksResponse",
+        "Link",
+        "GetClientLinks"
+      ],
+      "db_lookups": [
+        {
+          "field_name": "CCTableFormat",
+          "from_table": "LINK_TYPES",
+          "from_column": "DESCRIPTION",
+          "key_value_field": "LinkId"
+        }
+      ],
+      "unresolved_format_refs": [],
+      "blocking_issues": []
+    },
+    "context_id": "GetClientLinksCtxt",
+    "context_chain": [
+      "GetClientLinksCtxt",
+      "InternetBaseCtxt",
+      "BaseOpCtxt"
+    ],
+    "context_fields": [
+      {
+        "name": "ErrorReply",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "StandardErrorRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "ErrorCategory",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "StandardErrorRSFmt",
+          "NoLinksFound",
+          "DatabaseError",
+          "TechnicalError"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "ErrorNumber",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "StandardErrorRSFmt",
+          "NoLinksFound",
+          "DatabaseError",
+          "TechnicalError"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "ErrorDescription",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "StandardErrorRSFmt",
+          "NoLinksFound",
+          "DatabaseError",
+          "TechnicalError"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "RequestId",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "StandardErrorRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "GetClientLinksResponse",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "ClientId",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt",
+          "GetClientLinksRQFmt"
+        ],
+        "read_by": [
+          "GetClientLinks"
+        ],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "Links",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt",
+          "GetClientLinks"
+        ],
+        "read_by": [],
+        "inferred_type": "List<Object>",
+        "inherited": false
+      },
+      {
+        "name": "Link",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "LinkId",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "LinkDescription",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "LinkUrl",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "IsExternal",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "boolean",
+        "inherited": false
+      },
+      {
+        "name": "IconCode",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRSFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "GetClientLinks",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRQFmt"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "BankId",
+        "context_level": "GetClientLinksCtxt",
+        "source": "formatter",
+        "written_by": [
+          "GetClientLinksRQFmt"
+        ],
+        "read_by": [
+          "GetClientLinks"
+        ],
+        "inferred_type": "String",
+        "inherited": false
+      },
+      {
+        "name": "DatabaseError",
+        "context_level": "GetClientLinksCtxt",
+        "source": "implclass",
+        "written_by": [
+          "GetClientLinks"
+        ],
+        "read_by": [],
+        "inferred_type": "String",
+        "inherited": false
+      }
+    ],
+    "shared_formats": [
+      "StandardErrorRSFmt",
+      "GetClientLinksRSFmt",
+      "GetClientLinksRQFmt"
+    ],
+    "shared_java_classes": [
+      "com.ibm.il.dse.operations.common.MapErrorByValueAlways"
+    ],
+    "source_hash_composite": "ed4542728b920122df4f22698a6cbd8af431f42b13404726b684f2f6b533387d",
+    "schema_version": "v1"
+  }
+]
