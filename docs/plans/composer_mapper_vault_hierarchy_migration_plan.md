@@ -394,7 +394,7 @@ Gate: enterprise-sized rehearsal passes reconciliation, link checks, representat
 | Same operation ID in two channels | Separate effective operations, views, storage keys, and correct call targets |
 | Same step ID across operations/channels | Correct owner, parameters, transitions, and evidence for each occurrence |
 | Duplicate step ID inside one operation with disjoint `onlyFor` conditions | Preserve separate source occurrences and select the applicable variant per consuming channel; no silent overwrite |
-| Multiple same-ID steps applicable to one channel | Explicit ambiguity with source coordinates; no silent winner |
+| Multiple same-ID steps applicable to one channel | Separate ordered occurrences; inclusive named lookup from current index, then wrap to the beginning; no duplicate-label rejection |
 | Same format/context name, different sources | Correct scoped selection, conversion, and isolated invalidation |
 | Inline/external names overlap | Verified source precedence and recorded provenance |
 | Imported definition with local override | Effective override selected without losing original source identity |
@@ -459,3 +459,9 @@ XML inventory paths now retain only the short resource origin described above. A
 Enterprise source confirmed repeated step IDs distinguished by `onlyFor` within one operation. Scoped generation now selects applicable steps using the consuming channel, preserves original order and IDs, and retains unused source variants in inventory. Same-ID inventory variants use readable `onlyFor` folders when needed. Both Excel discovery implementations now match channel restrictions without case sensitivity. The combined scoped and operation-call regression suite passed 36 tests, and the Mapper package rebuilt successfully.
 
 The converter design must preserve these occurrences through import, closure, behavior units, routing, reuse, and freshness. It must consume the selected operation usages without reintroducing excluded inventory definitions. The [converter implementation plan](scoped_vault_converter_implementation_plan.md#channel-specific-step-variants) specifies these requirements and acceptance cases. Converter implementation remains gated and has not been enabled by this follow-up.
+
+### Correction: repeated labels within the same effective flow
+
+Further enterprise XML and runtime screenshots establish that opStep IDs are labels, not unique occurrence keys, even after channel filtering. The execution method passes the current index to named lookup, which searches inclusively from that position and then from the beginning. `next` advances; `end` terminates; a missing name returns `-1`. Equal names are matched exactly. Self-jumps and backward jumps are supported. This supersedes the earlier same-channel duplicate-conflict assumption.
+
+Scoped generation must preserve each source selector and ordered occurrence, using readable occurrence folders only where repeated labels would otherwise overwrite notes. Unique labels keep their paths. Manifest operation entries expose ordered `step_notes` and `entry_step_note`; step entries expose zero-based `step_index` and `transition_targets`. Diagram nodes and transition links distinguish occurrences. Inventory retains unused occurrences without merging them. The converter must carry these identities and ordered targets into closure, behavior units, assembly, and freshness without implementation work being enabled by this document update.

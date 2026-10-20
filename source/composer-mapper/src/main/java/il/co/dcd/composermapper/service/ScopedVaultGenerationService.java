@@ -82,19 +82,25 @@ public final class ScopedVaultGenerationService {
         index.channelForOperation().put(operation.name(), channel);
         index.operationToSource().put(operation.name(), operation.file());
         var op = operationParser.parseDefinition(operation.element(), operation.file());
-        op.getSteps().removeIf(step -> !ChannelStepSelection.applies(step.getOnlyFor(), channel));
+        op.getSteps().clear();
+        var effectiveSteps = catalog.steps(operation).stream()
+            .filter(step -> ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), channel)).toList();
         Map<String, SourceDefinitionIdentity> selected = new LinkedHashMap<>();
         selected.put("operation:" + operation.name(), operation);
         Map<String, String> paths = new LinkedHashMap<>();
         paths.put("operations:" + operation.name(), prefix + "/operation.md");
-        for (var step : catalog.steps(operation)) {
-            if (!ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), channel)) continue;
-            if (index.stepToSource().putIfAbsent(step.name(), step.file()) != null)
-                throw new IllegalArgumentException("Duplicate step in " + channel + "/" + operation.name() + ": " + step.name()
-                    + " (source: " + step.file().toAbsolutePath().normalize() + ")");
+        for (var step : effectiveSteps) {
+            var parsed = operationParser.parseStepDefinition(step.element(), operation.name(), step.file());
+            parsed.setOccurrenceKey(step.selector());
+            op.getSteps().add(parsed);
+            index.stepToSource().putIfAbsent(step.name(), step.file());
             index.stepToOperation().put(step.name(), operation.name());
-            selected.put("opStep:" + step.name(), step);
-            paths.put("opsteps:" + step.name(), prefix + "/opsteps/" + ScopedVaultPaths.segment(step.name()) + ".md");
+            selected.put("opStep:" + step.selector(), step);
+            boolean repeated = effectiveSteps.stream().filter(value -> value.name().equals(step.name())).count() > 1;
+            String path = prefix + "/opsteps/" + (repeated ? "occurrences/" + op.getSteps().size() + "/" : "")
+                + ScopedVaultPaths.segment(step.name()) + ".md";
+            paths.put("opsteps:" + step.selector(), path);
+            if (!repeated) paths.put("opsteps:" + step.name(), path);
         }
         Set<String> classes = new TreeSet<>();
         op.getSteps().forEach(step -> {
@@ -158,17 +164,34 @@ public final class ScopedVaultGenerationService {
             }
         }
         LinkResolver links = new LinkResolver(markdown, paths);
+        links.setStepFlow(new OperationStepFlow(op.getSteps()));
         new OperationMarkdownWriter().write(op, index, links, vault);
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("references", paths); extra.put("java_resolution", classResolution);
+        extra.put("step_notes", op.getSteps().stream().map(step -> paths.get("opsteps:" + step.getOccurrenceKey())).toList());
+        extra.put("entry_step_note", op.getSteps().isEmpty() ? "" : paths.get("opsteps:" + op.getSteps().getFirst().getOccurrenceKey()));
         manifest.record(vault, operation, channel, operation.name(), operationIdentity, prefix + "/operation.md", extra);
         inventory.add(operation.key(workspace));
         for (var source : selected.values()) {
             if (source.kind().equals("operation")) continue;
             writeDefinition(source, index, links, vault);
-            String path = paths.get(FOLDERS.get(source.kind()) + ":" + source.name());
+            String path = paths.get(FOLDERS.get(source.kind()) + ":"
+                + (source.kind().equals("opStep") ? source.selector() : source.name()));
+            Map<String, Object> evidence = new LinkedHashMap<>();
+            evidence.put("resolution_status", source.kind().equals("java_class") ? "source_candidate" : "resolved");
+            if (source.kind().equals("opStep")) {
+                var parsed = operationParser.parseStepDefinition(source.element(), operation.name(), source.file());
+                parsed.setOccurrenceKey(source.selector());
+                evidence.put("step_index", links.stepFlow().position(parsed));
+                Map<String, String> targets = new LinkedHashMap<>();
+                parsed.getTransitions().forEach((condition, name) -> {
+                    var target = links.stepFlow().target(parsed, name);
+                    if (target != null) targets.put(condition, paths.get("opsteps:" + target.getOccurrenceKey()));
+                });
+                evidence.put("transition_targets", targets);
+            }
             manifest.record(vault, source, channel, operation.name(), operationIdentity, path,
-                Map.of("resolution_status", source.kind().equals("java_class") ? "source_candidate" : "resolved"));
+                evidence);
             inventory.add(source.key(workspace));
         }
     }
@@ -190,6 +213,7 @@ public final class ScopedVaultGenerationService {
             }
             case "opStep" -> {
                 var step = operationParser.parseStepDefinition(source.element(), index.stepToOperation().get(source.name()), source.file());
+                if (links.stepFlow() != null) step.setOccurrenceKey(source.selector());
                 new OpStepMarkdownWriter().write(step, index, links, vault);
             }
             default -> throw new IllegalArgumentException("Unexpected definition kind: " + source.kind());
@@ -211,6 +235,14 @@ public final class ScopedVaultGenerationService {
                 int fileName = path.lastIndexOf('/');
                 path = path.substring(0, fileName) + "/onlyFor/" + ScopedVaultPaths.segment(onlyFor)
                     + path.substring(fileName);
+            }
+            if (occurrences > 1) {
+                int fileName = path.lastIndexOf('/');
+                String ordinal = source.selector().substring(source.selector().lastIndexOf('[') + 1,
+                    source.selector().length() - 1);
+                var parent = (org.w3c.dom.Element) source.element().getParentNode();
+                path = path.substring(0, fileName) + "/occurrences/" + ScopedVaultPaths.segment(parent.getAttribute("id"))
+                    + "/" + ordinal + path.substring(fileName);
             }
         }
         // Render full original sections even when an occurrence has no selected consumer.

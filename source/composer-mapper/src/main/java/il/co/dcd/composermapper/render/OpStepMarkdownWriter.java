@@ -13,7 +13,7 @@ import java.util.Set;
 public class OpStepMarkdownWriter {
 
     public void write(OpStepDef s, Indexes x, LinkResolver links, Path vault) {
-        Path out = links.documentPath(vault, "opsteps", s.getId());
+        Path out = links.stepDocumentPath(vault, s);
         String impl = s.getImplClass();
         if ((impl == null || impl.isBlank()) && x.tagToClass().containsKey("opStep"))
             impl = x.tagToClass().get("opStep");
@@ -27,6 +27,8 @@ public class OpStepMarkdownWriter {
             .append("conversion_status: not_started\n");
 
         // onlyFor as plain string in frontmatter (no link -- it's a channel name, not an entity)
+        if (s.getOccurrenceKey() != null)
+            sb.append("step_index: ").append(links.stepFlow().position(s)).append("\n");
         if (s.getOnlyFor() != null && !s.getOnlyFor().isBlank())
             sb.append("onlyFor: ").append(s.getOnlyFor()).append("\n");
 
@@ -62,8 +64,15 @@ public class OpStepMarkdownWriter {
         if (s.getTransitions().isEmpty()) sb.append("- None\n");
         else s.getTransitions().forEach((c, t) ->
             sb.append(MarkdownSupport.bullet(
-                MarkdownSupport.code(c) + " -> " + (x.stepToSource().containsKey(t)
+                MarkdownSupport.code(c) + " -> " + (s.getOccurrenceKey() != null
+                    ? MarkdownSupport.code(t) : x.stepToSource().containsKey(t)
                     ? links.stepLink(t) : "unresolved " + MarkdownSupport.code(t)))));
+
+        if (s.getOccurrenceKey() != null && !s.getTransitions().isEmpty()) {
+            sb.append("\n## Resolved Transition Targets\n");
+            s.getTransitions().forEach((condition, target) -> sb.append(MarkdownSupport.bullet(
+                MarkdownSupport.code(condition) + " -> " + links.transitionLink(s, target))));
+        }
 
         if (!s.getReturnBodySwitches().isEmpty()) {
             sb.append("\n## Return Body Switches\n");

@@ -5,6 +5,8 @@ import java.util.*;
 
 public class OpStepDef {
     private String id;
+    /** Exact XML selector for a scoped occurrence; null for legacy parsing. */
+    private String occurrenceKey;
     private String parentOperationId;
     private String implClass;
     private Path   sourceFile;
@@ -17,6 +19,8 @@ public class OpStepDef {
     private final Map<String,String> parameters         = new LinkedHashMap<>();
 
     public String getId()                               { return id; }
+    public String getOccurrenceKey()                    { return occurrenceKey; }
+    public void setOccurrenceKey(String value)          { occurrenceKey = value; }
     public void   setId(String id)                      { this.id = id; }
     public String getParentOperationId()                { return parentOperationId; }
     public void   setParentOperationId(String v)        { this.parentOperationId = v; }

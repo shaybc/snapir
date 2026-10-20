@@ -19,6 +19,7 @@ The Mapper layout, source-channel detection, readable filenames, short XML resou
 | Closure entry | Explicitly rejects scoped runs | Retain the gate until the consumers below are migrated and verified |
 | Operation and step lookup | Several queries select by run, kind, and bare logical ID | Resolve an effective operation and its step usages explicitly |
 | Same-ID channel variants | Scoped Mapper now selects steps by `onlyFor` and retains unused variants in inventory | Preserve each source occurrence; consume only the selected channel's operation usages, never a global ID winner |
+| Repeated step labels within one effective flow | Composer resolves repeated labels by ordered positional lookup, including self/backward jumps | Preserve occurrence identities and order; do not reject duplicates or collapse routing by label |
 | Resource lookup | Formats and contexts are selected by name; context hierarchy dictionaries are keyed by name | Resolve selected definitions within the consuming operation/channel |
 | Java lookup | Some paths select/deduplicate by FQCN and resolve tags without channel | Carry the selected source implementation and effective channel mapping |
 | Runtime orchestration | Checkpoint and behavior runners read legacy source tables before closure | Route both through the scoped operation reader |
@@ -45,13 +46,13 @@ Availability under a channel does not prove that an operation uses a resource. A
 
 ### Channel-specific step variants
 
-One operation XML may contain multiple `opStep` elements with the same `id`, distinguished by `onlyFor` and potentially by implementation, parameters, and transitions. These are separate source occurrences, identified by their exact XML selectors and canonical definition IDs. Equal step IDs or implementing classes do not authorize merging them.
+One operation XML may contain multiple `opStep` elements with the same `id`, with or without `onlyFor` restrictions, and potentially different implementations, parameters, and transitions. These are separate source occurrences, identified by their exact XML selectors and canonical definition IDs. Equal step IDs or implementing classes do not authorize merging them or reporting a duplicate-ID conflict.
 
 The current scoped Mapper already emits an effective operation view for each consuming channel. Import its ordered Steps references and their explicit definition/usage identities. Preserve `onlyFor` as evidence; match channel names without case sensitivity, support comma-separated names, and treat absent or blank restrictions as unrestricted. Imported operations use the consuming channel, not their source channel, for applicability.
 
-Keep inventory-only variants available as source evidence, but do not add them back to an operation's executable steps by scanning inventory or matching bare IDs. Do not infer applicability from the readable `onlyFor` inventory folders. Resolve named transitions within the effective operation's selected steps; preserve `next`, `end`, parameters, and source relative order. Report an unresolved named target rather than borrowing an excluded variant.
+Keep inventory-only variants available as source evidence, but do not add them back to an operation's executable steps by scanning inventory or matching bare IDs. Do not infer applicability from the readable inventory folders. Import ordered manifest `step_notes`, `entry_step_note`, zero-based `step_index`, and resolved `transition_targets` where present; cross-check against the note links and source selectors. Older scoped manifests lacking these additive fields require explicit reconstruction from ordered operation links and a verified lookup implementation, never a bare-name map.
 
-Repeated IDs are not inherently ambiguous. A conflict exists when multiple same-ID definitions remain applicable in one effective operation. Report that conflict with source paths/selectors and conditions; do not select the first occurrence or assume a restricted definition overrides an unrestricted one. Keep all definitions in imported evidence even if only one is executable for a particular channel. See the [manual's opStep explanation](../comp-manual/wsbcc_developer_manual_v2.md#channel-specific-steps--onlyfor).
+Repeated IDs remain valid even when multiple occurrences are applicable in one effective operation. Resolve each named transition from its source occurrence's effective index: choose the first exact-label match at or after that index, including itself, then search from the beginning if no match remains. `next` advances one occurrence and `end` terminates. Preserve self-jumps and backward jumps; do not reject a loop merely because it moves backward. A missing name produces runtime lookup result `-1` and must remain explicit evidence rather than borrowing an excluded step. Keep all definitions in imported evidence. See the [manual's positional routing explanation](../comp-manual/wsbcc_developer_manual_v2.md#repeated-labels-and-positional-routing).
 
 ## Phase one intake and complete scoped import
 
@@ -80,7 +81,7 @@ Gate: same-name operations and steps can be retrieved independently; resource am
 
 ## Phase three scoped dependency closure
 
-Update closure to retrieve the selected operation's ordered step usages, validate their `onlyFor` applicability, and build routing from those usages. The scoped Mapper has already selected the effective channel view; validation must not reconstruct its steps from global inventory or discard variant identity. Transition targets remain original local step names within that effective operation. Preserve existing legacy filtering through its adapter.
+Update closure to retrieve the selected operation's ordered step usages, validate their `onlyFor` applicability, and build routing from those usages. The scoped Mapper has already selected the effective channel view; validation must not reconstruct its steps from global inventory or discard occurrence identity. Retain original transition labels as business values alongside the resolved target occurrence. Routing models and generated code must use occurrence positions/identities rather than a dictionary keyed only by step ID. Preserve existing legacy filtering through its adapter.
 
 Resolve request, reply, and error formats using qualified references. Traverse nested formats by definition identity, not name alone. Preserve serialization rules, decorators, mapped tags, database lookup requirements, and existing validation.
 
@@ -163,8 +164,9 @@ Only this planning document changes now. These are expected future implementatio
 | Lowercase or comma-separated `onlyFor`; blank/absent restriction | Case-insensitive selection, multiple allowed channels, and unrestricted common steps |
 | Imported operation with channel variants | Selection uses consuming channel; source channel does not override applicability |
 | Inventory-only excluded variants | Evidence preserved without adding excluded steps to executable closure |
-| Overlapping restrictions or unrestricted plus matching same-ID variant | Explicit conflict with source coordinates; no silent winner |
-| Routing after channel selection | Correct entry step, relative order, named links, next/end behavior; excluded targets cannot resolve through inventory |
+| Repeated IDs with no restrictions, overlapping restrictions, or unrestricted plus matching restricted occurrence | Every applicable occurrence survives in source order with distinct identity, note, implementation, and configuration |
+| Routing after channel selection | Exact entry occurrence, next/end behavior, inclusive named search, wraparound, self-jumps, backward jumps, and case-sensitive labels; excluded targets cannot resolve through inventory |
+| Repeated CCComplexOpStep labels with different targets | All call sites and target operations survive; routing selects the correct source occurrence |
 | Changed `onlyFor` with unchanged Java class | Changed selection detected; stale closure, units, and assembled output cannot be reused |
 | Same resource name across channels or sources | Selected definition retained; no arbitrary global winner |
 | Defaults and operation-file context declarations | Proven selection or explicit ambiguity; not automatic merging |

@@ -55,7 +55,7 @@ public class OperationMarkdownWriter {
             sb.append("- None\n");
         } else {
             for (OpStepDef s : op.getSteps()) {
-                String bullet = links.stepLink(s.getId());
+                String bullet = links.stepLink(s);
                 if (s.getOnlyFor() != null && !s.getOnlyFor().isBlank())
                     bullet += " *(onlyFor: " + s.getOnlyFor() + ")*";
                 sb.append(MarkdownSupport.bullet(bullet));
@@ -79,7 +79,7 @@ public class OperationMarkdownWriter {
         }
         if (!any) sb.append("- None\n");
 
-        appendFlowDiagram(sb, op);
+        appendFlowDiagram(sb, op, links);
 
         try {
             FileUtil.writeString(out, sb.toString());
@@ -159,8 +159,13 @@ public class OperationMarkdownWriter {
         return ops != null && ops.size() > 1;
     }
 
-    private void appendFlowDiagram(StringBuilder sb, OperationDef op) {
+    private void appendFlowDiagram(StringBuilder sb, OperationDef op, LinkResolver links) {
         sb.append("\n## Flow Diagram\n```mermaid\ngraph TD\n");
+        if (links.stepFlow() != null) {
+            appendScopedFlow(sb, op, links);
+            sb.append("```\n");
+            return;
+        }
         if (op.getSteps().isEmpty()) {
             appendNode(sb, "EMPTY", "No steps");
         } else {
@@ -193,6 +198,34 @@ public class OperationMarkdownWriter {
             }
         }
         sb.append("```\n");
+    }
+
+    /** Render scoped occurrences as distinct nodes using the runtime's positional lookup. */
+    private void appendScopedFlow(StringBuilder sb, OperationDef op, LinkResolver links) {
+        if (op.getSteps().isEmpty()) { appendNode(sb, "EMPTY", "No steps"); return; }
+        for (OpStepDef step : op.getSteps()) {
+            String from = scopedNode(step, links);
+            sb.append("    ").append(from).append("\n");
+            step.getTransitions().forEach((condition, name) -> {
+                OpStepDef target = links.stepFlow().target(step, name);
+                String destination = target != null ? scopedNode(target, links)
+                    : "end".equals(name) || "next".equalsIgnoreCase(name) ? nodeRef("END")
+                    : nodeRef("Unresolved: " + name);
+                sb.append("    ").append(from).append(" -->")
+                    .append(MarkdownSupport.mermaidEdgeLabel(condition)).append(" ").append(destination).append("\n");
+            });
+            step.getReturnBodySwitches().forEach((rc, format) ->
+                sb.append("    ").append(from).append(" -.->")
+                    .append(MarkdownSupport.mermaidEdgeLabel("RC" + rc + "->body"))
+                    .append(" ").append(nodeRef(format)).append("\n"));
+        }
+    }
+
+    private String scopedNode(OpStepDef step, LinkResolver links) {
+        String label = step.getId();
+        if (step.getOnlyFor() != null && !step.getOnlyFor().isBlank()) label += "\\n[" + step.getOnlyFor() + " only]";
+        return MarkdownSupport.mermaidNodeId("step_occurrence_" + links.stepFlow().position(step))
+            + MarkdownSupport.mermaidLabel(label);
     }
 
     private String entryStep(OperationDef op) {

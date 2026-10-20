@@ -157,16 +157,58 @@ def test_duplicate_operation_step_resource_names_survive(tmp_path, scoped_mapper
     assert invoke_mapper(scoped_mapper, root, vault).returncode != 0
 
 
-def test_duplicate_step_error_includes_full_source_path(tmp_path, scoped_mapper):
+@pytest.mark.parametrize('markdown', [True, False])
+@pytest.mark.parametrize('restriction', ['', 'onlyFor="internet"'])
+def test_repeated_steps_preserve_occurrences_and_positional_routing(tmp_path, scoped_mapper, markdown, restriction):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
-    make_workspace(root)
+    folder = root / 'Channel/INTERNET'
+    folder.mkdir(parents=True)
+    (folder / 'dse.ini').write_text('<dse.ini/>')
     source = root / 'Channel/INTERNET/operations.xml'
-    text = source.read_text()
-    source.write_text(text.replace('<opStep id="Done"', '<opStep id="Call"', 1))
-    result = invoke_mapper(scoped_mapper, root, vault)
-    assert result.returncode != 0
-    assert 'Duplicate step in INTERNET/A: Call' in result.stderr
-    assert str(source.resolve()) in result.stderr
+    source.write_text('''<XML><CCDSEServerOperation id="A">
+      <opStep id="Start" on0Do="Repeat"/>
+      <opStep id="Repeat" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="B" on0Do="next"/>
+      <opStep id="Middle" on0Do="Repeat" on1Do="Start" on2Do="repeat"/>
+      <opStep id="Repeat" RESTRICTION implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+              opExecuteName="C" on0Do="Repeat"/>
+      <opStep id="Last" on0Do="Repeat" on1Do="next" on2Do="end"/>
+    </CCDSEServerOperation><CCDSEServerOperation id="B"/><CCDSEServerOperation id="C"/></XML>'''.replace('RESTRICTION', restriction))
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    steps = sorted([e for e in manifest['entities'] if e['kind'] == 'opStep' and e['operation_id'] == 'A'],
+                   key=lambda e: e['step_index'])
+    assert [e['entity_id'] for e in steps] == ['Start', 'Repeat', 'Middle', 'Repeat', 'Last']
+    assert len({e['definition_id'] for e in steps}) == 5
+    assert len({e['note'] for e in steps}) == 5
+    operation_entry = next(e for e in manifest['entities'] if e['kind'] == 'operation' and e['operation_id'] == 'A')
+    assert operation_entry['step_notes'] == [e['note'] for e in steps]
+    assert operation_entry['entry_step_note'] == steps[0]['note']
+    assert 'opsteps:Repeat' not in operation_entry['references']
+    assert steps[1]['note'].endswith('/opsteps/occurrences/2/Repeat.md')
+    assert steps[3]['note'].endswith('/opsteps/occurrences/4/Repeat.md')
+    assert steps[0]['transition_targets']['on0Do'] == steps[1]['note']
+    assert steps[1]['transition_targets']['on0Do'] == steps[2]['note']
+    assert steps[2]['transition_targets']['on0Do'] == steps[3]['note']
+    assert steps[2]['transition_targets']['on1Do'] == steps[0]['note']
+    assert 'on2Do' not in steps[2]['transition_targets']  # Named matching is case-sensitive.
+    assert steps[3]['transition_targets']['on0Do'] == steps[3]['note']
+    assert steps[4]['transition_targets'] == {'on0Do': steps[1]['note']}
+    for entry in steps:
+        note = (vault / entry['note']).read_text(encoding='utf-8')
+        assert 'entity_id: ' + entry['entity_id'] in note
+        assert 'step_index: ' + str(entry['step_index']) in note
+        for target in entry['transition_targets'].values():
+            assert (target if markdown else target[:-3] + '|') in note
+    operation = (vault / 'channels/INTERNET/operations/A/operation.md').read_text(encoding='utf-8')
+    assert all('step_occurrence_' + str(i) in operation for i in range(5))
+    assert 'Unresolved: repeat' in operation
+    graph = discover_operation_calls(vault)
+    assert graph['issues'] == []
+    assert [(c['step'], c['callee']) for c in graph['calls']] == [('Repeat', 'INTERNET/B'), ('Repeat', 'INTERNET/C')]
+    assert [c['transitions'] for c in graph['calls']] == [{'on0Do': 'next'}, {'on0Do': 'Repeat'}]
+    assert source.read_bytes() == original
 
 
 @pytest.mark.parametrize('markdown', [True, False])

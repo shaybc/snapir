@@ -294,7 +294,7 @@ The RC routing priority for each opStep result:
 5. Check "onOtherDoDefault" → if found, use it (with warning log)
 6. If next == "next" → increment index, continue loop
 7. If next == "end"  → return -1, break loop
-8. Otherwise → look up step by name, jump to it
+8. Otherwise → search for the named step from the current index inclusively; if not found, search from the beginning. Jump to the selected occurrence; return -1 if no match exists.
 ```
 
 ### Channel Filtering — onlyFor
@@ -585,7 +585,7 @@ An opStep is one step in an operation's execution chain. Each opStep maps to a J
 
 | Attribute | Description |
 |---|---|
-| `id` | Step name used by transitions. Channel-specific variants may share an ID when their `onlyFor` conditions select different channels. |
+| `id` | Human-readable step label used by named transitions. Multiple occurrences may share the label, including within one channel's flow. Source position distinguishes the occurrences. |
 | `implClass` | FQCN of the Java class implementing this step. Overrides dse.ini lookup. |
 | `on{N}Do` | Where to go when execute() returns integer N. Can be a step id, "next", or "end" |
 | `onOtherDo` | Default routing when no `on{N}Do` matches the return code |
@@ -615,7 +615,23 @@ For BANKADMIN, the first variant applies; for INTERNET, the second applies. A ch
 
 In scoped Mapper output, each channel's operation view contains its applicable steps in their original relative order. Original IDs, implementations, parameters, and transitions are preserved. A transition targeting `DeleteUserEmailPhoneSP` links to the applicable variant in that channel's view. Source occurrences that are not used by any generated operation view remain in the resource inventory; repeated names are separated by readable `onlyFor` folders. The source XML is not rewritten or deduplicated.
 
-The Mapper still reports a conflict if more than one step with the same ID remains applicable to the same channel, including overlapping restrictions or an unrestricted step alongside a matching restricted step. It does not silently choose one. This describes scoped output; legacy generation behavior is unchanged.
+Channel filtering does not impose uniqueness on the remaining step IDs. Restricted and unrestricted occurrences with the same ID can both remain in one channel's flow. Each keeps its own implementation, parameters, transitions, and position. This describes scoped output; legacy generation behavior is unchanged.
+
+### Repeated Labels and Positional Routing
+
+An operation flow is an ordered sequence of step occurrences, not a dictionary keyed by `id`. Equal labels do not mean the occurrences have the same behavior, nor do they require merging, deletion, or a duplicate-ID error.
+
+The verified execution method uses the current step index when resolving a transition:
+
+1. `next` advances to the following occurrence.
+2. `end` terminates execution.
+3. A named target selects the first exact-label match at or after the current index, including the current occurrence.
+4. If no match is found from that index onward, lookup searches again from the beginning. Backward jumps are therefore supported.
+5. If no matching label exists, lookup returns `-1`.
+
+For example, in `Check, Work, Check, Finish`, a jump to `Check` from `Work` selects the second `Check`; the same jump from `Finish` wraps to the first. A jump to `Check` from either `Check` selects that occurrence itself. The general lookup helper recognizes `next` without case sensitivity; named-label comparisons are exact. The execution method treats lowercase `end` as its termination token.
+
+The scoped Mapper preserves each occurrence with its exact source selector, original ID, and a zero-based effective `step_index`. Only repeated labels need separate readable occurrence folders. Operation manifests include ordered `step_notes` and `entry_step_note`; step manifests include resolved `transition_targets`. Steps links, transition links, and flow-diagram nodes identify the selected occurrence. A missing named target remains explicitly unresolved in the documentation rather than being redirected to an arbitrary step.
 
 ### Custom Attributes
 
