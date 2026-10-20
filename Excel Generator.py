@@ -461,7 +461,7 @@ def discover_operation_calls(vault):
                 if impl != COMPLEX_CLASS and (not impl.endswith('|' + COMPLEX_CLASS + ']]')):
                     continue
                 channel = caller.split('/', 1)[0]
-                if step.only_for and channel not in re.split('[,;\\s]+', step.only_for.strip()):
+                if step.only_for and channel.upper() not in re.split('[,;\\s]+', step.only_for.strip().upper()):
                     continue
                 if step.parent_operation_id and step.parent_operation_id != op.id:
                     raise ValueError('Linked step belongs to another operation; possible Mapper step-ID collision')

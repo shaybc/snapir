@@ -585,14 +585,37 @@ An opStep is one step in an operation's execution chain. Each opStep maps to a J
 
 | Attribute | Description |
 |---|---|
-| `id` | Unique step name within the operation |
+| `id` | Step name used by transitions. Channel-specific variants may share an ID when their `onlyFor` conditions select different channels. |
 | `implClass` | FQCN of the Java class implementing this step. Overrides dse.ini lookup. |
 | `on{N}Do` | Where to go when execute() returns integer N. Can be a step id, "next", or "end" |
 | `onOtherDo` | Default routing when no `on{N}Do` matches the return code |
 | `onOtherDoDefault` | Final fallback routing (with runtime warning) |
 | `onTimeoutDo` | Where to go when execute() returns RC_TIMEOUT |
 | `on{N}Return` | When RC=N, switch the error reply format body before routing |
-| `onlyFor` | Comma-separated channel names this step runs on. Absent = runs on all channels. |
+| `onlyFor` | Comma-separated channel names this step runs on. Absent or blank = runs on all channels. The Mapper matches channel names without case sensitivity. |
+
+### Channel-Specific Steps — onlyFor
+
+`onlyFor` restricts an individual opStep to the named channel or channels. It does not change which channel owns the operation definition. An operation imported from another channel is mapped using the channel that will execute it, rather than the channel where its XML file resides.
+
+The same operation XML can contain multiple opSteps with the same `id`, each restricted to a different channel and potentially using a different implementing class:
+
+```xml
+<opStep id="DeleteUserEmailPhoneSP"
+        onlyFor="bankadmin"
+        implClass="operations.db.DeleteUserEmailPhoneSP"
+        onOtherDo="end"/>
+<opStep id="DeleteUserEmailPhoneSP"
+        onlyFor="internet"
+        implClass="operations.db.DeleteUserEmailPhoneSPP"
+        onOtherDo="OperationFailed"/>
+```
+
+For BANKADMIN, the first variant applies; for INTERNET, the second applies. A channel matching neither restriction uses neither variant. Steps without a restriction remain applicable to every channel. A value such as `onlyFor="bankadmin,internet"` applies to both channels.
+
+In scoped Mapper output, each channel's operation view contains its applicable steps in their original relative order. Original IDs, implementations, parameters, and transitions are preserved. A transition targeting `DeleteUserEmailPhoneSP` links to the applicable variant in that channel's view. Source occurrences that are not used by any generated operation view remain in the resource inventory; repeated names are separated by readable `onlyFor` folders. The source XML is not rewritten or deduplicated.
+
+The Mapper still reports a conflict if more than one step with the same ID remains applicable to the same channel, including overlapping restrictions or an unrestricted step alongside a matching restricted step. It does not silently choose one. This describes scoped output; legacy generation behavior is unchanged.
 
 ### Custom Attributes
 

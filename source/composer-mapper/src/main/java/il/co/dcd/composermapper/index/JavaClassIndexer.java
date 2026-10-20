@@ -1,8 +1,8 @@
 package il.co.dcd.composermapper.index;
 
+import il.co.dcd.composermapper.util.JavaSourceReader;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,7 +13,7 @@ public class JavaClassIndexer {
 
     public void index(Path javaFile, Indexes indexes) {
         try {
-            String content = Files.readString(javaFile, StandardCharsets.UTF_8);
+            String content = JavaSourceReader.read(javaFile);
             String pkg = matchFirst(PACKAGE_PATTERN, content);
             String cls = matchFirst(CLASS_PATTERN, content);
             if (cls == null || cls.isBlank()) {

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
@@ -55,6 +56,64 @@ def invoke_mapper(classes, root, vault, markdown=True):
         '--md', str(markdown).lower()], capture_output=True, text=True, timeout=60)
 
 
+@pytest.mark.parametrize('encoding', ['utf-8', 'cp1255', 'ascii'])
+def test_java_source_reader_preserves_text_and_source_bytes(tmp_path, scoped_mapper, encoding):
+    text = 'package example;\npublic class Encoded {}\n// ' + ('plain' if encoding == 'ascii' else '\u05e9\u05dc\u05d5\u05dd')
+    source = tmp_path / 'Encoded.java'
+    original = text.encode(encoding)
+    source.write_bytes(original)
+    harness = tmp_path / 'CheckEncoding.java'
+    harness.write_text('''
+import java.nio.file.Path;
+import il.co.dcd.composermapper.util.JavaSourceReader;
+import il.co.dcd.composermapper.index.Indexes;
+import il.co.dcd.composermapper.index.JavaClassIndexer;
+import il.co.dcd.composermapper.parser.JavaClassParser;
+public class CheckEncoding {
+    public static void main(String[] args) throws Exception {
+        Path source = Path.of(args[0]);
+        String text = JavaSourceReader.read(source);
+        if (!text.endsWith(args[1])) throw new AssertionError("Source text changed");
+        Indexes indexes = Indexes.create();
+        new JavaClassIndexer().index(source, indexes);
+        if (!indexes.classToSource().containsKey("example.Encoded")) throw new AssertionError("Index failed");
+        if (!new JavaClassParser().parse(source).getFullyQualifiedName().equals("example.Encoded"))
+            throw new AssertionError("Parse failed");
+    }
+}
+''', encoding='utf-8')
+    compiled = subprocess.run(['javac', '-cp', str(scoped_mapper), '-d', str(tmp_path), str(harness)],
+                              capture_output=True, text=True, timeout=60)
+    assert compiled.returncode == 0, compiled.stderr
+    result = subprocess.run(['java', '-cp', os.pathsep.join([str(scoped_mapper), str(tmp_path)]),
+                             'CheckEncoding', str(source), text.split('// ')[1]],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    assert ('using Windows-1255' in result.stderr) == (encoding == 'cp1255')
+    assert source.read_bytes() == original
+
+
+def test_scoped_mapper_accepts_mixed_java_encodings(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    make_workspace(root)
+    originals = {}
+    for name, encoding in [('Utf8', 'utf-8'), ('HebrewWindows', 'cp1255'), ('Plain', 'ascii')]:
+        path = root / 'project-one' / (name + '.java')
+        text = 'package example;\npublic class ' + name + ' {}\n// '
+        text += 'plain' if encoding == 'ascii' else '\u05e9\u05dc\u05d5\u05dd'
+        originals[path] = text.encode(encoding)
+        path.write_bytes(originals[path])
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    assert 'using Windows-1255' in result.stderr
+    manifest = read_vault_manifest(vault)
+    java_entities = [entry for entry in manifest['entities'] if entry['kind'] == 'java_class']
+    for path, original in originals.items():
+        assert path.read_bytes() == original
+        assert any(entry['source_relative_path'] == path.relative_to(root).as_posix()
+                   for entry in java_entities)
+
+
 @pytest.mark.parametrize('markdown', [True, False])
 def test_duplicate_operation_step_resource_names_survive(tmp_path, scoped_mapper, markdown):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
@@ -96,6 +155,91 @@ def test_duplicate_operation_step_resource_names_survive(tmp_path, scoped_mapper
     assert operation_waves(graph)['INTERNET/A']['wave'] == 2
     assert operation_waves(graph)['IVR/B']['wave'] == 1
     assert invoke_mapper(scoped_mapper, root, vault).returncode != 0
+
+
+def test_duplicate_step_error_includes_full_source_path(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    make_workspace(root)
+    source = root / 'Channel/INTERNET/operations.xml'
+    text = source.read_text()
+    source.write_text(text.replace('<opStep id="Done"', '<opStep id="Call"', 1))
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode != 0
+    assert 'Duplicate step in INTERNET/A: Call' in result.stderr
+    assert str(source.resolve()) in result.stderr
+
+
+@pytest.mark.parametrize('markdown', [True, False])
+def test_only_for_variants_keep_channel_calls_and_source_occurrences(tmp_path, scoped_mapper, markdown):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    for channel in ('XML', 'BANKADMIN', 'INTERNET', 'IVR'):
+        folder = root / 'Channel' / channel
+        folder.mkdir(parents=True)
+        imports = '' if channel == 'XML' else '<kColl id="import"><field id="XML"/></kColl>'
+        (folder / 'dse.ini').write_text('<dse.ini>' + imports + '</dse.ini>')
+    source = root / 'Channel/XML/operations.xml'
+    source.write_text('''<XML>
+      <CCDSEServerOperation id="A">
+        <opStep id="Call" onlyFor="bankadmin" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+                opExecuteName="B" on0Do="Done"/>
+        <opStep id="Call" onlyFor="internet" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+                opExecuteName="C" on0Do="Done"/>
+        <opStep id="Done" onOtherDo="end"/>
+        <opStep id="Shared" onlyFor=" BANKADMIN, internet " onOtherDo="end"/>
+      </CCDSEServerOperation>
+      <CCDSEServerOperation id="B"/>
+      <CCDSEServerOperation id="C"/>
+    </XML>''')
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    calls = [e for e in manifest['entities'] if e['kind'] == 'opStep' and e['entity_id'] == 'Call']
+    assert {(e['channel'], e['operation_id']) for e in calls} == {('BANKADMIN', 'A'), ('INTERNET', 'A')}
+    assert len({e['definition_id'] for e in calls}) == 2
+    for channel, target in [('BANKADMIN', 'B'), ('INTERNET', 'C')]:
+        note = vault / f'channels/{channel}/operations/A/opsteps/Call.md'
+        text = note.read_text(encoding='utf-8')
+        assert 'opExecuteName: `' + target + '`' in text
+        assert 'unresolved `Done`' not in text
+        assert ('Done.md' if markdown else '[[channels/') in text
+        operation = (vault / f'channels/{channel}/operations/A/operation.md').read_text(encoding='utf-8')
+        assert 'entry_step: Call' in operation
+        assert operation.count('*(onlyFor:') == 2
+    for channel in ('XML', 'IVR'):
+        operation = (vault / f'channels/{channel}/operations/A/operation.md').read_text(encoding='utf-8')
+        assert 'entry_step: Done' in operation
+        assert 'onlyFor:' not in operation
+        assert not (vault / f'channels/{channel}/operations/A/opsteps/Call.md').exists()
+    graph = discover_operation_calls(vault)
+    assert graph['issues'] == []
+    assert {(c['caller'], c['callee']) for c in graph['calls']} == {
+        ('BANKADMIN/A', 'BANKADMIN/B'), ('INTERNET/A', 'INTERNET/C')}
+    assert source.read_bytes() == original
+
+    # If no consuming channel is selected, both variants still survive in inventory.
+    inventory_vault = tmp_path / 'inventory-vault'
+    result = subprocess.run(['java', '-cp', str(scoped_mapper), 'il.co.dcd.composermapper.Main',
+        '--root', str(root), '--vault', str(inventory_vault), '--vault-layout', 'scoped',
+        '--workspace-id', 'fixture', '--channel', 'IVR'], capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    inventory = read_vault_manifest(inventory_vault)
+    variants = [e for e in inventory['entities'] if e['kind'] == 'opStep' and e['entity_id'] == 'Call']
+    assert len(variants) == 2
+    assert {e['definition_id'] for e in variants} == {e['definition_id'] for e in calls}
+    assert all('/onlyFor/' in e['note'] for e in variants)
+    assert len({e['note'] for e in variants}) == 2
+
+
+def test_xml_error_includes_full_source_path_and_position(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    make_workspace(root)
+    source = root / 'Channel/INTERNET/broken.xml'
+    source.write_text('<XML>\n<value>A && B</value>\n</XML>')
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode != 0
+    assert '[XML parse error] ' + str(source.resolve()) + ':2:' in result.stderr
+    assert 'entity reference' in result.stderr
 
 
 def test_manifest_rejects_modified_notes_and_incomplete_output(tmp_path, scoped_mapper):

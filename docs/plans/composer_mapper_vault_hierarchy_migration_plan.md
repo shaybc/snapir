@@ -393,7 +393,8 @@ Gate: enterprise-sized rehearsal passes reconciliation, link checks, representat
 | --- | --- |
 | Same operation ID in two channels | Separate effective operations, views, storage keys, and correct call targets |
 | Same step ID across operations/channels | Correct owner, parameters, transitions, and evidence for each occurrence |
-| Duplicate step ID inside one operation | Explicit ambiguity; no silent overwrite |
+| Duplicate step ID inside one operation with disjoint `onlyFor` conditions | Preserve separate source occurrences and select the applicable variant per consuming channel; no silent overwrite |
+| Multiple same-ID steps applicable to one channel | Explicit ambiguity with source coordinates; no silent winner |
 | Same format/context name, different sources | Correct scoped selection, conversion, and isolated invalidation |
 | Inline/external names overlap | Verified source precedence and recorded provenance |
 | Imported definition with local override | Effective override selected without losing original source identity |
@@ -452,3 +453,9 @@ All definitions survive discovery and rendering. All supported consumers underst
 Implementation tracking: the initial implementation adds occurrence-preserving scoped generation in a separate service, reuses existing parsers and writers through exact-occurrence parsing and scoped destinations, and keeps legacy output as the default. Qualified inventory import and Excel discovery support the manifest. Closure conversion explicitly rejects scoped runs until its remaining consumers are migrated. Existing enterprise vaults and run databases are not rewritten. These milestones do not satisfy the full completion criteria above.
 
 XML inventory paths now retain only the short resource origin described above. All 15 channel and scoped-vault checks passed after this change. The regenerated bank-demo vault at `outputs/bank-demo-scoped-vault-resource-paths` preserves all 218 notes and 127 source identities from the preceding channel-discovery vault; Java and operation-view paths, provenance metadata, resource diagnostics, and the eight-operation, three-call graph remain unchanged. Existing outputs and work were preserved.
+
+### Follow-up: channel-specific same-ID step variants
+
+Enterprise source confirmed repeated step IDs distinguished by `onlyFor` within one operation. Scoped generation now selects applicable steps using the consuming channel, preserves original order and IDs, and retains unused source variants in inventory. Same-ID inventory variants use readable `onlyFor` folders when needed. Both Excel discovery implementations now match channel restrictions without case sensitivity. The combined scoped and operation-call regression suite passed 36 tests, and the Mapper package rebuilt successfully.
+
+The converter design must preserve these occurrences through import, closure, behavior units, routing, reuse, and freshness. It must consume the selected operation usages without reintroducing excluded inventory definitions. The [converter implementation plan](scoped_vault_converter_implementation_plan.md#channel-specific-step-variants) specifies these requirements and acceptance cases. Converter implementation remains gated and has not been enabled by this follow-up.

@@ -82,13 +82,16 @@ public final class ScopedVaultGenerationService {
         index.channelForOperation().put(operation.name(), channel);
         index.operationToSource().put(operation.name(), operation.file());
         var op = operationParser.parseDefinition(operation.element(), operation.file());
+        op.getSteps().removeIf(step -> !ChannelStepSelection.applies(step.getOnlyFor(), channel));
         Map<String, SourceDefinitionIdentity> selected = new LinkedHashMap<>();
         selected.put("operation:" + operation.name(), operation);
         Map<String, String> paths = new LinkedHashMap<>();
         paths.put("operations:" + operation.name(), prefix + "/operation.md");
         for (var step : catalog.steps(operation)) {
+            if (!ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), channel)) continue;
             if (index.stepToSource().putIfAbsent(step.name(), step.file()) != null)
-                throw new IllegalArgumentException("Duplicate step in " + channel + "/" + operation.name() + ": " + step.name());
+                throw new IllegalArgumentException("Duplicate step in " + channel + "/" + operation.name() + ": " + step.name()
+                    + " (source: " + step.file().toAbsolutePath().normalize() + ")");
             index.stepToOperation().put(step.name(), operation.name());
             selected.put("opStep:" + step.name(), step);
             paths.put("opsteps:" + step.name(), prefix + "/opsteps/" + ScopedVaultPaths.segment(step.name()) + ".md");
@@ -199,6 +202,17 @@ public final class ScopedVaultGenerationService {
         String prefix = source.channel() == null ? "unassigned/resources" : "channels/" + ScopedVaultPaths.segment(source.channel()) + "/resources";
         String path = ScopedVaultPaths.inventory(prefix, FOLDERS.get(source.kind()),
             source.relativePath(), source.selector(), source.name());
+        if (source.kind().equals("opStep")) {
+            String onlyFor = XmlUtil.attr(source.element(), "onlyFor");
+            var siblings = XmlUtil.childElements((org.w3c.dom.Element) source.element().getParentNode());
+            long occurrences = siblings.stream().filter(element -> element.getTagName().equals("opStep")
+                && source.name().equals(XmlUtil.attr(element, "id"))).count();
+            if (occurrences > 1 && onlyFor != null && !onlyFor.isBlank()) {
+                int fileName = path.lastIndexOf('/');
+                path = path.substring(0, fileName) + "/onlyFor/" + ScopedVaultPaths.segment(onlyFor)
+                    + path.substring(fileName);
+            }
+        }
         // Render full original sections even when an occurrence has no selected consumer.
         Indexes index = Indexes.create();
         LinkResolver links = new LinkResolver(markdown, Map.of(FOLDERS.get(source.kind()) + ":" + source.name(), path));

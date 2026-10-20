@@ -1,10 +1,9 @@
 package il.co.dcd.composermapper.parser;
 
 import il.co.dcd.composermapper.model.JavaClassDef;
+import il.co.dcd.composermapper.util.JavaSourceReader;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.*;
@@ -36,7 +35,7 @@ public class JavaClassParser {
 
     public JavaClassDef parse(Path javaFile) {
         try {
-            String content = Files.readString(javaFile, StandardCharsets.UTF_8);
+            String content = JavaSourceReader.read(javaFile);
             String packageName = matchFirst(PACKAGE_PATTERN, content);
             String simpleName  = matchFirst(CLASS_PATTERN, content);
             if (simpleName == null || simpleName.isBlank()) return null;
