@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.company.generated.units.u3a42c4326e3.DatabaseErrorStepTest
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.115 s -- in com.company.generated.units.u3a42c4326e3.DatabaseErrorStepTest

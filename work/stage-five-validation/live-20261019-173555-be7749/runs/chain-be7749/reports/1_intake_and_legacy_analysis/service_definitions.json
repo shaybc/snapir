@@ -1,9 +1,0 @@
-{
-  "INTERNET": {
-    "services": {},
-    "connectors": {},
-    "issues": [
-      "Missing or ambiguous loaded service document: Xml Definition/Channel/XML/defaultFile/dsedata.xml"
-    ]
-  }
-}
