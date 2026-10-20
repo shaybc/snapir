@@ -56,6 +56,56 @@ def invoke_mapper(classes, root, vault, markdown=True):
         '--md', str(markdown).lower()], capture_output=True, text=True, timeout=60)
 
 
+def test_scoped_progress_records_context_totals_and_elapsed(tmp_path, scoped_mapper):
+    import re
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    make_workspace(root)
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    log = (vault / 'composer-mapper.log').read_text(encoding='utf-8')
+    assert all(re.match(r'^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})\]', line)
+               for line in log.splitlines())
+    assert 'Discovering source files:' in result.stdout
+    assert 'Planned 2 channels and 4 operation views' in log
+    assert 'Channel 1/2 INTERNET' in log and 'Channel 2/2 IVR' in log
+    for channel in ('INTERNET', 'IVR'):
+        for operation in ('A', 'B'):
+            assert re.search('Starting operation [1-4]/4 ' + channel + '/' + operation, log)
+    assert 'remaining=0' in log
+    assert 'Writing unused source inventory:' in log
+    assert 'Finalizing manifest and note metadata:' in log and 'Writing manifest:' in log
+    assert 'operation views completed=4 | skipped=0' in log
+    assert re.search(r'SUCCESS .*elapsed=\d+:\d{2}:\d{2}', log)
+    assert 'SUCCESS' in result.stdout and 'elapsed=' in result.stdout
+    assert (vault / 'vault-manifest.json').is_file()
+    assert not (vault / 'vault-generation.json').exists()
+
+
+def test_console_heartbeat_reports_long_running_work(tmp_path, scoped_mapper):
+    harness = tmp_path / 'ProgressProbe.java'
+    harness.write_text('''
+import java.nio.file.Path;
+import il.co.dcd.composermapper.service.MapperProgress;
+public class ProgressProbe {
+    public static void main(String[] args) throws Exception {
+        try (var progress = new MapperProgress(Path.of(args[0]), System.nanoTime())) {
+            progress.event("Starting operation 1/2 INTERNET/SlowOperation", false);
+            Thread.sleep(5500);
+        }
+    }
+}
+''', encoding='utf-8')
+    compiled = subprocess.run(['javac', '-cp', str(scoped_mapper), '-d', str(tmp_path), str(harness)],
+                              capture_output=True, text=True, timeout=60)
+    assert compiled.returncode == 0, compiled.stderr
+    log = tmp_path / 'progress.log'
+    result = subprocess.run(['java', '-cp', os.pathsep.join([str(scoped_mapper), str(tmp_path)]),
+                             'ProgressProbe', str(log)], capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    assert 'Progress: Starting operation 1/2 INTERNET/SlowOperation | elapsed=' in result.stdout
+    assert 'Starting operation 1/2 INTERNET/SlowOperation' in log.read_text(encoding='utf-8')
+
+
 @pytest.mark.parametrize('encoding', ['utf-8', 'cp1255', 'ascii'])
 def test_java_source_reader_preserves_text_and_source_bytes(tmp_path, scoped_mapper, encoding):
     text = 'package example;\npublic class Encoded {}\n// ' + ('plain' if encoding == 'ascii' else '\u05e9\u05dc\u05d5\u05dd')
@@ -273,6 +323,75 @@ def test_only_for_variants_keep_channel_calls_and_source_occurrences(tmp_path, s
     assert len({e['note'] for e in variants}) == 2
 
 
+@pytest.mark.parametrize('markdown', [True, False])
+@pytest.mark.parametrize('inventory_only', [False, True])
+def test_case_variant_steps_use_ordered_occurrence_folders(tmp_path, scoped_mapper, markdown, inventory_only):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    channel.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('<dse.ini/>')
+    restriction = 'onlyFor="internet"' if inventory_only else ''
+    source = channel / 'operation.xml'
+    source.write_text('''<XML><CCDSEServerOperation id="CaseVariantsOp">
+      <opStep id="Start" on0Do="SetSITE"/>
+      <opStep id="SetSITE" RESTRICTION implClass="example.SetField" fieldName="SITE" fieldValue="Retail" on0Do="next"/>
+      <opStep id="Middle" on0Do="SetSite" on1Do="SetSITE"/>
+      <opStep id="SetSite" RESTRICTION implClass="example.SetField" fieldName="SITE" fieldValue="RETAIL" on0Do="end"/>
+    </CCDSEServerOperation></XML>'''.replace('RESTRICTION', restriction))
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    entries = [entry for entry in manifest['entities'] if entry['kind'] == 'opStep'
+               and entry['entity_id'] in {'SetSITE', 'SetSite'}]
+    assert len(entries) == 2
+    by_name = {entry['entity_id']: entry for entry in entries}
+    assert len({entry['note'].lower() for entry in entries}) == 2
+    assert len({entry['definition_id'] for entry in entries}) == 2
+    for name, value in [('SetSITE', 'Retail'), ('SetSite', 'RETAIL')]:
+        entry = by_name[name]
+        note = (vault / entry['note']).read_text(encoding='utf-8')
+        assert 'entity_id: ' + name in note
+        assert 'fieldValue: `' + value + '`' in note
+        assert 'qualified_entity_id: ' + entry['definition_id'] in note
+        assert '/occurrences/' in entry['note']
+        assert bool(entry['operation_id']) != inventory_only
+    if not inventory_only:
+        assert by_name['SetSITE']['note'].endswith('/occurrences/2/SetSITE.md')
+        assert by_name['SetSite']['note'].endswith('/occurrences/4/SetSite.md')
+        active = {entry['entity_id']: entry for entry in manifest['entities']
+                  if entry['kind'] == 'opStep' and entry['operation_id'] == 'CaseVariantsOp'}
+        assert active['Start']['transition_targets']['on0Do'] == by_name['SetSITE']['note']
+        assert active['Middle']['transition_targets']['on0Do'] == by_name['SetSite']['note']
+        assert active['Middle']['transition_targets']['on1Do'] == by_name['SetSITE']['note']
+        assert by_name['SetSITE']['transition_targets']['on0Do'] == active['Middle']['note']
+    assert source.read_bytes() == original
+
+
+def test_operation_paths_are_reserved_before_any_note_is_written(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    channel.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('<dse.ini/>')
+    source = channel / 'operation.xml'
+    source.write_text('''<XML><CCDSEServerOperation id="A">
+      <refFormat name="csRequestFormat" refid="Request"/>
+      <refFormat name="csReplyFormat" refid="request"/>
+      <fmtDef id="Request"><CCXML dataName="Input"/></fmtDef>
+      <fmtDef id="request"><CCXML dataName="Output"/></fmtDef>
+    </CCDSEServerOperation></XML>''')
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode != 0
+    assert 'Duplicate note path before writing:' in result.stderr
+    assert 'first:' in result.stderr and 'conflicting:' in result.stderr
+    assert str(source.resolve()) in result.stderr
+    assert '/fmtDef[1]' in result.stderr and '/fmtDef[2]' in result.stderr
+    assert not (vault / 'channels/XML/operations/A/operation.md').exists()
+    assert not list(vault.rglob('*.md'))
+    assert (vault / 'vault-generation.json').exists()
+    assert not (vault / 'vault-manifest.json').exists()
+
+
 def test_xml_error_includes_full_source_path_and_position(tmp_path, scoped_mapper):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     make_workspace(root)
@@ -282,6 +401,40 @@ def test_xml_error_includes_full_source_path_and_position(tmp_path, scoped_mappe
     assert result.returncode != 0
     assert '[XML parse error] ' + str(source.resolve()) + ':2:' in result.stderr
     assert 'entity reference' in result.stderr
+
+
+@pytest.mark.parametrize('markdown', [True, False])
+def test_bank_demo_repeated_calls_and_only_for_variants(tmp_path, scoped_mapper, markdown):
+    root = Path(__file__).resolve().parents[2] / 'bank-demo/composer/Workspace'
+    result = invoke_mapper(scoped_mapper, root, tmp_path, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(tmp_path)
+    graph = discover_operation_calls(tmp_path)
+    assert graph['issues'] == []
+    assert len(graph['operations']) == 10
+    assert len(graph['calls']) == 7
+    waves = operation_waves(graph)
+    for channel, second_target in [('INTERNET', 'GetClientLinksOp'), ('IVR', 'GetAccountBalanceOp')]:
+        caller = channel + '/ClientCallFlowDemoOp'
+        calls = [call for call in graph['calls'] if call['caller'] == caller]
+        assert [call['step'] for call in calls] == ['CallClientOperation', 'CallClientOperation']
+        assert [call['callee'] for call in calls] == [channel + '/GetClientAccountsOp', channel + '/' + second_target]
+        assert len({call['note'] for call in calls}) == 2
+        steps = sorted([entry for entry in manifest['entities'] if entry['kind'] == 'opStep'
+                        and entry['channel'] == channel and entry['operation_id'] == 'ClientCallFlowDemoOp'],
+                       key=lambda entry: entry['step_index'])
+        assert len(steps) == 2
+        assert steps[0]['transition_targets'] == {'on0Do': steps[1]['note']}
+        assert steps[1]['transition_targets'] == {}
+        assert (tmp_path / steps[0]['note']).is_file() and (tmp_path / steps[1]['note']).is_file()
+        assert waves[caller]['calls_count'] == 2 and waves[caller]['wave'] == 2
+        assert not any(issue.get('operation') == caller for issue in manifest['diagnostics'])
+    # Each source XML contains three occurrences; four are used and two stay in inventory.
+    definitions = [entry for entry in manifest['entities'] if entry['kind'] == 'opStep'
+                   and entry['entity_id'] == 'CallClientOperation']
+    assert len(definitions) == 6
+    assert len({entry['definition_id'] for entry in definitions}) == 6
+    assert len([entry for entry in definitions if not entry['operation_id']]) == 2
 
 
 def test_manifest_rejects_modified_notes_and_incomplete_output(tmp_path, scoped_mapper):
@@ -398,6 +551,8 @@ def test_parse_failure_never_publishes_complete_manifest(tmp_path, scoped_mapper
     assert result.returncode != 0
     assert (vault / 'vault-generation.json').exists()
     assert not (vault / 'vault-manifest.json').exists()
+    log = (vault / 'composer-mapper.log').read_text(encoding='utf-8')
+    assert 'FAILED | elapsed=' in log and 'SUCCESS' not in log
     with pytest.raises(ValueError, match='Incomplete'):
         read_vault_manifest(vault)
 

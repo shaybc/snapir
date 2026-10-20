@@ -17,7 +17,17 @@ public final class ScopedDefinitionCatalog {
     private record Owner(Path file, String selector) {}
 
     public ScopedDefinitionCatalog(Path root, List<DiscoveredFile> files, ProcessingReport report) {
+        this(root, files, report, message -> {});
+    }
+
+    /** Catalogs the same source occurrences while reporting indexing progress. */
+    public ScopedDefinitionCatalog(Path root, List<DiscoveredFile> files, ProcessingReport report,
+                                   java.util.function.Consumer<String> progress) {
+        int processed = 0;
         for (var file : files.stream().sorted(Comparator.comparing(f -> f.path().toString())).toList()) {
+            processed++;
+            if (processed == 1 || processed % 100 == 0 || processed == files.size())
+                progress.accept("Indexing source " + processed + "/" + files.size() + ": " + file.path());
             if (file.type() == DiscoveredFile.FileType.XML) {
                 try {
                     Element element = XmlUtil.parse(file.path()).getDocumentElement();

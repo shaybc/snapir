@@ -22,6 +22,12 @@ public final class ScopedVaultGenerationService {
     /** Scoped generation requires a fresh destination; old vaults are never rearranged or deleted. */
     public void generate(Path root, Path vault, List<DiscoveredFile> files, String selectedChannel,
                          String workspace, boolean markdown, ProcessingReport report) throws IOException {
+        generate(root, vault, files, selectedChannel, workspace, markdown, report, System.nanoTime());
+    }
+
+    /** Includes entry-point discovery time in the scoped run's progress summary. */
+    public void generate(Path root, Path vault, List<DiscoveredFile> files, String selectedChannel,
+                         String workspace, boolean markdown, ProcessingReport report, long started) throws IOException {
         if (workspace == null || workspace.isBlank())
             throw new IllegalArgumentException("Scoped output requires --workspace-id (stable across checkout locations)");
         if (vault.startsWith(root) || root.startsWith(vault))
@@ -31,36 +37,92 @@ public final class ScopedVaultGenerationService {
         }
         Files.createDirectories(vault);
         FileUtil.writeString(vault.resolve("vault-generation.json"), "{\"vault_schema_version\":2,\"complete\":false}\n");
-        ScopedDefinitionCatalog catalog = new ScopedDefinitionCatalog(root, files, report);
+        try (MapperProgress progress = new MapperProgress(vault.resolve("composer-mapper.log"), started)) {
+        try {
+        progress.event("Scoped run started: root=" + root + " | source files=" + files.size()
+            + " | log=" + vault.resolve("composer-mapper.log"), true);
+        progress.event("Indexing source definitions", true);
+        ScopedDefinitionCatalog catalog = new ScopedDefinitionCatalog(root, files, report,
+            message -> progress.event(message, false));
         VaultManifestWriter manifest = new VaultManifestWriter(workspace);
         List<String> channels = selectedChannel == null ? files.stream().filter(f -> f.channel() != null
             && f.path().getFileName().toString().equalsIgnoreCase("dse.ini"))
             .map(f -> f.channel().toUpperCase(Locale.ROOT)).distinct().sorted().toList()
             : List.of(selectedChannel.toUpperCase(Locale.ROOT));
         if (channels.isEmpty()) throw new IllegalArgumentException("No channel definitions found; scoped output requires channel evidence");
+        progress.event("Planning channel operation totals", true);
+        Map<String, List<String>> channelChains = new LinkedHashMap<>();
+        Map<String, Set<String>> channelOperations = new LinkedHashMap<>();
         for (String channel : channels) {
             List<String> chain = new ChannelImportResolver().resolve(files, channel);
-            Indexes registration = registrations(files, chain);
+            channelChains.put(channel, chain);
             Set<String> names = new TreeSet<>();
             catalog.definitions().stream().filter(d -> d.kind().equals("operation") && d.channel() != null
                 && chain.contains(d.channel().toUpperCase(Locale.ROOT))).forEach(d -> names.add(d.name()));
+            channelOperations.put(channel, names);
+        }
+        int totalOperations = channelOperations.values().stream().mapToInt(Set::size).sum();
+        int processed = 0, completed = 0, skipped = 0, channelNumber = 0;
+        progress.event("Planned " + channels.size() + " channels and " + totalOperations + " operation views", true);
+        for (String channel : channels) {
+            channelNumber++;
+            List<String> chain = channelChains.get(channel);
+            Indexes registration = registrations(files, chain);
+            Set<String> names = channelOperations.get(channel);
+            int channelProcessed = 0;
+            progress.event("Channel " + channelNumber + "/" + channels.size() + " " + channel
+                + " | operation views=" + names.size(), true);
             for (String name : names) {
+                processed++;
+                channelProcessed++;
+                progress.event("Starting operation " + processed + "/" + totalOperations + " " + channel + "/" + name
+                    + " | channel operation=" + channelProcessed + "/" + names.size()
+                    + " | remaining after this=" + (totalOperations - processed), channelProcessed == 1);
                 SourceDefinitionIdentity operation;
                 try { operation = catalog.resolve("operation", name, chain, null); }
-                catch (IllegalArgumentException e) { diagnostic(channel, name, "identity", e.getMessage()); continue; }
+                catch (IllegalArgumentException e) {
+                    diagnostic(channel, name, "identity", e.getMessage());
+                    skipped++;
+                    progress.event("Skipped operation " + channel + "/" + name + ": " + e.getMessage(), true);
+                    continue;
+                }
                 writeOperation(vault, catalog, manifest, registration, chain, channel, operation, workspace, markdown);
+                completed++;
+                progress.event("Completed operation " + channel + "/" + name + " | processed=" + processed + "/"
+                    + totalOperations + " | remaining=" + (totalOperations - processed), false);
             }
             writeChannel(vault, registration, channel, chain);
+            progress.event("Completed channel " + channel + " | processed operations=" + processed + "/" + totalOperations, true);
         }
         // Keep every original occurrence, including unused, shadowed and unresolved definitions.
-        for (var definition : catalog.definitions()) writeInventory(vault, definition, manifest, workspace, markdown);
+        var inventoryDefinitions = catalog.definitions().stream().filter(d -> !inventory.contains(d.key(workspace))).toList();
+        int inventoryProcessed = 0;
+        progress.event("Writing unused source inventory: " + inventoryDefinitions.size() + " definitions", true);
+        for (var definition : inventoryDefinitions) {
+            inventoryProcessed++;
+            if (inventoryProcessed == 1 || inventoryProcessed % 100 == 0 || inventoryProcessed == inventoryDefinitions.size())
+                progress.event("Inventory " + inventoryProcessed + "/" + inventoryDefinitions.size() + " "
+                    + definition.kind() + " " + definition.name() + " | source=" + definition.file(), false);
+            writeInventory(vault, definition, manifest, workspace, markdown);
+        }
         if (report.hasFailures()) report.failedXmlFiles().forEach((file, error) ->
             diagnostic("", "", "source_parse", file + ": " + error));
         FileUtil.writeString(vault.resolve("analysis/entity-collisions.md"), "# Scoped resolution diagnostics\n\n"
             + String.join("\n", diagnostics.stream().map(d -> "- " + d.get("operation") + ": " + d.get("detail")).toList()) + "\n");
         if (report.hasFailures()) throw new IllegalArgumentException("Source parsing failures; scoped generation remains incomplete");
-        manifest.finish(vault, diagnostics, channels);
+        progress.event("Finalizing manifest and note metadata: " + manifest.noteCount() + " notes", true);
+        manifest.finish(vault, diagnostics, channels, message -> progress.event(message, false));
         Files.delete(vault.resolve("vault-generation.json"));
+        progress.event("SUCCESS | channels=" + channels.size() + " | operation views completed=" + completed
+            + " | skipped=" + skipped + " | entity notes=" + manifest.noteCount()
+            + " | inventory notes=" + inventoryProcessed + " | diagnostics=" + diagnostics.size()
+            + " | elapsed=" + MapperProgress.elapsed(started), true);
+        } catch (IOException | RuntimeException error) {
+            try { progress.event("FAILED | elapsed=" + MapperProgress.elapsed(started) + " | " + error.getMessage(), true); }
+            catch (RuntimeException loggingError) { error.addSuppressed(loggingError); }
+            throw error;
+        }
+        }
     }
 
     private Indexes registrations(List<DiscoveredFile> files, List<String> chain) {
@@ -96,7 +158,8 @@ public final class ScopedVaultGenerationService {
             index.stepToSource().putIfAbsent(step.name(), step.file());
             index.stepToOperation().put(step.name(), operation.name());
             selected.put("opStep:" + step.selector(), step);
-            boolean repeated = effectiveSteps.stream().filter(value -> value.name().equals(step.name())).count() > 1;
+            boolean repeated = effectiveSteps.stream().filter(value -> ScopedVaultPaths.stepGroupKey(value.name())
+                .equals(ScopedVaultPaths.stepGroupKey(step.name()))).count() > 1;
             String path = prefix + "/opsteps/" + (repeated ? "occurrences/" + op.getSteps().size() + "/" : "")
                 + ScopedVaultPaths.segment(step.name()) + ".md";
             paths.put("opsteps:" + step.selector(), path);
@@ -165,6 +228,13 @@ public final class ScopedVaultGenerationService {
         }
         LinkResolver links = new LinkResolver(markdown, paths);
         links.setStepFlow(new OperationStepFlow(op.getSteps()));
+        // Reserve all destinations in this operation before any of its notes are rendered.
+        for (var source : selected.values()) {
+            String path = source.kind().equals("operation") ? prefix + "/operation.md"
+                : paths.get(FOLDERS.get(source.kind()) + ":"
+                    + (source.kind().equals("opStep") ? source.selector() : source.name()));
+            manifest.reserve(source, channel, operation.name(), path);
+        }
         new OperationMarkdownWriter().write(op, index, links, vault);
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("references", paths); extra.put("java_resolution", classResolution);
@@ -230,7 +300,8 @@ public final class ScopedVaultGenerationService {
             String onlyFor = XmlUtil.attr(source.element(), "onlyFor");
             var siblings = XmlUtil.childElements((org.w3c.dom.Element) source.element().getParentNode());
             long occurrences = siblings.stream().filter(element -> element.getTagName().equals("opStep")
-                && source.name().equals(XmlUtil.attr(element, "id"))).count();
+                && ScopedVaultPaths.stepGroupKey(source.name()).equals(
+                    ScopedVaultPaths.stepGroupKey(XmlUtil.attr(element, "id")))).count();
             if (occurrences > 1 && onlyFor != null && !onlyFor.isBlank()) {
                 int fileName = path.lastIndexOf('/');
                 path = path.substring(0, fileName) + "/onlyFor/" + ScopedVaultPaths.segment(onlyFor)
@@ -245,6 +316,7 @@ public final class ScopedVaultGenerationService {
                     + "/" + ordinal + path.substring(fileName);
             }
         }
+        manifest.reserve(source, source.channel() == null ? "" : source.channel(), "", path);
         // Render full original sections even when an occurrence has no selected consumer.
         Indexes index = Indexes.create();
         LinkResolver links = new LinkResolver(markdown, Map.of(FOLDERS.get(source.kind()) + ":" + source.name(), path));

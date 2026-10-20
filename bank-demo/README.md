@@ -22,8 +22,8 @@ server framework types still require their own implementations.
 | Workspace | Channel | Operations |
 |---|---|---|
 | `WSBCC_XML` | XML | None — shared base definitions only |
-| `WSBCC_INTERNET` | INTERNET | GetClientAccountsOp, GetAccountDetailsOp, TransferFundsOp, GetClientLinksOp, ValidateClientLinksOp, GetClientOverviewOp |
-| `WSBCC_IVR` | IVR | GetClientAccountsOp (IVR variant), GetAccountBalanceOp |
+| `WSBCC_INTERNET` | INTERNET | GetClientAccountsOp, GetAccountDetailsOp, TransferFundsOp, GetClientLinksOp, ValidateClientLinksOp, GetClientOverviewOp, ClientCallFlowDemoOp |
+| `WSBCC_IVR` | IVR | GetClientAccountsOp (IVR variant), GetAccountBalanceOp, ClientCallFlowDemoOp |
 
 ## Operation Summary
 
@@ -60,6 +60,29 @@ The demo `com.ibm.il.dse.cc.cut.CCComplexOpStep` resolves the configured
 `opExecuteName` through a registered operation executor, shares the caller context,
 and propagates its return code. Native conversion replaces that dispatch with an
 HTTP client. See [operation-call conversion](../docs/operation_calls.md).
+
+## Repeated step labels and channel-specific calls
+
+`ClientCallFlowDemoOp` is registered in both INTERNET and IVR. Its source XML in each channel contains three `CallClientOperation` occurrences, all implemented by `CCComplexOpStep`:
+
+| Source order | Restriction | Called operation |
+| --- | --- | --- |
+| 1 | Unrestricted | `GetClientAccountsOp` in the consuming channel |
+| 2 | `onlyFor="internet"` | `GetClientLinksOp` |
+| 3 | `onlyFor="ivr"` | `GetAccountBalanceOp` |
+
+Each channel therefore has two executable occurrences with the same ID and implementation but different `opExecuteName` values. The unrestricted call uses `on0Do="next"`, which advances to the applicable second occurrence after channel filtering. Both channel variants end after their call; unsuccessful calls end immediately. The unused variant remains in the scoped resource inventory. This covers repeated IDs in one effective flow, the same labels in different operations/channels, lowercase `onlyFor`, positional routing, and distinct operation-call dependencies.
+
+The request contains `ClientId` and `SessionToken` for INTERNET, or `ClientId`, `AccountNumber`, and `Pin` for IVR. Credentials use the existing log-masking decorator. The example reuses `BaseOpCtxt`, defines its own simple request/reply formats, and retains `StandardErrorRSFmt`. Successful execution still requires the existing demo database/service dependencies of the called operations.
+
+Expected scoped results:
+
+- INTERNET calls `GetClientAccountsOp` then `GetClientLinksOp`.
+- IVR calls `GetClientAccountsOp` then `GetAccountBalanceOp`.
+- Both demo operation views have migration wave 2 and two distinct callees.
+- Full-workspace discovery has 10 operation views and 7 call sites; the existing overview chain remains unchanged.
+
+Use scoped output for these examples: legacy output cannot preserve repeated step labels reliably. They are converter acceptance inputs; full scoped conversion remains gated until the [converter implementation plan](../docs/plans/scoped_vault_converter_implementation_plan.md) is implemented. Adding these fixtures does not enable that conversion path.
 
 ## Shared Components
 
@@ -98,16 +121,16 @@ time parsing, timezone conversion, and Reuters behavior are outside their scope.
 java -jar composer-mapper.jar \
   --root  "path/to/bank-demo/composer/Workspace" \
   --vault "path/to/output/vault" \
+  --vault-layout scoped \
+  --workspace-id bank-demo \
   --md \
   --channel INTERNET
 ```
 
-Expected output:
-- 6 operation notes (GetClientAccountsOp, GetAccountDetailsOp,
-  TransferFundsOp, GetClientLinksOp, ValidateClientLinksOp, GetClientOverviewOp)
-- 28 opStep notes
-- ~10 format notes
-- 6 context notes
-- ~32 Java class notes
-- channels/INTERNET.md
-- analysis/channel-operation-registry.md
+Expected scoped output with `--channel INTERNET`:
+- 7 operation views, including `ClientCallFlowDemoOp`, under `channels/INTERNET/operations/`
+- Separate occurrence notes for the demo's two applicable `CallClientOperation` steps
+- 5 operation-call sites, including the original three-call overview chain
+- Channel resource inventory, `vault-manifest.json`, and resolution diagnostics
+
+Omit `--channel INTERNET` to generate both channel examples: 10 operation views and 7 call sites. Use a new or empty destination. Existing ambiguous context declarations in other demo operations remain reported separately; the new call-flow examples do not resolve or suppress those diagnostics.

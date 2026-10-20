@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XML>
+  <!-- Same flow example in INTERNET and IVR: IDs label occurrences, not unique steps. -->
+  <CCDSEServerOperation id="ClientCallFlowDemoOp" operationContext="BaseOpCtxt">
+    <!-- Both channels first fetch accounts. next must reach the selected second occurrence. -->
+    <opStep id="CallClientOperation"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="GetClientAccountsOp"
+            on0Do="next" onOtherDo="end"/>
+    <opStep id="CallClientOperation" onlyFor="internet"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="GetClientLinksOp"
+            on0Do="end" onOtherDo="end"/>
+    <opStep id="CallClientOperation" onlyFor="ivr"
+            implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep"
+            opExecuteName="GetAccountBalanceOp"
+            on0Do="end" onOtherDo="end"/>
+    <refFormat name="csRequestFormat" refid="ClientCallFlowDemoRQFmt"/>
+    <refFormat name="csReplyFormat" refid="ClientCallFlowDemoRSFmt"/>
+    <refFormat name="csErrorReplyFormat" refid="StandardErrorRSFmt"/>
+  </CCDSEServerOperation>
+
+  <fmtDef id="ClientCallFlowDemoRQFmt">
+    <CCXML dataName="ClientCallFlowDemo">
+      <CCString dataName="ClientId"/>
+      <CCString dataName="AccountNumber"/>
+      <CCString dataName="Pin"/>
+      <MaskLogDecorator/>
+    </CCXML>
+  </fmtDef>
+  <fmtDef id="ClientCallFlowDemoRSFmt">
+    <CCXML dataName="ClientCallFlowDemoResult">
+      <CCString dataName="ClientId"/>
+    </CCXML>
+  </fmtDef>
+</XML>

@@ -12,11 +12,27 @@ public final class VaultManifestWriter {
     private final String workspace;
     private final List<Map<String, Object>> entries = new ArrayList<>();
     private final Set<String> paths = new HashSet<>();
+    private final Map<String, String> reservations = new HashMap<>();
 
     public VaultManifestWriter(String workspace) { this.workspace = workspace; }
 
+    /** Reserves a destination before rendering so a later occurrence cannot overwrite it. */
+    public void reserve(SourceDefinitionIdentity source, String channel, String operation, String path) {
+        String owner = describe(source, channel, operation);
+        String previous = reservations.putIfAbsent(path.toLowerCase(Locale.ROOT), owner);
+        if (previous != null) throw new IllegalArgumentException("Duplicate note path before writing: " + path
+            + " | first: " + previous + " | conflicting: " + owner);
+    }
+
+    private String describe(SourceDefinitionIdentity source, String channel, String operation) {
+        return source.kind() + " " + source.name() + " | channel=" + channel + " | operation=" + operation
+            + " | source=" + source.file().toAbsolutePath().normalize() + "#" + source.selector();
+    }
+
     public Map<String, Object> record(Path vault, SourceDefinitionIdentity source, String channel,
             String operation, String operationIdentity, String path, Map<String, Object> extra) throws IOException {
+        if (!describe(source, channel, operation).equals(reservations.get(path.toLowerCase(Locale.ROOT))))
+            throw new IllegalArgumentException("Note destination was not reserved for this occurrence: " + path);
         if (!paths.add(path.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("Duplicate note path: " + path);
         String definition = source.key(workspace);
         String usage = SourceDefinitionIdentity.digest(channel, operationIdentity, definition, path);
@@ -44,13 +60,23 @@ public final class VaultManifestWriter {
     }
 
     public void finish(Path vault, List<Map<String, Object>> diagnostics, List<String> channels) throws IOException {
+        finish(vault, diagnostics, channels, message -> {});
+    }
+
+    /** Finalizes the same manifest with progress callbacks for long metadata passes. */
+    public void finish(Path vault, List<Map<String, Object>> diagnostics, List<String> channels,
+                       java.util.function.Consumer<String> progress) throws IOException {
         Map<String, Set<String>> consumersByDefinition = new HashMap<>();
         for (var entry : entries) {
             String operation = entry.get("operation_identity").toString();
             if (!operation.isBlank()) consumersByDefinition.computeIfAbsent(entry.get("definition_id").toString(),
                 ignored -> new TreeSet<>()).add(operation);
         }
+        int processed = 0;
         for (var entry : entries) {
+            processed++;
+            if (processed == 1 || processed % 100 == 0 || processed == entries.size())
+                progress.accept("Finalizing note " + processed + "/" + entries.size() + ": " + entry.get("note"));
             var consumers = consumersByDefinition.getOrDefault(entry.get("definition_id").toString(), Set.of()).stream().toList();
             entry.put("qualified_consumers", consumers);
             if (entry.get("kind").equals("format") || entry.get("kind").equals("context")) {
@@ -68,7 +94,11 @@ public final class VaultManifestWriter {
         manifest.put("workspace_id", workspace); manifest.put("channels", channels);
         manifest.put("entities", entries); manifest.put("diagnostics", diagnostics);
         Path temporary = vault.resolve("vault-manifest.json.tmp");
+        progress.accept("Writing manifest: " + entries.size() + " notes");
         FileUtil.writeString(temporary, JsonOutput.encode(manifest) + "\n");
         Files.move(temporary, vault.resolve("vault-manifest.json"), StandardCopyOption.ATOMIC_MOVE);
     }
+
+    /** Reports the actual number of entity notes recorded for the final summary. */
+    public int noteCount() { return entries.size(); }
 }

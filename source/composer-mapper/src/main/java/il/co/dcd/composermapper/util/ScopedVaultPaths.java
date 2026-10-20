@@ -8,6 +8,11 @@ public final class ScopedVaultPaths {
         return SafePathNames.segment(name, false);
     }
 
+    /** Groups step filenames as Windows does, without changing the source label or routing. */
+    public static String stepGroupKey(String name) {
+        return segment(name).toLowerCase(java.util.Locale.ROOT);
+    }
+
     public static String operation(String channel, String operation) {
         return "channels/" + segment(channel) + "/operations/" + segment(operation);
     }

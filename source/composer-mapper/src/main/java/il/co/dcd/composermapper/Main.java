@@ -10,6 +10,7 @@ import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) {
+        long started = System.nanoTime();
         Args a = Args.parse(args);
 
         Path root    = a.requiredPath("root");
@@ -19,6 +20,8 @@ public class Main {
         String  channel       = a.optional("channel");   // null if not provided
 
         FileDiscoveryService discovery = new FileDiscoveryService();
+        if ("scoped".equals(a.optional("vault-layout")))
+            System.out.println(MapperProgress.stamp("Discovering source files: " + root));
         var files = discovery.discover(root, channel);
         ProcessingReport report = new ProcessingReport();
 
@@ -28,7 +31,7 @@ public class Main {
         if ("scoped".equals(layout)) {
             try {
                 new ScopedVaultGenerationService().generate(root, vault, files, channel,
-                    a.optional("workspace-id"), markdownLinks, report);
+                    a.optional("workspace-id"), markdownLinks, report, started);
             } catch (java.io.IOException e) {
                 throw new RuntimeException("Failed generating scoped vault", e);
             }
