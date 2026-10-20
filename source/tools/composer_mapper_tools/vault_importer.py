@@ -39,6 +39,12 @@ def import_vault(
 ) -> VaultImportSummary:
     summary = VaultImportSummary()
     root = Path(vault_root)
+    from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
+    from tools.composer_mapper_tools.scoped_vault_importer import import_scoped_vault, require_qualified_conversion
+    manifest = read_vault_manifest(root)
+    if manifest is not None:
+        return import_scoped_vault(conn, root, manifest, run_config, summary)
+    require_qualified_conversion(conn, run_config.run_id)
 
     for operation_name, channel, xml_file_path in parse_channel_operation_registry(
         str(root / "analysis" / "channel-operation-registry.md")

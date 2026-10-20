@@ -36,11 +36,19 @@ def plan_contracts(conn, run_id, graph, vault):
     for path in (root / 'formats').rglob('*.md'):
         text = path.read_text(encoding='utf-8-sig')
         format_notes.setdefault(parse_frontmatter(text).get('entity_id'), []).append(text)
+    from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
+    manifest = read_vault_manifest(root)
+    scoped_formats = {}
+    if manifest is not None:
+        for entry in manifest['entities']:
+            if entry['kind'] == 'format' and entry.get('operation_id'):
+                identity = (entry['channel'] + '/' + entry['operation_id'], entry['entity_id'])
+                scoped_formats.setdefault(identity, []).append((root / entry['note']).read_text(encoding='utf-8-sig'))
     for key, operation in graph['operations'].items():
         formats = {}
         for role, name in operation['ref_formats'].items():
             # Mapper encodes unsafe filename characters; resolve by entity identity.
-            matches = format_notes.get(name, [])
+            matches = scoped_formats.get((key, name), []) if manifest is not None else format_notes.get(name, [])
             formats[role] = dict(name=name, markdown=matches[0]) if len(matches) == 1 else dict(name=name, unresolved=True)
         contract = dict(operation=key, method='POST', path='/operations/' + '/'.join(quote(part, safe='') for part in key.split('/')),
             media_type='application/xml', base_url_property='operations.' + hashlib.sha256(key.encode()).hexdigest()[:12] + '.base-url',

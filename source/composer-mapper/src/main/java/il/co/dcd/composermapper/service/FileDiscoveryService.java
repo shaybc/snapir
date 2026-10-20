@@ -17,6 +17,7 @@ public class FileDiscoveryService {
      * Discovers all WSBCC source files under root.
      * Extracts channel name from the path structure:
      *   .../Channel/{CHANNEL}/... or .../Channel/{CHANNEL}/dse.ini
+     * Java packages alongside Xml Definition inherit its declared channel under the same src folder.
      *
      * @param root   workspace root path
      * @param channel optional channel filter — includes the selected channel and
@@ -44,6 +45,7 @@ public class FileDiscoveryService {
         } catch (IOException e) {
             throw new RuntimeException("Failed scanning: " + root, e);
         }
+        assignJavaSourceChannels(out);
         if (channel != null && !channel.isBlank()) {
             List<String> channels = new ChannelImportResolver().resolve(out, channel);
             out.removeIf(file -> file.channel() != null && !channels.contains(file.channel().toUpperCase(Locale.ROOT)));
@@ -62,6 +64,34 @@ public class FileDiscoveryService {
 
     private boolean isKnownNonComposerXml(String fileName) {
         return KNOWN_NON_COMPOSER_XML.contains(fileName);
+    }
+
+    /** Associate Java packages with the channel declared beneath their containing src folder. */
+    private void assignJavaSourceChannels(List<DiscoveredFile> files) {
+        Map<Path, Set<String>> sourceChannels = new HashMap<>();
+        for (var file : files) {
+            if (file.channel() == null || !file.path().getFileName().toString().equalsIgnoreCase("dse.ini")) continue;
+            Path channelFolder = file.path().getParent();
+            Path channelsFolder = channelFolder.getParent();
+            Path definitionsFolder = channelsFolder == null ? null : channelsFolder.getParent();
+            Path sourceFolder = definitionsFolder == null ? null : definitionsFolder.getParent();
+            if (sourceFolder != null && "Channel".equalsIgnoreCase(channelsFolder.getFileName().toString())
+                    && "Xml Definition".equalsIgnoreCase(definitionsFolder.getFileName().toString())
+                    && "src".equalsIgnoreCase(sourceFolder.getFileName().toString()))
+                sourceChannels.computeIfAbsent(sourceFolder, ignored -> new LinkedHashSet<>()).add(file.channel());
+        }
+        var iterator = files.listIterator();
+        while (iterator.hasNext()) {
+            var file = iterator.next();
+            if (file.channel() != null || file.type() != DiscoveredFile.FileType.JAVA) continue;
+            for (Path parent = file.path().getParent(); parent != null; parent = parent.getParent()) {
+                Set<String> channels = sourceChannels.get(parent);
+                if (channels == null) continue;
+                if (channels.size() == 1)
+                    iterator.set(new DiscoveredFile(file.path(), file.type(), channels.iterator().next()));
+                break;
+            }
+        }
     }
 
     /**

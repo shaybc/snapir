@@ -14,7 +14,7 @@ import java.util.*;
 public class OperationMarkdownWriter {
 
     public void write(OperationDef op, Indexes x, LinkResolver links, Path vault) {
-        Path out = vault.resolve("operations").resolve(SafePathNames.document(op.getId()));
+        Path out = links.documentPath(vault, "operations", op.getId());
         String channel = x.channelForOperation().get(op.getId());
         StringBuilder sb = new StringBuilder();
 

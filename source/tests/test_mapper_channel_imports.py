@@ -87,3 +87,37 @@ def test_all_channel_notes_keep_unrelated_tag_mappings_separate(tmp_path, mapper
         (vault / "channels/INTERNET.md").read_text(), "INTERNET")
     assert ("CCString", "org.example.IvrString", "IVR") in parse_channel_note(
         (vault / "channels/IVR.md").read_text(), "IVR")
+
+
+def test_java_source_channel_association_precedes_import_filtering(tmp_path, mapper_classes):
+    root = tmp_path / 'workspace'
+    for project, channel, imported in [('arbitrary-a', 'INTERNET', 'BASE'), ('arbitrary-b', 'BASE', None), ('arbitrary-c', 'IVR', None)]:
+        source = root / project / 'src'
+        declaration = source / 'Xml Definition/Channel' / channel
+        declaration.mkdir(parents=True)
+        imports = f'<kColl id="import"><field id="{imported}"/></kColl>' if imported else ''
+        (declaration / 'dse.ini').write_text('<dse.ini>' + imports + '</dse.ini>')
+        java = source / 'org/example' / (channel + 'Class.java')
+        java.parent.mkdir(parents=True)
+        java.write_text(f'package org.example;\npublic class {channel}Class {{}}')
+    harness = tmp_path / 'DiscoveryChannels.java'
+    harness.write_text('''import java.nio.file.Path;
+import il.co.dcd.composermapper.service.FileDiscoveryService;
+public class DiscoveryChannels {
+  public static void main(String[] args) {
+    new FileDiscoveryService().discover(Path.of(args[0]), args.length > 1 ? args[1] : null).stream()
+      .filter(f -> f.path().toString().endsWith(".java"))
+      .forEach(f -> System.out.println(f.path().getFileName() + "=" + f.channel()));
+  }
+}''')
+    compile_result = subprocess.run(['javac', '--release', JAVA_VERSION, '-cp', str(mapper_classes),
+        '-d', str(tmp_path), str(harness)], capture_output=True, text=True, timeout=30)
+    assert compile_result.returncode == 0, compile_result.stderr
+    import os
+    command = ['java', '-cp', str(tmp_path) + os.pathsep + str(mapper_classes), 'DiscoveryChannels', str(root)]
+    all_channels = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    assert all_channels.returncode == 0, all_channels.stderr
+    assert set(all_channels.stdout.splitlines()) == {'INTERNETClass.java=INTERNET', 'BASEClass.java=BASE', 'IVRClass.java=IVR'}
+    selected = subprocess.run([*command, 'INTERNET'], capture_output=True, text=True, timeout=30)
+    assert selected.returncode == 0, selected.stderr
+    assert set(selected.stdout.splitlines()) == {'INTERNETClass.java=INTERNET', 'BASEClass.java=BASE'}

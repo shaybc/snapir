@@ -9,6 +9,7 @@ from tools.composer_mapper_tools.frontmatter_parser import parse_section, parse_
 from tools.composer_mapper_tools.operation_parser import parse_operation_note
 from tools.composer_mapper_tools.opstep_parser import parse_opstep_note
 from tools.composer_mapper_tools.channel_registry_parser import parse_channel_operation_registry
+from tools.composer_mapper_tools.vault_manifest import operation_note_paths, read_vault_manifest
 
 COMPLEX_CLASS = "com.ibm.il.dse.cc.cut.CCComplexOpStep"
 
@@ -34,12 +35,15 @@ def _note_path(root, owner, target):
 def discover_operation_calls(vault):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
-    if not (root / 'operations').is_dir():
-        raise ValueError("Missing operations folder: " + str(root))
+    manifest = read_vault_manifest(root)
+    note_paths = operation_note_paths(root, manifest)
     registry = parse_channel_operation_registry(str(root / 'analysis/channel-operation-registry.md'))
     operations, calls, issues = {}, [], []
+    if manifest is not None:
+        issues.extend(dict(operation=item.get('operation', ''), step=item.get('step', ''), detail=item['detail'])
+                      for item in manifest.get('diagnostics', []) if item.get('kind') in {'identity', 'source_parse'})
     documents = []
-    for path in sorted((root / 'operations').rglob('*.md')):
+    for path in note_paths:
         text = path.read_text(encoding='utf-8-sig')
         op = parse_operation_note(text, str(path))
         channels = {op.channel} if op.channel else {channel for name, channel, _ in registry if name == op.id}

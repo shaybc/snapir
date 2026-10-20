@@ -13,8 +13,7 @@ import java.util.Set;
 public class JavaClassMarkdownWriter {
 
     public void write(JavaClassDef j, Indexes x, LinkResolver links, Path vault) {
-        Path out = vault.resolve(
-            SafePathNames.classPathWithoutExtension(j.getFullyQualifiedName()) + ".md");
+        Path out = links.documentPath(vault, "classes", j.getFullyQualifiedName());
         StringBuilder sb = new StringBuilder();
 
         sb.append("# ").append(j.getFullyQualifiedName())

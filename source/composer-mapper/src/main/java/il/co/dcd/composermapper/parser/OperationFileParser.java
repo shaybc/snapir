@@ -29,6 +29,9 @@ public class OperationFileParser {
         for (Element c : XmlUtil.childElements(e)) walk(c, xml, out);
     }
 
+    /** Parse an exact catalog occurrence without selecting a same-name sibling. */
+    public OperationDef parseDefinition(Element e, Path xml) { return parseOperation(e, xml); }
+
     private OperationDef parseOperation(Element e, Path xml) {
         OperationDef op = new OperationDef();
         op.setId(XmlUtil.attr(e, "id"));
@@ -59,6 +62,11 @@ public class OperationFileParser {
             }
         }
         return op;
+    }
+
+    /** Parse an exact step occurrence in its verified owning operation. */
+    public OpStepDef parseStepDefinition(Element e, String opId, Path xml) {
+        return parseStep(e, opId, xml);
     }
 
     private OpStepDef parseStep(Element e, String opId, Path xml) {

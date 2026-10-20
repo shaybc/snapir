@@ -22,6 +22,23 @@ public class Main {
         var files = discovery.discover(root, channel);
         ProcessingReport report = new ProcessingReport();
 
+        String layout = a.optional("vault-layout");
+        if (layout != null && !layout.equals("legacy") && !layout.equals("scoped"))
+            throw new IllegalArgumentException("--vault-layout must be legacy or scoped");
+        if ("scoped".equals(layout)) {
+            try {
+                new ScopedVaultGenerationService().generate(root, vault, files, channel,
+                    a.optional("workspace-id"), markdownLinks, report);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed generating scoped vault", e);
+            }
+            if (report.hasFailures()) throw new IllegalStateException("Scoped vault has source parsing failures; inspect manifest diagnostics");
+            System.out.println("Done. Scoped vault manifest: " + vault.resolve("vault-manifest.json"));
+            return;
+        }
+
+        var legacyCollisions = LegacyVaultCollisionCheck.find(root, files, report);
+        legacyCollisions.forEach(System.err::println);
         Indexes indexes = new IndexBuildService().build(files, report);
         new VaultPreparationService().prepare(vault, clean);
 
@@ -32,6 +49,16 @@ public class Main {
             new FormatMarkdownWriter(),    new ContextMarkdownWriter(),
             new JavaClassMarkdownWriter(), new LinkResolver(markdownLinks)
         ).generate(files, indexes, vault, report);
+
+        if (!legacyCollisions.isEmpty()) {
+            try {
+                il.co.dcd.composermapper.util.FileUtil.writeString(vault.resolve("analysis/entity-collisions.md"),
+                    "# Legacy identity collisions\n\nThese source occurrences cannot be represented independently in the legacy layout.\n\n"
+                    + String.join("\n", legacyCollisions.stream().map(value -> "- " + value).toList()) + "\n");
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed recording legacy collisions", e);
+            }
+        }
 
         System.out.println("Done."
             + " ops="      + indexes.operationToSource().size()

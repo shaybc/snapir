@@ -38,6 +38,8 @@ def build_operation_closure(
     profile=None,
 ) -> OperationClosure:
     """Build, validate, and store a deterministic operation closure."""
+    from tools.composer_mapper_tools.scoped_vault_importer import require_qualified_conversion
+    require_qualified_conversion(conn, run_id)
     operation = _required_artifact(conn, run_id, "operation", operation_id)
     metadata = loads(operation["metadata_json"], {}) or {}
     external_records = []

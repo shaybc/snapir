@@ -13,7 +13,7 @@ import java.util.Set;
 public class OpStepMarkdownWriter {
 
     public void write(OpStepDef s, Indexes x, LinkResolver links, Path vault) {
-        Path out = vault.resolve("opsteps").resolve(SafePathNames.document(s.getId()));
+        Path out = links.documentPath(vault, "opsteps", s.getId());
         String impl = s.getImplClass();
         if ((impl == null || impl.isBlank()) && x.tagToClass().containsKey("opStep"))
             impl = x.tagToClass().get("opStep");

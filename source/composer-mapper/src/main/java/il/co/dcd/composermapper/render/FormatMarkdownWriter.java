@@ -14,7 +14,7 @@ import java.util.Set;
 public class FormatMarkdownWriter {
 
     public void write(FormatDef f, Indexes x, LinkResolver links, Path vault) {
-        Path out = vault.resolve("formats").resolve(SafePathNames.document(f.getId()));
+        Path out = links.documentPath(vault, "formats", f.getId());
         StringBuilder sb = new StringBuilder();
 
         sb.append("# ").append(f.getId())

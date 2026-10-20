@@ -21,6 +21,9 @@ public class FormatFileParser {
         for (Element c : XmlUtil.childElements(e)) walk(c, xml, x, out);
     }
 
+    /** Parse an exact catalog occurrence without selecting a same-name sibling. */
+    public FormatDef parseDefinition(Element e, Path xml, Indexes x) { return parseFormat(e, xml, x); }
+
     private FormatDef parseFormat(Element e, Path xml, Indexes x) {
         FormatDef f = new FormatDef();
         f.setId(XmlUtil.attr(e, "id"));

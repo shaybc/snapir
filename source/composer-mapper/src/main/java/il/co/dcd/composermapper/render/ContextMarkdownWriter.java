@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 public class ContextMarkdownWriter {
   public void write(ContextDef c, Indexes x, LinkResolver links, Path vault) {
-    Path out = vault.resolve("contexts").resolve(SafePathNames.document(c.getId()));
+    Path out = links.documentPath(vault, "contexts", c.getId());
     StringBuilder sb = new StringBuilder();
 
     sb.append("# ").append(c.getId())
