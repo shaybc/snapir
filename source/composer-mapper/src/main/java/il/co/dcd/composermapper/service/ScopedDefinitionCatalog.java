@@ -5,6 +5,7 @@ import il.co.dcd.composermapper.index.JavaClassIndexer;
 import il.co.dcd.composermapper.model.DiscoveredFile;
 import il.co.dcd.composermapper.model.SourceDefinitionIdentity;
 import il.co.dcd.composermapper.util.XmlUtil;
+import il.co.dcd.composermapper.util.FormatCollectionPolicy;
 import java.nio.file.Path;
 import java.util.*;
 import org.w3c.dom.Element;
@@ -42,6 +43,7 @@ public final class ScopedDefinitionCatalog {
                     "java_class", name, file.channel(), path, relative(root, path), name, "", null)));
             }
         }
+        discardOverriddenFormats();
         for (var definition : definitions) {
             names.computeIfAbsent(definition.kind(), ignored -> new HashMap<>())
                 .computeIfAbsent(definition.name(), ignored -> new ArrayList<>()).add(definition);
@@ -51,6 +53,12 @@ public final class ScopedDefinitionCatalog {
     }
 
     public List<SourceDefinitionIdentity> definitions() { return List.copyOf(definitions); }
+
+    /** Omits formats replaced in a keyed scope, including their nested definitions. */
+    private void discardOverriddenFormats() {
+        definitions.removeIf(definition -> definition.kind().equals("format")
+            && !FormatCollectionPolicy.effective(definition.element()));
+    }
 
     public List<SourceDefinitionIdentity> steps(SourceDefinitionIdentity operation) {
         return List.copyOf(steps.getOrDefault(new Owner(operation.file(), operation.selector()), List.of()));

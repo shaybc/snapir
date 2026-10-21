@@ -392,6 +392,37 @@ def test_operation_paths_are_reserved_before_any_note_is_written(tmp_path, scope
     assert not (vault / 'vault-manifest.json').exists()
 
 
+@pytest.mark.parametrize('selected', [False, True])
+@pytest.mark.parametrize('identical', [False, True])
+def test_duplicate_registry_formats_use_last_declaration(tmp_path, scoped_mapper, selected, identical):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    channel.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('<dse.ini/>')
+    source = channel / 'formats.xml'
+    operation = '<CCDSEServerOperation id="A"><refFormat name="csRequestFormat" refid="Repeated"/></CCDSEServerOperation>' if selected else ''
+    first_value = 'LastValue' if identical else 'FirstValue'
+    source.write_text(f'''<XML>{operation}
+      <fmtDef id="Repeated"><CCXML dataName="{first_value}">
+        <fmtDef id="Child"><CCString dataName="OldChild"/></fmtDef>
+      </CCXML></fmtDef>
+      <fmtDef id="Repeated"><CCXML dataName="LastValue">
+        <fmtDef id="Child"><CCString dataName="{'OldChild' if identical else 'NewChild'}"/></fmtDef>
+      </CCXML></fmtDef>
+    </XML>''', encoding='utf-8')
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    formats = [entry for entry in read_vault_manifest(vault)['entities'] if entry['kind'] == 'format']
+    assert len(formats) == 2
+    parent = next(entry for entry in formats if entry['entity_id'] == 'Repeated')
+    assert parent['source_selector'] == '/XML[1]/fmtDef[2]'
+    assert 'LastValue' in (vault / parent['note']).read_text(encoding='utf-8')
+    child = next(entry for entry in formats if entry['entity_id'] == 'Child')
+    assert child['source_selector'].startswith('/XML[1]/fmtDef[2]/')
+    assert source.read_bytes() == original
+
+
 @pytest.mark.parametrize('markdown', [True, False])
 @pytest.mark.parametrize('parent_selected', [False, True])
 def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, scoped_mapper, markdown, parent_selected):
@@ -403,7 +434,7 @@ def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, s
     operation = '<CCDSEServerOperation id="A"><refFormat name="hostSendFormat" refid="GAC4HostSeFmt"/></CCDSEServerOperation>' if parent_selected else ''
     source = folder / 'Alt_GAC4.xml'
     source.write_text('''<XML>OPERATION
-      <fmtDef id="GAC4HostSeFmt"><PSIONewXMLFormat txnName="GAC4">
+      <fmtDef id="GAC4HostSeFmt"><CCIColl dataName="GAC4">
         <refFmt refid="AltMessageHeaderFmt"/>
         <fmtDef id="GAC4HostSeSwitchCaseFmt"><SwitchCaseFormat>
           <caseRefFmt keyName="RequestID" keyValue="1"><refFmt refid="RequestBranchFmt"/></caseRefFmt>
@@ -414,7 +445,7 @@ def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, s
         <fmtDef id="GAC4HostSeSwitchCaseFmt"><SwitchCaseFormat>
           <caseRefFmt keyName="AccountNumberFlag" keyValue="N"><refFmt refid="SessionDataFmt"/></caseRefFmt>
         </SwitchCaseFormat></fmtDef>
-      </PSIONewXMLFormat></fmtDef>
+      </CCIColl></fmtDef>
       <fmtDef id="GAC4NextHostSeFmt"><PSIONewXMLFormat><refFmt refid="RequestBranchFmt"/></PSIONewXMLFormat></fmtDef>
       <fmtDef id="AltMessageHeaderFmt"><CCString dataName="Header"/></fmtDef>
       <fmtDef id="RequestBranchFmt"><CCString dataName="Request"/></fmtDef>
@@ -435,8 +466,8 @@ def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, s
     assert next(entry for entry in formats if entry['entity_id'] == 'GAC4NextHostSeFmt')['note'] == base + 'GAC4NextHostSeFmt.md'
     nested = sorted([entry for entry in formats if entry['entity_id'] == 'GAC4HostSeSwitchCaseFmt'],
                     key=lambda entry: entry['nested_format_index'])
-    selectors = ['/XML[1]/fmtDef[1]/PSIONewXMLFormat[1]/fmtDef[1]',
-                 '/XML[1]/fmtDef[1]/PSIONewXMLFormat[1]/fmtDef[2]']
+    selectors = ['/XML[1]/fmtDef[1]/CCIColl[1]/fmtDef[1]',
+                 '/XML[1]/fmtDef[1]/CCIColl[1]/fmtDef[2]']
     for ordinal, (entry, selector) in enumerate(zip(nested, selectors), 1):
         assert entry['note'] == base + f'GAC4HostSeFmt/nested/{ordinal}/GAC4HostSeSwitchCaseFmt.md'
         assert entry['source_selector'] == selector
@@ -461,6 +492,84 @@ def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, s
     assert 'refid="AltMessageHeaderFmt"' in outer_text
     assert source.read_bytes() == original
     assert not (vault / 'vault-generation.json').exists()
+
+
+@pytest.mark.parametrize('wrapper', [
+    'AmtaIColl', 'CCIColl', 'ICollFEditQry', 'ICollFEditQryWEB',
+    'IndexedCollectionFormatHolder', 'IndexedCollectionToFormat', 'IndexedCollFormat',
+    'IColl', 'ICollSetLength', 'IndexCollectionFormatDLS', 'IndexCollectionFormatDLSWEB',
+    'CCIndexedCollectionFormat',
+])
+def test_confirmed_indexed_wrappers_preserve_repeated_children(tmp_path, scoped_mapper, wrapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    channel.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('<dse.ini/>')
+    source = channel / 'formats.xml'
+    source.write_text(f'''<XML>
+      <fmtDef id="Parent"><{wrapper}>
+        <CCString dataName="Value" marker="FirstField"/>
+        <CCString dataName="Value" marker="LastField"/>
+        <fmtDef id="Repeated"><CCString dataName="FirstChild"/></fmtDef>
+        <fmtDef id="Repeated"><CCString dataName="LastChild"/></fmtDef>
+      </{wrapper}></fmtDef>
+    </XML>''', encoding='utf-8')
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    formats = [entry for entry in read_vault_manifest(vault)['entities'] if entry['kind'] == 'format']
+    assert len(formats) == 3
+    parent = next(entry for entry in formats if entry['entity_id'] == 'Parent')
+    text = (vault / parent['note']).read_text(encoding='utf-8')
+    assert text.index('FirstField') < text.index('LastField')
+    assert text.index('FirstChild') < text.index('LastChild')
+    repeated = [entry for entry in formats if entry['entity_id'] == 'Repeated']
+    assert len({entry['note'] for entry in repeated}) == 2
+    assert len({entry['definition_id'] for entry in repeated}) == 2
+    assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('wrapper', ['CCXML', 'PS10NewXMLFormat', 'PS10XMLFormat', 'PSIONewXMLFormat', 'CustomWrapper'])
+def test_keyed_wrappers_keep_last_child_and_its_decorators(tmp_path, scoped_mapper, wrapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    channel.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('''<dse.ini><kColl id="settings"><kColl id="tags"><kColl id="formats">
+      <field id="TestDecorator" value="example.TestDecorator"/>
+    </kColl></kColl></kColl></dse.ini>''')
+    source = channel / 'formats.xml'
+    source.write_text(f'''<XML>
+      <CCDSEServerOperation id="A"><refFormat name="csRequestFormat" refid="Parent"/></CCDSEServerOperation>
+      <fmtDef id="Parent"><{wrapper}>
+        <CCString dataName="Value" marker="OldField"/>
+        <TestDecorator marker="OldDecorator"/>
+        <CCConstant dataName="Value" marker="NewField"/>
+        <TestDecorator marker="NewDecorator"/>
+        <CCString dataName="value" marker="DifferentCaseKey"/>
+        <refFmt refid="Target"/><refFmt refid="Target"/>
+        <CCString marker="UnnamedFirst"/><CCString marker="UnnamedSecond"/>
+        <fmtDef id="Repeated"><CCString dataName="OldChild"/></fmtDef>
+        <fmtDef id="Repeated"><CCString dataName="NewChild"/></fmtDef>
+      </{wrapper}></fmtDef>
+      <fmtDef id="OtherParent"><CCXML><fmtDef id="Repeated"><CCString dataName="OtherScope"/></fmtDef></CCXML></fmtDef>
+    </XML>''', encoding='utf-8')
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    formats = [entry for entry in read_vault_manifest(vault)['entities'] if entry['kind'] == 'format']
+    assert len(formats) == 4
+    parent = next(entry for entry in formats if entry['entity_id'] == 'Parent')
+    text = (vault / parent['note']).read_text(encoding='utf-8')
+    for absent in ('OldField', 'OldDecorator', 'OldChild'):
+        assert absent not in text
+    for present in ('NewField', 'NewDecorator', 'NewChild', 'DifferentCaseKey', 'UnnamedFirst', 'UnnamedSecond'):
+        assert present in text
+    assert text.count('<refFmt refid="Target"') == 2
+    repeated = [entry for entry in formats if entry['entity_id'] == 'Repeated']
+    assert len(repeated) == 2
+    assert any(entry['source_selector'] == f'/XML[1]/fmtDef[1]/{wrapper}[1]/fmtDef[2]' for entry in repeated)
+    assert any(entry['source_selector'].startswith('/XML[1]/fmtDef[2]/') for entry in repeated)
+    assert source.read_bytes() == original
 
 
 def test_xml_error_includes_full_source_path_and_position(tmp_path, scoped_mapper):

@@ -3,6 +3,7 @@ package il.co.dcd.composermapper.parser;
 import il.co.dcd.composermapper.index.Indexes;
 import il.co.dcd.composermapper.model.*;
 import il.co.dcd.composermapper.util.XmlUtil;
+import il.co.dcd.composermapper.util.FormatCollectionPolicy;
 import org.w3c.dom.*;
 
 import java.nio.file.Path;
@@ -24,7 +25,16 @@ public class FormatFileParser {
     /** Parse an exact catalog occurrence without selecting a same-name sibling. */
     public FormatDef parseDefinition(Element e, Path xml, Indexes x) { return parseFormat(e, xml, x); }
 
+    /** Parses a scoped definition using effective keyed children and ordered indexed children. */
+    public FormatDef parseEffectiveDefinition(Element e, Path xml, Indexes x) {
+        return parseFormat(e, xml, x, true);
+    }
+
     private FormatDef parseFormat(Element e, Path xml, Indexes x) {
+        return parseFormat(e, xml, x, false);
+    }
+
+    private FormatDef parseFormat(Element e, Path xml, Indexes x, boolean effective) {
         FormatDef f = new FormatDef();
         f.setId(XmlUtil.attr(e, "id"));
         f.setSourceFile(xml);
@@ -32,7 +42,7 @@ public class FormatFileParser {
         List<Element> children = XmlUtil.childElements(e);
         if (!children.isEmpty()) {
             Element root = children.get(0);
-            f.setRootTag(toNode(root, f, x, "/" + nodeSegment(root), children, 0));
+            f.setRootTag(toNode(root, f, x, "/" + nodeSegment(root), children, 0, effective));
         }
         return f;
     }
@@ -46,7 +56,7 @@ public class FormatFileParser {
      * @param selfIndex index of this element within siblings (-1 if unknown/root)
      */
     private TagNode toNode(Element e, FormatDef f, Indexes x, String path,
-                           List<Element> siblings, int selfIndex) {
+                           List<Element> siblings, int selfIndex, boolean effective) {
         TagNode n = new TagNode(e.getTagName());
 
         // collect attributes
@@ -88,7 +98,8 @@ public class FormatFileParser {
         }
 
         // recurse into children, passing the child list so decorator attachment works
-        List<Element> childElements = XmlUtil.childElements(e);
+        List<Element> childElements = effective
+            ? FormatCollectionPolicy.children(e, child -> isDecorator(child, x)) : XmlUtil.childElements(e);
         Set<Integer> decoratorIndices = new HashSet<>();
 
         // first pass: identify which child indices are decorators consumed by a formatter
@@ -108,7 +119,7 @@ public class FormatFileParser {
             if (!decoratorIndices.contains(i)) {
                 Element child = childElements.get(i);
                 TagNode childNode = toNode(child, f, x,
-                        path + "/" + nodeSegment(child), childElements, i);
+                        path + "/" + nodeSegment(child), childElements, i, effective);
                 n.getChildren().add(childNode);
             }
         }

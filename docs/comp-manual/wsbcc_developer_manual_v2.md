@@ -807,6 +807,27 @@ Operation files in `selfDefOper/` are typically named after the operation: `GetC
 | `PS10MFormat` | `...format.PS10MFormat` | PS10 M-format. |
 | `CCHTTP` | `...format.CCHTTP` | HTTP-specific format handling. |
 
+### Format Collection Policy
+
+For scoped Mapper output, the enclosing wrapper determines how child formats are collected. The following twelve tag names, confirmed from the enterprise indexed-collection class list, preserve repeated children in XML order:
+
+- `AmtaIColl`
+- `CCIColl`
+- `ICollFEditQry`
+- `ICollFEditQryWEB`
+- `IndexedCollectionFormatHolder`
+- `IndexedCollectionToFormat`
+- `IndexedCollFormat`
+- `IColl`
+- `ICollSetLength`
+- `IndexCollectionFormatDLS`
+- `IndexCollectionFormatDLSWEB`
+- `CCIndexedCollectionFormat`
+
+Match these wrapper names exactly. All other wrappers default to keyed collections, including PS10 XML format wrappers (`PS10NewXMLFormat`, `PS10XMLFormat`, and the enterprise spelling `PSIONewXMLFormat`). Within one keyed wrapper, the last child with the same explicit key wins, even when its contents differ. The Mapper reads the key from `id`, otherwise `dataName`, otherwise `name`; unnamed children are retained rather than grouped by tag type. This rule also selects the last repeated top-level `fmtDef` ID within the same XML sibling scope. It does not establish an ordering between separate files or different collection scopes.
+
+`refFmt` and `refFormat` reference existing definitions; their `refid` does not declare another format or provide a duplicate-definition key. Indexed children retain their original order and separate source identities. In keyed collections, the earlier replaced child and its subtree are omitted from effective structure and inventory; decorators stay attached to the selected child. Neither XML contents nor source selectors are rewritten, and this policy does not change OP-step occurrence or routing rules. The collection rules are the agreed compatibility policy based on enterprise code inspection reported by the project owner; the complete runtime loader is not present in this repository.
+
 ### Context Tags
 
 | Tag | Description |

@@ -4,6 +4,23 @@ Status: Migration in progress. Scoped Mapper generation, manifest readers, quali
 
 ## Purpose
 
+### Format collection policy revision
+
+The enterprise format investigation distinguishes indexed wrappers from keyed wrappers. The confirmed indexed tag names are `AmtaIColl`, `CCIColl`, `ICollFEditQry`, `ICollFEditQryWEB`, `IndexedCollectionFormatHolder`, `IndexedCollectionToFormat`, `IndexedCollFormat`, `IColl`, `ICollSetLength`, `IndexCollectionFormatDLS`, `IndexCollectionFormatDLSWEB`, and `CCIndexedCollectionFormat`. Match these names exactly and preserve all direct children in XML order, including repeated keys. Every other wrapper defaults to keyed behavior: the last direct child for an exact key wins. Read explicit keys from `id`, otherwise `dataName`, otherwise `name`; unnamed children are retained. `refFmt`/`refFormat` are references, not declarations keyed by `refid`.
+
+Apply one shared policy to scoped catalog visibility, structure rendering, dependency traversal, and nested inventory. Remove the overridden keyed subtree from the effective view without comparing contents or rewriting source XML. Keep source selectors, original ordinals, and definition identities for surviving occurrences. A parent and its child are separate scopes; different files do not acquire an invented global load order. Nested same-name blocks no longer universally survive: they survive inside indexed wrappers, whereas keyed siblings use last-wins. The manual and scoped guide must reflect this correction. Converter consumers must use the resulting effective view rather than restore excluded source entries.
+
+#### Expected files to change:
+
+- [FormatCollectionPolicy.java](../../source/composer-mapper/src/main/java/il/co/dcd/composermapper/util/FormatCollectionPolicy.java): confirmed wrapper list and pure collection-selection rules.
+- [ScopedDefinitionCatalog.java](../../source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedDefinitionCatalog.java): omit overridden format definitions and their nested definitions.
+- [FormatFileParser.java](../../source/composer-mapper/src/main/java/il/co/dcd/composermapper/parser/FormatFileParser.java): scoped effective parsing; retain the legacy parser entry behavior and decorator attachment.
+- [ScopedVaultGenerationService.java](../../source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedVaultGenerationService.java): use effective parsing and traversal for scoped format output.
+- [test_scoped_vault_identity.py](../../source/tests/test_scoped_vault_identity.py): every indexed wrapper, keyed defaults, identical and differing duplicates, source-order identity, references, decorators, independent scopes, and unchanged source bytes.
+- [Composer manual](../comp-manual/wsbcc_developer_manual_v2.md), [scoped guide](../scoped_vaults.md), [converter plan](scoped_vault_converter_implementation_plan.md), and this plan: document collection semantics and converter acceptance rules.
+
+Acceptance: all twelve indexed wrappers retain repeats in order; keyed wrappers select the last same-key child regardless of content equality; unrelated siblings and independent scopes survive; decorators remain attached to the retained child; references are not deduplicated as definitions; the completed manifest uses the surviving exact source coordinates. Cross-file ambiguity checks, OP-step routing, legacy generation, source files, and converter implementation remain unchanged. No resume behavior is introduced.
+
 Migrate Composer Mapper output from global entity folders to a channel and operation hierarchy. Update the converter and every affected utility to preserve source identity throughout discovery, generation, import, conversion, persistence, planning, and reporting.
 
 Two channels must be able to contain operations with the same name. Two operations must be able to contain steps with the same ID. Different formats, contexts, and Java implementations must be able to share display names without overwriting or resolving to one another.

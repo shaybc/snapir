@@ -193,7 +193,7 @@ public final class ScopedVaultGenerationService {
                 paths.put(FOLDERS.get(kind) + ":" + name, prefix + "/" + FOLDERS.get(kind) + "/" + ScopedVaultPaths.segment(name) + ".md");
                 if (kind.equals("format")) {
                     index.formatToSource().put(name, source.file());
-                    var format = formatParser.parseDefinition(source.element(), source.file(), index);
+                    var format = formatParser.parseEffectiveDefinition(source.element(), source.file(), index);
                     classes.addAll(format.getReferencedMappedJavaClasses());
                     nestedFormats(source.element(), pending);
                 } else {
@@ -269,12 +269,13 @@ public final class ScopedVaultGenerationService {
     private void nestedFormats(org.w3c.dom.Element element, Deque<String> pending) {
         String reference = element.getAttribute("refFmt");
         if (!reference.isBlank()) pending.add(reference);
-        for (var child : XmlUtil.childElements(element)) nestedFormats(child, pending);
+        for (var child : il.co.dcd.composermapper.util.FormatCollectionPolicy.children(element, child -> false))
+            nestedFormats(child, pending);
     }
 
     private void writeDefinition(SourceDefinitionIdentity source, Indexes index, LinkResolver links, Path vault) {
         switch (source.kind()) {
-            case "format" -> new FormatMarkdownWriter().write(formatParser.parseDefinition(source.element(), source.file(), index), index, links, vault);
+            case "format" -> new FormatMarkdownWriter().write(formatParser.parseEffectiveDefinition(source.element(), source.file(), index), index, links, vault);
             case "context" -> new ContextMarkdownWriter().write(contextParser.parseDefinition(source.element(), source.file()), index, links, vault);
             case "java_class" -> {
                 var parsed = new JavaClassParser().parse(source.file());
