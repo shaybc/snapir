@@ -296,6 +296,17 @@ public final class ScopedVaultGenerationService {
         String prefix = source.channel() == null ? "unassigned/resources" : "channels/" + ScopedVaultPaths.segment(source.channel()) + "/resources";
         String path = ScopedVaultPaths.inventory(prefix, FOLDERS.get(source.kind()),
             source.relativePath(), source.selector(), source.name());
+        Map<String, Object> evidence = new LinkedHashMap<>();
+        evidence.put("resolution_status", "inventory_only");
+        if (source.kind().equals("format")) {
+            path = NestedFormatInventory.path(prefix, source);
+            var parent = NestedFormatInventory.parent(source);
+            if (parent != null) {
+                evidence.put("parent_definition_id", parent.key(workspace));
+                evidence.put("parent_source_selector", parent.selector());
+                evidence.put("nested_format_index", NestedFormatInventory.ordinal(source, parent));
+            }
+        }
         if (source.kind().equals("opStep")) {
             String onlyFor = XmlUtil.attr(source.element(), "onlyFor");
             var siblings = XmlUtil.childElements((org.w3c.dom.Element) source.element().getParentNode());
@@ -331,7 +342,7 @@ public final class ScopedVaultGenerationService {
             writeDefinition(source, index, links, vault);
         }
         manifest.record(vault, source, source.channel() == null ? "" : source.channel(), "", "", path,
-            Map.of("resolution_status", "inventory_only"));
+            evidence);
     }
 
     private void writeChannel(Path vault, Indexes registration, String channel, List<String> chain) throws IOException {

@@ -35,6 +35,18 @@ Unselected, shadowed, ambiguous, and unreferenced source occurrences remain in c
 
 XML inventory uses a short resource-origin hierarchy. A context in the defaults file is `channels/IVR/resources/contexts/defaultFile/<context>.md`; a context in an operation file is `channels/IVR/resources/contexts/selfDefOper/<operation-file>/<context>.md`. Other XML files use their file stem as the origin folder. The project path, `src`, XML-definition path, repeated channel, source-file extension, and XML element selector are not reproduced as directories. Original source paths and selectors remain in the manifest and note metadata. Duplicate declarations remain separate, with existing ambiguity diagnostics unchanged.
 
+Nested named `fmtDef` inventory notes use their nearest named parent format and document-order position. Top-level format paths are unchanged. For the two switch blocks in `Alt_GAC4.xml`, the layout is:
+
+```text
+channels/XML/resources/formats/selfDefOper/Alt_GAC4/GAC4HostSeFmt.md
+channels/XML/resources/formats/selfDefOper/Alt_GAC4/GAC4HostSeFmt/nested/1/GAC4HostSeSwitchCaseFmt.md
+channels/XML/resources/formats/selfDefOper/Alt_GAC4/GAC4HostSeFmt/nested/2/GAC4HostSeSwitchCaseFmt.md
+```
+
+Each named format directly owned by a parent gets a one-based ordinal across intervening XML wrappers, regardless of whether its ID repeats. Formats nested inside that child start a new parent scope and extend the same layout recursively. Original IDs, switch criteria, child order, and `refFmt` values remain intact in the generated structure; the two same-ID blocks are not merged or treated as interchangeable definitions.
+
+Nested inventory manifest entries include `parent_definition_id`, `parent_source_selector`, and the one-based `nested_format_index`. Definition identity remains the existing digest of workspace, kind, source-relative file, and exact XML selector; Markdown path allocation does not change that identity. The parent definition can have an operation-view note instead of an inventory note when selected by an operation, so consumers must follow its canonical ID rather than assume a parent inventory file exists. Existing reference-resolution rules are unchanged; this layout does not introduce a new global winner for an ambiguous ID. Legacy output is unchanged. Regenerate into a fresh vault to adopt the layout.
+
 The completed manifest identifies source file and XML occurrence independently of content revisions. Multiple views of one definition retain one definition key and separate usage keys. Do not edit generated notes without regenerating the manifest: consumers reject notes whose hashes no longer match. Interrupted generation retains an incomplete marker and cannot be consumed as a complete vault. Generate a new vault to retry; this mode does not delete previous output.
 
 ## Channel ownership

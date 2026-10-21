@@ -392,6 +392,77 @@ def test_operation_paths_are_reserved_before_any_note_is_written(tmp_path, scope
     assert not (vault / 'vault-manifest.json').exists()
 
 
+@pytest.mark.parametrize('markdown', [True, False])
+@pytest.mark.parametrize('parent_selected', [False, True])
+def test_nested_format_inventory_retains_parent_order_and_references(tmp_path, scoped_mapper, markdown, parent_selected):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    channel = root / 'Channel/XML'
+    folder = channel / 'selfDefOper'
+    folder.mkdir(parents=True)
+    (channel / 'dse.ini').write_text('<dse.ini/>')
+    operation = '<CCDSEServerOperation id="A"><refFormat name="hostSendFormat" refid="GAC4HostSeFmt"/></CCDSEServerOperation>' if parent_selected else ''
+    source = folder / 'Alt_GAC4.xml'
+    source.write_text('''<XML>OPERATION
+      <fmtDef id="GAC4HostSeFmt"><PSIONewXMLFormat txnName="GAC4">
+        <refFmt refid="AltMessageHeaderFmt"/>
+        <fmtDef id="GAC4HostSeSwitchCaseFmt"><SwitchCaseFormat>
+          <caseRefFmt keyName="RequestID" keyValue="1"><refFmt refid="RequestBranchFmt"/></caseRefFmt>
+          <caseRefFmt keyName="RequestID" keyValue="2">
+            <fmtDef id="InlinePayloadFmt"><CCString dataName="NestedPayload"/></fmtDef>
+          </caseRefFmt>
+        </SwitchCaseFormat></fmtDef>
+        <fmtDef id="GAC4HostSeSwitchCaseFmt"><SwitchCaseFormat>
+          <caseRefFmt keyName="AccountNumberFlag" keyValue="N"><refFmt refid="SessionDataFmt"/></caseRefFmt>
+        </SwitchCaseFormat></fmtDef>
+      </PSIONewXMLFormat></fmtDef>
+      <fmtDef id="GAC4NextHostSeFmt"><PSIONewXMLFormat><refFmt refid="RequestBranchFmt"/></PSIONewXMLFormat></fmtDef>
+      <fmtDef id="AltMessageHeaderFmt"><CCString dataName="Header"/></fmtDef>
+      <fmtDef id="RequestBranchFmt"><CCString dataName="Request"/></fmtDef>
+      <fmtDef id="SessionDataFmt"><CCString dataName="Session"/></fmtDef>
+    </XML>'''.replace('OPERATION', operation), encoding='utf-8')
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    formats = [entry for entry in manifest['entities'] if entry['kind'] == 'format']
+    assert len(formats) == 8
+    assert len({entry['definition_id'] for entry in formats}) == 8
+    assert len({entry['note'].lower() for entry in formats}) == 8
+    parent = next(entry for entry in formats if entry['entity_id'] == 'GAC4HostSeFmt')
+    base = 'channels/XML/resources/formats/selfDefOper/Alt_GAC4/'
+    if not parent_selected:
+        assert parent['note'] == base + 'GAC4HostSeFmt.md'
+    assert next(entry for entry in formats if entry['entity_id'] == 'GAC4NextHostSeFmt')['note'] == base + 'GAC4NextHostSeFmt.md'
+    nested = sorted([entry for entry in formats if entry['entity_id'] == 'GAC4HostSeSwitchCaseFmt'],
+                    key=lambda entry: entry['nested_format_index'])
+    selectors = ['/XML[1]/fmtDef[1]/PSIONewXMLFormat[1]/fmtDef[1]',
+                 '/XML[1]/fmtDef[1]/PSIONewXMLFormat[1]/fmtDef[2]']
+    for ordinal, (entry, selector) in enumerate(zip(nested, selectors), 1):
+        assert entry['note'] == base + f'GAC4HostSeFmt/nested/{ordinal}/GAC4HostSeSwitchCaseFmt.md'
+        assert entry['source_selector'] == selector
+        assert entry['parent_definition_id'] == parent['definition_id']
+        assert entry['parent_source_selector'] == parent['source_selector']
+        # Canonical source identity is independent of the new Markdown location.
+        digest = hashlib.sha256()
+        for field in ('fixture', 'format', 'Channel/XML/selfDefOper/Alt_GAC4.xml', selector):
+            encoded = field.encode('utf-8')
+            digest.update(str(len(encoded)).encode() + b':' + encoded)
+        assert entry['definition_id'] == digest.hexdigest()
+    first = (vault / nested[0]['note']).read_text(encoding='utf-8')
+    second = (vault / nested[1]['note']).read_text(encoding='utf-8')
+    assert 'keyName="RequestID"' in first and 'refid="RequestBranchFmt"' in first
+    assert 'keyName="AccountNumberFlag"' in second and 'refid="SessionDataFmt"' in second
+    deep = next(entry for entry in formats if entry['entity_id'] == 'InlinePayloadFmt')
+    assert deep['note'] == base + 'GAC4HostSeFmt/nested/1/GAC4HostSeSwitchCaseFmt/nested/1/InlinePayloadFmt.md'
+    assert deep['parent_definition_id'] == nested[0]['definition_id']
+    assert deep['nested_format_index'] == 1
+    outer_text = (vault / parent['note']).read_text(encoding='utf-8')
+    assert outer_text.count('<fmtDef id="GAC4HostSeSwitchCaseFmt"') == 2
+    assert 'refid="AltMessageHeaderFmt"' in outer_text
+    assert source.read_bytes() == original
+    assert not (vault / 'vault-generation.json').exists()
+
+
 def test_xml_error_includes_full_source_path_and_position(tmp_path, scoped_mapper):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     make_workspace(root)
