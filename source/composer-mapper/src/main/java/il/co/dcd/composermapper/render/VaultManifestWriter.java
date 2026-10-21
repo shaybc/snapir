@@ -95,7 +95,10 @@ public final class VaultManifestWriter {
         manifest.put("entities", entries); manifest.put("diagnostics", diagnostics);
         Path temporary = vault.resolve("vault-manifest.json.tmp");
         progress.accept("Writing manifest: " + entries.size() + " notes");
-        FileUtil.writeString(temporary, JsonOutput.encode(manifest) + "\n");
+        try (var writer = Files.newBufferedWriter(temporary, java.nio.charset.StandardCharsets.UTF_8)) {
+            JsonOutput.write(manifest, writer);
+            writer.write('\n');
+        }
         Files.move(temporary, vault.resolve("vault-manifest.json"), StandardCopyOption.ATOMIC_MOVE);
     }
 

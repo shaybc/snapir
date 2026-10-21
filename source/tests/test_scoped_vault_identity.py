@@ -81,6 +81,72 @@ def test_scoped_progress_records_context_totals_and_elapsed(tmp_path, scoped_map
     assert not (vault / 'vault-generation.json').exists()
 
 
+@pytest.mark.parametrize('mode', ['values', 'large', 'failure'])
+def test_manifest_json_streaming(tmp_path, scoped_mapper, mode):
+    harness = tmp_path / 'JsonStreamingProbe.java'
+    harness.write_text(r'''
+import java.nio.file.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import il.co.dcd.composermapper.util.JsonOutput;
+import il.co.dcd.composermapper.render.VaultManifestWriter;
+public class JsonStreamingProbe {
+    public static void main(String[] args) throws Exception {
+        Path output = Path.of(args[1]);
+        if (args[0].equals("failure")) {
+            Object broken = new Object() {
+                public String toString() { throw new IllegalStateException("injected write failure"); }
+            };
+            try {
+                new VaultManifestWriter("fixture").finish(output,
+                    List.of(Map.of("message", broken)), List.of("XML"));
+                throw new AssertionError("Expected failure");
+            } catch (IllegalStateException expected) {
+                if (!expected.getMessage().equals("injected write failure")) throw expected;
+            }
+            if (Files.exists(output.resolve("vault-manifest.json"))) throw new AssertionError("Published failed manifest");
+            if (!Files.exists(output.resolve("vault-manifest.json.tmp"))) throw new AssertionError("Expected temporary file");
+            return;
+        }
+        Object value;
+        if (args[0].equals("large")) {
+            String payload = "x".repeat(4096);
+            value = (Iterable<String>) () -> new Iterator<String>() {
+                int remaining = 20000;
+                public boolean hasNext() { return remaining > 0; }
+                public String next() { remaining--; return payload; }
+            };
+        } else {
+            Map<String, Object> sample = new LinkedHashMap<>();
+            sample.put("text", "quote\" slash\\ newline\n return\r tab\t control\u0001 שלום 😀");
+            sample.put("values", Arrays.asList(null, true, false, 42, 1.5, List.of(), Map.of()));
+            value = sample;
+        }
+        try (var writer = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) {
+            JsonOutput.write(value, writer);
+        }
+        if (args[0].equals("values") && !Files.readString(output).equals(JsonOutput.encode(value)))
+            throw new AssertionError("Changed encoding");
+    }
+}
+''', encoding='utf-8')
+    compiled = subprocess.run(['javac', '-encoding', 'UTF-8', '-cp', str(scoped_mapper), '-d', str(tmp_path), str(harness)],
+                              capture_output=True, text=True, timeout=60)
+    assert compiled.returncode == 0, compiled.stderr
+    output = tmp_path if mode == 'failure' else tmp_path / 'output.json'
+    result = subprocess.run(['java', '-Xmx24m', '-cp', os.pathsep.join([str(scoped_mapper), str(tmp_path)]),
+                             'JsonStreamingProbe', mode, str(output)], capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    if mode == 'large':
+        # Output exceeds the 24 MiB heap; lazy elements must not become serialized copies in memory.
+        assert output.stat().st_size == 1 + 20000 * (4096 + 3)
+    elif mode == 'values':
+        assert json.loads(output.read_text(encoding='utf-8')) == {
+            'text': 'quote" slash\\ newline\n return\r tab\t control\x01 שלום 😀',
+            'values': [None, True, False, 42, 1.5, [], {}],
+        }
+
+
 def test_console_heartbeat_reports_long_running_work(tmp_path, scoped_mapper):
     harness = tmp_path / 'ProgressProbe.java'
     harness.write_text('''
