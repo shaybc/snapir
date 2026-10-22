@@ -27,7 +27,7 @@ Then run the packaged Mapper with your actual source and destination paths:
 java -jar source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar --root "C:\Composer\Workspace" --vault "C:\Mapper\scoped-output" --vault-layout scoped --workspace-id "enterprise-composer" --md true
 ```
 
-The destination must be empty and outside the source tree. Use the same workspace ID when moving the same source workspace to another machine; use different IDs for independent source workspaces. An optional `--channel INTERNET` selects that channel's effective definitions and declared imports.
+The destination must be empty and outside the source tree. Use the same workspace ID when moving the same source workspace to another machine; use different IDs for independent source workspaces. An optional `--channel INTERNET` selects that channel's effective definitions, its implicit XML base, and declared imports.
 
 Folder and file names retain their original names without generated ID or hash suffixes. Effective operations live under `channels/<channel>/operations/<operation>/operation.md`, with steps and used resources beside them. For example, a step is `channels/INTERNET/operations/GetClientOverviewOp/opsteps/OverviewRefreshLinks.md`. Full identities remain in the manifest and metadata.
 
@@ -55,6 +55,10 @@ The completed manifest identifies source file and XML occurrence independently o
 
 Channel discovery reads the declaration at `<project>/src/Xml Definition/Channel/<name>/dse.ini`. The channel directory supplies the name; the project name is not used to guess it. Java files beneath that same `src` folder receive the declared channel even when they are outside the XML definition tree. Files already inside a channel directory retain their direct channel assignment. Source-folder ownership is established before selected-channel and declared-import filtering.
 
+Every non-XML channel automatically inherits XML as its lowest-precedence base, even without an XML import in its local `dse.ini`. XML is loaded once, declared imports retain their order, and the consuming channel is applied last. Local operation, format, context, formatter and decorator definitions override their XML counterparts. Include the XML channel's configuration and sources in the mapping root; a missing XML base is an error, not a complete partial inventory. Source ownership and Java classpath evidence remain separate from inherited availability.
+
+An XML-defined `POB1Op` therefore has a distinct effective view under each consuming channel, such as `channels/SME/operations/POB1Op/operation.md`, with `definition_channel=XML`. Step restrictions and resource selection use the consuming channel, including its local overrides. If that channel supplies its own `POB1Op`, the local definition is selected. The canonical source identity is preserved across inherited views; usage identities remain separate. XML itself is not given an implicit self-parent. Explicit import cycles are still rejected.
+
 This lets the existing mapper place the XML project's base operation class under XML resource inventory instead of unassigned. It does not change the inventory path convention, operation dependencies, classpath evidence rules, or converter compatibility gate.
 
 ## Java class origin
@@ -71,6 +75,8 @@ python "Excel Generator.py" "C:\Mapper\scoped-output" --output "C:\Reports\migra
 ```
 
 Copy the entire generated vault, including its manifest, alongside access to the standalone utility. Excel does not require the original Composer source files. Calls and waves describe resolved operation-call relationships; they do not certify that format dependencies or Java classpaths are ready for conversion.
+
+Calls resolve in the caller's effective channel: SME calling XML-defined `POB1Op` uses the generated `SME/POB1Op` view. Excel does not redirect the call to the XML-channel view or guess another channel's target by name. If an older vault contains `XML/POB1Op` but lacks the inherited caller-channel view, both exporters report a missing inherited-view diagnostic with regeneration guidance. Regenerate into a fresh vault with this Mapper before rerunning Excel; the old manifest cannot reconstruct the missing channel-specific resources. Operation-view and note counts may increase as XML inheritance is represented across all channels. Export commands, workbook columns and wave/count rules are unchanged.
 
 ## Import and resumption
 

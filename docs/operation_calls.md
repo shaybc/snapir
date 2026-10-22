@@ -28,6 +28,20 @@ Current discovery resolves names in the caller's channel. The scope check below
 must identify calls outside the selected operation/channel set from explicit source
 evidence or trusted registry identity; it must not guess another channel's target.
 
+The caller's effective channel includes the runtime's implicit XML base. Every
+channel can use XML definitions without a local XML import, and local definitions
+take precedence. Mapper generates consuming-channel operation views using this
+environment: `SME/IDBGetUserDataOp` invoking XML-defined `POB1Op` resolves to
+`SME/POB1Op`, preserving XML source provenance and SME's applicable overrides.
+The same rule applies to every channel, not just SME. Explicit imports still
+contribute their definitions, and unrelated channels are not searched globally.
+
+An older vault containing the XML target but no effective caller-channel view
+produces a missing inherited XML-base view diagnostic. Regenerate a fresh vault
+with the corrected Mapper and rerun either Excel exporter. Excel cannot substitute
+the XML-channel view because its step applicability and resources can differ.
+This correction does not implement the converter workflow described below.
+
 ## 1. Validate the entire job scope
 
 Run these dependency checks inside intake, after discovery and shared-registry

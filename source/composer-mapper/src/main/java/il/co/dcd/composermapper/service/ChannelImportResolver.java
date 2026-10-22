@@ -7,9 +7,9 @@ import il.co.dcd.composermapper.index.IniMappingIndexer;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Resolves declared channel dependencies in parent-before-child order. */
+/** Resolves the implicit XML base and declared dependencies before the consuming channel. */
 public class ChannelImportResolver {
-    /** Builds tag mappings using only the channel's declared inheritance chain. */
+    /** Builds tag mappings with XML defaults, declared imports, then local overrides. */
     public Map<String, String> tagMappings(List<DiscoveredFile> files, String channel) {
         Indexes index = Indexes.create();
         IniMappingIndexer indexer = new IniMappingIndexer();
@@ -32,7 +32,21 @@ public class ChannelImportResolver {
                 throw new IllegalArgumentException("Multiple dse.ini definitions for channel " + name);
         }
         List<String> ordered = new ArrayList<>();
-        visit(channel.toUpperCase(Locale.ROOT), definitions, new HashSet<>(), ordered);
+        String consuming = channel.toUpperCase(Locale.ROOT);
+        if (!consuming.equals("XML")) {
+            if (!definitions.containsKey("XML"))
+                throw new IllegalArgumentException("Missing implicit XML base channel definition for " + consuming
+                    + ": include the XML channel's dse.ini and sources in the mapping root");
+            visit("XML", definitions, new HashSet<>(), ordered);
+        }
+        visit(consuming, definitions, new HashSet<>(), ordered);
+        if (!consuming.equals("XML")) {
+            // Implicit inheritance is a base layer, not a recursive import edge.
+            ordered.remove("XML");
+            ordered.addFirst("XML");
+            ordered.remove(consuming);
+            ordered.add(consuming);
+        }
         return ordered;
     }
 

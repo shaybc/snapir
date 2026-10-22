@@ -32,6 +32,18 @@ def _note_path(root, owner, target):
     raise ValueError("Missing linked step note: " + target)
 
 
+def _missing_target_detail(channel, name, operations):
+    """Explain a missing implicit-base view without redirecting to a different channel view."""
+    callee = channel + '/' + name
+    base = 'XML/' + name
+    if channel.upper() != 'XML' and base in operations:
+        return ('Missing inherited XML-base operation view: ' + callee + '; ' + base
+                + ' exists, but its caller-channel view is absent. Regenerate the vault with a Mapper '
+                  'that includes the implicit XML base and local overrides.')
+    return ('Target is missing in caller channel: ' + callee
+            + '; cross-channel targets require explicit resolution')
+
+
 def discover_operation_calls(vault, *, progress=None):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
@@ -88,7 +100,7 @@ def discover_operation_calls(vault, *, progress=None):
                     issues.append(dict(operation=caller, step=step.id, callee=callee,
                         note=str(step_path.relative_to(root)), parameters=step.parameters,
                         transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest(),
-                        detail='Target is missing in caller channel: ' + callee + '; cross-channel targets require explicit resolution'))
+                        detail=_missing_target_detail(channel, name, operations)))
                     continue
                 calls.append(dict(caller=caller, callee=callee, step=step.id,
                     note=str(step_path.relative_to(root)), parameters=step.parameters,

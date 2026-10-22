@@ -21,6 +21,8 @@ Output:
 
 Use `--vault-layout scoped --workspace-id "your-workspace-name"` for the channel/operation hierarchy and manifest. Legacy layout remains the default. Scoped output requires an empty or new destination outside the source tree. See the [scoped vault guide](../../docs/scoped_vaults.md).
 
+Every non-XML channel has XML as its implicit base, without requiring an XML import in `dse.ini`. Include XML's configuration and sources in the input workspace, including when mapping a single channel. XML defaults are applied first, declared imports retain their order, and local definitions take precedence. Scoped inherited operation views keep XML source provenance while using the consuming channel's steps and resources. Regenerate a fresh vault to adopt this behavior; existing vaults do not contain the missing inherited views.
+
 ```powershell
 java -jar target/composer-mapper-1.1.1-jar-with-dependencies.jar --root "C:\code\composer-projects" --vault "C:\docs\new-composer-vault" --vault-layout scoped --workspace-id "enterprise-composer" --md true
 ```

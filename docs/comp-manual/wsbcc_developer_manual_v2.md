@@ -192,7 +192,17 @@ A channel's dse.ini may import other dse.ini configurations:
 
 This means: merge the `sme` channel's dse.ini into this channel's configuration. Imports are resolved recursively. Channel-specific mappings override imported mappings for the same tag name.
 
-**The `WSBCC_XML` channel's dse.ini is the shared base** — it defines all built-in format and decorator tag mappings. All other channels import from it directly or indirectly. It is the authoritative source for tags like `CCString`, `CCXML`, `CCIColl`, `NumberFormat`, `nilDecorator`, `CCPadding`, etc.
+### Implicit XML Base Channel and Local Overrides
+
+**XML is the common runtime base channel for every other channel.** In the enterprise runtime described here, `CCDSEServerOperation` makes XML definitions available automatically. A channel does not need an explicit XML import in its `dse.ini`, nor a separate import for each XML operation it calls. This runtime rule was confirmed by the project owner during the enterprise mapping investigation.
+
+The `WSBCC_XML` project is where common operations, XML format definitions, contexts, formatter/decorator tag mappings, and other shared definitions can be implemented once and used throughout the channels. XML supplies mappings such as `CCString`, `CCXML`, `CCIColl`, `NumberFormat`, `nilDecorator`, and `CCPadding`. An unqualified reference is resolved in the consuming channel's effective registry, which includes this implicit XML base and any declared imports.
+
+Local definitions take precedence over the XML base. If `ABC` is defined in XML and SME, SME uses its own `ABC`; another channel without that override uses XML's definition. The same rule applies to named format/context definitions and formatter/decorator mappings. Preserve operation-local definition scope when resolving resources; identical names in unrelated channels do not establish visibility. Existing declared-import ordering remains relevant between explicitly imported channels, with the consuming channel applied last. XML is the lowest-precedence base, loaded once, and is not its own implicit parent.
+
+For example, SME's `IDBGetUserDataOp` can invoke `opExecuteName="POB1Op"` even when `POB1Op` is defined only in XML. It is an effective `SME/POB1Op` operation backed by an XML source definition. Its consuming channel remains SME: `onlyFor` selection and references use SME's effective environment, including SME overrides. It is not automatically equivalent to executing the separate XML-channel view. If SME declares its own `POB1Op`, that local operation is selected instead.
+
+Mapper and Excel tooling must preserve this distinction between source channel and consuming channel. They must model the implicit XML base rather than ask developers to add artificial imports or choose an arbitrary same-name operation from the whole workspace. If XML base sources/configuration are absent from the mapping input, report that missing prerequisite explicitly; do not claim the effective inventory is complete. This registry rule does not, by itself, prove Java classloader or classpath selection.
 
 ### Tag Resolution
 
@@ -204,7 +214,7 @@ When the runtime encounters a tag name in XML:
 
 ### selfDefOper — Operation Registry
 
-The `selfDefOper` section is the complete operation registry for the channel:
+The `selfDefOper` section declares operation registrations in a channel's configuration:
 
 ```xml
 <operDef id="Xml Definition/Channel/INTERNET/selfDefOper/GetClientLinks.xml"
@@ -214,7 +224,7 @@ The `selfDefOper` section is the complete operation registry for the channel:
 - `id` = relative path to the operation's XML file
 - `value` = the operation name (matches the `CCDSEServerOperation id` attribute in the XML)
 
-**Every operation in the system appears exactly once in its channel's selfDefOper.** This is the authoritative inventory of operations for that channel.
+An operation's declaring configuration records its registration. A consuming channel's effective operation registry also includes inherited XML registrations and declared imports, with local overrides taking precedence. An XML operation therefore does not need to be registered again in every consuming channel's local `selfDefOper`.
 
 ---
 
@@ -226,7 +236,7 @@ When a channel handler receives an HTTP/service request for operation `GetClient
 
 ```
 1. Channel Handler receives request XML
-2. Looks up "GetClientLinksOp" in dse.ini selfDefOper → finds XML file path
+2. Looks up "GetClientLinksOp" in the effective operation registry (local registrations, declared imports and implicit XML base) → finds XML file path
 3. Loads and initializes CCDSEServerOperation from that XML file
 4. Channel Handler calls: operation.unformat(requestXml)
    → request format cascades through the fmtDef structure

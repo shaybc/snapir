@@ -62,6 +62,34 @@ def test_unresolved_target_blocks_transitive_callers(tmp_path):
         ordered_operations(graph, graph['operations'])
 
 
+@pytest.mark.parametrize('channel', ['SME', 'INTERNET', 'CUSTOM'])
+@pytest.mark.parametrize('target_channel', ['XML', 'UNRELATED'])
+def test_missing_inherited_view_is_diagnosed_without_global_redirect(tmp_path, channel, target_channel):
+    vault(tmp_path)
+    for note in (tmp_path / 'operations').glob('*.md'):
+        note.write_text(note.read_text().replace('channel: INTERNET', 'channel: ' + channel))
+    step = tmp_path / 'opsteps/BtoC.md'
+    step.write_text(step.read_text().replace('`C`', '`SharedTarget`'))
+    (tmp_path / 'operations/SharedTarget.md').write_text(
+        '# SharedTarget\n\n---\nentity_id: SharedTarget\nchannel: ' + target_channel
+        + '\nsource_hash: shared\n---\n\n## Steps\n- None\n')
+    graph = discover_operation_calls(tmp_path)
+    assert len(graph['issues']) == 1
+    issue = graph['issues'][0]
+    assert issue['operation'] == channel + '/B'
+    assert issue['callee'] == channel + '/SharedTarget'
+    if target_channel == 'XML':
+        assert 'Missing inherited XML-base operation view' in issue['detail']
+        assert 'Regenerate the vault' in issue['detail']
+    else:
+        assert 'Target is missing in caller channel' in issue['detail']
+        assert 'Missing inherited XML-base' not in issue['detail']
+    assert not any(call['callee'] == target_channel + '/SharedTarget' for call in graph['calls'])
+    waves = operation_waves(graph)
+    assert waves[channel + '/A']['wave'] is None and waves[channel + '/B']['wave'] is None
+    assert waves[target_channel + '/SharedTarget']['wave'] == 1
+
+
 def test_step_id_collision_is_reported(tmp_path):
     vault(tmp_path)
     path = tmp_path / 'opsteps/AtoB.md'

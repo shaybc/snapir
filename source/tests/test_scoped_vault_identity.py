@@ -25,6 +25,9 @@ def scoped_mapper(tmp_path_factory):
 
 
 def make_workspace(root):
+    base = root / 'Channel/XML'
+    base.mkdir(parents=True)
+    (base / 'dse.ini').write_text('<dse.ini/>')
     for channel in ('INTERNET', 'IVR'):
         folder = root / 'Channel' / channel
         folder.mkdir(parents=True)
@@ -50,10 +53,131 @@ def make_workspace(root):
         (source / 'Work.java').write_text('package org.example;\npublic class Work {}\n')
 
 
-def invoke_mapper(classes, root, vault, markdown=True):
+def invoke_mapper(classes, root, vault, markdown=True, timeout=60):
     return subprocess.run(['java', '-cp', str(classes), 'il.co.dcd.composermapper.Main', '--root', str(root),
         '--vault', str(vault), '--vault-layout', 'scoped', '--workspace-id', 'fixture',
-        '--md', str(markdown).lower()], capture_output=True, text=True, timeout=60)
+        '--md', str(markdown).lower()], capture_output=True, text=True, timeout=timeout)
+
+
+def implicit_xml_workspace(root, xml=None):
+    import xml.etree.ElementTree as ET
+    xml = xml or root / 'Channel/XML'
+    xml.mkdir(parents=True, exist_ok=True)
+    ini = xml / 'dse.ini'
+    tree = ET.parse(ini) if ini.exists() else ET.ElementTree(ET.Element('dse.ini'))
+    node = tree.getroot()
+    for name in ('settings', 'tags', 'formats'):
+        child = node.find(f"kColl[@id='{name}']")
+        node = child if child is not None else ET.SubElement(node, 'kColl', id=name)
+    ET.SubElement(node, 'field', id='SharedTag', value='example.XmlTag')
+    ET.SubElement(node, 'field', id='SharedDecorator', value='example.XmlDecorator')
+    files = tree.getroot().find("kColl[@id='settings']/kColl[@id='files']")
+    if files is None:
+        files = ET.SubElement(tree.getroot().find("kColl[@id='settings']"), 'kColl', id='files')
+    registry = files.find("kColl[@id='selfDefOper']")
+    if registry is None:
+        registry = ET.SubElement(files, 'kColl', id='selfDefOper')
+    ET.SubElement(registry, 'operDef', id='CommonBank.xml', value='POB1Op')
+    tree.write(ini, encoding='utf-8')
+    (xml / 'CommonBank.xml').write_text('''<XML>
+      <CCDSEServerOperation id="POB1Op" operationContext="SharedCtx">
+        <refFormat name="csRequestFormat" refid="SharedFmt"/>
+        <opStep id="SmeOnly" onlyFor="sme"/>
+        <opStep id="XmlOnly" onlyFor="xml"/>
+      </CCDSEServerOperation>
+      <fmtDef id="SharedFmt"><SharedTag dataName="XMLField"/><SharedDecorator/></fmtDef>
+      <context id="SharedCtx" parent="nil" origin="XML"/>
+    </XML>''', encoding='utf-8')
+    for channel in ('SME', 'CUSTOM', 'VOICEPORTAL'):
+        folder = root / 'Channel' / channel
+        folder.mkdir(parents=True)
+        mappings = '''<kColl id="tags"><kColl id="formats">
+          <field id="SharedTag" value="example.SmeTag"/>
+          <field id="SharedDecorator" value="example.SmeDecorator"/>
+        </kColl></kColl>''' if channel == 'SME' else ''
+        overrides = '''<operDef id="Override.xml" value="POB1Op"/>
+          <operDef id="Leaf.xml" value="LocalLeaf"/>''' if channel == 'CUSTOM' else ''
+        (folder / 'dse.ini').write_text('''<dse.ini><kColl id="settings"><kColl id="files"><kColl id="selfDefOper">
+          <operDef id="Caller.xml" value="IDBGetUserDataOp"/>
+        ''' + overrides + '</kColl></kColl>' + mappings + '</kColl></dse.ini>')
+        (folder / 'Caller.xml').write_text('''<XML><CCDSEServerOperation id="IDBGetUserDataOp">
+          <opStep id="ExecutePOB1" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="POB1Op"/>
+        </CCDSEServerOperation></XML>''')
+        if channel == 'SME':
+            (folder / 'Resources.xml').write_text('''<XML>
+              <fmtDef id="SharedFmt"><SharedTag dataName="SMEField"/><SharedDecorator/></fmtDef>
+              <context id="SharedCtx" parent="nil" origin="SME"/>
+            </XML>''')
+        elif channel == 'CUSTOM':
+            (folder / 'Override.xml').write_text('''<XML>
+              <CCDSEServerOperation id="POB1Op" operationContext="SharedCtx">
+                <refFormat name="csRequestFormat" refid="SharedFmt"/>
+                <opStep id="LocalOverride" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="LocalLeaf"/>
+              </CCDSEServerOperation>
+            </XML>''')
+            (folder / 'Leaf.xml').write_text('<XML><CCDSEServerOperation id="LocalLeaf"/></XML>')
+
+
+@pytest.mark.parametrize('markdown', [True, False])
+@pytest.mark.parametrize('selected', [False, True])
+def test_implicit_xml_operations_and_local_resource_overrides(tmp_path, scoped_mapper, markdown, selected):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    implicit_xml_workspace(root)
+    original = {path: path.read_bytes() for path in root.rglob('*') if path.is_file()}
+    command = ['java', '-cp', str(scoped_mapper), 'il.co.dcd.composermapper.Main', '--root', str(root),
+               '--vault', str(vault), '--vault-layout', 'scoped', '--workspace-id', 'fixture', '--md', str(markdown).lower()]
+    if selected:
+        command.extend(['--channel', 'SME'])
+    result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    assert manifest['diagnostics'] == []
+    entries = manifest['entities']
+    inherited = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'SME'
+                     and entry['operation_id'] == 'POB1Op')
+    assert inherited['definition_channel'] == 'XML'
+    assert inherited['source_relative_path'] == 'Channel/XML/CommonBank.xml'
+    assert inherited['note'] == 'channels/SME/operations/POB1Op/operation.md'
+    sme_steps = [entry['entity_id'] for entry in entries if entry['kind'] == 'opStep'
+                 and entry['channel'] == 'SME' and entry['operation_id'] == 'POB1Op']
+    assert sme_steps == ['SmeOnly']
+    for kind, name in [('format', 'SharedFmt'), ('context', 'SharedCtx')]:
+        resource = next(entry for entry in entries if entry['kind'] == kind and entry['channel'] == 'SME'
+                        and entry['operation_id'] == 'POB1Op' and entry['entity_id'] == name)
+        assert resource['definition_channel'] == 'SME'
+        assert resource['source_relative_path'] == 'Channel/SME/Resources.xml'
+        if kind == 'format':
+            content = (vault / resource['note']).read_text(encoding='utf-8')
+            assert 'SMEField' in content and 'XMLField' not in content
+            assert 'example.SmeTag' in content and 'example.SmeDecorator' in content
+    graph = discover_operation_calls(vault)
+    assert not graph['issues']
+    waves = operation_waves(graph)
+    assert waves['SME/IDBGetUserDataOp']['prerequisites'] == ['SME/POB1Op']
+    assert waves['SME/IDBGetUserDataOp']['wave'] == 2
+    if selected:
+        assert manifest['channels'] == ['SME']
+        assert set(graph['operations']) == {'SME/IDBGetUserDataOp', 'SME/POB1Op'}
+    else:
+        base = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'XML'
+                    and entry['operation_id'] == 'POB1Op')
+        voice = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'VOICEPORTAL'
+                     and entry['operation_id'] == 'POB1Op')
+        custom = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'CUSTOM'
+                      and entry['operation_id'] == 'POB1Op')
+        assert base['definition_id'] == inherited['definition_id'] == voice['definition_id']
+        assert len({entry['usage_id'] for entry in (base, inherited, voice)}) == 3
+        assert custom['definition_channel'] == 'CUSTOM' and custom['definition_id'] != base['definition_id']
+        for channel in ('CUSTOM', 'VOICEPORTAL'):
+            resource = next(entry for entry in entries if entry['kind'] == 'format' and entry['channel'] == channel
+                            and entry['operation_id'] == 'POB1Op')
+            content = (vault / resource['note']).read_text(encoding='utf-8')
+            assert resource['definition_channel'] == 'XML' and 'XMLField' in content
+            assert 'example.XmlTag' in content and 'example.XmlDecorator' in content
+        assert len(graph['operations']) == 8 and len(graph['calls']) == 4
+        assert waves['CUSTOM/IDBGetUserDataOp']['wave'] == 3
+        assert waves['VOICEPORTAL/IDBGetUserDataOp']['wave'] == 2
+    assert all(path.read_bytes() == contents for path, contents in original.items())
 
 
 def test_scoped_progress_records_context_totals_and_elapsed(tmp_path, scoped_mapper):
@@ -66,8 +190,8 @@ def test_scoped_progress_records_context_totals_and_elapsed(tmp_path, scoped_map
     assert all(re.match(r'^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})\]', line)
                for line in log.splitlines())
     assert 'Discovering source files:' in result.stdout
-    assert 'Planned 2 channels and 4 operation views' in log
-    assert 'Channel 1/2 INTERNET' in log and 'Channel 2/2 IVR' in log
+    assert 'Planned 3 channels and 4 operation views' in log
+    assert 'Channel 1/3 INTERNET' in log and 'Channel 2/3 IVR' in log
     for channel in ('INTERNET', 'IVR'):
         for operation in ('A', 'B'):
             assert re.search('Starting operation [1-4]/4 ' + channel + '/' + operation, log)
@@ -277,6 +401,9 @@ def test_duplicate_operation_step_resource_names_survive(tmp_path, scoped_mapper
 @pytest.mark.parametrize('restriction', ['', 'onlyFor="internet"'])
 def test_repeated_steps_preserve_occurrences_and_positional_routing(tmp_path, scoped_mapper, markdown, restriction):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
+    base = root / 'Channel/XML'
+    base.mkdir(parents=True)
+    (base / 'dse.ini').write_text('<dse.ini/>')
     folder = root / 'Channel/INTERNET'
     folder.mkdir(parents=True)
     (folder / 'dse.ini').write_text('<dse.ini/>')
@@ -791,6 +918,7 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
         pytest.skip('Built-in workbook parity requires Node.js and @oai/artifact-tool')
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     shutil.copytree(project / 'bank-demo/composer/Workspace', root)
+    implicit_xml_workspace(root, root / 'WSBCC_XML/src/Xml Definition/Channel/XML')
     source = root / 'WSBCC_XML/src/Xml Definition/Channel/XML/selfDefOper/CollectionRegression.xml'
     source.write_text('''<XML>
       <fmtDef id="Duplicate"><CCXML dataName="OldDefinition"/></fmtDef>
@@ -804,7 +932,8 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
         <CCString dataName="Same" value="LastField"/>
       </CCXML></fmtDef>
     </XML>''', encoding='utf-8')
-    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    # Inherited views double this fixture's operation inventory; allow its larger I/O pass.
+    result = invoke_mapper(scoped_mapper, root, vault, markdown, timeout=120)
     assert result.returncode == 0, result.stderr
     manifest = read_vault_manifest(vault)
     formats = [entry for entry in manifest['entities'] if entry['kind'] == 'format'
@@ -831,7 +960,7 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
     assert built.returncode == 0, built.stderr
     for output in (portable.stdout, built.stdout):
         assert 'Validating Mapper vault' in output and 'Writing Excel workbook' in output
-        assert '10 operations, 7 call sites, 0 issues' in output and 'Elapsed=' in output
+        assert '20 operations, 11 call sites, 0 issues' in output and 'Elapsed=' in output
     comparison = subprocess.run([python, '-c',
         "from openpyxl import load_workbook; import sys; a=load_workbook(sys.argv[1]); b=load_workbook(sys.argv[2]); "
         "assert a.sheetnames==b.sheetnames==['Migration Plan','Operations','Relationships']; "
@@ -903,6 +1032,9 @@ def test_xml_project_java_inventory_uses_declared_channel(tmp_path, scoped_mappe
 
 def test_context_inventory_keeps_only_resource_origins(tmp_path, scoped_mapper):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
+    base = root / 'Channel/XML'
+    base.mkdir(parents=True)
+    (base / 'dse.ini').write_text('<dse.ini/>')
     channel = root / 'WSBCC_IVR/src/Xml Definition/Channel/IVR'
     defaults = channel / 'defaultFile'
     operations = channel / 'selfDefOper'
