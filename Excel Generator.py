@@ -9,6 +9,7 @@ Copy this file alone; no Snapir installation or Node.js runtime is required.
 Supports legacy vaults and scoped channel/operation vaults with simplified resource paths.
 Pass the vault root, not its channels or operations folder. Scoped vaults must include
 vault-manifest.json and all listed Markdown notes; original Composer sources are not needed.
+Large manifests are read incrementally with timestamped progress and a final elapsed time.
 """
 from __future__ import annotations
 
@@ -115,9 +116,13 @@ def main(argv=None):
     if output.suffix.lower() != '.xlsx':
         parser.error('--output must end in .xlsx')
     try:
-        graph = discover_operation_calls(vault)
+        progress = ExportProgress()
+        progress.phase('Validating Mapper vault and discovering operation calls')
+        graph = discover_operation_calls(vault, progress=progress.update)
+        progress.phase('Calculating dependency waves')
         waves = operation_waves(graph)
         output.parent.mkdir(parents=True, exist_ok=True)
+        progress.phase('Writing Excel workbook')
         write_workbook(graph, waves, output, args.include_relationships)
     except ModuleNotFoundError as exc:
         if exc.name != 'openpyxl':
@@ -125,7 +130,7 @@ def main(argv=None):
         parser.exit(1, 'Excel Generator requires openpyxl. Install it with: python -m pip install openpyxl\n')
     except (OSError, ValueError) as exc:
         parser.exit(1, f'Excel Generator: {exc}\n')
-    print(f"Created {output.resolve()}: {len(graph['operations'])} operations, {len(graph['calls'])} call sites, {len(graph['issues'])} issues.")
+    print(f"Created {output.resolve()}: {len(graph['operations'])} operations, {len(graph['calls'])} call sites, {len(graph['issues'])} issues. Elapsed={progress.elapsed()}", flush=True)
     return 0
 
 @dataclass(kw_only=True)
@@ -321,16 +326,170 @@ def parse_channel_operation_registry(registry_md_path: str) -> list[tuple[str, s
             rows.append((cells[0], cells[1], cells[2]))
     return rows
 
+# Bundled from source/tools/composer_mapper_tools/manifest_json_stream.py
+"""Read manifest arrays incrementally using only Python's standard library."""
+
+import json
+
+
+class _ManifestJsonReader:
+    """Buffer at most one JSON value plus an input chunk, rather than the whole manifest."""
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.buffer = ''
+        self.position = 0
+        self.eof = False
+        self.decoder = json.JSONDecoder()
+
+    def _fill(self):
+        chunk = self.stream.read(65536)
+        self.buffer = self.buffer[self.position:] + chunk
+        self.position = 0
+        self.eof = not chunk
+
+    def peek(self):
+        """Return the next non-whitespace character, or an empty string at EOF."""
+        while True:
+            while self.position < len(self.buffer) and self.buffer[self.position] in ' \t\r\n':
+                self.position += 1
+            if self.position < len(self.buffer):
+                return self.buffer[self.position]
+            if self.eof:
+                return ''
+            self._fill()
+
+    def take(self, expected):
+        """Consume required JSON punctuation or reject malformed input."""
+        if self.peek() != expected:
+            raise ValueError('Invalid scoped manifest JSON: expected ' + expected)
+        self.position += 1
+
+    def value(self):
+        """Decode one value, extending the buffer only when that value spans chunks."""
+        self.peek()
+        while True:
+            try:
+                value, end = self.decoder.raw_decode(self.buffer, self.position)
+            except json.JSONDecodeError:
+                if self.eof:
+                    raise
+                self._fill()
+                continue
+            if end == len(self.buffer) and not self.eof:
+                self._fill()
+                continue
+            if end < len(self.buffer) and self.buffer[end] not in ',]}: \t\r\n':
+                if self.eof:
+                    raise ValueError('Invalid scoped manifest JSON value')
+                self._fill()
+                continue
+            self.position = end
+            return value
+
+
+def iter_manifest_fields(path):
+    """Yield field, event and value; entities/diagnostics arrays yield one item at a time.
+
+    The stream is closed on completion or failure. Invalid/truncated JSON raises ValueError.
+    Other fields and individual array items retain their ordinary JSON representation.
+    """
+    with path.open('r', encoding='utf-8-sig') as stream:
+        reader = _ManifestJsonReader(stream)
+        reader.take('{')
+        if reader.peek() != '}':
+            while True:
+                name = reader.value()
+                if not isinstance(name, str):
+                    raise ValueError('Invalid scoped manifest JSON field')
+                reader.take(':')
+                if name in ('entities', 'diagnostics') and reader.peek() == '[':
+                    reader.take('[')
+                    yield name, 'array', None
+                    if reader.peek() != ']':
+                        while True:
+                            yield name, 'item', reader.value()
+                            if reader.peek() != ',':
+                                break
+                            reader.take(',')
+                    reader.take(']')
+                else:
+                    yield name, 'value', reader.value()
+                if reader.peek() != ',':
+                    break
+                reader.take(',')
+        reader.take('}')
+        if reader.peek():
+            raise ValueError('Invalid scoped manifest JSON: trailing content')
+
+# Bundled from source/tools/operation_call_tools/export_progress.py
+"""Report Excel export phases and throttle note/operation progress messages."""
+
+from datetime import datetime
+from time import monotonic
+
+
+class ExportProgress:
+    """Print timestamped progress and elapsed time without changing export results."""
+
+    def __init__(self):
+        self.started = monotonic()
+        self.last_update = self.started
+
+    def elapsed(self):
+        """Return total runtime in hours, minutes and seconds."""
+        seconds = int(monotonic() - self.started)
+        return f'{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}'
+
+    def phase(self, message):
+        """Print a phase immediately and flush redirected or interactive console output."""
+        self.last_update = monotonic()
+        print(f'[{datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S%z")}] '
+              f'{message} | elapsed={self.elapsed()}', flush=True)
+
+    def update(self, message):
+        """Print ongoing work at most once every five seconds."""
+        if monotonic() - self.last_update >= 5:
+            self.phase(message)
+
 # Bundled from source/tools/composer_mapper_tools/vault_manifest.py
 """Validate scoped vault identity and enumerate notes without guessing folder depth."""
+
 import hashlib
-import json
+import codecs
+import re
 from pathlib import Path
 
-def read_vault_manifest(vault):
+
+
+def _read_note_metadata(candidate):
+    """Hash and validate UTF-8 in one buffered read, retaining only the frontmatter."""
+    digest = hashlib.sha256()
+    decoder = codecs.getincrementaldecoder('utf-8-sig')()
+    header, metadata = '', None
+    with candidate.open('rb') as note:
+        while chunk := note.read(65536):
+            digest.update(chunk)
+            text = decoder.decode(chunk)
+            if metadata is None:
+                header += text
+                match = re.search(r'(?s)(?:^|\n)---\r?\n.*?\r?\n---\r?\n', header)
+                if match:
+                    metadata = parse_frontmatter(header[:match.end()].replace('\r\n', '\n').replace('\r', '\n'))
+                    header = ''
+        tail = decoder.decode(b'', final=True)
+    if metadata is None:
+        metadata = parse_frontmatter((header + tail).replace('\r\n', '\n').replace('\r', '\n'))
+    return metadata, digest.hexdigest()
+
+
+def read_vault_manifest(vault, *, retain_inventory=True, progress=None):
     """Return a validated schema-two manifest, or None for a legacy vault.
 
     Incomplete generation, unknown schemas, conflicting views and escaped paths are errors.
+    Exporters can discard non-operation records after validation with retain_inventory=False.
+    Compact identity indexes remain in memory; JSON and note bodies are read incrementally.
+    Other callers retain the full manifest by default. Progress callbacks receive text only.
     This reader uses only Python's standard library so standalone exporters can bundle it.
     """
     root = Path(vault).resolve()
@@ -341,76 +500,98 @@ def read_vault_manifest(vault):
         if (root / 'channels').exists() and list((root / 'channels').glob('*/operations/*/operation.md')):
             raise ValueError('Scoped vault is missing vault-manifest.json')
         return None
-    manifest = json.loads(path.read_text(encoding='utf-8-sig'))
-    if not isinstance(manifest, dict):
-        raise ValueError('Invalid scoped vault manifest')
-    if manifest.get('vault_schema_version') != 2 or manifest.get('identity_version') != 1:
-        raise ValueError('Unsupported vault schema or identity version')
-    if manifest.get('complete') is not True or not manifest.get('workspace_id'):
-        raise ValueError('Incomplete scoped vault manifest')
-    entries = manifest.get('entities')
-    if not isinstance(entries, list):
-        raise ValueError('Missing scoped entity inventory')
-    paths, usages, definitions = ({}, set(), {})
-    for entry in entries:
+    manifest = {}
+    paths, usages, definitions = {}, set(), {}
+    operations = []
+    processed = 0
+    for field, event, entry in iter_manifest_fields(path):
+        if event == 'array':
+            manifest[field] = []
+            continue
+        if event == 'value':
+            manifest[field] = entry
+            continue
+        if field != 'entities':
+            manifest[field].append(entry)
+            continue
+        processed += 1
         required = ('kind', 'entity_id', 'definition_id', 'usage_id', 'note', 'source_relative_path', 'source_selector', 'source_hash', 'note_hash')
-        if not isinstance(entry, dict) or any((not isinstance(entry.get(key), str) or not entry[key] for key in required)):
+        if not isinstance(entry, dict) or any(not isinstance(entry.get(key), str) or not entry[key] for key in required):
             raise ValueError('Invalid scoped entity identity')
         relative = entry['note']
         candidate = (root / relative).resolve()
-        if '\\' in relative or Path(relative).is_absolute() or (not candidate.is_relative_to(root)) or (not candidate.is_file()):
+        if '\\' in relative or Path(relative).is_absolute() or not candidate.is_relative_to(root) or not candidate.is_file():
             raise ValueError('Missing or unsafe scoped note path: ' + relative)
         if relative.casefold() in paths or entry['usage_id'] in usages:
             raise ValueError('Duplicate scoped note path or usage identity: ' + relative)
-        if hashlib.sha256(candidate.read_bytes()).hexdigest() != entry['note_hash']:
+        metadata, note_hash = _read_note_metadata(candidate)
+        if note_hash != entry['note_hash']:
             raise ValueError('Scoped note differs from completed manifest: ' + relative)
-        metadata = parse_frontmatter(candidate.read_text(encoding='utf-8-sig'))
         for field, key in (('entity_id', 'entity_id'), ('qualified_entity_id', 'definition_id'), ('usage_id', 'usage_id')):
             if str(metadata.get(field, '')) != entry[key]:
                 raise ValueError('Scoped note and manifest identity disagree: ' + relative)
         if str(metadata.get('operation_identity') or '') != entry.get('operation_identity', ''):
             raise ValueError('Scoped note belongs to another operation view: ' + relative)
-        coordinates = tuple((entry[key] for key in ('kind', 'entity_id', 'source_relative_path', 'source_selector', 'source_hash')))
+        coordinates = tuple(entry[key] for key in ('kind', 'entity_id', 'source_relative_path', 'source_selector', 'source_hash'))
         previous = definitions.setdefault(entry['definition_id'], coordinates)
         if previous != coordinates:
             raise ValueError('Conflicting views of source definition: ' + entry['definition_id'])
-        paths[relative.casefold()] = entry
+        paths[relative.casefold()] = entry.get('operation_identity')
         usages.add(entry['usage_id'])
-    for entry in entries:
+        if retain_inventory or entry['kind'] == 'operation' and entry.get('operation_id'):
+            manifest['entities'].append(entry)
+        if progress and (processed == 1 or processed % 250 == 0):
+            progress(f'Validated {processed} notes: {relative}')
         if entry['kind'] != 'operation' or not entry.get('operation_id'):
             continue
-        if entry['operation_id'] != entry['entity_id'] or not entry.get('channel') or (not entry.get('operation_identity')):
+        if entry['operation_id'] != entry['entity_id'] or not entry.get('channel') or not entry.get('operation_identity'):
             raise ValueError('Invalid effective operation identity: ' + entry['note'])
-        metadata = parse_frontmatter((root / entry['note']).read_text(encoding='utf-8-sig'))
         if str(metadata.get('channel', '')) != entry['channel']:
             raise ValueError('Scoped operation channel and manifest disagree: ' + entry['note'])
+        operations.append(entry)
+    if manifest.get('vault_schema_version') != 2 or manifest.get('identity_version') != 1:
+        raise ValueError('Unsupported vault schema or identity version')
+    if manifest.get('complete') is not True or not manifest.get('workspace_id'):
+        raise ValueError('Incomplete scoped vault manifest')
+    if not isinstance(manifest.get('entities'), list):
+        raise ValueError('Missing scoped entity inventory')
+    for entry in operations:
         for reference in entry.get('references', {}).values():
-            target = paths.get(reference.casefold())
-            if target is None or target.get('operation_identity') != entry['operation_identity']:
+            if reference.casefold() not in paths or paths[reference.casefold()] != entry['operation_identity']:
                 raise ValueError('Reference escapes owning operation view: ' + reference)
+    if progress:
+        progress(f'Validated {processed} notes; {len(operations)} effective operations')
     return manifest
+
 
 def operation_note_paths(vault, manifest=None):
     """Enumerate effective operation notes from a scoped manifest or legacy folders."""
     root = Path(vault).resolve()
     manifest = read_vault_manifest(root) if manifest is None else manifest
     if manifest is not None:
-        return [root / entry['note'] for entry in manifest['entities'] if entry['kind'] == 'operation' and entry.get('operation_id')]
+        return [root / entry['note'] for entry in manifest['entities']
+                if entry['kind'] == 'operation' and entry.get('operation_id')]
     if not (root / 'operations').is_dir():
         raise ValueError('Missing operations folder: ' + str(root))
     return sorted((root / 'operations').rglob('*.md'))
 
 # Bundled from source/tools/operation_call_tools/discovery.py
 """Resolve CCComplexOpStep targets from Composer Mapper Markdown evidence."""
+
 import hashlib
 import re
 from pathlib import Path
 from urllib.parse import unquote
-COMPLEX_CLASS = 'com.ibm.il.dse.cc.cut.CCComplexOpStep'
+
+
+COMPLEX_CLASS = "com.ibm.il.dse.cc.cut.CCComplexOpStep"
+
 
 def _links(section):
     """Read both standard Markdown links and Obsidian links."""
-    return [unquote(match[0] or match[1].split('|', 1)[0]) for match in re.findall('\\[[^\\]]*\\]\\(([^)]+)\\)|\\[\\[([^\\]]+)\\]\\]', section)]
+    return [unquote(match[0] or match[1].split('|', 1)[0]) for match in
+            re.findall(r'\[[^\]]*\]\(([^)]+)\)|\[\[([^\]]+)\]\]', section)]
+
 
 def _note_path(root, owner, target):
     """Resolve Mapper vault-root links or ordinary relative note links safely."""
@@ -421,19 +602,23 @@ def _note_path(root, owner, target):
         path = candidate.resolve()
         if path.is_relative_to(root) and path.is_file():
             return path
-    raise ValueError('Missing linked step note: ' + target)
+    raise ValueError("Missing linked step note: " + target)
 
-def discover_operation_calls(vault):
+
+def discover_operation_calls(vault, *, progress=None):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
-    manifest = read_vault_manifest(root)
+    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress)
     note_paths = operation_note_paths(root, manifest)
     registry = parse_channel_operation_registry(str(root / 'analysis/channel-operation-registry.md'))
-    operations, calls, issues = ({}, [], [])
+    operations, calls, issues = {}, [], []
     if manifest is not None:
-        issues.extend((dict(operation=item.get('operation', ''), step=item.get('step', ''), detail=item['detail']) for item in manifest.get('diagnostics', []) if item.get('kind') in {'identity', 'source_parse'}))
+        issues.extend(dict(operation=item.get('operation', ''), step=item.get('step', ''), detail=item['detail'])
+                      for item in manifest.get('diagnostics', []) if item.get('kind') in {'identity', 'source_parse'})
     documents = []
-    for path in note_paths:
+    for number, path in enumerate(note_paths, 1):
+        if progress:
+            progress(f'Reading operation {number}/{len(note_paths)}: {path.relative_to(root)}')
         text = path.read_text(encoding='utf-8-sig')
         op = parse_operation_note(text, str(path))
         channels = {op.channel} if op.channel else {channel for name, channel, _ in registry if name == op.id}
@@ -445,11 +630,14 @@ def discover_operation_calls(vault):
             if key in operations:
                 issues.append(dict(operation=key, step='', detail='Duplicate operation identity'))
                 continue
-            operations[key] = dict(operation_id=op.id, channel=channel, note=str(path.relative_to(root)), source_hash=op.source_hash, ref_formats=op.ref_formats)
+            operations[key] = dict(operation_id=op.id, channel=channel, note=str(path.relative_to(root)),
+                source_hash=op.source_hash, ref_formats=op.ref_formats)
             documents.append((key, op, path, text))
-    for caller, op, path, text in documents:
+    for number, (caller, op, path, text) in enumerate(documents, 1):
+        if progress:
+            progress(f'Resolving calls {number}/{len(documents)}: {caller}')
         targets = _links(parse_section(text, 'Steps'))
-        if op.steps and (not targets):
+        if op.steps and not targets:
             issues.append(dict(operation=caller, step='', detail='Steps have no resolvable Markdown links'))
         for target in targets:
             try:
@@ -458,10 +646,10 @@ def discover_operation_calls(vault):
                 step = parse_opstep_note(step_text, str(step_path))
                 raw = parse_key_value_bullets(parse_section(step_text, 'Raw Attributes'))
                 impl = raw.get('implClass') or step.impl_class or ''
-                if impl != COMPLEX_CLASS and (not impl.endswith('|' + COMPLEX_CLASS + ']]')):
+                if impl != COMPLEX_CLASS and not impl.endswith('|' + COMPLEX_CLASS + ']]'):
                     continue
                 channel = caller.split('/', 1)[0]
-                if step.only_for and channel.upper() not in re.split('[,;\\s]+', step.only_for.strip().upper()):
+                if step.only_for and channel.upper() not in re.split(r'[,;\s]+', step.only_for.strip().upper()):
                     continue
                 if step.parent_operation_id and step.parent_operation_id != op.id:
                     raise ValueError('Linked step belongs to another operation; possible Mapper step-ID collision')
@@ -470,9 +658,14 @@ def discover_operation_calls(vault):
                     raise ValueError('CCComplexOpStep has no opExecuteName')
                 callee = channel + '/' + name
                 if callee not in operations:
-                    issues.append(dict(operation=caller, step=step.id, callee=callee, note=str(step_path.relative_to(root)), parameters=step.parameters, transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest(), detail='Target is missing in caller channel: ' + callee + '; cross-channel targets require explicit resolution'))
+                    issues.append(dict(operation=caller, step=step.id, callee=callee,
+                        note=str(step_path.relative_to(root)), parameters=step.parameters,
+                        transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest(),
+                        detail='Target is missing in caller channel: ' + callee + '; cross-channel targets require explicit resolution'))
                     continue
-                calls.append(dict(caller=caller, callee=callee, step=step.id, note=str(step_path.relative_to(root)), parameters=step.parameters, transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest()))
+                calls.append(dict(caller=caller, callee=callee, step=step.id,
+                    note=str(step_path.relative_to(root)), parameters=step.parameters,
+                    transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest()))
             except (OSError, ValueError) as exc:
                 issues.append(dict(operation=caller, step=target, detail=str(exc)))
     return dict(operations=operations, calls=calls, issues=issues)

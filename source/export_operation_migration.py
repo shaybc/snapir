@@ -1,4 +1,4 @@
-"""Single-command Markdown-to-Excel operation migration report."""
+"""Export a Mapper vault to Excel with streamed validation, progress and elapsed time."""
 
 import argparse
 import json
@@ -9,6 +9,7 @@ import tempfile
 
 from tools.operation_call_tools.discovery import discover_operation_calls
 from tools.operation_call_tools.ordering import operation_waves
+from tools.operation_call_tools.export_progress import ExportProgress
 
 
 def main(argv=None):
@@ -22,7 +23,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.output.suffix.lower() != '.xlsx':
         parser.error('--output must end in .xlsx')
-    graph = discover_operation_calls(args.vault)
+    progress = ExportProgress()
+    progress.phase('Validating Mapper vault and discovering operation calls')
+    graph = discover_operation_calls(args.vault, progress=progress.update)
+    progress.phase('Calculating dependency waves')
     payload = dict(graph=graph, waves=operation_waves(graph), relationships=args.include_relationships)
     bundle = Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/node'
     node = args.node or (str(bundle / 'bin/node.exe') if (bundle / 'bin/node.exe').exists() else shutil.which('node'))
@@ -34,8 +38,9 @@ def main(argv=None):
         data = Path(temporary) / 'graph.json'
         data.write_text(json.dumps(payload), encoding='utf-8')
         writer = Path(__file__).parent / 'tools/operation_call_tools/excel_report.mjs'
+        progress.phase('Writing Excel workbook')
         subprocess.run([node, str(writer), str(data), str(args.output.resolve()), modules], check=True)
-    print(f"Created {args.output}: {len(graph['operations'])} operations, {len(graph['calls'])} call sites, {len(graph['issues'])} issues.")
+    print(f"Created {args.output}: {len(graph['operations'])} operations, {len(graph['calls'])} call sites, {len(graph['issues'])} issues. Elapsed={progress.elapsed()}", flush=True)
     return 0
 
 

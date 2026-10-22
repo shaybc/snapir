@@ -776,16 +776,81 @@ def test_copied_excel_generator_reads_scoped_vault(tmp_path, scoped_mapper):
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize('markdown', [True, False])
+def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper, markdown):
+    import shutil
+    import sys
+    project = Path(__file__).resolve().parents[2]
+    python = Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+    python = str(python) if python.is_file() else sys.executable
+    if subprocess.run([python, '-c', 'import openpyxl'], capture_output=True).returncode:
+        pytest.skip('Workbook parity requires openpyxl')
+    modules = Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'
+    node = shutil.which('node')
+    if not node or not (modules / '@oai/artifact-tool').exists():
+        pytest.skip('Built-in workbook parity requires Node.js and @oai/artifact-tool')
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    shutil.copytree(project / 'bank-demo/composer/Workspace', root)
+    source = root / 'WSBCC_XML/src/Xml Definition/Channel/XML/selfDefOper/CollectionRegression.xml'
+    source.write_text('''<XML>
+      <fmtDef id="Duplicate"><CCXML dataName="OldDefinition"/></fmtDef>
+      <fmtDef id="Duplicate"><CCXML dataName="LastDefinition"/></fmtDef>
+      <fmtDef id="IndexedParent"><CCIColl>
+        <fmtDef id="Repeated"><CCString dataName="FirstChild"/></fmtDef>
+        <fmtDef id="Repeated"><CCString dataName="SecondChild"/></fmtDef>
+      </CCIColl></fmtDef>
+      <fmtDef id="KeyedParent"><CCXML>
+        <CCString dataName="Same" value="OldField"/>
+        <CCString dataName="Same" value="LastField"/>
+      </CCXML></fmtDef>
+    </XML>''', encoding='utf-8')
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    formats = [entry for entry in manifest['entities'] if entry['kind'] == 'format'
+               and entry['source_relative_path'].endswith('CollectionRegression.xml')]
+    assert len(formats) == 5
+    duplicate = next(entry for entry in formats if entry['entity_id'] == 'Duplicate')
+    assert duplicate['source_selector'] == '/XML[1]/fmtDef[2]'
+    assert len([entry for entry in formats if entry['entity_id'] == 'Repeated']) == 2
+    keyed = next(entry for entry in formats if entry['entity_id'] == 'KeyedParent')
+    assert 'OldField' not in (vault / keyed['note']).read_text(encoding='utf-8')
+    isolated = tmp_path / 'portable'
+    isolated.mkdir()
+    script = isolated / 'Excel Generator.py'
+    shutil.copy2(project / 'Excel Generator.py', script)
+    standalone, builtin = tmp_path / 'standalone.xlsx', tmp_path / 'builtin.xlsx'
+    environment = dict(os.environ, PYTHONPATH='')
+    portable = subprocess.run([python, str(script), str(vault), '--output', str(standalone), '--include-relationships'],
+                              cwd=isolated, env=environment, capture_output=True, text=True, timeout=120)
+    assert portable.returncode == 0, portable.stderr
+    built = subprocess.run([python, str(project / 'source/export_operation_migration.py'),
+                            '--vault', str(vault), '--output', str(builtin), '--include-relationships',
+                            '--node', node, '--artifact-modules', str(modules)],
+                           cwd=isolated, env=environment, capture_output=True, text=True, timeout=120)
+    assert built.returncode == 0, built.stderr
+    for output in (portable.stdout, built.stdout):
+        assert 'Validating Mapper vault' in output and 'Writing Excel workbook' in output
+        assert '10 operations, 7 call sites, 0 issues' in output and 'Elapsed=' in output
+    comparison = subprocess.run([python, '-c',
+        "from openpyxl import load_workbook; import sys; a=load_workbook(sys.argv[1]); b=load_workbook(sys.argv[2]); "
+        "assert a.sheetnames==b.sheetnames==['Migration Plan','Operations','Relationships']; "
+        "assert all(list(a[s].values)==list(b[s].values) for s in a.sheetnames); a.close(); b.close()",
+        str(standalone), str(builtin)], capture_output=True, text=True, timeout=30)
+    assert comparison.returncode == 0, comparison.stderr
+
+
 def test_standalone_discovery_matches_current_shared_implementation():
     import ast
     root = Path(__file__).resolve().parents[2]
     standalone = ast.parse((root / 'Excel Generator.py').read_text(encoding='utf-8-sig'))
     bundled = {node.name: ast.dump(node, include_attributes=False)
-               for node in standalone.body if isinstance(node, ast.FunctionDef)}
-    for relative in ('composer_mapper_tools/vault_manifest.py', 'operation_call_tools/discovery.py', 'operation_call_tools/ordering.py'):
+               for node in standalone.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+    for relative in ('composer_mapper_tools/vault_manifest.py', 'composer_mapper_tools/manifest_json_stream.py',
+                     'operation_call_tools/export_progress.py', 'operation_call_tools/discovery.py', 'operation_call_tools/ordering.py'):
         shared = ast.parse((root / 'source/tools' / relative).read_text(encoding='utf-8-sig'))
         for node in shared.body:
-            if isinstance(node, ast.FunctionDef) and node.name != 'ordered_operations':
+            if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name != 'ordered_operations':
                 assert bundled[node.name] == ast.dump(node, include_attributes=False), node.name
 
 
