@@ -483,8 +483,10 @@ def _read_note_metadata(candidate):
     return metadata, digest.hexdigest()
 
 
-def read_vault_manifest(vault, *, retain_inventory=True, progress=None):
-    """Return a validated schema-two manifest, or None for a legacy vault.
+def read_vault_manifest(vault, *, retain_inventory=True, progress=None, allow_shared=False):
+    """Return a validated manifest, or None for a legacy vault.
+
+    Shared schema-three notes require explicit opt-in; converter readers stay schema two.
 
     Incomplete generation, unknown schemas, conflicting views and escaped paths are errors.
     Exporters can discard non-operation records after validation with retain_inventory=False.
@@ -509,6 +511,8 @@ def read_vault_manifest(vault, *, retain_inventory=True, progress=None):
             manifest[field] = []
             continue
         if event == 'value':
+            if field == 'vault_schema_version' and entry == 3 and not allow_shared:
+                raise ValueError('Shared schema-three vault requires an updated consumer; converter support is not implemented')
             manifest[field] = entry
             continue
         if field != 'entities':
@@ -549,16 +553,21 @@ def read_vault_manifest(vault, *, retain_inventory=True, progress=None):
         if str(metadata.get('channel', '')) != entry['channel']:
             raise ValueError('Scoped operation channel and manifest disagree: ' + entry['note'])
         operations.append(entry)
-    if manifest.get('vault_schema_version') != 2 or manifest.get('identity_version') != 1:
+    if manifest.get('vault_schema_version') not in (2, 3) or manifest.get('identity_version') != 1:
         raise ValueError('Unsupported vault schema or identity version')
+    shared = manifest['vault_schema_version'] == 3
+    if shared and not allow_shared:
+        raise ValueError('Shared schema-three vault requires an updated consumer; converter support is not implemented')
     if manifest.get('complete') is not True or not manifest.get('workspace_id'):
         raise ValueError('Incomplete scoped vault manifest')
     if not isinstance(manifest.get('entities'), list):
         raise ValueError('Missing scoped entity inventory')
     for entry in operations:
         for reference in entry.get('references', {}).values():
-            if reference.casefold() not in paths or paths[reference.casefold()] != entry['operation_identity']:
+            if reference.casefold() not in paths or not shared and paths[reference.casefold()] != entry['operation_identity']:
                 raise ValueError('Reference escapes owning operation view: ' + reference)
+    if shared:
+        _validate_operation_contexts(manifest, paths, operations)
     if progress:
         progress(f'Validated {processed} notes; {len(operations)} effective operations')
     return manifest
@@ -575,6 +584,56 @@ def operation_note_paths(vault, manifest=None):
         raise ValueError('Missing operations folder: ' + str(root))
     return sorted((root / 'operations').rglob('*.md'))
 
+
+def _validate_operation_contexts(manifest, paths, operations):
+    """Validate contextual connections against canonical notes and resolved call targets."""
+    contexts = manifest.get('operation_contexts')
+    if not isinstance(contexts, list):
+        raise ValueError('Missing consuming-channel operation connections')
+    definitions = {entry['definition_id']: entry for entry in operations}
+    by_key = {}
+    for context in contexts:
+        if not isinstance(context, dict) or any(not isinstance(context.get(key), str) or not context[key]
+                for key in ('channel', 'operation_id', 'operation_identity', 'definition_id', 'note')):
+            raise ValueError('Invalid operation connection identity')
+        key = context['channel'] + '/' + context['operation_id']
+        if key in by_key:
+            raise ValueError('Duplicate consuming-channel operation connection: ' + key)
+        by_key[key] = context
+        definition = definitions.get(context['definition_id'])
+        if definition is None or definition['note'] != context['note'] or definition['entity_id'] != context['operation_id']:
+            raise ValueError('Connection refers to an invalid canonical operation: ' + key)
+        references = context.get('references')
+        steps = context.get('step_notes')
+        if not isinstance(references, dict) or not isinstance(steps, list):
+            raise ValueError('Missing resolved dependencies: ' + key)
+        if references.get('operations:' + context['operation_id']) != context['note']:
+            raise ValueError('Invalid contextual operation reference: ' + key)
+        for note in [*references.values(), *steps]:
+            if not isinstance(note, str) or note.casefold() not in paths:
+                raise ValueError('Missing canonical dependency note: ' + str(note))
+        for note in steps:
+            if paths[note.casefold()] != definition['operation_identity']:
+                raise ValueError('Context step belongs to another source operation: ' + note)
+        if context.get('entry_step_note', '') != (steps[0] if steps else ''):
+            raise ValueError('Invalid contextual entry step: ' + key)
+        transitions = context.get('transition_targets')
+        if not isinstance(transitions, dict) or any(note not in steps or not isinstance(targets, dict)
+                or any(target not in steps for target in targets.values()) for note, targets in transitions.items()):
+            raise ValueError('Invalid contextual transition targets: ' + key)
+        if not isinstance(context.get('calls'), list):
+            raise ValueError('Missing contextual operation calls: ' + key)
+    for key, context in by_key.items():
+        for call in context['calls']:
+            if not isinstance(call, dict) or call.get('step_note') not in context['step_notes']:
+                raise ValueError('Invalid contextual call step: ' + key)
+            if call.get('detail'):
+                continue
+            target = by_key.get(call.get('target_context'))
+            if target is None or target['channel'] != context['channel'] or target['note'] != call.get('target_note') \
+                    or target['definition_id'] != call.get('target_definition_id') or target['operation_id'] != call.get('target_name'):
+                raise ValueError('Invalid resolved operation call: ' + key)
+
 # Bundled from source/tools/operation_call_tools/discovery.py
 """Resolve CCComplexOpStep targets from Composer Mapper Markdown evidence."""
 
@@ -588,20 +647,21 @@ COMPLEX_CLASS = "com.ibm.il.dse.cc.cut.CCComplexOpStep"
 
 
 def _links(section):
-    """Read both standard Markdown links and Obsidian links."""
-    return [unquote(match[0] or match[1].split('|', 1)[0]) for match in
+    """Keep URI escapes until resolution; percent signs in wiki filenames are literal."""
+    return [match[0] or match[1].split('|', 1)[0].replace('%', '%25') for match in
             re.findall(r'\[[^\]]*\]\(([^)]+)\)|\[\[([^\]]+)\]\]', section)]
 
 
 def _note_path(root, owner, target):
-    """Resolve Mapper vault-root links or ordinary relative note links safely."""
-    target = target.split('#', 1)[0]
-    if not target.endswith('.md'):
-        target += '.md'
-    for candidate in (root / target, owner.parent / target):
-        path = candidate.resolve()
-        if path.is_relative_to(root) and path.is_file():
-            return path
+    """Try literal hash filenames, then strip a URI fragment before decoding once."""
+    for destination in (target, target.split('#', 1)[0]):
+        note = unquote(destination)
+        if not note.endswith('.md'):
+            note += '.md'
+        for candidate in (root / note, owner.parent / note):
+            path = candidate.resolve()
+            if path.is_relative_to(root) and path.is_file():
+                return path
     raise ValueError("Missing linked step note: " + target)
 
 
@@ -620,7 +680,9 @@ def _missing_target_detail(channel, name, operations):
 def discover_operation_calls(vault, *, progress=None):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
-    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress)
+    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress, allow_shared=True)
+    if manifest is not None and manifest.get('vault_schema_version') == 3:
+        return _discover_context_calls(root, manifest, progress)
     note_paths = operation_note_paths(root, manifest)
     registry = parse_channel_operation_registry(str(root / 'analysis/channel-operation-registry.md'))
     operations, calls, issues = {}, [], []
@@ -680,6 +742,43 @@ def discover_operation_calls(vault, *, progress=None):
                     transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest()))
             except (OSError, ValueError) as exc:
                 issues.append(dict(operation=caller, step=target, detail=str(exc)))
+    return dict(operations=operations, calls=calls, issues=issues)
+
+
+def _discover_context_calls(root, manifest, progress):
+    """Read reachable runtime connections while reusing their canonical source notes."""
+    operations, calls = {}, []
+    issues = [dict(operation=item.get('operation', ''), step=item.get('step', ''), detail=item['detail'])
+              for item in manifest.get('diagnostics', []) if item.get('kind') in {'identity', 'source_parse'}]
+    documents, steps = {}, {}
+    for number, context in enumerate(manifest['operation_contexts'], 1):
+        key = context['channel'] + '/' + context['operation_id']
+        if progress:
+            progress(f'Reading operation connections {number}: {key}')
+        note = context['note']
+        if note not in documents:
+            documents[note] = parse_operation_note((root / note).read_text(encoding='utf-8-sig'), str(root / note))
+        op = documents[note]
+        operations[key] = dict(operation_id=op.id, channel=context['channel'], note=note,
+            source_hash=op.source_hash, ref_formats=op.ref_formats, definition_id=context['definition_id'])
+        for call in context['calls']:
+            step_note = call['step_note']
+            if step_note not in steps:
+                text = (root / step_note).read_text(encoding='utf-8-sig')
+                steps[step_note] = (parse_opstep_note(text, str(root / step_note)), hashlib.sha256(text.encode()).hexdigest())
+            step, evidence = steps[step_note]
+            if step.parent_operation_id and step.parent_operation_id != op.id:
+                raise ValueError('Context call step belongs to another source operation: ' + step_note)
+            if (step.parameters.get('opExecuteName') or '') != call['target_name']:
+                raise ValueError('Context call target disagrees with source step: ' + step_note)
+            item = dict(caller=key, callee=call.get('target_context', context['channel'] + '/' + call['target_name']),
+                step=step.id, note=step_note, parameters=step.parameters, transitions=step.transitions, evidence_hash=evidence)
+            if call.get('detail'):
+                item['operation'] = item.pop('caller')
+                item['detail'] = call['detail']
+                issues.append(item)
+            else:
+                calls.append(item)
     return dict(operations=operations, calls=calls, issues=issues)
 
 # Bundled from source/tools/operation_call_tools/ordering.py

@@ -3,6 +3,8 @@ package il.co.dcd.composermapper.service;
 import il.co.dcd.composermapper.util.SafePathNames;
 import il.co.dcd.composermapper.util.OperationStepFlow;
 import il.co.dcd.composermapper.model.OpStepDef;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -83,9 +85,18 @@ public class LinkResolver {
   }
 
   private String link(String pathWithoutExtension, String label) {
-    if (markdownLinks) {
-      return "[" + label + "](" + pathWithoutExtension + ".md)";
+    if (markdownLinks || pathWithoutExtension.contains("#") || pathWithoutExtension.contains("%")) {
+      return "[" + label + "](" + encodedPath(pathWithoutExtension + ".md") + ")";
     }
     return "[[" + pathWithoutExtension + "|" + label + "]]";
+  }
+
+  /** Encode only the link destination; filenames, labels and manifest paths stay literal. */
+  private String encodedPath(String path) {
+    try {
+      return new URI(null, null, path, null).toASCIIString().replace("(", "%28").replace(")", "%29");
+    } catch (URISyntaxException error) {
+      throw new IllegalArgumentException("Invalid note link path: " + path, error);
+    }
   }
 }

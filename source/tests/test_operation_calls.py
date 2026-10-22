@@ -299,3 +299,91 @@ public class DispatchProbe {
     assert compiled.returncode == 0, compiled.stderr
     executed = subprocess.run(['java','-cp',str(tmp_path),'DispatchProbe'],capture_output=True,text=True,timeout=30)
     assert executed.returncode == 0, executed.stderr
+
+
+@pytest.mark.parametrize('wiki', [False, True])
+@pytest.mark.parametrize('name', ['#GPKOp', 'GPK#Op', 'Literal%23', 'Mixed%#Name', 'Space # Op', 'Call(#)'])
+def test_hash_link_filenames_round_trip(tmp_path, wiki, name):
+    from urllib.parse import quote
+    from tools.operation_call_tools.discovery import _links, _note_path
+    owner = tmp_path / 'operation.md'
+    owner.write_text('source')
+    note = tmp_path / 'opsteps' / (name + '.md')
+    note.parent.mkdir()
+    note.write_text('step')
+    relative = note.relative_to(tmp_path).as_posix()
+    link = '[[' + relative[:-3] + '|' + name + ']]' if wiki else '[' + name + '](' + quote(relative, safe='/') + ')'
+    assert _note_path(tmp_path, owner, _links(link)[0]) == note
+
+
+@pytest.mark.parametrize('wiki', [False, True])
+def test_percent_escapes_are_decoded_once_and_wiki_percent_names_are_literal(tmp_path, wiki):
+    from tools.operation_call_tools.discovery import _links, _note_path
+    owner = tmp_path / 'operation.md'
+    owner.write_text('source')
+    hashed = tmp_path / '#Target.md'
+    literal = tmp_path / '%23Target.md'
+    hashed.write_text('hash')
+    literal.write_text('percent')
+    link = '[[%23Target|literal]]' if wiki else '[literal](%2523Target.md)'
+    assert _note_path(tmp_path, owner, _links(link)[0]) == literal
+    assert _note_path(tmp_path, owner, _links('[hash](%23Target.md)')[0]) == hashed
+
+
+@pytest.mark.parametrize('link', ['[call](Call.md#Details)', '[[Call#Details|call]]', '[call](Call%23Name.md#Details)'])
+def test_heading_fragments_are_removed_before_percent_decoding(tmp_path, link):
+    from tools.operation_call_tools.discovery import _links, _note_path
+    owner = tmp_path / 'operation.md'
+    owner.write_text('source')
+    note = tmp_path / ('Call#Name.md' if '%23' in link else 'Call.md')
+    note.write_text('step')
+    assert _note_path(tmp_path, owner, _links(link)[0]) == note
+
+
+@pytest.mark.parametrize('link', ['[call](Call#Name.md)', '[[Call#Name|call]]'])
+def test_old_unescaped_hash_links_prefer_the_exact_filename(tmp_path, link):
+    from tools.operation_call_tools.discovery import _links, _note_path
+    owner = tmp_path / 'operation.md'
+    owner.write_text('source')
+    (tmp_path / 'Call.md').write_text('heading decoy')
+    note = tmp_path / 'Call#Name.md'
+    note.write_text('actual step')
+    assert _note_path(tmp_path, owner, _links(link)[0]) == note
+
+
+@pytest.mark.parametrize('target', ['../outside.md', '%2e%2e%2foutside.md', '../outside.md#Heading'])
+def test_encoded_link_paths_cannot_escape_the_vault(tmp_path, target):
+    from tools.operation_call_tools.discovery import _note_path
+    root = tmp_path / 'vault'
+    root.mkdir()
+    owner = root / 'operation.md'
+    owner.write_text('source')
+    (tmp_path / 'outside.md').write_text('outside')
+    with pytest.raises(ValueError, match='Missing linked step note'):
+        _note_path(root, owner, target)
+
+
+@pytest.mark.parametrize('syntax', ['encoded', 'old-markdown', 'old-wiki'])
+def test_legacy_hash_operation_graph_keeps_targets_and_waves(tmp_path, syntax):
+    from urllib.parse import quote
+    root = vault(tmp_path, wiki=syntax == 'old-wiki')
+    operation = root / 'operations/A.md'
+    text = operation.read_text(encoding='utf-8').replace('entity_id: A\n', 'entity_id: #GPKOp\n')
+    step = root / 'opsteps/AtoB.md'
+    renamed = root / 'opsteps/#GPKOp/#Call.md'
+    renamed.parent.mkdir()
+    renamed.write_text(step.read_text(encoding='utf-8').replace('  - A\n', '  - #GPKOp\n')
+                       .replace('entity_id: AtoB\n', 'entity_id: #Call\n'), encoding='utf-8')
+    step.unlink()
+    relative = renamed.relative_to(root).as_posix()
+    link = ('[[opsteps/#GPKOp/#Call|#Call]]' if syntax == 'old-wiki' else
+            '[#Call](' + (quote(relative, safe='/') if syntax == 'encoded' else relative) + ')')
+    text = text.replace('[[opsteps/AtoB|AtoB]]' if syntax == 'old-wiki' else '[AtoB](opsteps/AtoB.md)', link)
+    operation.write_text(text, encoding='utf-8')
+    other = root / 'opsteps/AtoC.md'
+    other.write_text(other.read_text(encoding='utf-8').replace('  - A\n', '  - #GPKOp\n'), encoding='utf-8')
+    graph = discover_operation_calls(root)
+    assert graph['issues'] == []
+    assert operation_waves(graph)['INTERNET/#GPKOp']['wave'] == 3
+    assert ('INTERNET/#GPKOp', 'INTERNET/B', '#Call') in {
+        (call['caller'], call['callee'], call['step']) for call in graph['calls']}

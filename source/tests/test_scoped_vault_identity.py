@@ -9,9 +9,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
+from tools.composer_mapper_tools.vault_manifest import read_vault_manifest as _read_vault_manifest
+
 from tools.operation_call_tools.discovery import discover_operation_calls
 from tools.operation_call_tools.ordering import operation_waves
+
+
+def read_vault_manifest(vault, **kwargs):
+    return _read_vault_manifest(vault, allow_shared=True, **kwargs)
 
 
 @pytest.fixture(scope='module')
@@ -57,6 +62,17 @@ def invoke_mapper(classes, root, vault, markdown=True, timeout=60):
     return subprocess.run(['java', '-cp', str(classes), 'il.co.dcd.composermapper.Main', '--root', str(root),
         '--vault', str(vault), '--vault-layout', 'scoped', '--workspace-id', 'fixture',
         '--md', str(markdown).lower()], capture_output=True, text=True, timeout=timeout)
+
+
+def hash_link_definitions(xml):
+    source = xml / 'HashLinks.xml'
+    source.write_text('''<XML><CCDSEServerOperation id="#GPKOp" operationContext="#Context">
+      <refFormat name="csRequestFormat" refid="#Request%23"/>
+      <opStep id="#Call" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="Result#Op" on0Do="next"/>
+      <opStep id="#Call" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="Literal%23Op" onOtherDo="end"/>
+    </CCDSEServerOperation><CCDSEServerOperation id="Result#Op"/><CCDSEServerOperation id="Literal%23Op"/>
+    <fmtDef id="#Request%23"><CCString dataName="Value"/></fmtDef><context id="#Context" parent="nil"/></XML>''', encoding='utf-8')
+    return source
 
 
 def implicit_xml_workspace(root, xml=None):
@@ -133,23 +149,27 @@ def test_implicit_xml_operations_and_local_resource_overrides(tmp_path, scoped_m
     manifest = read_vault_manifest(vault)
     assert manifest['diagnostics'] == []
     entries = manifest['entities']
-    inherited = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'SME'
-                     and entry['operation_id'] == 'POB1Op')
+    inherited = next(entry for entry in entries if entry['kind'] == 'operation'
+                     and entry['channel'] == 'XML' and entry['operation_id'] == 'POB1Op')
     assert inherited['definition_channel'] == 'XML'
     assert inherited['source_relative_path'] == 'Channel/XML/CommonBank.xml'
-    assert inherited['note'] == 'channels/SME/operations/POB1Op/operation.md'
-    sme_steps = [entry['entity_id'] for entry in entries if entry['kind'] == 'opStep'
-                 and entry['channel'] == 'SME' and entry['operation_id'] == 'POB1Op']
-    assert sme_steps == ['SmeOnly']
+    assert inherited['note'] == 'channels/XML/operations/POB1Op/operation.md'
+    assert not (vault / 'channels/SME/operations/POB1Op').exists()
+    contexts = {entry['channel'] + '/' + entry['operation_id']: entry for entry in manifest['operation_contexts']}
+    sme = contexts['SME/POB1Op']
+    assert sme['note'] == inherited['note'] and sme['definition_id'] == inherited['definition_id']
+    assert [Path(note).stem for note in sme['step_notes']] == ['SmeOnly']
+    sme_step = next(entry for entry in entries if entry['note'] == sme['step_notes'][0])
+    assert sme_step['qualified_consumers'] == [sme['operation_identity']]
     for kind, name in [('format', 'SharedFmt'), ('context', 'SharedCtx')]:
-        resource = next(entry for entry in entries if entry['kind'] == kind and entry['channel'] == 'SME'
-                        and entry['operation_id'] == 'POB1Op' and entry['entity_id'] == name)
+        resource = next(entry for entry in entries if entry['note'] == sme['references'][kind + 's:' + name])
         assert resource['definition_channel'] == 'SME'
         assert resource['source_relative_path'] == 'Channel/SME/Resources.xml'
         if kind == 'format':
             content = (vault / resource['note']).read_text(encoding='utf-8')
             assert 'SMEField' in content and 'XMLField' not in content
-            assert 'example.SmeTag' in content and 'example.SmeDecorator' in content
+            assert 'example.SmeTag' in str(sme['java_resolution'])
+            assert 'example.SmeDecorator' in str(sme['java_resolution'])
     graph = discover_operation_calls(vault)
     assert not graph['issues']
     waves = operation_waves(graph)
@@ -159,21 +179,17 @@ def test_implicit_xml_operations_and_local_resource_overrides(tmp_path, scoped_m
         assert manifest['channels'] == ['SME']
         assert set(graph['operations']) == {'SME/IDBGetUserDataOp', 'SME/POB1Op'}
     else:
-        base = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'XML'
-                    and entry['operation_id'] == 'POB1Op')
-        voice = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'VOICEPORTAL'
-                     and entry['operation_id'] == 'POB1Op')
-        custom = next(entry for entry in entries if entry['kind'] == 'operation' and entry['channel'] == 'CUSTOM'
-                      and entry['operation_id'] == 'POB1Op')
-        assert base['definition_id'] == inherited['definition_id'] == voice['definition_id']
-        assert len({entry['usage_id'] for entry in (base, inherited, voice)}) == 3
-        assert custom['definition_channel'] == 'CUSTOM' and custom['definition_id'] != base['definition_id']
+        voice = contexts['VOICEPORTAL/POB1Op']
+        custom = contexts['CUSTOM/POB1Op']
+        assert voice['definition_id'] == inherited['definition_id']
+        assert custom['definition_id'] != inherited['definition_id']
         for channel in ('CUSTOM', 'VOICEPORTAL'):
-            resource = next(entry for entry in entries if entry['kind'] == 'format' and entry['channel'] == channel
-                            and entry['operation_id'] == 'POB1Op')
+            resource = next(entry for entry in entries
+                            if entry['note'] == contexts[channel + '/POB1Op']['references']['formats:SharedFmt'])
             content = (vault / resource['note']).read_text(encoding='utf-8')
             assert resource['definition_channel'] == 'XML' and 'XMLField' in content
-            assert 'example.XmlTag' in content and 'example.XmlDecorator' in content
+        assert len([entry for entry in entries if entry['kind'] == 'operation' and entry.get('operation_id')]) == 6
+        assert len({entry['definition_id'] for entry in entries}) == len(entries)
         assert len(graph['operations']) == 8 and len(graph['calls']) == 4
         assert waves['CUSTOM/IDBGetUserDataOp']['wave'] == 3
         assert waves['VOICEPORTAL/IDBGetUserDataOp']['wave'] == 2
@@ -369,8 +385,8 @@ def test_duplicate_operation_step_resource_names_survive(tmp_path, scoped_mapper
         for channel in ('INTERNET', 'IVR') for operation in ('A', 'B')}
     formats = [e for e in manifest['entities'] if e['kind'] == 'format' and e['entity_id'] == 'Fmt']
     assert len({e['definition_id'] for e in formats}) == 4
-    for entry in formats:
-        assert entry['operation_id'] + 'Field' in (vault / entry['note']).read_text()
+    for operation in operations:
+        assert operation['entity_id'] + 'Field' in (vault / operation['references']['formats:Fmt']).read_text()
     for operation in operations:
         evidence = next(item for item in operation['java_resolution'] if item['fqcn'] == 'org.example.Work')
         assert evidence['status'] == 'unresolved_classpath'
@@ -475,30 +491,34 @@ def test_only_for_variants_keep_channel_calls_and_source_occurrences(tmp_path, s
       <CCDSEServerOperation id="B"/>
       <CCDSEServerOperation id="C"/>
     </XML>''')
+    for channel in ('BANKADMIN', 'INTERNET'):
+        (root / 'Channel' / channel / 'Caller.xml').write_text(
+            '<XML><CCDSEServerOperation id="Entry"><opStep id="Enter" '
+            'implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="A"/></CCDSEServerOperation></XML>')
     original = source.read_bytes()
     result = invoke_mapper(scoped_mapper, root, vault, markdown)
     assert result.returncode == 0, result.stderr
     manifest = read_vault_manifest(vault)
     calls = [e for e in manifest['entities'] if e['kind'] == 'opStep' and e['entity_id'] == 'Call']
-    assert {(e['channel'], e['operation_id']) for e in calls} == {('BANKADMIN', 'A'), ('INTERNET', 'A')}
+    assert {(e['channel'], e['operation_id']) for e in calls} == {('XML', 'A')}
     assert len({e['definition_id'] for e in calls}) == 2
+    contexts = {item['channel'] + '/' + item['operation_id']: item for item in manifest['operation_contexts']}
     for channel, target in [('BANKADMIN', 'B'), ('INTERNET', 'C')]:
-        note = vault / f'channels/{channel}/operations/A/opsteps/Call.md'
-        text = note.read_text(encoding='utf-8')
+        context = contexts[channel + '/A']
+        assert context['note'] == 'channels/XML/operations/A/operation.md'
+        assert len(context['step_notes']) == 3
+        note = context['step_notes'][0]
+        text = (vault / note).read_text(encoding='utf-8')
         assert 'opExecuteName: `' + target + '`' in text
-        assert 'unresolved `Done`' not in text
-        assert ('Done.md' if markdown else '[[channels/') in text
-        operation = (vault / f'channels/{channel}/operations/A/operation.md').read_text(encoding='utf-8')
-        assert 'entry_step: Call' in operation
-        assert operation.count('*(onlyFor:') == 2
-    for channel in ('XML', 'IVR'):
-        operation = (vault / f'channels/{channel}/operations/A/operation.md').read_text(encoding='utf-8')
-        assert 'entry_step: Done' in operation
-        assert 'onlyFor:' not in operation
-        assert not (vault / f'channels/{channel}/operations/A/opsteps/Call.md').exists()
+        assert context['calls'][0]['target_context'] == channel + '/' + target
+        assert context['transition_targets'][note]['on0Do'].endswith('/Done.md')
+        assert not (vault / f'channels/{channel}/operations/A').exists()
+    assert [Path(note).stem for note in contexts['XML/A']['step_notes']] == ['Done']
+    assert 'IVR/A' not in contexts
     graph = discover_operation_calls(vault)
     assert graph['issues'] == []
     assert {(c['caller'], c['callee']) for c in graph['calls']} == {
+        ('BANKADMIN/Entry', 'BANKADMIN/A'), ('INTERNET/Entry', 'INTERNET/A'),
         ('BANKADMIN/A', 'BANKADMIN/B'), ('INTERNET/A', 'INTERNET/C')}
     assert source.read_bytes() == original
 
@@ -548,7 +568,9 @@ def test_case_variant_steps_use_ordered_occurrence_folders(tmp_path, scoped_mapp
         assert 'fieldValue: `' + value + '`' in note
         assert 'qualified_entity_id: ' + entry['definition_id'] in note
         assert '/occurrences/' in entry['note']
-        assert bool(entry['operation_id']) != inventory_only
+        assert entry['operation_id'] == 'CaseVariantsOp'
+        context = next(item for item in manifest['operation_contexts'] if item['operation_id'] == 'CaseVariantsOp')
+        assert (entry['note'] in context['step_notes']) != inventory_only
     if not inventory_only:
         assert by_name['SetSITE']['note'].endswith('/occurrences/2/SetSITE.md')
         assert by_name['SetSite']['note'].endswith('/occurrences/4/SetSite.md')
@@ -796,18 +818,21 @@ def test_bank_demo_repeated_calls_and_only_for_variants(tmp_path, scoped_mapper,
         steps = sorted([entry for entry in manifest['entities'] if entry['kind'] == 'opStep'
                         and entry['channel'] == channel and entry['operation_id'] == 'ClientCallFlowDemoOp'],
                        key=lambda entry: entry['step_index'])
-        assert len(steps) == 2
-        assert steps[0]['transition_targets'] == {'on0Do': steps[1]['note']}
-        assert steps[1]['transition_targets'] == {}
+        context = next(item for item in manifest['operation_contexts']
+                       if item['channel'] == channel and item['operation_id'] == 'ClientCallFlowDemoOp')
+        active = [next(entry for entry in steps if entry['note'] == note) for note in context['step_notes']]
+        assert len(steps) == 3 and len(active) == 2
+        assert context['transition_targets'][active[0]['note']] == {'on0Do': active[1]['note']}
+        assert context['transition_targets'][active[1]['note']] == {}
         assert (tmp_path / steps[0]['note']).is_file() and (tmp_path / steps[1]['note']).is_file()
         assert waves[caller]['calls_count'] == 2 and waves[caller]['wave'] == 2
         assert not any(issue.get('operation') == caller for issue in manifest['diagnostics'])
-    # Each source XML contains three occurrences; four are used and two stay in inventory.
+    # Canonical notes retain all six source occurrences, without per-consumer copies.
     definitions = [entry for entry in manifest['entities'] if entry['kind'] == 'opStep'
                    and entry['entity_id'] == 'CallClientOperation']
     assert len(definitions) == 6
     assert len({entry['definition_id'] for entry in definitions}) == 6
-    assert len([entry for entry in definitions if not entry['operation_id']]) == 2
+    assert all(entry['operation_id'] for entry in definitions)
 
 
 def test_manifest_rejects_modified_notes_and_incomplete_output(tmp_path, scoped_mapper):
@@ -836,11 +861,9 @@ def test_ambiguous_operation_is_diagnosed_without_overwrite(tmp_path, scoped_map
     assert len(occurrences) == 2
 
 
-def test_scoped_import_keeps_definition_and_usage_identity(tmp_path, scoped_mapper):
+def test_scoped_import_rejects_shared_schema_without_mutation(tmp_path, scoped_mapper):
     from tools.composer_mapper_tools.vault_importer import import_vault
-    from tools.composer_mapper_tools.scoped_vault_importer import require_qualified_conversion
     from tools.state_store_tools.db import get_connection, create_all_tables
-    from tools.state_store_tools.operation_calls import get_contract
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     make_workspace(root)
     assert invoke_mapper(scoped_mapper, root, vault).returncode == 0
@@ -848,22 +871,11 @@ def test_scoped_import_keeps_definition_and_usage_identity(tmp_path, scoped_mapp
     create_all_tables(conn)
     config = SimpleNamespace(run_id='scoped', run_mode=SimpleNamespace(value='full_inventory'),
                              target_channels=[], include_operations=None, exclude_operations=None)
-    summary = import_vault(conn, str(vault), config)
-    assert summary.operations == 4
-    assert conn.execute("SELECT count(*) FROM scoped_source_definitions WHERE kind='opStep' AND logical_id='Call'").fetchone()[0] == 4
-    assert conn.execute('SELECT count(*) FROM source_artifacts').fetchone()[0] == 0
-    context = conn.execute("SELECT definition_id,count(*) FROM scoped_entity_usages WHERE record_json LIKE '%\"kind\": \"context\"%' GROUP BY definition_id").fetchall()
-    assert sorted(row[1] for row in context) == [2, 2]
-    assert 'AField' in get_contract(conn, 'scoped', 'INTERNET/A')['formats']['csRequestFormat']['markdown']
-    assert 'BField' in get_contract(conn, 'scoped', 'INTERNET/B')['formats']['csRequestFormat']['markdown']
-    with pytest.raises(ValueError, match='conversion is gated'):
-        require_qualified_conversion(conn, 'scoped')
-    import_vault(conn, str(vault), config)
-    changed = json.loads((vault / 'vault-manifest.json').read_text())
-    changed['producer'] = 'changed-evidence'
-    (vault / 'vault-manifest.json').write_text(json.dumps(changed))
-    with pytest.raises(ValueError, match='fresh run'):
+    before = list(conn.iterdump())
+    with pytest.raises(ValueError, match='converter support is not implemented'):
         import_vault(conn, str(vault), config)
+    assert list(conn.iterdump()) == before
+    assert conn.execute('SELECT count(*) FROM source_artifacts').fetchone()[0] == 0
 
 
 def test_copied_excel_generator_reads_scoped_vault(tmp_path, scoped_mapper):
@@ -919,6 +931,7 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     shutil.copytree(project / 'bank-demo/composer/Workspace', root)
     implicit_xml_workspace(root, root / 'WSBCC_XML/src/Xml Definition/Channel/XML')
+    hash_link_definitions(root / 'WSBCC_XML/src/Xml Definition/Channel/XML')
     source = root / 'WSBCC_XML/src/Xml Definition/Channel/XML/selfDefOper/CollectionRegression.xml'
     source.write_text('''<XML>
       <fmtDef id="Duplicate"><CCXML dataName="OldDefinition"/></fmtDef>
@@ -932,7 +945,7 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
         <CCString dataName="Same" value="LastField"/>
       </CCXML></fmtDef>
     </XML>''', encoding='utf-8')
-    # Inherited views double this fixture's operation inventory; allow its larger I/O pass.
+    # Exercise multiple consuming contexts and the actual workbook writers within a bounded allowance.
     result = invoke_mapper(scoped_mapper, root, vault, markdown, timeout=120)
     assert result.returncode == 0, result.stderr
     manifest = read_vault_manifest(vault)
@@ -960,7 +973,7 @@ def test_excel_exporters_match_on_current_mapper_output(tmp_path, scoped_mapper,
     assert built.returncode == 0, built.stderr
     for output in (portable.stdout, built.stdout):
         assert 'Validating Mapper vault' in output and 'Writing Excel workbook' in output
-        assert '20 operations, 11 call sites, 0 issues' in output and 'Elapsed=' in output
+        assert '21 operations, 13 call sites, 0 issues' in output and 'Elapsed=' in output
     comparison = subprocess.run([python, '-c',
         "from openpyxl import load_workbook; import sys; a=load_workbook(sys.argv[1]); b=load_workbook(sys.argv[2]); "
         "assert a.sheetnames==b.sheetnames==['Migration Plan','Operations','Relationships']; "
@@ -1056,3 +1069,186 @@ def test_context_inventory_keeps_only_resource_origins(tmp_path, scoped_mapper):
     assert all(entry['source_relative_path'].startswith('WSBCC_IVR/src/') for entry in contexts)
     assert all(entry['source_selector'] == '/XML[1]/context[1]' for entry in contexts)
     assert any('Ambiguous context Ctx' in item['detail'] for item in manifest['diagnostics'])
+
+
+def test_empty_channels_do_not_multiply_xml_source_notes(tmp_path, scoped_mapper):
+    root = tmp_path / 'source'
+    implicit_xml_workspace(root)
+    first = tmp_path / 'first'
+    result = invoke_mapper(scoped_mapper, root, first)
+    assert result.returncode == 0, result.stderr
+    before = read_vault_manifest(first)
+    for number in range(8):
+        folder = root / 'Channel' / ('EMPTY' + str(number))
+        folder.mkdir()
+        (folder / 'dse.ini').write_text('<dse.ini/>')
+    second = tmp_path / 'second'
+    result = invoke_mapper(scoped_mapper, root, second)
+    assert result.returncode == 0, result.stderr
+    after = read_vault_manifest(second)
+    assert [(entry['definition_id'], entry['note'], entry['note_hash']) for entry in before['entities']] == [
+        (entry['definition_id'], entry['note'], entry['note_hash']) for entry in after['entities']]
+    assert before['operation_contexts'] == after['operation_contexts']
+    assert len(list(first.rglob('*.md'))) + 8 == len(list(second.rglob('*.md')))
+
+
+def test_selected_dependency_closure_preserves_cycles_and_shared_resources(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    xml, sme = root / 'Channel/XML', root / 'Channel/SME'
+    for folder in (xml, sme):
+        folder.mkdir(parents=True)
+        (folder / 'dse.ini').write_text('<dse.ini/>')
+    (sme / 'Caller.xml').write_text('''<XML><CCDSEServerOperation id="Entry">
+      <opStep id="Call" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="A"/>
+    </CCDSEServerOperation><CCDSEServerOperation id="B">
+      <opStep id="CallC" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="C"/>
+    </CCDSEServerOperation><fmtDef id="Shared"><CCString dataName="Local"/></fmtDef></XML>''')
+    (xml / 'Common.xml').write_text('''<XML><CCDSEServerOperation id="A" operationContext="Child">
+      <refFormat name="csRequestFormat" refid="Outer"/>
+      <opStep id="CallB" onlyFor="SME" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="B"/>
+    </CCDSEServerOperation><CCDSEServerOperation id="B"/>
+    <CCDSEServerOperation id="C"><opStep id="CallA" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="A"/>
+    </CCDSEServerOperation><CCDSEServerOperation id="Unused"/>
+    <fmtDef id="Outer"><CCIColl><refFmt refid="Shared"/><refFmt refid="Tail"/></CCIColl></fmtDef>
+    <fmtDef id="Shared"><CCString dataName="Base"/></fmtDef>
+    <fmtDef id="Tail"><CCIColl><refFmt refid="Outer"/></CCIColl></fmtDef>
+    <context id="Child" parent="Parent"/><context id="Parent" parent="nil"/>
+    </XML>''')
+    command = ['java', '-cp', str(scoped_mapper), 'il.co.dcd.composermapper.Main', '--root', str(root),
+               '--vault', str(vault), '--vault-layout', 'scoped', '--workspace-id', 'fixture', '--channel', 'SME']
+    result = subprocess.run(command, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    contexts = {item['operation_id']: item for item in manifest['operation_contexts']}
+    assert set(contexts) == {'Entry', 'A', 'B', 'C'}
+    assert contexts['A']['note'] == 'channels/XML/operations/A/operation.md'
+    assert contexts['B']['note'] == 'channels/SME/operations/B/operation.md'
+    assert not (vault / 'channels/SME/operations/A').exists()
+    assert not (vault / 'channels/XML/operations/Unused').exists()
+    refs = contexts['A']['references']
+    assert {'formats:Outer', 'formats:Shared', 'formats:Tail', 'contexts:Child', 'contexts:Parent'} <= set(refs)
+    assert '/SME/resources/' in refs['formats:Shared']
+    assert 'Local' in (vault / refs['formats:Shared']).read_text(encoding='utf-8')
+    entries = manifest['entities']
+    assert len({entry['definition_id'] for entry in entries}) == len(entries)
+    graph = discover_operation_calls(vault)
+    assert not graph['issues']
+    waves = operation_waves(graph)
+    assert waves['SME/A']['cycle_group'] == waves['SME/B']['cycle_group'] == waves['SME/C']['cycle_group']
+    assert waves['SME/A']['cycle_group']
+    with pytest.raises(ValueError, match='converter support is not implemented'):
+        _read_vault_manifest(vault)
+    # Corrupting a resolved call must fail even though its canonical source notes still hash correctly.
+    manifest['operation_contexts'][0]['calls'][0]['target_definition_id'] = 'wrong-definition'
+    (vault / 'vault-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    with pytest.raises(ValueError, match='Invalid resolved operation call'):
+        read_vault_manifest(vault)
+
+
+def test_shared_resource_annotations_use_source_defaults(tmp_path, scoped_mapper):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    for channel, impl in [('XML', 'example.BaseTag'), ('SME', 'example.LocalTag')]:
+        folder = root / 'Channel' / channel
+        folder.mkdir(parents=True)
+        (folder / 'dse.ini').write_text('<dse.ini><kColl id="settings"><kColl id="tags"><kColl id="formats">'
+            '<field id="Mapped" value="' + impl + '"/></kColl></kColl></kColl></dse.ini>')
+    (root / 'Channel/XML/Formats.xml').write_text('<XML><fmtDef id="Shared"><Mapped dataName="Value"/></fmtDef>'
+        '<context id="Child" parent="Parent"/><context id="Parent" origin="XML"/></XML>')
+    (root / 'Channel/SME/Operation.xml').write_text('<XML><CCDSEServerOperation id="Entry" operationContext="Child">'
+        '<refFormat name="csRequestFormat" refid="Shared"/></CCDSEServerOperation>'
+        '<context id="Parent" origin="SME"/></XML>')
+    result = invoke_mapper(scoped_mapper, root, vault)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    context = next(item for item in manifest['operation_contexts'] if item['channel'] == 'SME')
+    assert 'example.LocalTag' in str(context['java_resolution'])
+    note = (vault / context['references']['formats:Shared']).read_text(encoding='utf-8')
+    assert 'example.BaseTag' in note and 'example.LocalTag' not in note
+    assert '/SME/resources/' in context['references']['contexts:Parent']
+    child = (vault / context['references']['contexts:Child']).read_text(encoding='utf-8')
+    assert 'channels/XML/resources/contexts/Formats/Parent' in child
+
+
+@pytest.mark.parametrize('failure', ['missing', 'ambiguous', 'unassigned'])
+def test_shared_connections_keep_unresolved_calls_blocked(tmp_path, scoped_mapper, failure):
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    for channel in ('XML', 'SME'):
+        folder = root / 'Channel' / channel
+        folder.mkdir(parents=True)
+        (folder / 'dse.ini').write_text('<dse.ini/>')
+    (root / 'Channel/SME/Caller.xml').write_text('<XML><CCDSEServerOperation id="Entry">'
+        '<opStep id="Call" implClass="com.ibm.il.dse.cc.cut.CCComplexOpStep" opExecuteName="Base"/>'
+        '</CCDSEServerOperation></XML>')
+    if failure == 'ambiguous':
+        for filename in ('One.xml', 'Two.xml'):
+            (root / 'Channel/XML' / filename).write_text('<XML><CCDSEServerOperation id="Base"/></XML>')
+    elif failure == 'unassigned':
+        (root / 'Unassigned.xml').write_text('<XML><CCDSEServerOperation id="Base"/></XML>')
+    result = subprocess.run(['java', '-cp', str(scoped_mapper), 'il.co.dcd.composermapper.Main',
+        '--root', str(root), '--vault', str(vault), '--vault-layout', 'scoped', '--workspace-id', 'fixture',
+        '--channel', 'SME'], capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    graph = discover_operation_calls(vault)
+    assert set(graph['operations']) == {'SME/Entry'} and graph['calls'] == []
+    expected = {'missing': 'Missing operation target', 'ambiguous': 'Ambiguous operation Base',
+                'unassigned': 'no source channel'}[failure]
+    assert any(expected in issue['detail'] for issue in graph['issues'])
+    assert operation_waves(graph)['SME/Entry']['wave'] is None
+
+
+@pytest.mark.parametrize('markdown', [True, False])
+def test_hash_link_encoding_preserves_destinations_and_normal_wiki_links(tmp_path, scoped_mapper, markdown):
+    harness = tmp_path / 'HashLinkProbe.java'
+    harness.write_text(r'''import java.nio.file.Path;
+import il.co.dcd.composermapper.service.LinkResolver;
+public class HashLinkProbe {
+    public static void main(String[] args) {
+        LinkResolver links = new LinkResolver(Boolean.parseBoolean(args[0]));
+        System.out.println(links.operationLink("#GPKOp"));
+        System.out.println(links.operationLink("Literal%23"));
+        System.out.println(links.operationLink("Plain"));
+        System.out.println(links.operationLink("Space# (Op)"));
+        System.out.println(links.documentPath(Path.of("vault"), "operations", "#GPKOp").toString().replace('\\', '/'));
+    }
+}''', encoding='utf-8')
+    compiled = subprocess.run(['javac', '--release', '25', '-cp', str(scoped_mapper), '-d', str(scoped_mapper),
+                               str(harness)], capture_output=True, text=True, timeout=60)
+    assert compiled.returncode == 0, compiled.stderr
+    result = subprocess.run(['java', '-cp', str(scoped_mapper), 'HashLinkProbe', str(markdown).lower()],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[0] == '[#GPKOp](operations/%23GPKOp.md)'
+    assert lines[1] == '[Literal%23](operations/Literal%2523.md)'
+    assert lines[2] == ('[Plain](operations/Plain.md)' if markdown else '[[operations/Plain|Plain]]')
+    assert lines[3] == '[Space# (Op)](operations/Space%23%20%28Op%29.md)'
+    assert lines[4] == 'vault/operations/#GPKOp.md'
+
+
+@pytest.mark.parametrize('markdown', [True, False])
+def test_hash_operation_notes_keep_literal_identity_and_readable_links(tmp_path, scoped_mapper, markdown):
+    from tools.composer_mapper_tools.frontmatter_parser import parse_section
+    from tools.operation_call_tools.discovery import _links, _note_path
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    xml = root / 'Channel/XML'
+    xml.mkdir(parents=True)
+    (xml / 'dse.ini').write_text('<dse.ini/>')
+    source = hash_link_definitions(xml)
+    original = source.read_bytes()
+    result = invoke_mapper(scoped_mapper, root, vault, markdown)
+    assert result.returncode == 0, result.stderr
+    manifest = read_vault_manifest(vault)
+    operation = next(entry for entry in manifest['entities'] if entry['kind'] == 'operation' and entry['entity_id'] == '#GPKOp')
+    assert operation['note'] == 'channels/XML/operations/#GPKOp/operation.md'
+    text = (vault / operation['note']).read_text(encoding='utf-8')
+    links = _links(parse_section(text, 'Steps'))
+    assert len(links) == 2 and all('%23GPKOp/' in link and '%23Call.md' in link for link in links)
+    assert [_note_path(vault, vault / operation['note'], link).relative_to(vault).as_posix() for link in links] == operation['step_notes']
+    assert all('/#GPKOp/' in note and note.endswith('/#Call.md') for note in operation['step_notes'])
+    assert '%23Request%2523.md' in text and '%23Context.md' in text
+    graph = discover_operation_calls(vault)
+    assert not graph['issues']
+    assert set(graph['operations']) == {'XML/#GPKOp', 'XML/Result#Op', 'XML/Literal%23Op'}
+    assert [call['callee'] for call in graph['calls']] == ['XML/Result#Op', 'XML/Literal%23Op']
+    assert operation_waves(graph)['XML/#GPKOp']['wave'] == 2
+    assert source.read_bytes() == original

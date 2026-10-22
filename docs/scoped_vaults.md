@@ -1,6 +1,6 @@
 # Scoped Composer Mapper vaults
 
-Scoped output is an opt-in implementation of the vault hierarchy migration. It preserves source definition occurrences and writes channel and operation views with a versioned manifest. The legacy layout remains the default.
+Scoped output is an opt-in implementation of the vault hierarchy migration. It preserves source definition occurrences and writes canonical source notes with versioned consuming-channel connections. The legacy layout remains the default.
 
 ## Current compatibility
 
@@ -8,7 +8,7 @@ Scoped output is an opt-in implementation of the vault hierarchy migration. It p
 | --- | --- |
 | Composer Mapper | Opt-in generation into an empty destination |
 | Excel Generator and repository operation exporter | Manifest validation, operation discovery, calls and migration waves |
-| Vault inventory import | Qualified definitions and usages in separate tables; channel operations and format contracts |
+| Vault inventory import | Existing schema-two input only; shared schema-three input is explicitly rejected pending converter work |
 | Full conversion | Explicitly gated pending qualified closure, reuse, review, invalidation, and resume support |
 
 This is not yet a completed end-to-end converter migration. Do not flatten scoped notes or remove the conversion gate. Legacy generation retains its existing behavior, but now reports colliding source occurrences on standard error and in `analysis/entity-collisions.md`. It cannot preserve those occurrences separately; use scoped generation to retain them.
@@ -29,13 +29,13 @@ java -jar source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependenc
 
 The destination must be empty and outside the source tree. Use the same workspace ID when moving the same source workspace to another machine; use different IDs for independent source workspaces. An optional `--channel INTERNET` selects that channel's effective definitions, its implicit XML base, and declared imports.
 
-Folder and file names retain their original names without generated ID or hash suffixes. Effective operations live under `channels/<channel>/operations/<operation>/operation.md`, with steps and used resources beside them. For example, a step is `channels/INTERNET/operations/GetClientOverviewOp/opsteps/OverviewRefreshLinks.md`. Full identities remain in the manifest and metadata.
+Schema-three output writes each source definition once. Declared operations live at `channels/<definition-channel>/operations/<operation>/operation.md`; their canonical step notes include all source occurrences. Shared formats, contexts and Java candidates live in their source channel's resource inventory, using the existing resource-origin layout. Inline operation-owned resources use `resources/owners/<operation>/...` to keep same-label definitions in different operations separate. Nested format folders and original source selectors remain unchanged.
 
-Unselected, shadowed, ambiguous, and unreferenced source occurrences remain in channel or unassigned resource inventory folders. Java class inventory mirrors the source-relative file path, replacing `.java` with `.md`; it does not add a source-filename folder or fully qualified class-name folder. Channel ownership places the base class at `channels/XML/resources/classes/WSBCC_XML/src/com/ibm/il/dse/cc/cut/CCDSEServerOperation.md`.
+For example, SME's call to XML-defined `POB1Op` points to `channels/XML/operations/POB1Op/operation.md`. No `channels/SME/operations/POB1Op` copy is generated. The `operation_contexts` array records SME's selected step notes, entry step, transition targets, resource references, Java candidate evidence and operation calls. Canonical note annotations describe source/default evidence; these context records are authoritative for channel-specific resolution. XML availability does not enumerate XML's entire operation inventory again for each channel.
 
-XML inventory uses a short resource-origin hierarchy. A context in the defaults file is `channels/IVR/resources/contexts/defaultFile/<context>.md`; a context in an operation file is `channels/IVR/resources/contexts/selfDefOper/<operation-file>/<context>.md`. Other XML files use their file stem as the origin folder. The project path, `src`, XML-definition path, repeated channel, source-file extension, and XML element selector are not reproduced as directories. Original source paths and selectors remain in the manifest and note metadata. Duplicate declarations remain separate, with existing ambiguity diagnostics unchanged.
+Unselected, shadowed, ambiguous and unused occurrences remain source inventory, subject to the existing keyed-format replacement policy. One canonical resource note can have multiple qualified consumers. Definition identities and source bytes are unchanged; manifest schema version is now 3 (identity version 1). Existing schema-two vaults remain readable by Excel. Converter readers do not opt into schema three and fail explicitly rather than treating shared dependencies as isolated operation views.
 
-Nested named `fmtDef` inventory notes use their nearest named parent format and document-order position. Top-level format paths are unchanged. For the two switch blocks in `Alt_GAC4.xml`, the layout is:
+For indexed nesting, the canonical notes retain the parent/ordinal layout:
 
 ```text
 channels/XML/resources/formats/selfDefOper/Alt_GAC4/GAC4HostSeFmt.md
@@ -47,9 +47,19 @@ Each surviving named format directly owned by a parent gets its original one-bas
 
 Scoped format selection uses the wrapper policy documented in the [Composer manual](comp-manual/wsbcc_developer_manual_v2.md#format-collection-policy). The twelve confirmed indexed wrappers preserve all children in order. Every other wrapper is keyed: for a repeated explicit key (`id`, otherwise `dataName`, otherwise `name`), only the last direct child survives. Unnamed children are retained; tag name alone is not a collection key. References are pointers, not new definitions, and are not deduplicated by `refid`. Attached decorators remain with their selected formatter. Earlier declarations, their structure, and their nested inventory are omitted without comparing content. This policy applies within an XML sibling scope, including top-level `fmtDef` registry entries; it does not invent cross-file load order. The surviving definition retains its original source selector and identity. Source XML is never modified.
 
-Nested inventory manifest entries include `parent_definition_id`, `parent_source_selector`, and the one-based `nested_format_index`. Definition identity remains the existing digest of workspace, kind, source-relative file, and exact XML selector; Markdown path allocation does not change that identity. The parent definition can have an operation-view note instead of an inventory note when selected by an operation, so consumers must follow its canonical ID rather than assume a parent inventory file exists. Existing reference-resolution rules are unchanged; this layout does not introduce a new global winner for an ambiguous ID. Legacy output is unchanged. Regenerate into a fresh vault to adopt the layout.
+Nested inventory manifest entries include `parent_definition_id`, `parent_source_selector`, and the one-based `nested_format_index`. Definition identity remains the existing digest of workspace, kind, source-relative file, and exact XML selector; Markdown path allocation does not change that identity. Consumers follow the canonical definition ID and recorded note path rather than assuming operation-local copies. Existing reference-resolution rules are unchanged; this layout does not introduce a new global winner for an ambiguous ID. Legacy output is unchanged. Regenerate into a fresh vault to adopt the layout.
 
-The completed manifest identifies source file and XML occurrence independently of content revisions. Multiple views of one definition retain one definition key and separate usage keys. Do not edit generated notes without regenerating the manifest: consumers reject notes whose hashes no longer match. Interrupted generation retains an incomplete marker and cannot be consumed as a complete vault. Generate a new vault to retry; this mode does not delete previous output.
+The completed manifest identifies source file and XML occurrence independently of content revisions. Each emitted definition has one canonical note; reachable runtime contexts refer to that note without duplicating it. Do not edit generated notes without regenerating the manifest: consumers reject notes whose hashes no longer match. Interrupted generation retains an incomplete marker and cannot be consumed as a complete vault. Generate a new vault to retry; this mode does not delete previous output.
+
+## Hash characters and link destinations
+
+Operation IDs, step labels, filenames and manifest paths retain literal `#` and `%` characters. Only Markdown link destinations are URL encoded: `#` becomes `%23`, and a literal `%23` in a filename becomes `%2523`. For example, the physical operation path `channels/XML/operations/#GPKOp/operation.md` is linked as `[#GPKOp](channels/XML/operations/%23GPKOp/operation.md)`. Encoding does not change definition identity or source XML.
+
+In Obsidian mode, paths containing `#` or `%` use standard Markdown links with encoded destinations; ordinary paths keep wiki links. This follows [Obsidian's supported Markdown-link format](https://obsidian.md/help/links), avoiding ambiguous raw hashes in wiki targets. It does not rename files to work around viewer-specific filename restrictions.
+
+Both Excel readers keep URI escapes until resolution, try the full filename first for older unescaped hash links, and remove a real heading fragment before decoding the remaining path exactly once. Percent signs in existing wiki filenames remain literal. Schema-three manifest references are filesystem paths and are never URL decoded. Vault-boundary checks remain in force.
+
+Regenerate a fresh vault to update existing Markdown links, then use the updated standalone or built-in Excel generator. Existing source files, IDs and manifest coordinates do not need renaming. Old unescaped links are accepted when the exact file exists; regeneration avoids ambiguity between a hash filename and a heading fragment.
 
 ## Channel ownership
 
@@ -57,9 +67,7 @@ Channel discovery reads the declaration at `<project>/src/Xml Definition/Channel
 
 Every non-XML channel automatically inherits XML as its lowest-precedence base, even without an XML import in its local `dse.ini`. XML is loaded once, declared imports retain their order, and the consuming channel is applied last. Local operation, format, context, formatter and decorator definitions override their XML counterparts. Include the XML channel's configuration and sources in the mapping root; a missing XML base is an error, not a complete partial inventory. Source ownership and Java classpath evidence remain separate from inherited availability.
 
-An XML-defined `POB1Op` therefore has a distinct effective view under each consuming channel, such as `channels/SME/operations/POB1Op/operation.md`, with `definition_channel=XML`. Step restrictions and resource selection use the consuming channel, including its local overrides. If that channel supplies its own `POB1Op`, the local definition is selected. The canonical source identity is preserved across inherited views; usage identities remain separate. XML itself is not given an implicit self-parent. Explicit import cycles are still rejected.
-
-This lets the existing mapper place the XML project's base operation class under XML resource inventory instead of unassigned. It does not change the inventory path convention, operation dependencies, classpath evidence rules, or converter compatibility gate.
+An XML operation is traversed in another channel only when a declared operation calls it, directly or transitively. Each `(consuming channel, operation name)` context is resolved once, so cycles terminate. `onlyFor`, positional routing, formats, contexts and formatter/decorator mappings use the consuming channel's environment. Local operation overrides select another canonical source note; resource overrides change the context's references without changing XML's source note. XML has no implicit self-parent; real explicit import cycles remain errors.
 
 ## Java class origin
 
@@ -76,11 +84,13 @@ python "Excel Generator.py" "C:\Mapper\scoped-output" --output "C:\Reports\migra
 
 Copy the entire generated vault, including its manifest, alongside access to the standalone utility. Excel does not require the original Composer source files. Calls and waves describe resolved operation-call relationships; they do not certify that format dependencies or Java classpaths are ready for conversion.
 
-Calls resolve in the caller's effective channel: SME calling XML-defined `POB1Op` uses the generated `SME/POB1Op` view. Excel does not redirect the call to the XML-channel view or guess another channel's target by name. If an older vault contains `XML/POB1Op` but lacks the inherited caller-channel view, both exporters report a missing inherited-view diagnostic with regeneration guidance. Regenerate into a fresh vault with this Mapper before rerunning Excel; the old manifest cannot reconstruct the missing channel-specific resources. Operation-view and note counts may increase as XML inheritance is represented across all channels. Export commands, workbook columns and wave/count rules are unchanged.
+Both Excel generators use schema-three resolved connections instead of requiring a copied caller-channel operation file. They retain reachable consuming-channel identities in the dependency graph because overrides can change a called operation's dependencies; multiple graph contexts can link to one source note. Uncalled inherited operations do not become extra graph rows. Counts, dependency-wave calculations, workbook columns and commands remain unchanged. Legacy/schema-two discovery retains its existing behavior.
+
+Regenerate into a fresh vault and use the updated Excel utility to adopt this layout. A completed older vault is not rewritten. Source note counts no longer grow by the whole XML inventory for every added channel; additional contextual connections can still require resolution work when actually referenced.
 
 ## Import and resumption
 
-Scoped import stores canonical occurrences in `scoped_source_definitions` and views in `scoped_entity_usages`. It does not project them into the legacy bare-name source artifact table. Existing converter closure creation rejects scoped runs explicitly rather than selecting arbitrary namesakes. Saved operation contracts read format evidence from the selected operation view.
+For existing schema-two vaults, scoped import stores canonical occurrences in `scoped_source_definitions` and views in `scoped_entity_usages`. It does not project them into the legacy bare-name source artifact table. Existing converter closure creation rejects scoped runs explicitly rather than selecting arbitrary namesakes. Saved operation contracts read format evidence from the selected operation view.
 
 Do not replace a legacy run with scoped input. Reimporting identical scoped evidence is allowed; changed evidence requires a fresh run. Preserve original vault/database pairs for existing legacy resume. Source overwrites in old vaults can only be recovered by regeneration from the original source.
 
@@ -94,7 +104,7 @@ The current implementation changes these areas only:
 | --- | --- |
 | `Main.java` | Select opt-in scoped generation and record legacy collision diagnostics |
 | `SourceDefinitionIdentity.java`, `ScopedDefinitionCatalog.java` | Preserve exact source occurrences and resolve operation-local and channel scopes |
-| `ScopedVaultGenerationService.java`, `VaultManifestWriter.java` | Generate isolated operation/resource views and publish identity, revision, usage, and class-origin evidence |
+| `ScopedVaultGenerationService.java`, `VaultManifestWriter.java` | Generate canonical source notes and publish contextual connections, identity, revision and class-origin evidence |
 | `ScopedVaultPaths.java`, `JsonOutput.java`, `LinkResolver.java` | Keep deterministic paths, serialized manifests, and note links consistent |
 | `LegacyVaultCollisionCheck.java` | Expose legacy overwrite risks without changing legacy generation behavior |
 | `OperationFileParser.java`, `FormatFileParser.java`, `ContextFileParser.java` | Parse a selected XML occurrence without choosing another same-name definition |

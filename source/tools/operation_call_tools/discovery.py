@@ -15,20 +15,21 @@ COMPLEX_CLASS = "com.ibm.il.dse.cc.cut.CCComplexOpStep"
 
 
 def _links(section):
-    """Read both standard Markdown links and Obsidian links."""
-    return [unquote(match[0] or match[1].split('|', 1)[0]) for match in
+    """Keep URI escapes until resolution; percent signs in wiki filenames are literal."""
+    return [match[0] or match[1].split('|', 1)[0].replace('%', '%25') for match in
             re.findall(r'\[[^\]]*\]\(([^)]+)\)|\[\[([^\]]+)\]\]', section)]
 
 
 def _note_path(root, owner, target):
-    """Resolve Mapper vault-root links or ordinary relative note links safely."""
-    target = target.split('#', 1)[0]
-    if not target.endswith('.md'):
-        target += '.md'
-    for candidate in (root / target, owner.parent / target):
-        path = candidate.resolve()
-        if path.is_relative_to(root) and path.is_file():
-            return path
+    """Try literal hash filenames, then strip a URI fragment before decoding once."""
+    for destination in (target, target.split('#', 1)[0]):
+        note = unquote(destination)
+        if not note.endswith('.md'):
+            note += '.md'
+        for candidate in (root / note, owner.parent / note):
+            path = candidate.resolve()
+            if path.is_relative_to(root) and path.is_file():
+                return path
     raise ValueError("Missing linked step note: " + target)
 
 
@@ -47,7 +48,9 @@ def _missing_target_detail(channel, name, operations):
 def discover_operation_calls(vault, *, progress=None):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
-    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress)
+    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress, allow_shared=True)
+    if manifest is not None and manifest.get('vault_schema_version') == 3:
+        return _discover_context_calls(root, manifest, progress)
     note_paths = operation_note_paths(root, manifest)
     registry = parse_channel_operation_registry(str(root / 'analysis/channel-operation-registry.md'))
     operations, calls, issues = {}, [], []
@@ -107,4 +110,41 @@ def discover_operation_calls(vault, *, progress=None):
                     transitions=step.transitions, evidence_hash=hashlib.sha256(step_text.encode()).hexdigest()))
             except (OSError, ValueError) as exc:
                 issues.append(dict(operation=caller, step=target, detail=str(exc)))
+    return dict(operations=operations, calls=calls, issues=issues)
+
+
+def _discover_context_calls(root, manifest, progress):
+    """Read reachable runtime connections while reusing their canonical source notes."""
+    operations, calls = {}, []
+    issues = [dict(operation=item.get('operation', ''), step=item.get('step', ''), detail=item['detail'])
+              for item in manifest.get('diagnostics', []) if item.get('kind') in {'identity', 'source_parse'}]
+    documents, steps = {}, {}
+    for number, context in enumerate(manifest['operation_contexts'], 1):
+        key = context['channel'] + '/' + context['operation_id']
+        if progress:
+            progress(f'Reading operation connections {number}: {key}')
+        note = context['note']
+        if note not in documents:
+            documents[note] = parse_operation_note((root / note).read_text(encoding='utf-8-sig'), str(root / note))
+        op = documents[note]
+        operations[key] = dict(operation_id=op.id, channel=context['channel'], note=note,
+            source_hash=op.source_hash, ref_formats=op.ref_formats, definition_id=context['definition_id'])
+        for call in context['calls']:
+            step_note = call['step_note']
+            if step_note not in steps:
+                text = (root / step_note).read_text(encoding='utf-8-sig')
+                steps[step_note] = (parse_opstep_note(text, str(root / step_note)), hashlib.sha256(text.encode()).hexdigest())
+            step, evidence = steps[step_note]
+            if step.parent_operation_id and step.parent_operation_id != op.id:
+                raise ValueError('Context call step belongs to another source operation: ' + step_note)
+            if (step.parameters.get('opExecuteName') or '') != call['target_name']:
+                raise ValueError('Context call target disagrees with source step: ' + step_note)
+            item = dict(caller=key, callee=call.get('target_context', context['channel'] + '/' + call['target_name']),
+                step=step.id, note=step_note, parameters=step.parameters, transitions=step.transitions, evidence_hash=evidence)
+            if call.get('detail'):
+                item['operation'] = item.pop('caller')
+                item['detail'] = call['detail']
+                issues.append(item)
+            else:
+                calls.append(item)
     return dict(operations=operations, calls=calls, issues=issues)

@@ -28,19 +28,9 @@ Current discovery resolves names in the caller's channel. The scope check below
 must identify calls outside the selected operation/channel set from explicit source
 evidence or trusted registry identity; it must not guess another channel's target.
 
-The caller's effective channel includes the runtime's implicit XML base. Every
-channel can use XML definitions without a local XML import, and local definitions
-take precedence. Mapper generates consuming-channel operation views using this
-environment: `SME/IDBGetUserDataOp` invoking XML-defined `POB1Op` resolves to
-`SME/POB1Op`, preserving XML source provenance and SME's applicable overrides.
-The same rule applies to every channel, not just SME. Explicit imports still
-contribute their definitions, and unrelated channels are not searched globally.
+Every channel has XML as its implicit base, with local definitions taking precedence. In shared schema-three vaults, Mapper follows only referenced inherited operations and emits each source definition once. `SME/IDBGetUserDataOp` calling XML-defined `POB1Op` links to `channels/XML/operations/POB1Op/operation.md`, with the consuming-channel connection recorded separately. A local SME operation override changes the selected source; SME resource overrides and `onlyFor` change contextual dependencies without copying XML notes.
 
-An older vault containing the XML target but no effective caller-channel view
-produces a missing inherited XML-base view diagnostic. Regenerate a fresh vault
-with the corrected Mapper and rerun either Excel exporter. Excel cannot substitute
-the XML-channel view because its step applicability and resources can differ.
-This correction does not implement the converter workflow described below.
+Both Excel generators consume the manifest's `operation_contexts` records, including resolved call targets. Reachable channel-specific contexts remain separate graph identities for correct waves and cycles but share source notes. They do not require physical inherited views, search unrelated channels or invent target resolution. Legacy and schema-two discovery remain supported. Regenerate a fresh vault to adopt schema three; converter support remains unimplemented and rejects this new schema explicitly.
 
 ## 1. Validate the entire job scope
 

@@ -204,6 +204,8 @@ For example, SME's `IDBGetUserDataOp` can invoke `opExecuteName="POB1Op"` even w
 
 Mapper and Excel tooling must preserve this distinction between source channel and consuming channel. They must model the implicit XML base rather than ask developers to add artificial imports or choose an arbitrary same-name operation from the whole workspace. If XML base sources/configuration are absent from the mapping input, report that missing prerequisite explicitly; do not claim the effective inventory is complete. This registry rule does not, by itself, prove Java classloader or classpath selection.
 
+The Mapper represents availability through dependency resolution, not by duplicating the XML channel under every consumer. Shared schema-three output emits each source definition once and records reachable consuming-channel dependencies separately. A call from SME can link to XML's canonical operation note while its contextual references select SME's resource overrides and applicable steps. An operation has one source note even when several channels use it; unreferenced XML operations are not enumerated as operation copies in those channels. Both Excel generators follow the resolved context connections. Converter support for this schema is deferred and explicitly gated.
+
 ### Tag Resolution
 
 When the runtime encounters a tag name in XML:

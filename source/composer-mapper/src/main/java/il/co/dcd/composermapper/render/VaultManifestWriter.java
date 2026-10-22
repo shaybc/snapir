@@ -10,11 +10,19 @@ import java.util.*;
 /** Publish the complete scoped inventory only after all generated notes are available. */
 public final class VaultManifestWriter {
     private final String workspace;
+    private int schemaVersion = 2;
+    private List<Map<String, Object>> operationContexts = List.of();
     private final List<Map<String, Object>> entries = new ArrayList<>();
     private final Set<String> paths = new HashSet<>();
     private final Map<String, String> reservations = new HashMap<>();
 
     public VaultManifestWriter(String workspace) { this.workspace = workspace; }
+
+    /** Opt into shared source notes; legacy manifest callers keep schema two. */
+    public void useCanonicalLayout() { schemaVersion = 3; }
+
+    /** Attach reachable consuming-channel connections without adding entity notes. */
+    public void operationContexts(List<Map<String, Object>> contexts) { operationContexts = List.copyOf(contexts); }
 
     /** Reserves a destination before rendering so a later occurrence cannot overwrite it. */
     public void reserve(SourceDefinitionIdentity source, String channel, String operation, String path) {
@@ -48,7 +56,7 @@ public final class VaultManifestWriter {
         String content = Files.readString(note);
         int frontmatter = content.indexOf("---\n");
         if (frontmatter < 0) throw new IllegalArgumentException("Missing note frontmatter: " + path);
-        String metadata = "vault_schema_version: 2\nqualified_entity_id: " + definition + "\nusage_id: " + usage
+        String metadata = "vault_schema_version: " + schemaVersion + "\nqualified_entity_id: " + definition + "\nusage_id: " + usage
             + "\noperation_identity: " + operationIdentity + "\nsource_workspace_id: " + workspace
             + "\nsource_relative_path: " + JsonOutput.encode(source.relativePath())
             + "\nsource_selector: " + JsonOutput.encode(source.selector()) + "\n";
@@ -69,8 +77,20 @@ public final class VaultManifestWriter {
         Map<String, Set<String>> consumersByDefinition = new HashMap<>();
         for (var entry : entries) {
             String operation = entry.get("operation_identity").toString();
-            if (!operation.isBlank()) consumersByDefinition.computeIfAbsent(entry.get("definition_id").toString(),
+            if (schemaVersion != 3 && !operation.isBlank()) consumersByDefinition.computeIfAbsent(entry.get("definition_id").toString(),
                 ignored -> new TreeSet<>()).add(operation);
+        }
+        Map<String, String> definitionsByNote = new HashMap<>();
+        for (var entry : entries) definitionsByNote.put(entry.get("note").toString(), entry.get("definition_id").toString());
+        for (var context : operationContexts) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> references = (Map<String, String>) context.get("references");
+            for (String note : references.values()) {
+                String definition = definitionsByNote.get(note);
+                if (definition == null) throw new IllegalArgumentException("Missing canonical dependency note: " + note);
+                consumersByDefinition.computeIfAbsent(definition, ignored -> new TreeSet<>())
+                    .add(context.get("operation_identity").toString());
+            }
         }
         int processed = 0;
         for (var entry : entries) {
@@ -89,10 +109,12 @@ public final class VaultManifestWriter {
             }
         }
         Map<String, Object> manifest = new LinkedHashMap<>();
-        manifest.put("vault_schema_version", 2); manifest.put("identity_version", 1);
+        manifest.put("vault_schema_version", schemaVersion); manifest.put("identity_version", 1);
         manifest.put("producer", "composer-mapper"); manifest.put("complete", true);
         manifest.put("workspace_id", workspace); manifest.put("channels", channels);
-        manifest.put("entities", entries); manifest.put("diagnostics", diagnostics);
+        manifest.put("entities", entries);
+        if (schemaVersion == 3) manifest.put("operation_contexts", operationContexts);
+        manifest.put("diagnostics", diagnostics);
         Path temporary = vault.resolve("vault-manifest.json.tmp");
         progress.accept("Writing manifest: " + entries.size() + " notes");
         try (var writer = Files.newBufferedWriter(temporary, java.nio.charset.StandardCharsets.UTF_8)) {

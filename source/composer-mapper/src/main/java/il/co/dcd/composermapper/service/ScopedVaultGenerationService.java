@@ -15,6 +15,8 @@ public final class ScopedVaultGenerationService {
         "format", "formats", "context", "contexts", "java_class", "classes");
     private final List<Map<String, Object>> diagnostics = new ArrayList<>();
     private final Set<String> inventory = new HashSet<>();
+    private final Map<String, List<String>> sourceChains = new HashMap<>();
+    private final Map<String, Indexes> sourceRegistrations = new HashMap<>();
     private final OperationFileParser operationParser = new OperationFileParser();
     private final FormatFileParser formatParser = new FormatFileParser();
     private final ContextFileParser contextParser = new ContextFileParser();
@@ -36,7 +38,7 @@ public final class ScopedVaultGenerationService {
             if (contents.findAny().isPresent()) throw new IllegalArgumentException("Scoped output requires an empty destination: " + vault);
         }
         Files.createDirectories(vault);
-        FileUtil.writeString(vault.resolve("vault-generation.json"), "{\"vault_schema_version\":2,\"complete\":false}\n");
+        FileUtil.writeString(vault.resolve("vault-generation.json"), "{\"vault_schema_version\":3,\"complete\":false}\n");
         try (MapperProgress progress = new MapperProgress(vault.resolve("composer-mapper.log"), started)) {
         try {
         progress.event("Scoped run started: root=" + root + " | source files=" + files.size()
@@ -45,6 +47,12 @@ public final class ScopedVaultGenerationService {
         ScopedDefinitionCatalog catalog = new ScopedDefinitionCatalog(root, files, report,
             message -> progress.event(message, false));
         VaultManifestWriter manifest = new VaultManifestWriter(workspace);
+        manifest.useCanonicalLayout();
+        Map<String, List<String>> availableChains = sourceChains;
+        Map<String, Indexes> availableRegistrations = sourceRegistrations;
+        List<Map<String, Object>> connections = new ArrayList<>();
+        Set<String> resolvedContexts = new HashSet<>();
+        Map<String, Map<String, Object>> sourceConnections = new HashMap<>();
         List<String> channels = selectedChannel == null ? files.stream().filter(f -> f.channel() != null
             && f.path().getFileName().toString().equalsIgnoreCase("dse.ini"))
             .map(f -> f.channel().toUpperCase(Locale.ROOT)).distinct().sorted().toList()
@@ -56,9 +64,14 @@ public final class ScopedVaultGenerationService {
         for (String channel : channels) {
             List<String> chain = new ChannelImportResolver().resolve(files, channel);
             channelChains.put(channel, chain);
+            for (String member : chain) {
+                var memberChain = availableChains.computeIfAbsent(member,
+                    value -> new ChannelImportResolver().resolve(files, value));
+                availableRegistrations.computeIfAbsent(member, value -> registrations(files, memberChain));
+            }
             Set<String> names = new TreeSet<>();
             catalog.definitions().stream().filter(d -> d.kind().equals("operation") && d.channel() != null
-                && chain.contains(d.channel().toUpperCase(Locale.ROOT))).forEach(d -> names.add(d.name()));
+                && channel.equalsIgnoreCase(d.channel())).forEach(d -> names.add(d.name()));
             channelOperations.put(channel, names);
         }
         int totalOperations = channelOperations.values().stream().mapToInt(Set::size).sum();
@@ -67,7 +80,7 @@ public final class ScopedVaultGenerationService {
         for (String channel : channels) {
             channelNumber++;
             List<String> chain = channelChains.get(channel);
-            Indexes registration = registrations(files, chain);
+            Indexes registration = availableRegistrations.get(channel);
             Set<String> names = channelOperations.get(channel);
             int channelProcessed = 0;
             progress.event("Channel " + channelNumber + "/" + channels.size() + " " + channel
@@ -86,7 +99,32 @@ public final class ScopedVaultGenerationService {
                     progress.event("Skipped operation " + channel + "/" + name + ": " + e.getMessage(), true);
                     continue;
                 }
-                writeOperation(vault, catalog, manifest, registration, chain, channel, operation, workspace, markdown);
+                var pending = new ArrayDeque<SourceDefinitionIdentity>();
+                pending.add(operation);
+                while (!pending.isEmpty()) {
+                    var dependency = pending.removeFirst();
+                    String contextKey = channel + "/" + dependency.name();
+                    if (!resolvedContexts.add(contextKey)) continue;
+                    progress.event("Resolving connections " + contextKey, false);
+                    String sourceChannel = dependency.channel().toUpperCase(Locale.ROOT);
+                    List<String> sourceChain = availableChains.computeIfAbsent(sourceChannel,
+                        value -> new ChannelImportResolver().resolve(files, value));
+                    Indexes sourceRegistration = availableRegistrations.computeIfAbsent(sourceChannel,
+                        value -> registrations(files, sourceChain));
+                    if (!inventory.contains(dependency.key(workspace))) {
+                        var sourceConnection = writeOperation(vault, catalog, manifest, sourceRegistration, sourceChain,
+                            sourceChannel, dependency, workspace, markdown, true);
+                        if (catalog.steps(dependency).stream().allMatch(step ->
+                            ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), sourceChannel)))
+                            sourceConnections.put(dependency.key(workspace), sourceConnection);
+                    }
+                    var sourceConnection = sourceConnections.get(dependency.key(workspace));
+                    connections.add(channel.equals(sourceChannel) && sourceConnection != null ? sourceConnection
+                        : writeOperation(vault, catalog, manifest, registration, chain, channel,
+                            dependency, workspace, markdown, false));
+                    for (var target : OperationDependencyConnections.targets(catalog, dependency, chain, channel, registration))
+                        pending.add(target);
+                }
                 completed++;
                 progress.event("Completed operation " + channel + "/" + name + " | processed=" + processed + "/"
                     + totalOperations + " | remaining=" + (totalOperations - processed), false);
@@ -103,7 +141,7 @@ public final class ScopedVaultGenerationService {
             if (inventoryProcessed == 1 || inventoryProcessed % 100 == 0 || inventoryProcessed == inventoryDefinitions.size())
                 progress.event("Inventory " + inventoryProcessed + "/" + inventoryDefinitions.size() + " "
                     + definition.kind() + " " + definition.name() + " | source=" + definition.file(), false);
-            writeInventory(vault, definition, manifest, workspace, markdown);
+            writeInventory(vault, definition, manifest, workspace, markdown, catalog);
         }
         if (report.hasFailures()) report.failedXmlFiles().forEach((file, error) ->
             diagnostic("", "", "source_parse", file + ": " + error));
@@ -111,6 +149,7 @@ public final class ScopedVaultGenerationService {
             + String.join("\n", diagnostics.stream().map(d -> "- " + d.get("operation") + ": " + d.get("detail")).toList()) + "\n");
         if (report.hasFailures()) throw new IllegalArgumentException("Source parsing failures; scoped generation remains incomplete");
         progress.event("Finalizing manifest and note metadata: " + manifest.noteCount() + " notes", true);
+        manifest.operationContexts(connections);
         manifest.finish(vault, diagnostics, channels, message -> progress.event(message, false));
         Files.delete(vault.resolve("vault-generation.json"));
         progress.event("SUCCESS | channels=" + channels.size() + " | operation views completed=" + completed
@@ -134,10 +173,10 @@ public final class ScopedVaultGenerationService {
         return index;
     }
 
-    private void writeOperation(Path vault, ScopedDefinitionCatalog catalog, VaultManifestWriter manifest,
+    private Map<String, Object> writeOperation(Path vault, ScopedDefinitionCatalog catalog, VaultManifestWriter manifest,
             Indexes registration, List<String> chain, String channel, SourceDefinitionIdentity operation,
-            String workspace, boolean markdown) throws IOException {
-        String prefix = ScopedVaultPaths.operation(channel, operation.name());
+            String workspace, boolean markdown, boolean render) throws IOException {
+        String prefix = ScopedVaultPaths.operation(operation.channel(), operation.name());
         String operationIdentity = SourceDefinitionIdentity.digest(channel, operation.key(workspace));
         Indexes index = Indexes.create();
         index.tagToClass().putAll(registration.tagToClass()); index.tagToSource().putAll(registration.tagToSource());
@@ -146,7 +185,7 @@ public final class ScopedVaultGenerationService {
         var op = operationParser.parseDefinition(operation.element(), operation.file());
         op.getSteps().clear();
         var effectiveSteps = catalog.steps(operation).stream()
-            .filter(step -> ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), channel)).toList();
+            .filter(step -> render || ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), channel)).toList();
         Map<String, SourceDefinitionIdentity> selected = new LinkedHashMap<>();
         selected.put("operation:" + operation.name(), operation);
         Map<String, String> paths = new LinkedHashMap<>();
@@ -158,9 +197,9 @@ public final class ScopedVaultGenerationService {
             index.stepToSource().putIfAbsent(step.name(), step.file());
             index.stepToOperation().put(step.name(), operation.name());
             selected.put("opStep:" + step.selector(), step);
-            boolean repeated = effectiveSteps.stream().filter(value -> ScopedVaultPaths.stepGroupKey(value.name())
+            boolean repeated = catalog.steps(operation).stream().filter(value -> ScopedVaultPaths.stepGroupKey(value.name())
                 .equals(ScopedVaultPaths.stepGroupKey(step.name()))).count() > 1;
-            String path = prefix + "/opsteps/" + (repeated ? "occurrences/" + op.getSteps().size() + "/" : "")
+            String path = prefix + "/opsteps/" + (repeated ? "occurrences/" + (catalog.steps(operation).indexOf(step) + 1) + "/" : "")
                 + ScopedVaultPaths.segment(step.name()) + ".md";
             paths.put("opsteps:" + step.selector(), path);
             if (!repeated) paths.put("opsteps:" + step.name(), path);
@@ -173,6 +212,7 @@ public final class ScopedVaultGenerationService {
         });
         Map<String, Set<String>> required = new LinkedHashMap<>();
         Set<String> formats = new TreeSet<>(op.getRefFormats().values());
+        op.getSteps().forEach(step -> formats.addAll(step.getReturnBodySwitches().values()));
         formats.addAll(op.getInlineFormatIds());
         required.put("format", formats);
         required.put("context", op.getOperationContext() == null ? Set.of() : Set.of(op.getOperationContext()));
@@ -190,7 +230,7 @@ public final class ScopedVaultGenerationService {
                     continue;
                 }
                 selected.put(kind + ":" + name, source);
-                paths.put(FOLDERS.get(kind) + ":" + name, prefix + "/" + FOLDERS.get(kind) + "/" + ScopedVaultPaths.segment(name) + ".md");
+                paths.put(FOLDERS.get(kind) + ":" + name, OperationDependencyConnections.resourcePath(source, workspace));
                 if (kind.equals("format")) {
                     index.formatToSource().put(name, source.file());
                     var format = formatParser.parseEffectiveDefinition(source.element(), source.file(), index);
@@ -220,7 +260,7 @@ public final class ScopedVaultGenerationService {
             if (candidates.size() == 1) {
                 var source = candidates.getFirst(); selected.put("java_class:" + name, source);
                 index.classToSource().put(name, source.file());
-                paths.put("classes:" + name, prefix + "/classes/" + ScopedVaultPaths.classPath(name) + ".md");
+                paths.put("classes:" + name, OperationDependencyConnections.resourcePath(source, workspace));
                 var parsed = new JavaClassParser().parse(source.file());
                 if (parsed != null) parsed.getImports().stream().filter(value -> !value.endsWith(".*"))
                     .filter(value -> !catalog.candidates("java_class", value, chain, operation).isEmpty()).forEach(pendingClasses::add);
@@ -228,47 +268,90 @@ public final class ScopedVaultGenerationService {
         }
         LinkResolver links = new LinkResolver(markdown, paths);
         links.setStepFlow(new OperationStepFlow(op.getSteps()));
-        // Reserve all destinations in this operation before any of its notes are rendered.
-        for (var source : selected.values()) {
-            String path = source.kind().equals("operation") ? prefix + "/operation.md"
-                : paths.get(FOLDERS.get(source.kind()) + ":"
-                    + (source.kind().equals("opStep") ? source.selector() : source.name()));
-            manifest.reserve(source, channel, operation.name(), path);
-        }
-        new OperationMarkdownWriter().write(op, index, links, vault);
         Map<String, Object> extra = new LinkedHashMap<>();
         extra.put("references", paths); extra.put("java_resolution", classResolution);
         extra.put("step_notes", op.getSteps().stream().map(step -> paths.get("opsteps:" + step.getOccurrenceKey())).toList());
         extra.put("entry_step_note", op.getSteps().isEmpty() ? "" : paths.get("opsteps:" + op.getSteps().getFirst().getOccurrenceKey()));
+        extra.put("channel", channel); extra.put("operation_id", operation.name());
+        extra.put("operation_identity", operationIdentity); extra.put("definition_id", operation.key(workspace));
+        extra.put("note", prefix + "/operation.md");
+        extra.put("calls", OperationDependencyConnections.calls(catalog, operation, chain, channel, index, paths, workspace));
+        Map<String, Object> transitions = new LinkedHashMap<>();
+        for (var step : op.getSteps()) {
+            Map<String, String> targets = new LinkedHashMap<>();
+            step.getTransitions().forEach((condition, name) -> {
+                var target = links.stepFlow().target(step, name);
+                if (target != null) targets.put(condition, paths.get("opsteps:" + target.getOccurrenceKey()));
+            });
+            transitions.put(paths.get("opsteps:" + step.getOccurrenceKey()), targets);
+        }
+        extra.put("transition_targets", transitions);
+        if (!render) {
+            // Context changes connections, never the source note or its identity.
+            for (var source : selected.values()) {
+                if (source.kind().equals("operation") || source.kind().equals("opStep")
+                    || inventory.contains(source.key(workspace))) continue;
+                String path = OperationDependencyConnections.resourcePath(source, workspace);
+                manifest.reserve(source, source.channel() == null ? "" : source.channel(), "", path);
+                writeCanonicalResource(source, catalog, workspace, markdown, vault);
+                manifest.record(vault, source, source.channel() == null ? "" : source.channel(), "", "", path,
+                    Map.of("resolution_status", source.kind().equals("java_class") ? "source_candidate" : "resolved"));
+                inventory.add(source.key(workspace));
+            }
+            return extra;
+        }
+        for (var source : selected.values()) {
+            if (inventory.contains(source.key(workspace))) continue;
+            String path = source.kind().equals("operation") ? prefix + "/operation.md"
+                : paths.get(FOLDERS.get(source.kind()) + ":"
+                    + (source.kind().equals("opStep") ? source.selector() : source.name()));
+            boolean owned = source.kind().equals("operation") || source.kind().equals("opStep");
+            manifest.reserve(source, owned ? channel : source.channel() == null ? "" : source.channel(),
+                owned ? operation.name() : "", path);
+        }
+        new OperationMarkdownWriter().write(op, index, links, vault);
         manifest.record(vault, operation, channel, operation.name(), operationIdentity, prefix + "/operation.md", extra);
         inventory.add(operation.key(workspace));
         for (var source : selected.values()) {
-            if (source.kind().equals("operation")) continue;
-            writeDefinition(source, index, links, vault);
+            if (inventory.contains(source.key(workspace))) continue;
+            if (source.kind().equals("opStep")) writeDefinition(source, index, links, vault);
+            else writeCanonicalResource(source, catalog, workspace, markdown, vault);
             String path = paths.get(FOLDERS.get(source.kind()) + ":"
                 + (source.kind().equals("opStep") ? source.selector() : source.name()));
+            boolean owned = source.kind().equals("opStep");
             Map<String, Object> evidence = new LinkedHashMap<>();
             evidence.put("resolution_status", source.kind().equals("java_class") ? "source_candidate" : "resolved");
-            if (source.kind().equals("opStep")) {
+            if (owned) {
                 var parsed = operationParser.parseStepDefinition(source.element(), operation.name(), source.file());
                 parsed.setOccurrenceKey(source.selector());
                 evidence.put("step_index", links.stepFlow().position(parsed));
-                Map<String, String> targets = new LinkedHashMap<>();
-                parsed.getTransitions().forEach((condition, name) -> {
-                    var target = links.stepFlow().target(parsed, name);
-                    if (target != null) targets.put(condition, paths.get("opsteps:" + target.getOccurrenceKey()));
-                });
-                evidence.put("transition_targets", targets);
+                evidence.put("transition_targets", transitions.get(path));
             }
-            manifest.record(vault, source, channel, operation.name(), operationIdentity, path,
-                evidence);
+            manifest.record(vault, source, owned ? channel : source.channel() == null ? "" : source.channel(),
+                owned ? operation.name() : "", owned ? operationIdentity : "", path, evidence);
             inventory.add(source.key(workspace));
         }
+        return extra;
+    }
+
+    /** Render a shared resource in its own source environment, not the first caller's overrides. */
+    private void writeCanonicalResource(SourceDefinitionIdentity source, ScopedDefinitionCatalog catalog,
+            String workspace, boolean markdown, Path vault) {
+        String channel = source.channel() == null ? "" : source.channel().toUpperCase(Locale.ROOT);
+        Indexes index = Indexes.create();
+        LinkResolver links = CanonicalResourceLinks.resolve(catalog, source,
+            sourceChains.getOrDefault(channel, List.of()), sourceRegistrations.getOrDefault(channel, Indexes.create()),
+            index, workspace, markdown);
+        writeDefinition(source, index, links, vault);
     }
 
     private void nestedFormats(org.w3c.dom.Element element, Deque<String> pending) {
         String reference = element.getAttribute("refFmt");
         if (!reference.isBlank()) pending.add(reference);
+        if (element.getTagName().equalsIgnoreCase("refFmt") || element.getTagName().equalsIgnoreCase("refFormat")) {
+            String target = XmlUtil.attrIgnoreCase(element, "refid");
+            if (target != null && !target.isBlank()) pending.add(target);
+        }
         for (var child : il.co.dcd.composermapper.util.FormatCollectionPolicy.children(element, child -> false))
             nestedFormats(child, pending);
     }
@@ -292,7 +375,7 @@ public final class ScopedVaultGenerationService {
     }
 
     private void writeInventory(Path vault, SourceDefinitionIdentity source, VaultManifestWriter manifest,
-                                 String workspace, boolean markdown) throws IOException {
+                                 String workspace, boolean markdown, ScopedDefinitionCatalog catalog) throws IOException {
         if (inventory.contains(source.key(workspace))) return;
         String prefix = source.channel() == null ? "unassigned/resources" : "channels/" + ScopedVaultPaths.segment(source.channel()) + "/resources";
         String path = ScopedVaultPaths.inventory(prefix, FOLDERS.get(source.kind()),
@@ -308,6 +391,8 @@ public final class ScopedVaultGenerationService {
                 evidence.put("nested_format_index", NestedFormatInventory.ordinal(source, parent));
             }
         }
+        if (!source.kind().equals("operation") && !source.kind().equals("opStep"))
+            path = OperationDependencyConnections.resourcePath(source, workspace);
         if (source.kind().equals("opStep")) {
             String onlyFor = XmlUtil.attr(source.element(), "onlyFor");
             var siblings = XmlUtil.childElements((org.w3c.dom.Element) source.element().getParentNode());
@@ -340,10 +425,12 @@ public final class ScopedVaultGenerationService {
                 var parent = (org.w3c.dom.Element) source.element().getParentNode();
                 index.stepToOperation().put(source.name(), parent.getAttribute("id"));
             }
-            writeDefinition(source, index, links, vault);
+            if (source.kind().equals("opStep")) writeDefinition(source, index, links, vault);
+            else writeCanonicalResource(source, catalog, workspace, markdown, vault);
         }
         manifest.record(vault, source, source.channel() == null ? "" : source.channel(), "", "", path,
             evidence);
+        inventory.add(source.key(workspace));
     }
 
     private void writeChannel(Path vault, Indexes registration, String channel, List<String> chain) throws IOException {
