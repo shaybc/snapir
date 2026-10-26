@@ -1,30 +1,32 @@
 package com.ibm.il.dse.cc.decorator;
 
-import com.ibm.dse.base.FormatDecoratorHolder;
+import com.ibm.dse.base.AttributeXmlFormatDecoratorImpl;
+import com.ibm.dse.base.Context;
+import com.ibm.dse.base.SchemaValidationSettings;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
 
-/**
- * Sets xsi:nil="true" attribute when value is null or empty.
- * Implements Type 1 decorator contract (FormatDecoratorHolder).
- *
- * Format direction (addDecoration):   null/empty -> add xsi:nil="true" attribute
- * Unformat direction (removeDecoration): xsi:nil value -> return null
+/** Demo attribute decorator preserving the supplied Composer runtime conditions.
+ * The enclosing formatter calls this with the decorated field's formatted value.
+ * This has no value transformation or unformat override.
  */
-public class NilDecorator extends FormatDecoratorHolder {
-
-    /** Called during FORMAT. If value is null/empty, adds nil attribute. */
+public class NilDecorator extends AttributeXmlFormatDecoratorImpl {
     @Override
-    public String addDecoration(String value) {
-        if (value == null || value.isBlank()) {
-            // Signal to parent formatter to emit xsi:nil="true"
-            return null;
+    public Map<String, String> formatXmlAttributes(Context context, String formattedValue) {
+        Map<String, String> attributes = new HashMap<>();
+        try {
+            String channel = (String) context.getValueAt("CHANNEL_NAME");
+            String application = (String) context.getValueAt("APPLICATION");
+            if (SchemaValidationSettings.getChannelsToSchemaValidation().contains(channel.toLowerCase())
+                    && !SchemaValidationSettings.getApplicationsToExcludeSchemaValidation().contains(application.toLowerCase())) {
+                if (formattedValue == null || formattedValue.length() == 0) {
+                    attributes.put("xsi:nil", "true");
+                }
+            }
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "NilDecorator error", exception);
         }
-        return value;
-    }
-
-    /** Called during UNFORMAT (in reverse chain order). Null value -> empty string. */
-    @Override
-    public String removeDecoration(String value) {
-        if (value == null) return "";
-        return value;
+        return attributes;
     }
 }

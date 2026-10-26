@@ -156,6 +156,10 @@ def prepare_intake_plan(conn, config, profile, directory, operations):
 
 
 def _checked_report(conn, config, profile, directory):
+    from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+    if is_scoped_run(conn, config.run_id):
+        from runtime.scoped_native.plan_approval import checked_report
+        return checked_report(conn, config, profile, directory)
     row = conn.execute('SELECT snapshot_json,report FROM intake_conversion_plans WHERE run_id=?', (config.run_id,)).fetchone()
     if row is None:
         raise ValueError('No intake conversion plan exists')

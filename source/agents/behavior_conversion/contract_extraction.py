@@ -10,6 +10,10 @@ reserve contract_package for operation-only types. Use unit_api_packages for imp
 APIs so unrelated operation types do not prevent reuse of compatible units. Keep sources
 limited to complete business data/collaborator contracts that can compile before unit code.
 Use sources to interpret the business behavior, not to preserve legacy class identities.
+Read mapped implementations, superclasses and supporting sources before defining APIs.
+Preserve source-dependent runtime context/configuration branches through explicit typed
+inputs or collaborators in these contracts; do not replace them with tag-name assumptions
+or conversion-time constants. Report missing behavior evidence as unresolved questions.
 requirements map stable requirement IDs to evidence-backed behavior; evidence_ids identify
 the supplied source or XML evidence. dependency_units contains only needed unit IDs and must
 be acyclic. The service_api defines the operation's native service interface, including its

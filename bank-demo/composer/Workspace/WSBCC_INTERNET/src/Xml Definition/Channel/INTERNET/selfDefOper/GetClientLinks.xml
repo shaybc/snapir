@@ -24,21 +24,21 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="20"
             ErrorNumber="1"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="DatabaseError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="8"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TechnicalError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="0"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <refFormat name="csRequestFormat"     refid="GetClientLinksRQFmt"/>
@@ -77,6 +77,5 @@
     </CCXML>
   </fmtDef>
 
-  <context id="GetClientLinksCtxt" parent="InternetBaseCtxt" type="op"/>
 
 </XML>

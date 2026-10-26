@@ -19,6 +19,14 @@ server framework types still require their own implementations.
 
 ## Channels
 
+### Scoped converter validation
+
+Use `bank-demo/scoped_converter_validation.yaml` from the repository root for a fresh scoped intake. It selects explicit Java projects for INTERNET, IVR, and XML. The demo `.classpath` files declare INTERNET's XML dependency and IVR's XML/INTERNET dependencies (the latter supplies the common operation helpers). This is Java source visibility, not permission to resolve XML definitions from arbitrary channels.
+
+Operation contexts are declared once in each channel's `defaultFile/dsecontext.xml`; operation files reference those contexts. Error-body switches name the actual shared `StandardErrorRSFmt` definition. The registered service/connector documents exist: shared services and connector pools are empty, while INTERNET registers the existing dummy `FraudDetectionService`. Its implementation still returns the documented fixed response and makes no external network call. JDBC connections remain caller-supplied.
+
+C7 verifies preparation of all 10 operation contexts. Native generation, compilation of converted output, behavior equivalence, and final approval remain C8/C9 work. Existing runs predate changed source/layout/policy evidence: regenerate into a fresh run instead of resuming their checkpoints.
+
 | Workspace | Channel | Operations |
 |---|---|---|
 | `WSBCC_XML` | XML | None — shared base definitions only |
@@ -134,3 +142,25 @@ Expected scoped output with `--channel INTERNET`:
 - Channel resource inventory, `vault-manifest.json`, and resolution diagnostics
 
 Omit `--channel INTERNET` to generate both channel examples: 10 operation views and 7 call sites. Use a new or empty destination. Existing ambiguous context declarations in other demo operations remain reported separately; the new call-flow examples do not resolve or suppress those diagnostics.
+
+
+### Decorator source evidence
+
+The XML-channel `NilDecorator` is an executable attribute-decorator example, not a
+universal null-to-XML rule. Its superclass `AttributeXmlFormatDecoratorImpl` and
+`SchemaValidationSettings` are supplied Java dependencies. The demo boundary takes
+the decorated field's already formatted string; it does not recreate the full
+Composer `DataElement`/`FormatElement` runtime.
+
+At runtime it reads `CHANNEL_NAME` and `APPLICATION` from `Context`. It adds
+`xsi:nil="true"` only for a configured validation channel, a non-excluded application,
+and a null or zero-length formatted value. Whitespace is not empty. Missing/invalid
+context values are logged and leave the attribute map empty. Configuration initially
+enables no channels; `SchemaValidationSettings.configure` takes lowercase channel and
+application names. There is no value conversion or unformat override in this decorator.
+
+Conversion must follow the mapped class, parent and supporting sources and preserve
+these conditions as typed native inputs/configuration collaborators. Generated tests
+must cover both outcomes; the tag name alone cannot establish an expected nil attribute.
+Changes to this source require fresh Mapper intake and preparation, not reuse of the
+old C9 source fingerprints. This example does not establish full bank-demo acceptance.

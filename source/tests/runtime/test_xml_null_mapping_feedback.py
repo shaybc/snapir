@@ -34,7 +34,7 @@ def test_format_prompt_and_saved_failure_corrections_explain_element_scope(kind)
     def validate(candidate, cached):
         raise ValueError(saved[len(requests) - 1]["error"])
     with pytest.raises(ValueError, match="Maven test"):
-        generate(conn, config, profile(), "unit", "format", INSTRUCTION, {"kind": kind},
+        generate(conn, config, profile(max_agent_task_retries=len(saved)), "unit", "format", INSTRUCTION, {"kind": kind},
             NativeUnitBundle, validator=validate, model_call=model)
     assert len(requests) == 3
     for index in (1, 2):

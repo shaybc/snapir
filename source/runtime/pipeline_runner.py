@@ -41,6 +41,8 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
     settings = {key: deepcopy(getattr(constants, key)) for key in dir(constants) if key.isupper()}
     settings.update(
         COMPOSER_ROOT=profile.source_root, VAULT_ROOT=str(vault),
+        COMPOSER_MAPPER_JAR=profile.mapper_jar, COMPOSER_MAPPER_VAULT_LAYOUT=profile.mapper_vault_layout,
+        SOURCE_WORKSPACE_ID=profile.source_workspace_id,
         OUTPUT_ROOT=str(directory / "generated"), DB_PATH=str(database),
         RUN_MODE="single_channel" if len(profile.channels) == 1 else "multi_channel",
         TARGET_CHANNELS=profile.channels, TARGET_LANGUAGES=profile.target_languages,
@@ -87,10 +89,9 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         run_report_path(directory, "java_source_dependencies.json").write_text(inventory.java_dependencies.model_dump_json(indent=2), encoding="utf-8")
         run_report_path(directory, "component_usage.json").write_text(json.dumps(get_implementation_usage(conn, run_id), indent=2), encoding="utf-8")
         run_report_path(directory, "configured_component_usage.json").write_text(json.dumps(get_configured_component_usage(conn, run_id), indent=2), encoding="utf-8")
-        command = ["java", "-jar", profile.mapper_jar, "--root", profile.source_root,
-                   "--vault", str(vault), "--md"]
-        if len(profile.channels) == 1 and profile.conversion_strategy != 'behavior_units':
-            command.extend(["--channel", profile.channels[0]])
+        from tools.workspace_intake_tools.mapper_generation import mapper_command
+        command = mapper_command(settings, markdown=True, filter_channel=profile.conversion_strategy != 'behavior_units',
+                                 validate_output=profile.mapper_vault_layout == 'scoped')
         update_run_status(conn, run_id, "in_progress", "mapper")
         logger.info("Running Composer mapper; output is saved in logs/mapper.log.")
         result = run_java(command, capture_output=True, text=True, check=False,
@@ -101,6 +102,11 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         logger.info("Importing and analyzing the legacy vault.")
         analysis = run_legacy_composer_analysis(conn, config)
         if analysis["paused"]:
+            return directory
+        from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+        if is_scoped_run(conn, run_id):
+            update_run_status(conn, run_id, "paused", "scoped_inventory_ready")
+            logger.info("Scoped inventory ready; resume to prepare qualified conversion inputs. Native conversion remains gated.")
             return directory
         if profile.conversion_strategy == 'behavior_units':
             from tools.operation_call_tools.preflight import run_intake_preflight

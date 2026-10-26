@@ -1,0 +1,123 @@
+flowchart TD
+    START["Start or explicitly resume"]
+    subgraph INTAKE["A — Fresh intake: deterministic"]
+        CONFIG["PipelineConfiguration<br/>Workspace, selection, Java profile<br/>Model, budgets and gate policies"]
+        DISCOVER["pipeline_runner.run_pipeline<br/>discover_java_sources<br/>discover_java_classpath<br/>Build component and service inventories"]
+        MAPPER["Run Composer Mapper JAR<br/>Produce scoped Markdown and manifest"]
+        IMPORT["Import scoped vault<br/>Validate identities, bindings and evidence<br/>Persist inventory in migration.db"]
+        CHECKPOINT["Pause at scoped_inventory_ready"]
+        CONFIG --> DISCOVER --> MAPPER --> IMPORT --> CHECKPOINT
+    end
+    START -->|New run| CONFIG
+    START -->|Existing run| RESUME
+    CHECKPOINT -->|Resume| RESUME
+    subgraph PREPARATION["B — Prepare selected operation contexts: deterministic"]
+        RESUME["checkpoints.resume_pipeline<br/>Load saved profile and run state"]
+        PREP["scoped_native.runner.resume_scoped_pipeline<br/>prepare_scoped_workflow"]
+        FRESH["Verify manifest, source hashes<br/>Classpath and checkpoint compatibility"]
+        EACHCTX["For each selected channel / operation"]
+        CLOSURE["build_scoped_operation_closure<br/>Resolve steps and positional routes<br/>Formats, decorators and context hierarchy"]
+        JAVA["resolve_java_origins<br/>check_scoped_java_dependencies<br/>Resolve implementations, parents and helpers<br/>Require source or explicit dependency treatment"]
+        CALLS["plan_context_contracts + bind_context_calls<br/>Resolve called operations and service contracts<br/>Calculate dependency waves"]
+        BUILDUNITS["build_scoped_units<br/>Create occurrence-bound step units<br/>And directional format units<br/>Attach XML and verified Java evidence"]
+        READY{"Every selected context prepared?"}
+        NATIVE{"Native mode enabled?"}
+        PLAN["native_inputs + _execution_plan<br/>Order contexts by dependency wave<br/>Build typed migration plan"]
+        G1{"Plan approval + Gate 1"}
+        RESUME --> PREP --> FRESH --> EACHCTX
+        EACHCTX --> CLOSURE --> JAVA
+        JAVA -->|Next context| EACHCTX
+        JAVA -->|All contexts inspected| CALLS --> BUILDUNITS --> READY
+        READY -->|Yes| NATIVE
+        NATIVE -->|Yes| PLAN --> G1
+    end
+    subgraph UNITLOOP["C — Convert all configured units sequentially"]
+        ORDER["behavior_conversion.runner._convert_and_review<br/>Choose unit order and artifact ownership<br/>Supply already accepted compatible APIs"]
+        NEXTUNIT{"Another unit?"}
+        EVIDENCE["bounded_unit_evidence<br/>Use complete evidence when it fits<br/>Otherwise request AI analysis in bounded parts"]
+        PAYLOAD["Build unit request<br/>XML, source evidence, accepted APIs<br/>Requirements, examples, schema and test policy"]
+        CACHE{"Matching accepted result<br/>And valid manifests?"}
+        REUSE["Revalidate cached result<br/>Reuse when compatible"]
+        BUDGET{"request_context.encode_request<br/>Instructions + payload fit budget?<br/>Compact correction content if needed"}
+        GENERATE["AI — generation.generate<br/>Return native Java, tests<br/>Dependencies and unit_contract"]
+        CHECK["D — Schema and bundle validation<br/>Safe paths and native packages<br/>No prohibited IBM/runtime recreation<br/>Public APIs, nested types and method contracts<br/>Dependency and test-coverage metadata"]
+        BUILD["D — accept_bundle + build_candidate<br/>Stage temporary Maven project<br/>Verify dependencies, compile and run tests"]
+        PASS{"Validation and tests passed?"}
+        RETRY{"Correction attempts remain?"}
+        FEEDBACK["D — Collect compiler/test diagnostics<br/>Attach previous response and correction feedback"]
+        REVIEW["AI — review_behavior<br/>Compare source/XML evidence with code and tests<br/>Check transformations, routing and side effects"]
+        DECISION{"Review outcome"}
+        REVISE["generate_reviewed_bundle<br/>Attach review findings and previous bundle"]
+        ACCEPT["Persist result, files, hashes and review<br/>Update native_bundle_results"]
+        G2{"Gate 2<br/>Every unit review approved<br/>Without issues or unresolved questions?"}
+        ORDER --> NEXTUNIT
+        NEXTUNIT -->|Yes| EVIDENCE --> PAYLOAD --> CACHE
+        CACHE -->|Yes| REUSE --> REVIEW
+        CACHE -->|No| BUDGET
+        BUDGET -->|Fits| GENERATE --> CHECK --> BUILD --> PASS
+        CHECK -->|Rejected| RETRY
+        PASS -->|No| RETRY
+        RETRY -->|Yes| FEEDBACK --> BUDGET
+        PASS -->|Yes| REVIEW
+        REVIEW --> DECISION
+        DECISION -->|Approved| ACCEPT
+        DECISION -->|Concrete issues and revision budget remains| REVISE --> BUDGET
+        DECISION -->|Unresolved or revision budget exhausted| ACCEPT
+        ACCEPT --> NEXTUNIT
+        NEXTUNIT -->|No| G2
+    end
+    G1 -->|Approved| ORDER
+    subgraph OPLOOP["D — Assemble operations sequentially after the unit stage"]
+        NEXTOP{"Another operation?"}
+        OPINPUT["service_request + required_steps + required_resources<br/>Accepted unit contracts and files<br/>Routing, call contracts and resource dependencies"]
+        IMPL["AI — generate_incremental_operation<br/>Generate main implementation first"]
+        COMPILE["D — Validate constructor injection and resources<br/>Prevent overwriting accepted units<br/>Compile provisional implementation"]
+        ROUTEPLAN["AI — Generate RouteTestPlan<br/>D — Check routes and requirement references"]
+        NEXTSCENARIO{"Another planned scenario?"}
+        SCENARIO["AI — Generate one assigned test file<br/>D — Validate, compile and execute it"]
+        MERGE["D — Merge implementation and accepted scenario tests<br/>Run complete operation validation"]
+        OPREVIEW["AI — Review assembled operation<br/>Review issues can trigger bounded regeneration"]
+        OPSAVE["Persist operation contract and accepted snapshot"]
+        G3{"Gate 3"}
+        NEXTOP -->|Yes| OPINPUT --> IMPL --> COMPILE --> ROUTEPLAN
+        ROUTEPLAN --> NEXTSCENARIO
+        NEXTSCENARIO -->|Yes| SCENARIO --> NEXTSCENARIO
+        NEXTSCENARIO -->|No| MERGE --> OPREVIEW --> OPSAVE --> NEXTOP
+        OPREVIEW -->|Correctable review issues| IMPL
+        NEXTOP -->|No| G3
+    end
+    G2 -->|Approved| NEXTOP
+    subgraph DELIVERY["E — Service generation and finalization"]
+        SERVICE["service_generation.runner.run_service_generation<br/>For each operation: AI generates Spring Boot wrappers<br/>Approved business sources remain protected"]
+        SERVICECHECK["D — Validate wiring and protected sources<br/>Build, run tests and package<br/>Record XML and runtime validation evidence"]
+        SERVICEDECISION{"Service validation passed?"}
+        FIXSERVICE["Route correction feedback<br/>Bounded retry or block"]
+        FINAL["finalization.runner.run_finalization<br/>Check artifact hashes and required evidence<br/>Write documentation and deployment deliverables"]
+        G4{"Gate 4"}
+        DONE["migration_approved<br/>No deployment performed"]
+        SERVICE --> SERVICECHECK --> SERVICEDECISION
+        SERVICEDECISION -->|Next service| SERVICE
+        SERVICEDECISION -->|Failure| FIXSERVICE
+        FIXSERVICE -->|Retry allowed| SERVICE
+        SERVICEDECISION -->|All services passed| FINAL --> G4
+        G4 -->|Approved| DONE
+    end
+    G3 -->|Approved| SERVICE
+    STOP["Persist diagnostic evidence and stop or pause<br/>Explicit resume rechecks source freshness<br/>Accepted results are reused only when compatible"]
+    STORE[("migration.db + generated files + reports<br/>Requests, responses, attempts, reviews<br/>Fingerprints, manifests and checkpoints")]
+    READY -->|No| STOP
+    NATIVE -->|Preparation-only mode| STOP
+    G1 -->|Not approved| STOP
+    BUDGET -->|Still too large| STOP
+    RETRY -->|No| STOP
+    G2 -->|Not approved| STOP
+    G3 -->|Not approved| STOP
+    FIXSERVICE -->|Unrecovered| STOP
+    G4 -->|Missing evidence or not approved| STOP
+    COMPILE -->|Unrecovered after task corrections| STOP
+    SCENARIO -->|Unrecovered after task corrections| STOP
+    ACCEPT -.-> STORE
+    OPSAVE -.-> STORE
+    FINAL -.-> STORE
+    STOP -.-> STORE
+    STOP -.->|Explicit resume| RESUME

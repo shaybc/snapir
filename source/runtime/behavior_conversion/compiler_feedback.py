@@ -124,6 +124,25 @@ def with_dependency_apis(correction, dependency_apis):
         if any(re.search(r"\b" + re.escape(name.split(".")[-1]) + r"\b", context) for name in names):
             relevant.append(dependency)
     correction["relevant_dependency_apis"] = relevant
+    for diagnostic in diagnostics:
+        if diagnostic.get("category") != "incompatible_types":
+            continue
+        calls = set(re.findall(r"\.\s*([\w$]+)\s*\(", diagnostic.get("source_line", "")))
+        candidates = []
+        for dependency in relevant:
+            for api in dependency.get("planned_apis", []):
+                methods = [signature for signature in api.get("method_signatures", [])
+                           if any(re.search(r"\b" + re.escape(name) + r"\s*\(", signature) for name in calls)]
+                if methods:
+                    candidates.append(dict(type_name=api["type_name"], method_signatures=methods))
+        if candidates:
+            diagnostic["accepted_call_candidates"] = candidates
+            diagnostic["correction"] = (
+                "Check accepted_call_candidates for the called method's actual return type and parameters. "
+                "For an assignment, required_type is imposed by the candidate caller, not an accepted callee contract. "
+                "Correct the caller's variable and subsequent data flow; never change the accepted dependency. "
+                "If a call already returns business data, use it directly; do not assign it to a wire DTO "
+                "or pass it through a wire-to-business conversion again. Do not cast unrelated DTO types.")
     return correction
 
 

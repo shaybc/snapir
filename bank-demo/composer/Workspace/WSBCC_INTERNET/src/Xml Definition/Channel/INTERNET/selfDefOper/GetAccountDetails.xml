@@ -41,35 +41,35 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="10"
             ErrorNumber="2"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="AccountNotFound"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="20"
             ErrorNumber="4"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="AccessDenied"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="30"
             ErrorNumber="5"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="DatabaseError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="8"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TechnicalError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="0"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <refFormat name="csRequestFormat"     refid="GetAccountDetailsRQFmt"/>
@@ -167,6 +167,5 @@
     </CCXML>
   </fmtDef>
 
-  <context id="GetAccountDetailsCtxt" parent="AccountOpCtxt" type="op"/>
 
 </XML>

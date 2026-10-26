@@ -32,6 +32,10 @@ switches, side-effect order and final steps. Do not create a Composer runtime, r
 router or generic Context engine. No HTTP controller; wrappers follow operation review.
 Include any required native companion implementation and operation data sources.
 Reuse exact accepted APIs and sources as dependencies; never return their source files.
+Derive each call's result type from its accepted method signature, not the method name
+or a presumed wire-to-business pipeline. A method such as unformat may already return
+the business input; use that result directly instead of assigning it to a wire DTO and
+converting it again. Call a separate wire-to-business mapper only with its accepted input type.
 Copy every accepted_units entry's contract into operation_contract.units exactly, including
 all APIs, method_signatures, dependency_units, requirements, evidence_ids and schema fields.
 Do not shorten these contracts to only the methods used by this service, omit DTO/wire APIs,

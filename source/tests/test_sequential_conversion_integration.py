@@ -137,3 +137,29 @@ def test_verification_timeout_pauses_checkpoint_without_discarding_acceptance(se
     assert json.loads(snapshot(conn, config.run_id, 'unit', 'accepted-request-format')['data_json']) == {'retained': True}
 
 
+
+def test_verification_resume_preserves_profile_and_runs_no_intake(tmp_path, monkeypatch):
+    import importlib.util
+    from types import SimpleNamespace
+    path = Path(__file__).resolve().parents[2] / 'work/stage-five-validation/verify_bank_demo.py'
+    spec = importlib.util.spec_from_file_location('bank_resume_verification', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    folder = tmp_path / 'live-existing'
+    folder.mkdir()
+    saved = folder / 'chain.yaml'
+    saved.write_text('saved profile must remain unchanged')
+    (folder / 'chain-resume.log').write_text('earlier evidence')
+    calls = []
+    def run_command(command, log_path, deadline):
+        calls.append((command, log_path))
+        return dict(exit_code=0, timed_out=False, error=None)
+    monkeypatch.setattr(module, 'run_command', run_command)
+    monkeypatch.setattr(module, 'ROOT', tmp_path)
+    monkeypatch.setattr(module, 'inspect_run', lambda directory: dict(status='paused', operations=[]))
+    profile = SimpleNamespace(output_root=str(tmp_path / 'runs'))
+    module.verify_run(folder, profile, 'chain', 100, resume_only=True)
+    assert len(calls) == 1 and calls[0][0][3] == 'resume'
+    assert calls[0][1].name != 'chain-resume.log'
+    assert (folder / 'chain-resume.log').read_text() == 'earlier evidence'
+    assert saved.read_text() == 'saved profile must remain unchanged'

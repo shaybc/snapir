@@ -861,7 +861,7 @@ def test_ambiguous_operation_is_diagnosed_without_overwrite(tmp_path, scoped_map
     assert len(occurrences) == 2
 
 
-def test_scoped_import_rejects_shared_schema_without_mutation(tmp_path, scoped_mapper):
+def test_scoped_import_accepts_inventory_but_keeps_conversion_gated(tmp_path, scoped_mapper):
     from tools.composer_mapper_tools.vault_importer import import_vault
     from tools.state_store_tools.db import get_connection, create_all_tables
     root, vault = tmp_path / 'source', tmp_path / 'vault'
@@ -871,11 +871,40 @@ def test_scoped_import_rejects_shared_schema_without_mutation(tmp_path, scoped_m
     create_all_tables(conn)
     config = SimpleNamespace(run_id='scoped', run_mode=SimpleNamespace(value='full_inventory'),
                              target_channels=[], include_operations=None, exclude_operations=None)
-    before = list(conn.iterdump())
-    with pytest.raises(ValueError, match='converter support is not implemented'):
-        import_vault(conn, str(vault), config)
-    assert list(conn.iterdump()) == before
+    from tools.composer_mapper_tools.scoped_vault_importer import require_qualified_conversion
+    summary = import_vault(conn, str(vault), config)
+    assert summary.operations == 4
+    assert conn.execute('SELECT schema_version FROM scoped_vault_runs').fetchone()[0] == 3
+    with pytest.raises(ValueError, match='conversion is gated'):
+        require_qualified_conversion(conn, config.run_id)
     assert conn.execute('SELECT count(*) FROM source_artifacts').fetchone()[0] == 0
+
+
+def test_qualified_import_preserves_real_mapper_consuming_contexts(tmp_path, scoped_mapper):
+    from tools.composer_mapper_tools.vault_importer import import_vault
+    from tools.composer_mapper_tools.scoped_vault_access import ScopedVaultAccess
+    from tools.state_store_tools.db import get_connection, create_all_tables
+    root, vault = tmp_path / 'source', tmp_path / 'vault'
+    implicit_xml_workspace(root)
+    assert invoke_mapper(scoped_mapper, root, vault).returncode == 0
+    conn = get_connection(':memory:')
+    create_all_tables(conn)
+    config = SimpleNamespace(run_id='contexts', run_mode=SimpleNamespace(value='single_channel'),
+                             target_channels=['SME'], include_operations=None, exclude_operations=None,
+                             source_root=str(root))
+    import_vault(conn, str(vault), config)
+    access = ScopedVaultAccess(conn, 'contexts')
+    sme = access.operation('SME', 'POB1Op')
+    voice = access.operation('VOICEPORTAL', 'POB1Op')
+    custom = access.operation('CUSTOM', 'POB1Op')
+    assert sme.definition_id == voice.definition_id != custom.definition_id
+    assert [step.source.entity_id for step in access.steps(sme)] == ['SmeOnly']
+    assert 'SMEField' in access.resource(sme, 'formats:SharedFmt').evidence['markdown']
+    assert 'XMLField' in access.resource(voice, 'formats:SharedFmt').evidence['markdown']
+    assert 'example.SmeTag' in str(access.java_resolution(sme))
+    caller = access.operation('SME', 'IDBGetUserDataOp')
+    assert access.calls(caller)[0]['target_context'] == 'SME/POB1Op'
+    assert {row[0] for row in conn.execute('SELECT channel FROM operations')} == {'SME'}
 
 
 def test_copied_excel_generator_reads_scoped_vault(tmp_path, scoped_mapper):

@@ -10,7 +10,8 @@ def classify_java_imports(source_path: str, source_index, classpath_index) -> li
     Wildcard imports require compiler analysis and are reported for review. IBM
     types remain replacement requirements even when a legacy library provides them.
     """
-    source = Path(source_path).read_text(encoding="utf-8-sig")
+    from tools.java_analysis_tools.java_text import read_java_text
+    source = read_java_text(source_path, strip_bom=True)
     source = re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.S)
     results = []
     for match in re.finditer(r"^\s*import\s+(static\s+)?([\w.*]+)\s*;", source, re.M):

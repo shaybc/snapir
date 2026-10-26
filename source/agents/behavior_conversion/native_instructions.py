@@ -30,6 +30,8 @@ Keep all other dependency coordinates pinned and justified by generated code.
 Return exactly one JSON object matching the supplied schema, with no prose or fences.
 Every file path starts with src/main/java/ or src/test/java/, followed by its package
 path and public type filename. Never return package-relative paths without these prefixes.
+Write constructor names without a package or return type in both Java source and method_signatures: use public ValidationFailedStep(String category, String number), never public com.company.generated.ValidationFailedStep(...).
+Declare only constructors and methods that exist in the returned Java, with matching public visibility and parameter types; keep the full package name in type_name.
 Before returning EVERY response, check valid JSON syntax and escaped Java strings; verify
 unit_contract method metadata matches the actual public Java methods, all imported APIs
 have dependencies, and coverage maps every supplied requirement to executable test files.
@@ -84,6 +86,16 @@ def response_example(kind, known=()):
         example["unit_contract"]["apis"][0]["method_signatures"] = [
             "public java.lang.String execute(com.company.generated.example.RequestXml)"]
         example["unit_contract"]["requirements"]["business"] = "Remove evidenced whitespace padding"
+    # Build Java text first; json.dumps below supplies the separate JSON escaping layer.
+    quoted_method = r'''@Override public String toString() {
+        return "value='" + "\"quoted\"" + '\'' + ", path=C:\\demo";
+    }'''
+    quoted_test = (r'''@Test public void preservesQuotesAndBackslashes() {
+        assertEquals("value='\"quoted\"', path=C:\\demo", new ''' + name + r'''().toString());
+    }''')
+    example["files"][0]["content"] = example["files"][0]["content"][:-1] + quoted_method + "}"
+    example["files"][1]["content"] = example["files"][1]["content"][:-1] + quoted_test + "}"
+    example["unit_contract"]["apis"][0]["method_signatures"].append("public java.lang.String toString()")
     current = {(item["group_id"], item["artifact_id"]): item for item in known}
     for dependency in example["dependencies"]:
         existing = current.get((dependency["group_id"], dependency["artifact_id"]))
@@ -99,7 +111,10 @@ def native_instructions(kind, known=()):
         if (dependency["group_id"], dependency["artifact_id"]) == (junit["group_id"], junit["artifact_id"]):
             junit.update(version=dependency["version"], scope=dependency["scope"])
     return (COMMON_INSTRUCTION + "\nApproved test dependency:\n" +
-            json.dumps(junit) + "\nCorrect response example:\n" +
+            json.dumps(junit) + "\nCorrect response example (including escaped Java quotes and backslashes):\n"
+            "Write valid Java first, then encode it as JSON. A single quote is not a JSON escape; "
+            "never use backslash-apostrophe as a JSON escape. The Java character literal for an apostrophe "
+            "still needs its Java backslash, which must itself be escaped in JSON.\n" +
             json.dumps(response_example(kind, known)) + "\nUnit-specific instructions:\n")
 
 

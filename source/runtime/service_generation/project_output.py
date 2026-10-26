@@ -4,6 +4,8 @@ from pathlib import Path
 
 from agents.java_service_generation.agent import parse_generated_project_output, validate_generated_project
 
+WRAPPER_OUTPUT_VERSION = "managed-pom-rejection-v1"
+
 
 def configure_executable_build(context):
     """Add the pinned Spring Boot packaging plugin without accepting model build scripts."""
@@ -39,7 +41,8 @@ def validate_wrapper_output(output, protected, operation_id, context, *, behavio
         if name.startswith("/") or ":" in name or ".." in Path(name).parts:
             raise ValueError("Unsafe generated wrapper path")
         if not name.startswith(("src/main/java/", "src/main/resources/", "src/test/java/", "src/test/resources/")):
-            raise ValueError("Wrapper output may contain only Java sources and resources")
+            raise ValueError("Wrapper output may contain only Java sources and resources; remove " + name
+                             + " from files. Maven POMs are managed by the converter; return Maven dependency proposals in dependencies, not a pom.xml file.")
         if name.lower().endswith((".jar", ".class")):
             raise ValueError("Binary library copying is prohibited")
         if name in protected and protected[name] != content:

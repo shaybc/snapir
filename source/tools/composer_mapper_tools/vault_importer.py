@@ -36,13 +36,24 @@ def import_vault(
     conn: sqlite3.Connection,
     vault_root: str,
     run_config: RunConfig,
+    *, progress=None,
 ) -> VaultImportSummary:
     summary = VaultImportSummary()
     root = Path(vault_root)
     from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
     from tools.composer_mapper_tools.scoped_vault_importer import import_scoped_vault, require_qualified_conversion
-    manifest = read_vault_manifest(root)
+    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest, validation_progress
+    manifest_path = root / 'vault-manifest.json'
+    validated_hash = file_digest(manifest_path) if manifest_path.is_file() else None
+    manifest = read_vault_manifest(root, allow_shared=True,
+                                   progress=validation_progress(progress) if validated_hash else progress)
     if manifest is not None:
+        if file_digest(manifest_path) != validated_hash:
+            raise ValueError('Scoped manifest changed during validation')
+        if manifest['vault_schema_version'] == 3:
+            from tools.composer_mapper_tools.shared_vault_importer import import_shared_vault
+            return import_shared_vault(conn, root, manifest, run_config, summary,
+                                       progress=progress, validated_hash=validated_hash)
         return import_scoped_vault(conn, root, manifest, run_config, summary)
     require_qualified_conversion(conn, run_config.run_id)
 

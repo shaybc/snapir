@@ -36,28 +36,28 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="20"
             ErrorNumber="1"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="ValidationFailed"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="10"
             ErrorNumber="2"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="DatabaseError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="8"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TechnicalError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="0"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <refFormat name="csRequestFormat"     refid="GetClientAccountsIvrRQFmt"/>
@@ -92,6 +92,5 @@
     </CCXML>
   </fmtDef>
 
-  <context id="GetClientAccountsCtxt" parent="IvrBaseCtxt" type="op"/>
 
 </XML>

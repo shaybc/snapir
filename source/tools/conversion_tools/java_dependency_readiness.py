@@ -89,7 +89,8 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                             if expected_hashes and target not in expected_hashes:
                                 _issue(issues, name, owner, "Dependency source was not captured by intake; refresh intake")
                                 continue
-                            content = Path(target).read_text(encoding="utf-8-sig")
+                            from tools.java_analysis_tools.java_source_reader import read_java_source
+                            content = read_java_source(target)
                             digest = hashlib.sha256(Path(target).read_bytes()).hexdigest()
                             if target in expected_hashes and digest != expected_hashes[target]:
                                 _issue(issues, name, owner, "Dependency source changed since intake; refresh intake")

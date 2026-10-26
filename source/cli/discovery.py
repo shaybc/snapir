@@ -8,6 +8,8 @@ from runtime.workspace_paths import resolve_run_directory
 
 # Checkpoints currently accepted by resume_pipeline; discovery never executes it.
 RESUMABLE_PHASES = {
+    "scoped_inventory_ready", "conversion_scoped_gated", "conversion_scoped_stale",
+    "conversion_scoped_native_failed", "conversion_scoped_unsupported",
     "conversion_plan_pending", "conversion_plan_rejected", "conversion_plan_approved", "conversion_plan_blocked",
     "planning_inputs_ready", "planning", "planning_failed", "gate_1_pending",
     "gate_1_rejected", "closures_blocked", "conversion_pending", "component_review",

@@ -143,3 +143,39 @@ def test_unrecognized_diagnostic_preserves_source_and_raw_message():
     assert data["diagnostics"][0]["category"] == "compiler_error"
     assert data["failed_sources"] == [source]
     assert data["original_compiler_output"] == error
+
+
+def test_request_return_mismatch_targets_caller_and_retains_accepted_contract():
+    """A mapper returning business input must not be treated as returning its wire DTO."""
+    from copy import deepcopy
+    from runtime.behavior_conversion.compiler_feedback import request_dependency_apis, with_dependency_apis
+    from agents.behavior_conversion.operation_route_tests import IMPLEMENTATION
+    accepted = {"request": {"contract": {"apis": [{"type_name": "demo.RequestMapper",
+        "method_signatures": ["public demo.BusinessInput unformat(java.lang.String)",
+                              "public demo.BusinessInput toBusinessInput(demo.WireInput)"]}]},
+        "public_api": {"src/main/java/demo/RequestMapper.java": {"public_declarations": [
+            "public BusinessInput unformat(String xml)", "public BusinessInput toBusinessInput(WireInput wire)"]}}}}
+    original = deepcopy(accepted)
+    source = dict(path="src/main/java/demo/Service.java", content="""package demo;
+class Service {
+ void execute(String xml) {
+  RequestMapper mapper = new RequestMapper();
+  WireInput wire = mapper.unformat(xml);
+  BusinessInput input = mapper.toBusinessInput(wire);
+ }
+}""")
+    error = "[ERROR] C:/temp/src/main/java/demo/Service.java:[5,34] incompatible types: demo.BusinessInput cannot be converted to demo.WireInput"
+    apis = request_dependency_apis({"accepted_units": accepted})
+    feedback = compiler_correction(error, [source], apis)
+    diagnostic = feedback["diagnostics"][0]
+    assert diagnostic["accepted_call_candidates"] == [{"type_name": "demo.RequestMapper",
+        "method_signatures": ["public demo.BusinessInput unformat(java.lang.String)"]}]
+    assert "candidate caller, not an accepted callee contract" in diagnostic["correction"]
+    assert "use it directly" in diagnostic["correction"]
+    assert feedback["failed_sources"] == [source]
+    stored = deepcopy(feedback)
+    stored["diagnostics"][0].pop("accepted_call_candidates")
+    stored["diagnostics"][0]["correction"] = "Match the required type"
+    assert with_dependency_apis(stored, apis)["diagnostics"][0] == diagnostic
+    assert accepted == original
+    assert "unformat may already return" in IMPLEMENTATION

@@ -1,8 +1,9 @@
 # Operation Conversion Workflow — Staged Implementation Plan
 
 Status: Stages 1–4 implemented. Stage 5 verification tooling and offline checks
-are implemented; complete live bank verification remains blocked by the bounded
-run's time limit. The sequential wrapper invokes the existing converter with
+are implemented; the request-type and Oracle dependency blockers are fixed. The
+leaf service builds and packages; complete live verification is blocked by missing
+runtime-equivalence evidence. The sequential wrapper invokes the existing converter with
 intake checks, an approved plan and shared service registration. It does not
 duplicate or replace the existing conversion workflow.
 
@@ -297,7 +298,7 @@ Stage 5 verification record:
   accepted work survives pausing an interrupted verification run. The real-bank
   integration test was rerun successfully after its JDK availability guard.
 - Added `work/stage-five-validation/verify_bank_demo.py`, an isolated live-run
-  supervisor with an eight-minute cap, captured CLI output, explicit demo-only
+  supervisor with a twenty-minute cap (increased from eight), captured CLI output, explicit demo-only
   deployment values, automatic test-profile approval policies and one transport
   attempt. Existing conversion correction limits remain in place. Original
   profiles and runtime conversion code were not changed.
@@ -311,7 +312,62 @@ Stage 5 verification record:
   Neither `ValidateClientLinksOp` nor `GetClientOverviewOp` started. No operation
   completed, no service was published, no live HTTP-chain check ran, and the
   separate live API-reuse run was not started. No dummy validation or unrelated
-  generator/build repairs were used. No second live attempt was made.
+  generator/build repairs were used during the initial pass.
+- Resumed the same run with the twenty-minute cap, retaining its saved profile,
+  approved plan, prior logs and accepted units. That process reached six accepted
+  units before its cap; another resume continued rather than treating the timer
+  as a conversion blocker. All seven units subsequently passed compilation,
+  executable tests and behavior review.
+- Operation assembly then failed all three existing correction attempts:
+  `GetClientLinksOpService.java:44` passes `GetClientLinksRequest` where
+  `GetClientLinksRequestXml` is required. The run stopped with an actual compiler
+  blocker at `assembly_pending`, not a timeout. All seven accepted units remain
+  saved. Both callers remain pending, no live API was published, and live HTTP
+  and separate-run API reuse could not proceed. No generated code or converter
+  runtime code was changed to bypass the failure.
+- Two focused verification tests passed for timeout preservation and resuming
+  without repeating intake or overwriting the saved profile/previous log.
+- Fixed the request-type mismatch at its generation boundary: assembly now takes
+  each call's return type from the accepted signature instead of assuming a wire
+  DTO followed by another conversion. Compiler correction feedback highlights
+  the relevant accepted call candidates and directs assignment fixes to the
+  caller without changing accepted dependencies. The accepted request mapper
+  already returned the business input; its implementation and contract were valid.
+- The resumed implementation compiled on its first attempt, all four routing
+  scenarios passed, and behavior review accepted the assembly. Hash comparisons
+  confirm all seven pre-fix accepted unit records are unchanged. The focused
+  compiler/assembly/correction suite passed 23 tests; compiler-feedback checks
+  subsequently passed all 10 cases after a wording clarification.
+- The live run then reached Spring Boot generation and exhausted its existing
+  three attempts at `service_generation_blocked`: Maven Central could not resolve
+  the proposed `com.oracle.database.jdbc:ojdbc11:23.4.0.0.0`. This is a different
+  blocker from the fixed request-type mismatch. No live service was published;
+  caller conversion, actual HTTP verification and separate-run API reuse remain
+  outstanding. No dummy runtime evidence or dependency-version substitution was
+  used to force completion.
+- Resolved and verified `com.oracle.database.jdbc:ojdbc11:23.4.0.24.05` with Maven,
+  verified `oracle.jdbc.OracleDriver`, and matched the JAR checksum against Maven
+  Central. Added `service_maven_dependencies`, keyed by `channel/operation`, so
+  explicit final-service pins override guessed versions while retaining all
+  required-class verification. The isolated input and saved run profiles pin
+  this artifact only for `INTERNET/GetClientLinksOp`; original profiles were
+  backed up. Changed pins refresh only final-generation checkpoint identity.
+- Made existing wrapper validation feedback identify an illegal `pom.xml` output
+  and show exact `@Bean(name = "binding_id")` declarations, distinguishing bean
+  names from qualifiers. Guards and existing retry limits remain unchanged.
+  Focused dependency/startup/wiring/publication/finalization checks: 35 passed,
+  one real-Java wiring case excluded from that combined check.
+- The resumed leaf service passed compilation, executable Spring wiring tests,
+  packaging and the IBM guard. Its executable JAR includes the verified Oracle
+  version. All 23 pre-pin accepted unit/assembly/scenario/review/operation records
+  retain identical fingerprints and data hashes.
+- The final process stopped without timing out at `finalization_blocked`:
+  XML compatibility, behavioral equivalence and legacy-trace comparison remain
+  `not_available`. `RuntimeTestExecutor` currently implements only disabled and
+  dummy modes; no genuine runtime-evidence provider is available there. No dummy
+  validation or acceptance-policy bypass was used. No live service was published,
+  both callers remain pending, and actual HTTP/cross-run API reuse verification
+  still requires that genuine evidence before publication.
 - Evidence: [verification summary](../../work/stage-five-validation/verification.md),
   [live report](../../work/stage-five-validation/live-20261019-173555-be7749/report.md)
   and its machine result/logs. Completing the real bank conversion and separate

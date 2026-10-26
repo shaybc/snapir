@@ -103,7 +103,8 @@ def _index_classes(index, workspace, project, root):
         if _is_test_path(path.relative_to(root)) or not path.resolve().is_relative_to(workspace):
             continue
         try:
-            source = path.read_text(encoding="utf-8-sig")
+            from tools.java_analysis_tools.java_text import read_java_text
+            source = read_java_text(path, strip_bom=True)
         except (OSError, UnicodeError) as exc:
             index.issues.append(f"Cannot read Java source {path}: {exc}")
             continue

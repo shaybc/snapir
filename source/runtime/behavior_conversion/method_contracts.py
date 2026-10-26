@@ -1,9 +1,11 @@
 """Match declared Java methods using resolved types rather than source spelling."""
 
 import re
-from runtime.java_public_type import _code, public_types
+from runtime.java_public_type import public_types
+from runtime.behavior_conversion.java_declaration_text import declaration_text
 
 _IDENTIFIER = r"[A-Za-z_$][\w$]*"
+_QUALIFIED_NAME = _IDENTIFIER + r'(?:\s*\.\s*' + _IDENTIFIER + r')*'
 _JAVA_LANG = set("String Object Boolean Byte Character Short Integer Long Float Double Void Number Class Enum Record Throwable Exception RuntimeException IllegalArgumentException Iterable Comparable CharSequence StringBuilder StringBuffer Math System AutoCloseable".split())
 _MODIFIERS = set("public protected private static final abstract synchronized native strictfp default".split())
 
@@ -43,7 +45,7 @@ def _parameters(text):
 
 def _signature(text, resolve):
     """Represent name, return type, ordered parameter types and static membership."""
-    text = re.sub(r"@" + _IDENTIFIER + r"(?:\." + _IDENTIFIER + r")*(?:\([^()]*\))?\s*", "", text)
+    text = declaration_text(text)
     match = re.search(r"^(.*?)\b(" + _IDENTIFIER + r")\s*\((.*?)\)", text.strip(), re.S)
     if not match:
         return None
@@ -93,11 +95,12 @@ def _declared_nested_types(code, package):
 
 def java_type_resolver(source, known_types=()):
     """Resolve Java source types consistently for methods and constructor contracts."""
-    code = _code(source)
-    package_match = re.search(r"\bpackage\s+([\w.]+)\s*;", code)
-    package = package_match.group(1) if package_match else ''
+    code = declaration_text(source)
+    package_match = re.search(r'\bpackage\s+(' + _QUALIFIED_NAME + r')\s*;', code)
+    package = re.sub(r'\s+', '', package_match.group(1)) if package_match else ''
     nested_types = _declared_nested_types(code, package)
-    imports = re.findall(r"\bimport\s+(?!static\b)([\w.]+(?:\*)?)\s*;", code)
+    imports = [re.sub(r'\s+', '', name) for name in re.findall(
+        r'\bimport\s+(?!static\b)(' + _QUALIFIED_NAME + r'(?:\s*\.\s*\*)?)\s*;', code)]
     explicit = {name.rsplit('.', 1)[-1]: name for name in imports if not name.endswith('*')}
     wildcards = [name[:-1] for name in imports if name.endswith('*')]
 
@@ -130,28 +133,61 @@ def java_type_resolver(source, known_types=()):
                 return wildcards[0] + name
             return local
         text = _erase_type_arguments(text).replace('...', '[]')
+        text = re.sub(r'\s*\.\s*', '.', text)
         return re.sub(r"\s+", '', re.sub(_IDENTIFIER + r"(?:\." + _IDENTIFIER + r")*", token, text))
 
     return resolve
 
 
-def has_method_contract(source, signature, known_types=()):
-    """Check a top-level type's own methods; ignore comments, names and throws spelling."""
-    code = _code(source)
+def _normalize_constructor_contract(source, signature, owner=None):
+    """Accept a qualified metadata constructor name only for this public source type."""
+    if owner is not None:
+        if owner['kind'] not in {'class', 'record', 'enum'}:
+            return signature
+        for qualified in (owner['canonical'], owner['binary']):
+            pattern = r'\s*\.\s*'.join(re.escape(part) for part in qualified.split('.'))
+            signature = re.sub(r'^(\s*public\s+)' + pattern + r'(?=\s*\()',
+                               lambda match: match.group(1) + owner['name'], signature)
+        return signature
+    declarations = public_types(source)
+    if len(declarations) != 1 or declarations[0][0] not in {'class', 'record', 'enum'}:
+        return signature
+    name = declarations[0][1]
+    package = re.search(r'\bpackage\s+(' + _QUALIFIED_NAME + r')\s*;', declaration_text(source))
+    owner = (re.sub(r'\s+', '', package.group(1)) + '.' if package else '') + name
+    owner_pattern = r'\s*\.\s*'.join(re.escape(part) for part in owner.split('.'))
+    return re.sub(r'^(\s*public\s+)' + owner_pattern + r'(?=\s*\()',
+                  lambda match: match.group(1) + name, signature)
+
+
+def has_method_contract(source, signature, known_types=(), *, owner_type=None):
+    """Check the selected type's own methods; retain top-level behavior by default."""
+    code = declaration_text(source)
+    owner = None
+    if owner_type is not None:
+        from runtime.behavior_conversion.java_api_types import public_api_types
+        owner = public_api_types(source).get(owner_type)
+        if owner is None:
+            return False
     resolve = java_type_resolver(source, known_types)
-    expected = _signature(signature, resolve)
+    expected = _signature(_normalize_constructor_contract(source, declaration_text(signature), owner), resolve)
     if expected is None:
         return False
-    pattern = r"(?:\bpublic\s+|^\s*)([^{};=]*?\([^()]*\))\s*(?:throws\s+[^{};]+)?\s*(?:\{|;)"
+    pattern = r"(?:^|(?<=[{};]))\s*([^{};=]*?\([^()]*\))\s*(?:throws\s+[^{};]+)?\s*(?:\{|;)"
     for match in re.finditer(pattern, code, re.M):
         position = match.start()
-        prefix = code[:position]
+        if owner and not owner['body_start'] < position < owner['body_end']:
+            continue
+        prefix = code[owner['body_start'] if owner else 0:position]
         if prefix.count('{') - prefix.count('}') != 1:
             continue
         declaration = match.group(1)
-        if re.match(r"\s*(?:private|protected)\b", declaration):
+        modifiers = set(re.findall(r'\b(public|private|protected)\b', declaration.split('(', 1)[0]))
+        if modifiers & {'private', 'protected'}:
             continue
-        if not re.match(r"\s*public\b", match.group()) and not any(kind == "interface" for kind, _ in public_types(source)):
+        implicit_public = owner['kind'] in {'interface', '@interface'} if owner else any(
+            kind == "interface" for kind, _ in public_types(source))
+        if 'public' not in modifiers and not implicit_public:
             continue
         if _signature(declaration, resolve) == expected:
             return True

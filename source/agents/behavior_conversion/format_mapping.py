@@ -2,21 +2,21 @@
 
 from agents.behavior_conversion.native_instructions import native_instructions
 
-XML_NULL_MAPPING_GUIDANCE = """XML null mapping and correction checks:
-Preserve absent, empty and nil values according to the supplied format configuration and
-supporting behavior evidence. Apply xsi:nil to the specific element whose value is null,
-not its parent, siblings or document root. A nil root is valid only when the entire root
-value is evidenced to be null; a nullable child must not make a populated response nil.
-Model nullable child elements at their own XML scope, using an element wrapper or explicit
-element-level serialization when needed. Declare the XML Schema instance namespace correctly.
-On input, interpret an element's nil marker at that element only; preserve its siblings.
-Do not use a root-level nil attribute as a global flag for a nullable child.
-Test the actual serialized XML structure and attribute placement independently of round-trips:
-a null child leaves the populated root and siblings intact, and deserialization preserves
-their values. Test evidenced non-null, missing, empty and nil cases without inventing rules.
-When correcting a parsing/test failure, trace the serialized element and its annotations
-back to the evidenced field. Fix incorrect nil placement or mapping rather than merely
-adding a null guard, changing the exception, discarding data or weakening the test.
+XML_NULL_MAPPING_GUIDANCE = """XML mapping evidence and correction checks:
+Derive decorator conditions, value transformations, XML attributes and direction-specific
+behavior from the supplied implementation, its superclasses and supporting sources.
+A tag name or null value alone does not establish an XML nil policy. Preserve runtime
+context and configuration conditions as explicit typed native inputs or collaborators;
+do not freeze them at conversion time. If behavior evidence is missing, report it in
+unresolved_questions instead of inventing a replacement.
+For evidenced XML attributes, preserve the specific element and namespace selected by the
+source. A nullable child must not make a populated response nil unless the source requires it.
+Test enabled and disabled conditions, null, empty and non-empty values where evidenced,
+and inspect XML structure independently of round-trips. Derive expected values from source,
+not from the generated implementation or a generic decorator-name rule.
+When correcting a parsing/test failure, trace both the assertion and implementation to the
+supplied evidence. Do not add a null guard, discard data or weaken a test to hide a mismatch;
+correct an unsupported assertion when the source establishes different behavior.
 """
 
 INSTRUCTION = native_instructions("format") + """Return unit_contract with this unit_id, exact fully qualified public APIs matching the returned files, requirements and evidence_ids. Include input_type, output_type and wire_type where applicable. Generate typed data classes needed by this unit in the same bundle. dependency_units may name only supplied accepted units. Use the assigned native_package.
@@ -37,14 +37,15 @@ For response_format, map a typed business result into a Jackson-annotated respon
 then serialize that model to XML. Apply evidenced formatter conversions and decorations in
 that mapper, without context lookup or a recreated formatter/decorator framework.
 Implement decorator behavior as plain mapper logic: padding/stripping is string logic,
-nil handling maps the evidenced XML attribute/value to a typed nullable field, and other
+attribute and value handling follows the supplied class methods and runtime conditions, and other
 transformations are explicit Java expressions or small mapper methods. Preserve the
 evidenced order: remove decorations in reverse order for requests, apply decorations in
 forward order for responses. Do not generate Tag, FormatDecoratorHolder, CCPadding,
 NilDecorator or copied Composer decorator classes, even under the native package.
 Do not recreate initializeFrom(Tag), addDecoration/removeDecoration or a decorator chain
 engine. Read configuration from the supplied XML during conversion and encode its values
-in the mapper. Use Jackson annotations for XML attributes and ordinary Java transformations
+in the mapper. Preserve runtime context/configuration dependencies as typed parameters or
+collaborators rather than constants; never erase source-dependent branches. Use Jackson annotations for XML attributes and ordinary Java transformations
 for values; do not merely rename or relocate legacy classes. Add tests for the confirmed
 padding, nil and transformation behavior directly on the mapper and typed result.
 Preserve roots, children, attributes and nesting;

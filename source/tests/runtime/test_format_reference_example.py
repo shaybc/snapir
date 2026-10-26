@@ -45,7 +45,7 @@ def test_every_initial_and_correction_request_receives_the_same_working_example(
         context = compiler_correction(error, [file.model_dump() for file in candidate.files])
         raise CompilerCorrectionError(error, context)
     with pytest.raises(CompilerCorrectionError):
-        generate(conn, config, profile(), "unit", "format", "Convert", {"kind": kind}, NativeUnitBundle,
+        generate(conn, config, profile(max_agent_task_retries=len(saved)), "unit", "format", "Convert", {"kind": kind}, NativeUnitBundle,
             validator=validate, model_call=model)
     assert len(requests) == 3
     assert requests[0]["format_reference_example"] == requests[1]["format_reference_example"] == requests[2]["format_reference_example"]

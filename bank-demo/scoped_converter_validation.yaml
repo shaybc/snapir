@@ -1,0 +1,17 @@
+source_root: ./composer/Workspace
+mapper_jar: ../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar
+mapper_vault_layout: scoped
+source_workspace_id: bank-demo-scoped-validation
+scoped_java_projects:
+  INTERNET: WSBCC_INTERNET
+  IVR: WSBCC_IVR
+  XML: WSBCC_XML
+output_root: ../work/migration_runs
+channels: [INTERNET, IVR]
+include_operations: null
+exclude_operations: null
+conversion_strategy: behavior_units
+java_version: 25
+classpath_jars: []
+eclipse_classpath_variables: {}
+enable_git: false

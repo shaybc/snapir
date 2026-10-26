@@ -38,6 +38,11 @@ def resume_pipeline(output_root: str, run_id: str):
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
         logging.getLogger(__name__).info("Resuming saved checkpoint: %s (%s).", run["current_phase"], run["status"])
+        from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+        if is_scoped_run(conn, run_id):
+            from runtime.scoped_native.runner import resume_scoped_pipeline
+            resume_scoped_pipeline(conn, config, profile, directory)
+            return directory
         if profile.conversion_strategy == "behavior_units":
             from runtime.intake_plan import has_intake_plan, resume_intake_plan
             if has_intake_plan(conn, run_id):

@@ -8,10 +8,10 @@ LITELLM_BASE_URL = ""
 MODEL_PROVIDER = "gemini"
 MODEL_API_KEY_ENVIRONMENT = "GOOGLE_API_KEY"
 MODEL_TIMEOUT_SECONDS = 180
-MAX_MODEL_ATTEMPTS = 3
+MAX_MODEL_ATTEMPTS = 4
 
 # Retry / parallelism
-MAX_AGENT_TASK_RETRIES = 3
+MAX_AGENT_TASK_RETRIES = 4
 MAX_PARALLEL_CONVERSION_WORKERS = 4
 MAX_PARALLEL_LLM_TASKS = 2
 MAX_PARALLEL_BUILD_TASKS = 2
@@ -41,6 +41,7 @@ DB_PATH = "./work/state/migration.db"
 
 # Composer mapper
 COMPOSER_MAPPER_JAR = "./source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar"
+COMPOSER_MAPPER_VAULT_LAYOUT = "legacy"
 
 # Java
 COMMON_LIB_GROUP_ID = "com.company.migration"
@@ -115,4 +116,11 @@ DEPLOYMENT_DEFAULTS = {
     "memory_request": "256Mi", "memory_limit": "512Mi",
     "liveness_path": DEPLOYMENT_HEALTH_PATHS["liveness"],
     "readiness_path": DEPLOYMENT_HEALTH_PATHS["readiness"], "managed_by_label": "snapir",
+}
+
+# Connection settings for testing manually deployed OpenShift services.
+TEST_DEPLOYMENT_DEFAULTS = {
+    "service_base_url": "https://openshift/microservices/", # externally accessible base URL for test requests, including http:// or https://
+    "service_external_port": None, # external router port; None means no explicit override of the URL or protocol default port
+    "service_route_pattern": "ms_${ms_name}", # hostname or path pattern used to construct each microservice's test URL
 }

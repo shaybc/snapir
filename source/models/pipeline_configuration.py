@@ -7,6 +7,8 @@ import constants
 from models.deployment_models import DeploymentDefaults
 from models.external_dependency import ExternalDependencyRule
 from models.conversion_requirement import ConversionRequirement
+from models.maven_dependency import MavenDependency
+from models.test_deployment_settings import TestDeploymentSettings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -17,14 +19,19 @@ class PipelineConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_default=True)
     conversion_strategy: Literal["legacy_components", "behavior_units"] = "legacy_components"
     conversion_requirements: list[ConversionRequirement] = Field(default_factory=list)
-    behavior_context_chars: int = Field(default=180000, ge=60000, le=1000000)
+    behavior_context_chars: int = Field(default=300000, ge=60000, le=1000000)
     source_root: str = constants.COMPOSER_ROOT
+    scoped_java_project: str | None = Field(default=None, min_length=1)
+    scoped_java_projects: dict[str, str] = Field(default_factory=dict)
+    scoped_native_mode: Literal["prepare", "behavior_units_v1"] = "prepare"
     source_workspace_id: str | None = Field(default=constants.SOURCE_WORKSPACE_ID, min_length=1)
     service_registry_path: str | None = Field(default=None, min_length=1)
+    service_maven_dependencies: dict[str, list[MavenDependency]] = Field(default_factory=dict)
     plan_approval_policy: Literal["human", "automatic", "skip"] = "human"
     shared_library_min_usage: int = Field(default=constants.SHARED_LIBRARY_MIN_USAGE, ge=1)
     broad_library_usage_threshold: int = Field(default=constants.BROAD_LIBRARY_USAGE_THRESHOLD, ge=1)
     mapper_jar: str = constants.COMPOSER_MAPPER_JAR
+    mapper_vault_layout: Literal["legacy", "scoped"] = constants.COMPOSER_MAPPER_VAULT_LAYOUT
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME
     output_root: str = constants.OUTPUT_ROOT
@@ -50,6 +57,7 @@ class PipelineConfiguration(BaseModel):
     deployment_platform: str = constants.DEPLOYMENT_PLATFORM
     deployment_environment: str = constants.DEPLOYMENT_ENVIRONMENT
     deployment_env_vars: dict[str, str] = Field(default_factory=lambda: deepcopy(constants.DEPLOYMENT_ENV_VARS))
+    test_deployment: TestDeploymentSettings = Field(default_factory=TestDeploymentSettings)
     runtime_validation_mode: Literal["disabled", "dummy"] = constants.RUNTIME_VALIDATION_MODE
     eclipse_classpath_variables: dict[str, str] = Field(default_factory=lambda: deepcopy(constants.ECLIPSE_CLASSPATH_VARIABLES))
     model_api_key_environment: str = constants.MODEL_API_KEY_ENVIRONMENT
@@ -74,6 +82,21 @@ class PipelineConfiguration(BaseModel):
         if set(value) - {"1", "2", "3", "4"}:
             raise ValueError("Gate numbers must be 1 through 4")
         return {**deepcopy(constants.GATE_POLICIES), **value}
+
+    @field_validator("scoped_java_projects")
+    @classmethod
+    def validate_scoped_projects(cls, value):
+        """Keep per-channel Java origin selection explicit and case-sensitive."""
+        if any(not channel.strip() or not project.strip() for channel, project in value.items()):
+            raise ValueError("scoped_java_projects requires nonblank channel and project names")
+        return value
+
+    @model_validator(mode="after")
+    def validate_scoped_workspace(self):
+        """Require stable identity before a scoped run can generate evidence."""
+        if self.mapper_vault_layout == "scoped" and not (self.source_workspace_id or "").strip():
+            raise ValueError("Scoped Mapper generation requires an explicit nonblank source_workspace_id")
+        return self
 
     @model_validator(mode="after")
     def apply_explicit_retention(self):

@@ -20,6 +20,7 @@ from models.pipeline_configuration import PipelineConfiguration
 from runtime.configuration import load_configuration
 from cli.java_configuration import collect_java_configuration
 from cli.external_dependency_settings import collect_external_dependencies
+from cli.test_deployment_settings import collect_test_deployment_settings
 
 
 def prompt_text(title: str, default: str = "") -> str:
@@ -125,6 +126,7 @@ def create_configuration() -> Path:
                 channels=channels, include_operations=included, target_languages=languages,
                 java_version=java_version, java_home=java_home, conversion_strategy=strategy)
     data.update(external_settings)
+    data.update(collect_test_deployment_settings(prompt_text))
     save_configuration(destination, data, overwrite=overwrite)
     print(f"Configuration saved: {destination}")
     return destination

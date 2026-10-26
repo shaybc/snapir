@@ -20,12 +20,18 @@ from tools.state_store_tools.runs import update_run_status
 
 def run_operation_assembly(conn, config, profile, plan, directory, *, gate_checker=None,
                            plan_builder=prepare_assembly_plans, context_factory=create_build_context,
-                           skeleton_generator=generate_skeleton, pass_factory=make_pass_generator) -> str:
+                           skeleton_generator=generate_skeleton, pass_factory=make_pass_generator, model_call=None) -> str:
     """Assemble every approved operation; persist blocked outcomes and reusable successes.
 
     This phase stops before operation equivalence review and Gate 3. No assembly
     completion is inferred from a compiler accepting unimplemented method stubs.
     """
+    from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+    if is_scoped_run(conn, config.run_id):
+        from runtime.scoped_native.runner import resume_scoped_pipeline
+        resume_scoped_pipeline(conn, config, profile, directory, plan=plan,
+                               model_call=model_call, context_factory=context_factory)
+        return conn.execute('SELECT current_phase FROM runs WHERE run_id=?', (config.run_id,)).fetchone()[0]
     gate_checker = gate_checker or (lambda: run_component_review_gate(conn, config, profile, plan, directory))
     if gate_checker() != "assembly_pending":
         return "component_gate_not_accepted"

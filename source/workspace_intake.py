@@ -16,6 +16,7 @@ from tools.workspace_intake_tools.db_initializer import initialize_database
 from tools.workspace_intake_tools.env_loader import load_env_with_fallbacks
 from tools.workspace_intake_tools.run_factory import create_run_config, persist_run_config
 from tools.workspace_intake_tools.vault_validator import validate_vault_structure
+from tools.workspace_intake_tools.vault_validator import validate_vault_input
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -47,6 +48,14 @@ def main(argv: list[str] | None = None) -> int:
     mapper_result = run_composer_mapper(resolved_env)
     if mapper_result != 0:
         print("Blocking validation failure: composer-mapper failed")
+        return 1
+
+    try:
+        missing, channels = validate_vault_input(resolved_env["VAULT_ROOT"], resolved_env.get("TARGET_CHANNELS") or [])
+        if missing or resolved_env["RUN_MODE"] != RunMode.full_inventory.value and channels:
+            raise ValueError(f"Missing vault paths: {missing}; missing channel execution evidence: {channels}")
+    except ValueError as exc:
+        print(f"Blocking validation failure: {exc}")
         return 1
 
     warnings = check_warnings(resolved_env)
@@ -88,12 +97,19 @@ def validate_startup(resolved_env: dict) -> list[str]:
         if language not in supported_languages:
             errors.append(f"TARGET_LANGUAGE is not supported: {language}")
 
-    missing_vault_paths = validate_vault_structure(resolved_env["VAULT_ROOT"])
+    from tools.workspace_intake_tools.mapper_generation import validate_mapper_output
+    generation_errors, will_generate = validate_mapper_output(resolved_env)
+    errors.extend(generation_errors)
+    try:
+        missing_vault_paths, missing_channels = ([], []) if will_generate else validate_vault_input(
+            resolved_env["VAULT_ROOT"], target_channels)
+    except ValueError as exc:
+        errors.append(str(exc))
+        missing_vault_paths = [resolved_env["VAULT_ROOT"]]
     for path in missing_vault_paths:
         errors.append(f"Required vault path missing: {path}")
 
-    if run_mode != RunMode.full_inventory.value and not missing_vault_paths:
-        missing_channels = validate_channel_in_registry(resolved_env["VAULT_ROOT"], target_channels)
+    if run_mode != RunMode.full_inventory.value and not missing_vault_paths and not will_generate:
         for channel in missing_channels:
             errors.append(f"TARGET_CHANNEL not found in channel registry: {channel}")
 
@@ -107,10 +123,8 @@ def run_composer_mapper(resolved_env: dict) -> int:
     jar = resolved_env.get("COMPOSER_MAPPER_JAR")
     if not jar or not Path(jar).exists():
         return 0
-    command = ["java", "-jar", jar, "--root", resolved_env["COMPOSER_ROOT"], "--out", resolved_env["VAULT_ROOT"]]
-    channel_filter = resolved_env.get("TARGET_CHANNELS") or []
-    if resolved_env.get("RUN_MODE") == RunMode.single_channel.value and len(channel_filter) == 1:
-        command.extend(["--channel", channel_filter[0]])
+    from tools.workspace_intake_tools.mapper_generation import mapper_command
+    command = mapper_command(resolved_env)
     return subprocess.run(command, check=False).returncode
 
 

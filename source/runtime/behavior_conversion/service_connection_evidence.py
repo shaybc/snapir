@@ -19,11 +19,12 @@ types match. Do not embed credentials, URLs or canned external replies. Deployme
 supplied separately. Unresolved facts must be reported, never filled by plausible guesses.'''
 
 
-def connection_evidence(conn, config, channel, unit_key, sources, xml, profile=None):
+def connection_evidence(conn, config, channel, unit_key, sources, xml, profile=None, *,
+                        source_index=None, classpath_index=None, persist=True):
     """Resolve and persist source-backed records, reusing decisions only for matching facts."""
-    index = discover_java_sources(config.source_root)
-    classpath = discover_java_classpath(config.source_root, getattr(profile, 'classpath_jars', []),
-                                        getattr(profile, 'eclipse_classpath_variables', {}))
+    index = source_index if source_index is not None else discover_java_sources(config.source_root)
+    classpath = classpath_index if classpath_index is not None else discover_java_classpath(
+        config.source_root, getattr(profile, 'classpath_jars', []), getattr(profile, 'eclipse_classpath_variables', {}))
     parameters = ElementTree.fromstring(xml).attrib
     records = resolve_service_connections(config.source_root, channel, sources, parameters, index, classpath)
     for record in records:
@@ -54,7 +55,8 @@ def connection_evidence(conn, config, channel, unit_key, sources, xml, profile=N
             record.driver_dependency = answer['driver_dependency']
             record.issues = [issue for issue in record.issues if not issue.startswith('Driver coordinates/version')]
     consumer = channel + '/' + unit_key.split('/', 1)[0]
-    remember(conn, config.run_id, consumer, unit_key, records)
+    if persist:
+        remember(conn, config.run_id, consumer, unit_key, records)
     return records, index, classpath
 
 

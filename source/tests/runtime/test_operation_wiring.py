@@ -58,6 +58,12 @@ def test_named_factories_and_executable_startup_test_are_required():
     broken['src/main/java/example/ProductionWiring.java'] = broken['src/main/java/example/ProductionWiring.java'].replace('@org.springframework.context.annotation.Bean("CheckLimits")', '@org.springframework.context.annotation.Bean("wrongRole")')
     with pytest.raises(ValueError, match="distinct named step-role"):
         validate_operation_wiring(broken, contract)
+    qualified = dict(files)
+    qualified['src/main/java/example/ProductionWiring.java'] = qualified['src/main/java/example/ProductionWiring.java'].replace(
+        '@org.springframework.context.annotation.Bean("CheckLimits")',
+        '@org.springframework.context.annotation.Bean @org.springframework.beans.factory.annotation.Qualifier("CheckLimits")')
+    with pytest.raises(ValueError, match='factory @Qualifier alone does not set its bean name'):
+        validate_operation_wiring(qualified, contract)
     broken = {name: content for name, content in files.items() if not name.startswith('src/test/java/')}
     with pytest.raises(ValueError, match="executable Spring wiring test"):
         validate_operation_wiring(broken, contract)

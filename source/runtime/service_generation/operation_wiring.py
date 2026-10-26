@@ -8,14 +8,17 @@ from runtime.java_public_type import _code
 from runtime.behavior_conversion.method_contracts import java_type_resolver
 from runtime.service_generation.bean_methods import bean_methods
 
-WIRING_VERSION = "operation-wiring-v3"
+WIRING_VERSION = "operation-wiring-v4"
 WIRING_INSTRUCTION = """Use operation.contract.step_dependencies and runtime_resources as the
 authoritative constructor wiring contract. Generate a Spring @Configuration class with @Bean
 factories for EVERY configured step role and the operation service. Pass the real step objects
 to the service constructor, never Mockito/test substitutes. Instantiate steps through their
 actual accepted constructors and configure their exact XML attributes; preserve approved source.
 Use binding_id as a distinct bean name and @Qualifier when different configured roles use the
-same type. Supply other constructor dependencies through their actual accepted APIs.
+same type. Declare each role factory as @Bean(name = "exact binding_id"), preserving case.
+Putting @Qualifier on a factory does not set its bean name; @Bean without a name defaults
+to the Java method name, which may differ from binding_id. Qualify injection parameters
+with that exact bean name. Supply other constructor dependencies through their actual accepted APIs.
 For runtime_resources providers, generate real configuration, not TODOs or manual-code instructions.
 For JDBC DataSource, bind spring.datasource.url, username and password to deployment environment
 placeholders; a driver/configuration may be supplied through settings. Use current known library
@@ -66,7 +69,9 @@ def validate_operation_wiring(files, contract):
     absent = [(item["type_name"], item["binding_id"]) for item in contract["step_dependencies"]
               if (item["type_name"], item["binding_id"]) not in roles]
     if absent:
-        raise ValueError("Spring configuration must provide distinct named step-role beans: " + str(absent))
+        raise ValueError("Spring configuration must provide distinct named step-role beans: " + str(absent)
+                         + '. Set @Bean(name = "binding_id") on each factory using the exact case-sensitive binding_id. '
+                         'A factory @Qualifier alone does not set its bean name; keep matching @Qualifier values on injection parameters.')
     tests = [source for path, source in files.items() if path.startswith("src/test/java/")]
     if not any("AnnotationConfigApplicationContext" in _code(source) and ".getBean(" in _code(source)
                and re.search(r"@(?:[\w.]+\.)?Test\b", _code(source)) for source in tests):

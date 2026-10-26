@@ -81,6 +81,59 @@ def test_failed_generation_retry_budget_survives_resume(tmp_path):
     assert len(calls) == 1
 
 
+def test_operation_dependency_pin_retries_only_wrapper_and_verifies_selected_version(tmp_path):
+    """A corrected driver choice changes generation identity without altering approved code."""
+    from models.maven_dependency import MavenDependency
+    from runtime.service_generation.runner import generation_settings_identity
+    from runtime.service_generation.dependency_pins import operation_dependency_pins
+    setup = ready(tmp_path)
+    setup[1].max_agent_task_retries = 1
+    assert run(tmp_path, setup, lambda payload: dict(files={"../bad": "x"}, dependencies=[])) == "service_generation_blocked"
+    before = generation_settings_identity(setup[2])
+    pin = MavenDependency(group_id="example.jdbc", artifact_id="driver", version="1.2.3",
+        reason="Verified deployment driver", required_classes=["example.Driver"])
+    setup[2].service_maven_dependencies = {"INTERNET/Op": [pin]}
+    assert generation_settings_identity(setup[2]) != before
+    assert operation_dependency_pins(setup[2], "OTHER", "Op") == []
+    checked, requests = [], []
+    class PinnedVerifier(Verifier):
+        def __call__(self, dependency):
+            checked.append(dependency.model_copy(deep=True))
+            assert dependency.version == "1.2.3"
+    def generator(payload):
+        requests.append(payload)
+        result = wrappers(payload)
+        result["dependencies"] = [pin.model_copy(update={"version": "9.9.9", "required_classes": ["example.Extra"]}).model_dump()]
+        return result
+    assert run_service_generation(setup[0], setup[1], setup[2], setup[3], tmp_path,
+        gate_checker=lambda: "service_generation_pending", generator=generator,
+        context_factory=lambda profile, project, artifact: ManagedBuildContext(str(project / "pom.xml"), PinnedVerifier()),
+        validator=lambda project, context: dict(build_passed=True, package_passed=True, ibm_guard_passed=True, test_status="passed")) == "validation_evidence_pending"
+    assert requests[0]["pinned_dependencies"] == [pin.model_dump()]
+    assert checked and set(checked[0].required_classes) == {"example.Driver", "example.Extra"}
+    assert pin.required_classes == ["example.Driver"]
+    source = Path(setup[1].output_root) / "INTERNET/Op/src/main/java/org/example/OpService.java"
+    assert source.read_bytes() == (tmp_path / "services/INTERNET/Op/src/main/java/org/example/OpService.java").read_bytes()
+
+
+def test_generated_pom_feedback_names_file_and_keeps_managed_build(tmp_path):
+    """The correction receives the rejected path instead of repeating a generated POM."""
+    setup = ready(tmp_path)
+    requests = []
+    def generator(payload):
+        requests.append(payload)
+        output = wrappers(payload)
+        if len(requests) == 1:
+            output["files"]["pom.xml"] = "untrusted generated build"
+        else:
+            assert "remove pom.xml from files" in payload["validation_feedback"]["error"]
+            assert "dependency proposals in dependencies" in payload["validation_feedback"]["error"]
+        return output
+    assert run(tmp_path, setup, generator) == "validation_evidence_pending"
+    assert len(requests) == 2
+    assert "untrusted generated build" not in (tmp_path / "services/INTERNET/Op/pom.xml").read_text()
+
+
 def test_unapproved_gate_prevents_generation(tmp_path):
     setup = ready(tmp_path)
     assert run(tmp_path, setup, gate=lambda: "gate_3_pending") == "operation_gate_not_accepted"

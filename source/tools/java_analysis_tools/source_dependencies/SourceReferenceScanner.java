@@ -25,8 +25,21 @@ public class SourceReferenceScanner {
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         try (StandardJavaFileManager manager = compiler.getStandardFileManager(diagnostics, null, java.nio.charset.StandardCharsets.UTF_8);
              OutputStream stream = Files.newOutputStream(Paths.get(args[1]))) {
+            List<JavaFileObject> evidence = new ArrayList<>();
+            for (JavaFileObject file : manager.getJavaFileObjectsFromFiles(files)) {
+                evidence.add(new ForwardingJavaFileObject<JavaFileObject>(file) {
+                    @Override public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+                        Path path = Paths.get(toUri());
+                        try {
+                            return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
+                        } catch (java.nio.charset.MalformedInputException ex) {
+                            return Files.readString(path, java.nio.charset.Charset.forName("windows-1255"));
+                        }
+                    }
+                });
+            }
             JavacTask task = (JavacTask) compiler.getTask(null, manager, diagnostics,
-                    Arrays.asList("-proc:none", "-encoding", "UTF-8"), null, manager.getJavaFileObjectsFromFiles(files));
+                    Arrays.asList("-proc:none", "-encoding", "UTF-8"), null, evidence);
             XMLStreamWriter output = XMLOutputFactory.newFactory().createXMLStreamWriter(stream, "UTF-8");
             output.writeStartDocument();
             output.writeStartElement("analysis");

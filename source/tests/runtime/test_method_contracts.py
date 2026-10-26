@@ -29,6 +29,72 @@ public class Mapper {
     assert has_method_contract(source, "public java.util.List<other.Result[]> map(java.lang.String[])")
 
 
+@pytest.mark.parametrize('constructor', ['ValidationFailedStep', 'demo.ValidationFailedStep'])
+@pytest.mark.parametrize('parameters', ['', 'java.lang.String, java.lang.String'])
+def test_qualified_and_simple_constructor_contracts_match_source(constructor, parameters):
+    source = '''package demo; public class ValidationFailedStep {
+ public ValidationFailedStep() {}
+ public ValidationFailedStep(final String category, String number) {}
+ public int execute() { return 0; }
+}'''
+    assert has_method_contract(source, f'public {constructor}({parameters})')
+    assert has_method_contract(source, 'public int execute()')
+
+
+@pytest.mark.parametrize('signature', [
+    'public other.ValidationFailedStep(java.lang.String, java.lang.String)',
+    'public demo.OtherStep(java.lang.String, java.lang.String)',
+    'public demo.ValidationFailedStep()',
+    'public demo.ValidationFailedStep(java.lang.String)',
+    'public demo.ValidationFailedStep(int, java.lang.String)',
+    'public static demo.ValidationFailedStep(java.lang.String, java.lang.String)',
+    'public void ValidationFailedStep(java.lang.String, java.lang.String)',
+])
+def test_constructor_normalization_rejects_wrong_owner_overload_and_method(signature):
+    source = '''package demo; public class ValidationFailedStep {
+ public ValidationFailedStep(String category, String number) {}
+}'''
+    assert not has_method_contract(source, signature)
+
+
+@pytest.mark.parametrize('declaration', [
+    'private ValidationFailedStep(String value) {}',
+    'protected ValidationFailedStep(String value) {}',
+    'ValidationFailedStep(String value) {}',
+    'public void ValidationFailedStep(String value) {}',
+    'public demo.ValidationFailedStep(String value) {}',
+    'public class Nested { public Nested(String value) {} }',
+    '// public ValidationFailedStep(String value) {}',
+])
+def test_qualified_constructor_requires_a_real_public_constructor(declaration):
+    source = 'package demo; public class ValidationFailedStep {\n' + declaration + '\n}'
+    assert not has_method_contract(source, 'public demo.ValidationFailedStep(java.lang.String)')
+
+
+def test_live_validation_failed_constructor_shape_passes_bundle_validation():
+    owner = 'com.company.generated.units.ua834d3c4f785.ValidationFailedStep'
+    source = '''package com.company.generated.units.ua834d3c4f785;
+public class ValidationFailedStep {
+ private final String category;
+ private final String number;
+ public ValidationFailedStep() { this("10", "2"); }
+ public ValidationFailedStep(String category, String number) {
+  this.category = category; this.number = number;
+ }
+ public String execute() { return category + "_" + number; }
+}'''
+    bundle = NativeUnitBundle(files=[dict(path='src/main/java/' + owner.replace('.', '/') + '.java', content=source)],
+        unit_contract=dict(unit_id='logged-constructor-regression', requirements={'constructor': 'Match declared constructors'},
+            evidence_ids=['logged-source'], apis=[dict(type_name=owner, method_signatures=[
+            'public ' + owner + '()', 'public ' + owner + '(java.lang.String, java.lang.String)',
+            'public java.lang.String execute()'])]))
+    assert validate_bundle(bundle, bundle.unit_contract.apis)
+    bundle.files[0].content = source.replace('ValidationFailedStep(String category, String number)',
+                                           'ValidationFailedStep(int category, String number)')
+    with pytest.raises(ValueError, match='Native method contract is missing'):
+        validate_bundle(bundle, bundle.unit_contract.apis)
+
+
 @pytest.mark.parametrize("signature", [
     "public static other.Result parse(String)",
     "public static demo.Result parse(int)",

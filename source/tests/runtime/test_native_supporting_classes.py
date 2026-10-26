@@ -65,7 +65,7 @@ def test_op_step_request_and_correction_both_require_supporting_implementations(
     with pytest.raises(ValueError, match="Prohibited framework dependency"):
         generate(conn, config, profile(), "unit", "step", INSTRUCTION, {"sources": saved["sources"]},
             NativeUnitBundle, validator=lambda output, cached: validate_bundle(output), model_call=model)
-    assert len(requests) == 3
+    assert len(requests) == profile().max_agent_task_retries
     assert "native companion implementation" in requests[1]["correction_feedback"]
 
 

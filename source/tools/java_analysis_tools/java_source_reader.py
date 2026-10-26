@@ -5,12 +5,13 @@ from pathlib import Path
 from constants import MAX_SOURCE_CHARS_PER_CONVERSION
 
 
-def read_java_source(source_file_path: str) -> str:
+def read_java_source(source_file_path: str, *, expected_hash: str | None = None) -> str:
     """Read a Java source file from disk with the conversion source-size guard."""
     path = Path(source_file_path)
     if not path.exists():
         raise FileNotFoundError(f"Java source file not found: {source_file_path}")
-    source = path.read_text(encoding="utf-8")
+    from tools.java_analysis_tools.java_text import read_java_text
+    source = read_java_text(path, expected_hash=expected_hash)
     if len(source) > MAX_SOURCE_CHARS_PER_CONVERSION:
         raise ValueError(
             f"Java source file exceeds MAX_SOURCE_CHARS_PER_CONVERSION: {source_file_path}"

@@ -8,6 +8,13 @@ from pathlib import Path
 
 def service_request(profile, closure, contract, accepted_units):
     """Build the explicit workflow contract independently of its generation engine."""
+    if closure.get('scoped_workflow'):
+        workflow = closure['scoped_workflow']
+        return dict(operation_id=closure['operation_id'], closure=workflow,
+            contract=contract.model_dump(mode='json') if contract else None,
+            accepted_units=accepted_units, operation_sources=[], requirements={**workflow['requirements'],
+                'operation-flow': 'Preserve the evidenced configured workflow, initialization, routing and side effects.'},
+            java_version=profile.java_version)
     requirements = {"route-" + name: str(value) for name, value in closure.get("routing_graph", {}).items()}
     requirements["operation-flow"] = "Preserve the configured operation order, outcome/error branches and initialization"
     requirements.update(contract.service_requirements if contract else {})

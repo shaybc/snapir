@@ -20,6 +20,7 @@ from tools.maven_dependency_tools.pom_manager import merge_dependencies
 from tools.state_store_tools.agent_tasks import upsert_agent_task
 from tools.state_store_tools.generated_artifacts import upsert_generated_artifact
 from tools.state_store_tools.runs import update_run_status
+from runtime.service_generation.dependency_pins import operation_dependency_pins, apply_dependency_pins
 
 
 def _project_hash(project):
@@ -41,6 +42,11 @@ def generation_settings_identity(profile):
         identity += WIRING_VERSION
         from runtime.service_generation.response import RESPONSE_VERSION
         identity += RESPONSE_VERSION
+        from runtime.service_generation.project_output import WRAPPER_OUTPUT_VERSION
+        identity += WRAPPER_OUTPUT_VERSION
+    if profile.service_maven_dependencies:
+        identity += json.dumps({key: [pin.model_dump(mode="json") for pin in pins]
+                                for key, pins in profile.service_maven_dependencies.items()}, sort_keys=True)
     return identity
 
 
@@ -67,6 +73,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         operation_evidence = order_closures(conn, config, operation_evidence)
     for item in operation_evidence:
         key = (config.run_id, item["operation_id"], item["channel"])
+        dependency_pins = operation_dependency_pins(profile, item["channel"], item["operation_id"])
         project = Path(directory) / "services" / item["channel"] / item["operation_id"]
         task_id = "service-" + hashlib.sha256(":".join(key).encode()).hexdigest()
         identity = hashlib.sha256((item["fingerprint"] + report + generation_settings_identity(profile)).encode()).hexdigest()
@@ -98,11 +105,17 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                     shutil.rmtree(project)
                 project.mkdir(parents=True)
                 shutil.copyfile(Path(item["project"]) / "pom.xml", project / "pom.xml")
-                context = context_factory(profile, project, item["operation_id"])
+                artifact = item['operation_id']
+                if item.get('payload', {}).get('scoped_operation_identity'):
+                    from runtime.scoped_native.project_names import native_artifact_id
+                    artifact = native_artifact_id(artifact)
+                context = context_factory(profile, project, artifact)
                 payload = dict(operation=item["payload"], approved_sources=protected,
                                java_version=str(profile.java_version), spring_boot_version=SPRING_BOOT_VERSION,
                                pom=(project / "pom.xml").read_text(encoding="utf-8"),
                                validation_feedback=cached if row and row["input_hash"] == identity else {})
+                if dependency_pins:
+                    payload["pinned_dependencies"] = [pin.model_dump(mode="json") for pin in dependency_pins]
                 if item['payload'].get('service_connections'):
                     from runtime.behavior_conversion.connection_contract import attach_connections
                     attach_connections(payload, item['payload']['service_connections'])
@@ -122,6 +135,8 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                     if profile.model_provider == "mock":
                         raise ValueError("Mock service generation requires explicit fixtures")
                     instruction = 'Generate Spring Boot wrappers and tests around the supplied immutable Java sources. Address all validation_feedback using previous_generation when supplied. Return JSON with files (relative source/resource path to content) and dependencies (group_id, artifact_id, version, scope, reason, required_classes). Do not return a POM, binary files or alter approved sources. Include Application.java, controller, xml/JaxbConfig.java, error/GlobalExceptionHandler.java and application.properties. Delegate business logic to the supplied service. Use Java java_version and pin every Spring Boot dependency to spring_boot_version from the supplied JSON. Use pinned verified Maven dependency proposals.'
+                    if dependency_pins:
+                        instruction += ' Use pinned_dependencies for their exact artifact versions and scopes; do not substitute guessed versions. Preserve their required_classes.'
                     if payload.get('native_http_contract'):
                         from runtime.behavior_conversion.operation_calls import INSTRUCTION as OPERATION_CALL_INSTRUCTION
                         instruction += '\n' + OPERATION_CALL_INSTRUCTION
@@ -149,6 +164,9 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 else:
                     output = generator(payload)
                 proposals = [MavenDependency.model_validate(value) for value in output["dependencies"]]
+                if dependency_pins:
+                    proposals = apply_dependency_pins(proposals, dependency_pins)
+                    output["dependencies"] = [proposal.model_dump(mode="json") for proposal in proposals]
                 merge_dependencies(context.pom_path, proposals, context.verifier,
                                    allowed_ibm_artifacts=context.allowed_ibm_artifacts, task_id=task_id)
                 if profile.conversion_strategy == "behavior_units":

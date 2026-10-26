@@ -13,6 +13,38 @@ from runtime.behavior_conversion.generation import generate
 from tests.runtime.test_behavior_conversion import state, profile
 
 
+@pytest.mark.parametrize("kind", ["step", "format"])
+def test_response_example_round_trips_java_quote_and_backslash_literals(kind):
+    example = response_example(kind)
+    encoded = json.dumps(example)
+    decoded = NativeUnitBundle.model_validate_json(encoded)
+    assert json.loads(encoded) == example
+    assert r'''"\"quoted\"" + '\'' + ", path=C:\\demo"''' in decoded.files[0].content
+    assert r'''assertEquals("value='\"quoted\"', path=C:\\demo", new ''' in decoded.files[1].content
+    validate_bundle(decoded, decoded.unit_contract.apis, decoded.unit_contract.requirements,
+                    decoded.evidence_ids)
+
+
+def test_default_retry_limit_accepts_a_valid_fourth_attempt():
+    from models.pipeline_configuration import PipelineConfiguration
+    from runtime.behavior_conversion.generation import EvidenceSummary
+    settings = PipelineConfiguration()
+    assert settings.max_model_attempts == 4
+    assert settings.max_agent_task_retries == 4
+    assert PipelineConfiguration(max_model_attempts=2).max_model_attempts == 2
+    assert PipelineConfiguration(max_agent_task_retries=2).max_agent_task_retries == 2
+    conn, config = state()
+    calls = []
+    def model(instruction, encoded):
+        calls.append(json.loads(encoded))
+        return '{"findings": ["verified"]}' if len(calls) == 4 else '{invalid'
+    output, _ = generate(conn, config, settings, "analysis", "fourth-attempt", "Read evidence",
+                         {}, EvidenceSummary, model_call=model)
+    assert output.findings == ["verified"]
+    assert len(calls) == 4
+    assert all("correction_feedback" in request for request in calls[1:])
+
+
 @pytest.mark.parametrize("kind,instruction", [("step", STEP), ("format", FORMAT)])
 def test_examples_match_schema_java_methods_and_first_response_rules(kind, instruction):
     example = NativeUnitBundle.model_validate(response_example(kind))

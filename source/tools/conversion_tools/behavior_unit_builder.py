@@ -12,6 +12,12 @@ from tools.component_inventory_tools.identity import stable_id
 
 def build_behavior_units(conn, config, closure, profile=None):
     """Return configured units and routing-name bindings without scheduling legacy tags."""
+    from models.scoped_operation_closure import ScopedOperationClosure
+    if isinstance(closure, ScopedOperationClosure) or (
+            isinstance(closure, dict) and closure.get('conversion_enabled') is False and 'operation_identity' in closure):
+        from tools.conversion_tools.scoped_workflow.units import build_scoped_units
+        calls = closure.get('operation_calls', ()) if isinstance(closure, dict) else ()
+        return build_scoped_units(conn, config, closure, calls=calls, profile=profile)
     if closure["status"] != "READY" or not closure.get("conversion_components_checked"):
         raise ValueError("Behavior conversion requires a checked READY evidence closure")
     from tools.conversion_tools.conversion_component_set import checked_conversion_units

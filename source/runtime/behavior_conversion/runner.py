@@ -82,6 +82,10 @@ def _install(project, factory, profile):
 def _dependency_validation_version(conn, run_id, category, identity, payload,
                                    key="dependency_validation", version="resolved-class-ownership-v1"):
     """Refresh failed validation requests without invalidating accepted units."""
+    from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+    if is_scoped_run(conn, run_id):
+        payload[key] = version
+        return
     prior = snapshot(conn, run_id, category, identity)
     request = conn.execute("SELECT request_json FROM behavior_attempts WHERE run_id=? AND category=? AND identity=? ORDER BY rowid DESC LIMIT 1",
                            (run_id, category, identity)).fetchone()
@@ -93,6 +97,12 @@ def _dependency_validation_version(conn, run_id, category, identity, payload,
 @with_resume_budget
 def resume_behavior_pipeline(conn, config, profile, directory, *, model_call=None, context_factory=None, execution_plan=None):
     """Run the opt-in strategy without converting original classes one by one."""
+    from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+    if is_scoped_run(conn, config.run_id):
+        from runtime.scoped_native.runner import resume_scoped_pipeline
+        resume_scoped_pipeline(conn, config, profile, directory, plan=execution_plan,
+                               model_call=model_call, context_factory=context_factory)
+        return Path(directory)
     from runtime.managed_projects import create_build_context
     from runtime.planning import prepare_plan
     from agents.migration_planning.agent import get_operations_for_planning
@@ -263,7 +273,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         def validator(bundle, cached=False):
             if unit.operation_calls:
                 from runtime.behavior_conversion.operation_calls import validate_operation_clients, verify_operation_contracts
-                verify_operation_contracts(conn, config, unit.operation_calls)
+                verify_operation_contracts(conn, config, unit.operation_calls, profile)
                 validate_operation_clients(bundle, unit.operation_calls)
             if unit.service_connections:
                 from runtime.behavior_conversion.service_connection_freshness import verify_connection_sources
@@ -405,6 +415,10 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             contract_project=str(project), contract_files=manifest["files"])
         if connections:
             record["service_connections"] = payload["service_connections"]
+        if closure.get('scoped_workflow'):
+            from runtime.scoped_native.results import record_operation
+            record['scoped_operation_identity'] = closure['operation_identity']
+            record_operation(conn, config, profile, consumer, record)
         save(conn, config.run_id, "operation", consumer, fingerprint, record)
         from tools.state_store_tools.operation_calls import load_graph
         graph = load_graph(conn, config.run_id)
@@ -419,8 +433,12 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
     from runtime.service_generation import run_service_generation
     from models.migration_models import MigrationPlan
     plan = execution_plan or MigrationPlan.model_validate_json(conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1", (config.run_id,)).fetchone()[0])
+    operation_scoped = execution_plan is not None
+    if any(closure.get('scoped_workflow') for closure in closures):
+        from tools.state_store_tools.operation_progress import active_operation
+        operation_scoped = active_operation(conn, config.run_id) is not None
     phase = run_service_generation(conn, config, profile, plan, directory,
-        gate_checker=lambda: "service_generation_pending", operation_scoped=execution_plan is not None)
+        gate_checker=lambda: "service_generation_pending", operation_scoped=operation_scoped)
     if phase == "validation_evidence_pending":
         from runtime.finalization import run_finalization
-        run_finalization(conn, config, profile, plan, directory, complete_run=execution_plan is None)
+        run_finalization(conn, config, profile, plan, directory, complete_run=not operation_scoped)

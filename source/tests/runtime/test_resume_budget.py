@@ -53,16 +53,16 @@ def test_each_resume_is_bounded_even_if_generation_is_called_again_internally():
         with pytest.raises(ValueError, match="correction limit"):
             generate(conn, config, profile(), "analysis", "failed", "Analyze", {}, EvidenceSummary, model_call=invalid)
     resume()
-    assert len(calls) == 3
+    assert len(calls) == profile().max_agent_task_retries
     resume()
-    assert len(calls) == 6
+    assert len(calls) == 2 * profile().max_agent_task_retries
     rows = conn.execute("SELECT attempt,response,error FROM behavior_attempts ORDER BY attempt").fetchall()
-    assert [row["attempt"] for row in rows] == [1, 2, 3, 4, 5, 6]
+    assert [row["attempt"] for row in rows] == list(range(1, 2 * profile().max_agent_task_retries + 1))
     assert all(row["response"] == "invalid JSON" and row["error"] for row in rows)
     # The explicit Resume boundary must not leak into unrelated/internal calls.
     with pytest.raises(ValueError, match="correction limit"):
         generate(conn, config, profile(), "analysis", "failed", "Analyze", {}, EvidenceSummary, model_call=invalid)
-    assert len(calls) == 6
+    assert len(calls) == 2 * profile().max_agent_task_retries
 
 
 def test_pipeline_resume_entry_point_retries_exhaustion_and_reuses_accepted_result(monkeypatch, tmp_path):
@@ -75,7 +75,7 @@ def test_pipeline_resume_entry_point_retries_exhaustion_and_reuses_accepted_resu
                  EvidenceSummary, model_call=model)
         raise RuntimeError("Stop after entry-point budget check")
     monkeypatch.setattr("agents.migration_planning.agent.get_operations_for_planning", discover)
-    responses[:] = ["invalid JSON"] * 3
+    responses[:] = ["invalid JSON"] * profile().max_agent_task_retries
     with pytest.raises(ValueError, match="Invalid JSON"):
         resume_behavior_pipeline(conn, config, profile(), tmp_path, model_call=model)
     assert not responses
@@ -85,4 +85,4 @@ def test_pipeline_resume_entry_point_retries_exhaustion_and_reuses_accepted_resu
     assert not responses
     with pytest.raises(RuntimeError, match="entry-point budget check"):
         resume_behavior_pipeline(conn, config, profile(), tmp_path, model_call=model)
-    assert conn.execute("SELECT COUNT(*) FROM behavior_attempts").fetchone()[0] == 4
+    assert conn.execute("SELECT COUNT(*) FROM behavior_attempts").fetchone()[0] == profile().max_agent_task_retries + 1

@@ -28,6 +28,11 @@ class EvidenceSummary(BaseModel):
 def generate(conn, config, profile, category, identity, instruction, payload, schema,
              validator=None, model_call=None, label="", require_coverage=True):
     """Use durable bounded corrections; validators run before a result is accepted."""
+    from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+    scoped_binding = None
+    if is_scoped_run(conn, config.run_id):
+        from runtime.scoped_native.scope import require_task
+        scoped_binding = require_task(conn, config, profile, category, identity, payload)
     from runtime.behavior_conversion.compatibility import (versioned_requirements, compatibility_fingerprint,
         accepted_compatibility, save_compatibility)
     payload = dict(payload)
@@ -51,8 +56,13 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
             from agents.behavior_conversion.operation_route_tests import implementation_dependencies
             instruction += "\n" + implementation_dependencies(profile.java_version)
         else:
+            dependency_instruction = instruction
             instruction = reuse_known_dependencies(instruction, payload.get("known_dependencies", []),
                                                    java_version=profile.java_version)
+            if scoped_binding:
+                normalized_dependency_instruction = reuse_known_dependencies(dependency_instruction, [],
+                                                                            java_version=profile.java_version)
+                dependency_instruction_actual = instruction
         if payload.get("testing_contract"):
             instruction += "\nFollow the versioned testing_contract, its pinned dependencies and reference examples. Keep tests focused, separate business and adapter tests, and mock external interfaces instead of hand implementing them. Example values are illustrative only; derive assertions from the original evidence."
         if phase in {"implementation_compile", "single_route_test"}:
@@ -78,6 +88,13 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
         "model_base_url", "model_timeout_seconds", "max_model_attempts", "maven_settings_path", "maven_local_repository",
         "approved_maven_repository_urls", "allowed_ibm_artifacts", "allowed_ibm_classes", "behavior_context_chars")}
     fingerprint = stable_id(category, instruction, base, settings, "behavior-v1")
+    if scoped_binding:
+        from runtime.scoped_native.results import fingerprint_payload
+        fingerprint_instruction = instruction
+        if schema.__name__ == 'NativeUnitBundle' and phase != 'implementation_compile':
+            fingerprint_instruction = normalized_dependency_instruction + instruction[len(dependency_instruction_actual):]
+        fingerprint = stable_id(category, fingerprint_instruction,
+            json.dumps(fingerprint_payload(base, category), sort_keys=True), settings, 'scoped-behavior-v1')
     def record(status, attempt=0, output=None, error=None, request_fingerprint=None, compatibility_fingerprint=None):
         upsert_agent_task(conn, run_id=config.run_id, agent_name="BehaviorConversion",
             scope_type=category, scope_id=identity, channel="", target_language="java",
@@ -88,12 +105,20 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
     prior = snapshot(conn, config.run_id, category, identity)
     if prior and prior["status"] == "accepted":
         output = schema.model_validate_json(prior["data_json"])
-        compatible, compatibility = accepted_compatibility(conn, config.run_id, category, identity,
-            prior, output.model_dump(mode="json"), base, profile, requirements)
-        if prior["fingerprint"] == fingerprint or compatible:
+        compatibility = None
+        if scoped_binding:
+            from runtime.scoped_native.results import cached_result
+            reusable = prior['fingerprint'] == fingerprint and cached_result(
+                scoped_binding, conn, config, profile, category, identity, fingerprint, output.model_dump(mode='json'))
+        else:
+            compatible, compatibility = accepted_compatibility(conn, config.run_id, category, identity,
+                prior, output.model_dump(mode="json"), base, profile, requirements)
+            reusable = prior["fingerprint"] == fingerprint or compatible
+        if reusable:
             if validator:
                 validator(output, cached=True)
-            save_compatibility(conn, config.run_id, category, identity, prior["fingerprint"], compatibility, requirements)
+            if not scoped_binding:
+                save_compatibility(conn, config.run_id, category, identity, prior["fingerprint"], compatibility, requirements)
             record("completed", output=output.model_dump(mode="json"),
                    request_fingerprint=prior["fingerprint"], compatibility_fingerprint=compatibility)
             return output, prior["fingerprint"]
@@ -143,6 +168,9 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
         output = None
         progress_token = None
         try:
+            if scoped_binding:
+                from runtime.scoped_native.scope import require_task
+                require_task(conn, config, profile, category, identity, payload)
             response = model_call(instruction, encoded)
             progress_token = begin_progress(executor.component_label)
             with progress_step("Validating JSON, testing policy and behavior coverage"):
@@ -160,11 +188,19 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
                         raise ValueError("Native contract must declare all versioned behavior requirements")
             if validator:
                 validator(output, cached=False)
+            if scoped_binding:
+                from runtime.scoped_native.scope import require_task
+                from runtime.scoped_native.results import record_result
+                require_task(conn, config, profile, category, identity, payload)
+                record_result(scoped_binding, conn, config, profile, category, identity, fingerprint,
+                              output.model_dump(mode='json'))
             conn.execute("UPDATE behavior_attempts SET response=? WHERE run_id=? AND category=? AND identity=? AND fingerprint=? AND attempt=?",
                          (response, config.run_id, category, identity, fingerprint, attempts))
             save(conn, config.run_id, category, identity, fingerprint, output.model_dump(mode="json"))
-            compatibility = compatibility_fingerprint(category, base, profile, output.model_dump(mode="json"), requirements)
-            save_compatibility(conn, config.run_id, category, identity, fingerprint, compatibility, requirements)
+            compatibility = None
+            if not scoped_binding:
+                compatibility = compatibility_fingerprint(category, base, profile, output.model_dump(mode="json"), requirements)
+                save_compatibility(conn, config.run_id, category, identity, fingerprint, compatibility, requirements)
             record("completed", attempts - start, output.model_dump(mode="json"),
                    compatibility_fingerprint=compatibility)
             return output, fingerprint

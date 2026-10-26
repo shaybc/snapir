@@ -66,63 +66,63 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="10"
             ErrorNumber="2"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="InsufficientFunds"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="40"
             ErrorNumber="4"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="DailyLimitExceeded"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="40"
             ErrorNumber="3"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="AccountNotEligible"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="40"
             ErrorNumber="5"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="FraudSuspected"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="50"
             ErrorNumber="2"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="CoreBankingRejected"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="60"
             ErrorNumber="6"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TransferAlreadyProcessed"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="60"
             ErrorNumber="7"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="DatabaseError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="8"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TechnicalError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="0"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <refFormat name="csRequestFormat"     refid="TransferFundsRQFmt"/>
@@ -179,6 +179,5 @@
     </CCXML>
   </fmtDef>
 
-  <context id="TransferFundsCtxt" parent="AccountOpCtxt" type="op"/>
 
 </XML>

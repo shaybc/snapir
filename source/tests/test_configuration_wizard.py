@@ -39,6 +39,9 @@ def project(tmp_path, monkeypatch):
 
 
 def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
+    from models.test_deployment_settings import TestDeploymentSettings as DeploymentSettings
+    monkeypatch.setattr(wizard, "collect_test_deployment_settings", lambda prompt:
+                        dict(test_deployment=DeploymentSettings().model_dump(mode="json")))
     prompts = []
     def text(title, default=""):
         prompts.append((title, default))
@@ -95,12 +98,50 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "include_operations": ["WebOperation"], "target_languages": ["java"],
         "java_version": 25, "java_home": str(project / "jdk-25"),
         "external_dependencies": [], "conversion_strategy": "legacy_components",
+        "test_deployment": wizard.PipelineConfiguration().test_deployment.model_dump(mode="json"),
     }
     loaded = load_configuration(destination)
     assert loaded.source_root == str((project / "bank-demo/composer/Workspace").resolve())
     assert loaded.output_root == str((project / "work/migration_runs").resolve())
     assert len(prompts) == 8
     assert list(destination.parent.iterdir()) == [destination]
+
+
+def test_new_config_prompts_for_deployment_addresses_and_saves_overrides(project, monkeypatch):
+    from cli.test_deployment_settings import collect_test_deployment_settings
+    collect_defaults(monkeypatch)
+    monkeypatch.setattr(wizard, "collect_test_deployment_settings", collect_test_deployment_settings)
+    answers = {"Config name (for example bank_demo)": "deployment_config",
+        "Test service base URL": "https://apps.example.test",
+        "Service hostname or route-path pattern": "{service_name}",
+        "External service port (auto or number)": "8443"}
+    prompts = []
+    def text(title, default=""):
+        prompts.append((title, default))
+        return answers.get(title, default)
+    monkeypatch.setattr(wizard, "prompt_text", text)
+    destination = wizard.create_configuration()
+    data = yaml.safe_load(destination.read_text())["test_deployment"]
+    assert data["service_base_url"] == "https://apps.example.test"
+    assert data["service_route_pattern"] == "{service_name}"
+    assert data["service_external_port"] == 8443
+    assert set(data) == {"service_base_url", "service_external_port", "service_route_pattern"}
+    assert not any("Bitbucket" in title or "provisional" in title for title, _ in prompts)
+    assert load_configuration(destination).test_deployment.service_external_port == 8443
+
+
+def test_cancelling_deployment_prompts_saves_no_partial_configuration(project, monkeypatch):
+    from cli.test_deployment_settings import collect_test_deployment_settings
+    collect_defaults(monkeypatch)
+    monkeypatch.setattr(wizard, "collect_test_deployment_settings", collect_test_deployment_settings)
+    def text(title, default=""):
+        if title == "Test service base URL":
+            raise interactive.SelectionCancelled
+        return "cancelled" if title.startswith("Config name") else default
+    monkeypatch.setattr(wizard, "prompt_text", text)
+    with pytest.raises(interactive.SelectionCancelled):
+        wizard.create_configuration()
+    assert not (project / "configs").exists()
 
 
 def test_java_selection_retries_version_and_mismatched_jdk(project, monkeypatch, capsys):

@@ -27,12 +27,12 @@ def library_dependency(config, project):
         required_classes=[])
 
 
-def create_native_context(config, profile, project, factory):
+def create_native_context(config, profile, project, factory, *, artifact_id=None):
     """Initialize run-qualified library coordinates without changing Maven settings."""
     from tools.maven_dependency_tools.pom_manager import initialize_managed_pom
-    initialize_managed_pom(str(Path(project) / "pom.xml"), COMMON_LIB_GROUP_ID, Path(project).name,
+    initialize_managed_pom(str(Path(project) / "pom.xml"), COMMON_LIB_GROUP_ID, artifact_id or Path(project).name,
                            version="1.0.0-" + stable_id(config.run_id)[:12], java_version=profile.java_version)
-    context = factory(profile, Path(project), Path(project).name)
+    context = factory(profile, Path(project), artifact_id or Path(project).name)
     configure_native_tests(context.pom_path)
     return context
 

@@ -9,6 +9,7 @@ from runtime.java_public_type import converted_java_identity, _code
 from tools.validation_tools.ibm_dependency_guard_tool import scan_source
 from constants import FORBIDDEN_DEPENDENCIES
 from runtime.behavior_conversion.method_contracts import has_method_contract
+from runtime.behavior_conversion.java_api_types import public_api_types
 from runtime.behavior_conversion.validation_progress import progress_step
 
 
@@ -52,14 +53,15 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
                 "Do not copy or rename holders, Tag initialization or decorator-chain classes.")
         files[name] = item.content
     combined = "\n".join(value for name, value in files.items() if name.startswith("src/main/java/"))
+    api_sources = {identity: name for name, content in files.items() if name.startswith("src/main/java/")
+                   for identity in public_api_types(content)}
+    known_types = set(api_sources)
     for api in apis:
-        expected = "src/main/java/" + api.type_name.replace(".", "/") + ".java"
-        if expected not in files:
+        expected = api_sources.get(api.type_name)
+        if expected is None:
             raise ValueError("Planned native API is missing: " + api.type_name)
         for signature in api.method_signatures:
-            known_types = {name.removeprefix("src/main/java/").removesuffix(".java").replace("/", ".")
-                           for name in files if name.startswith("src/main/java/")}
-            if not has_method_contract(files[expected], signature, known_types):
+            if not has_method_contract(files[expected], signature, known_types, owner_type=api.type_name):
                 raise ValueError("Native method contract is missing or changed: " + signature)
     if evidence_ids and not set(bundle.evidence_ids).issubset(set(evidence_ids)):
         raise ValueError("Bundle cites unavailable evidence")

@@ -33,7 +33,7 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="20"
             ErrorNumber="1"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <!-- Step 3b: Business error — validation failed -->
@@ -41,7 +41,7 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="10"
             ErrorNumber="2"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <!-- Step 3c: Technical errors -->
@@ -49,14 +49,14 @@
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="8"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <opStep id="TechnicalError"
             implClass="com.ibm.il.dse.operations.common.MapErrorByValueAlways"
             ErrorCategory="99"
             ErrorNumber="0"
-            on0Return="ErrorBody"
+            on0Return="StandardErrorRSFmt"
             onOtherDo="end"/>
 
     <!-- IVR-only logging step — excluded from INTERNET channel -->
@@ -128,6 +128,5 @@
   </fmtDef>
 
   <!-- Context definition scoped to this operation -->
-  <context id="GetClientAccountsCtxt" parent="AccountOpCtxt" type="op"/>
 
 </XML>

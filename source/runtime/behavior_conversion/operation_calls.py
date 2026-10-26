@@ -99,7 +99,7 @@ def mark_assembled(conn, run_id, key):
     set_contract_status(conn, run_id, key, 'assembled')
 
 
-def verify_operation_contracts(conn, config, calls):
+def verify_operation_contracts(conn, config, calls, profile=None):
     """Reject client reuse when the target contract or its source configuration changed."""
     for call in calls:
         if call['service_contract'].get('published_api'):
@@ -109,8 +109,15 @@ def verify_operation_contracts(conn, config, calls):
         current = get_contract(conn, config.run_id, call['callee'])
         if current['fingerprint'] != call['service_contract']['fingerprint']:
             raise ValueError('Target operation contract changed; reconvert caller: ' + call['callee'])
-        from tools.conversion_tools.behavior_evidence_freshness import verify_configuration_sources
         channel, operation = call['callee'].split('/', 1)
+        from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
+        if is_scoped_run(conn, config.run_id):
+            if profile is None:
+                raise ValueError('Scoped target verification requires its conversion profile')
+            from runtime.scoped_native.scope import verify_context
+            verify_context(conn, config, profile, call['callee'])
+            continue
+        from tools.conversion_tools.behavior_evidence_freshness import verify_configuration_sources
         verify_configuration_sources(conn, config, operation, channel)
 
 

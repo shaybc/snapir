@@ -1,0 +1,29 @@
+flowchart TD
+    INPUT["Inputs<br/>Composer workspace, XML and Java sources<br/>Profile, selected channels and operations"]
+    INTAKE["D — Discover and map<br/>Index Java sources and classpath<br/>Run Composer Mapper and import its vault"]
+    PREP["D — Prepare all selected operations<br/>Resolve dependencies, routes and channel overrides<br/>Collect verified source evidence and configured units"]
+    READY{"D — All selected contexts ready?<br/>Native conversion enabled?"}
+    PLAN["D — Build dependency-ordered plan<br/>Plan approval and Gate 1"]
+    UNITS["AI + D — Convert units one at a time<br/>Generate Java and tests<br/>Validate, compile, test and AI-review<br/>Correct failures within retry limits"]
+    G2{"Gate 2<br/>All units have passing reviews?"}
+    OPS["AI + D — Assemble operations one at a time<br/>Reuse accepted units<br/>Generate implementation, route plan and scenario tests<br/>Build, test and AI-review"]
+    G3{"Gate 3<br/>Operation reviews accepted?"}
+    SERVICES["AI + D — Generate services one at a time<br/>Add Spring Boot wrappers around approved code<br/>Build, test, package and collect validation evidence"]
+    FINAL["D — Finalization<br/>Verify evidence and artifact fingerprints<br/>Generate reports and deployment manifests"]
+    G4{"Gate 4<br/>Required evidence complete and accepted?"}
+    DONE["Migration approved<br/>Artifacts and reports ready<br/>No automatic deployment"]
+    STOP["Persist blocked, paused or failed state<br/>Keep attempts, diagnostics and accepted results"]
+    INPUT --> INTAKE --> PREP --> READY
+    READY -->|Yes| PLAN --> UNITS --> G2
+    READY -->|No| STOP
+    PLAN -->|Approval unavailable| STOP
+    UNITS -->|Unrecovered failure| STOP
+    G2 -->|Yes| OPS --> G3
+    G2 -->|No| STOP
+    OPS -->|Unrecovered failure| STOP
+    G3 -->|Yes| SERVICES --> FINAL --> G4
+    G3 -->|No| STOP
+    SERVICES -->|Unrecovered failure| STOP
+    G4 -->|Yes| DONE
+    G4 -->|No| STOP
+    STOP -.->|"Explicit resume: recheck freshness and reuse eligibility"| PREP

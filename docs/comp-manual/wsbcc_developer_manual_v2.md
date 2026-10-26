@@ -477,7 +477,7 @@ This means database calls can happen during response building, not just during o
 
 ### What a Decorator Is
 
-A decorator is a value transformer chained after a formatter tag. It operates on the string result of the formatter, not on the context directly.
+A decorator follows a formatter tag. Its implementation determines whether it transforms a value, adds attributes, or reads runtime context/configuration. Supplied implementation and transitive Java source evidence determine behavior; the examples below explain architecture, not fixed replacement rules. Preserve source-dependent runtime conditions as typed native inputs or collaborators. Missing behavioral evidence must be reported, not inferred from a tag name.
 
 **XML syntax:**
 ```xml
@@ -542,7 +542,7 @@ This type operates at the XML attribute level rather than the string value level
 
 | Tag | Class | Description |
 |---|---|---|
-| `nilDecorator` | `...decorator.NilDecorator` | Sets `xsi:nil="true"` when value is null/empty |
+| `nilDecorator` | `...decorator.NilDecorator` | Attribute behavior and runtime conditions must be derived from supplied Java source |
 | `RemoveLeadingZerosDecorator` | `...decorator.RemoveLeadingZerosDecorator` | Strips leading zeros |
 | `CCPadding` | `...decorator.CCPadding` | Pads string to fixed length |
 | `CCFixedLength` | `...decorator.CCFixedLength` | Enforces fixed string length |
@@ -958,7 +958,7 @@ Match these wrapper names exactly. All other wrappers default to keyed collectio
 2. **Unformat** (`csRequestFormat`):
    - `CCXML` tag opens the `<GetClientLinks>` element
    - `CCString[ClientId]` reads `"001234567"` → writes `context["ClientId"] = "001234567"`
-   - `nilDecorator` (after CCString[ClientId]) checks if value was null → if so sets `xsi:nil`
+   - The demo `nilDecorator` adds attributes during format only; it does not override unformat. During format, it adds `xsi:nil="true"` for a null/empty formatted field only when the runtime channel is enabled for schema validation and the application is not excluded.
    - `CCString[BankId]` reads `"01"` → writes `context["BankId"] = "01"`
 
 3. **execute()** runs the opStep chain:

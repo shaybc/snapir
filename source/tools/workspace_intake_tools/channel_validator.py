@@ -5,12 +5,8 @@ from pathlib import Path
 
 
 def validate_channel_in_registry(vault_root: str, target_channels: list[str]) -> list[str]:
-    registry_path = Path(vault_root) / "analysis" / "channel-operation-registry.md"
-    if not registry_path.exists():
-        return list(target_channels)
-    content = registry_path.read_text()
-    available = _extract_channels(content)
-    return [channel for channel in target_channels if channel not in available]
+    from tools.workspace_intake_tools.vault_validator import validate_vault_input
+    return validate_vault_input(vault_root, target_channels)[1]
 
 
 def _extract_channels(content: str) -> set[str]:
