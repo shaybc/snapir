@@ -2,18 +2,23 @@
 
 import json
 from runtime.composer_behavior_context import attach_composer_behavior
+from runtime.behavior_conversion.request_size import log_request_size
 
 
 def encode_request(payload, instruction, limit):
     """Check all serialized evidence, schema and instructions against a character budget."""
     request = attach_composer_behavior(payload)
     encoded = json.dumps(request, ensure_ascii=False)
+    log_request_size(request, encoded, instruction, limit, stage='initial_budget_check')
     if len(encoded) + len(instruction) > limit:
         from runtime.behavior_conversion.correction_payload import compact_correction
         request = compact_correction(request)
         encoded = json.dumps(request, ensure_ascii=False)
+        log_request_size(request, encoded, instruction, limit, stage='after_correction_compaction')
         if len(encoded) + len(instruction) > limit:
-            raise ValueError("Behavior request exceeds its context budget; reduce the evidence unit or use incremental analysis")
+            raise ValueError("Behavior request exceeds its context budget; reduce the evidence unit or use incremental analysis"
+                             f" ({len(encoded) + len(instruction)} characters > {limit}; "
+                             f"{len(encoded.encode('utf-8', errors='surrogatepass')) + len(instruction.encode('utf-8', errors='surrogatepass'))} UTF-8 bytes)")
     return request, encoded
 
 

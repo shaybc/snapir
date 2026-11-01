@@ -1,6 +1,7 @@
 """Shared first-response rules and schema-valid examples for native unit conversion."""
 
 import json
+from runtime.behavior_conversion.native_reflection_policy import INSTRUCTION as NO_REFLECTION
 
 APPROVED_JUNIT_DEPENDENCY = {
     "group_id": "org.junit.jupiter", "artifact_id": "junit-jupiter", "version": "5.10.2",
@@ -8,7 +9,7 @@ APPROVED_JUNIT_DEPENDENCY = {
     "required_classes": ["org.junit.jupiter.api.Test", "org.junit.jupiter.api.Assertions"],
 }
 
-COMMON_INSTRUCTION = """Mandatory target-code contract for the FIRST response and every correction:
+COMMON_INSTRUCTION = NO_REFLECTION + """Mandatory target-code contract for the FIRST response and every correction:
 Generate ordinary native Java business behavior, not a Composer compatibility runtime.
 All original XML, Java source and embedded Composer documentation are behavior evidence
 ONLY, including their imports and code examples. They are not reusable target APIs.
@@ -104,18 +105,21 @@ def response_example(kind, known=()):
     return example
 
 
-def native_instructions(kind, known=()):
+def native_instructions(kind, known=(), *, include_example=True):
     """Build shared guidance with approved test coordinates and a JSON response example."""
     junit = dict(APPROVED_JUNIT_DEPENDENCY)
     for dependency in known:
         if (dependency["group_id"], dependency["artifact_id"]) == (junit["group_id"], junit["artifact_id"]):
             junit.update(version=dependency["version"], scope=dependency["scope"])
     return (COMMON_INSTRUCTION + "\nApproved test dependency:\n" +
-            json.dumps(junit) + "\nCorrect response example (including escaped Java quotes and backslashes):\n"
+            json.dumps(junit) + ("\nCorrect response example (including escaped Java quotes and backslashes):\n" if include_example else
+                                "\nJSON encoding instructions (not source evidence):\n") +
             "Write valid Java first, then encode it as JSON. A single quote is not a JSON escape; "
             "never use backslash-apostrophe as a JSON escape. The Java character literal for an apostrophe "
             "still needs its Java backslash, which must itself be escaped in JSON.\n" +
-            json.dumps(response_example(kind, known)) + "\nUnit-specific instructions:\n")
+            (json.dumps(response_example(kind, known)) if include_example else
+             "No whole-unit response example applies here. Use the component schema and the separately labelled request coverage template.") +
+            "\nUnit-specific instructions:\n")
 
 
 def reuse_known_dependencies(instruction, known, java_version=None):

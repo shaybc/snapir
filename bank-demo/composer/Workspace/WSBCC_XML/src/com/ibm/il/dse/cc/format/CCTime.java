@@ -5,7 +5,7 @@ import com.ibm.dse.base.Tag;
 import java.util.Date;
 
 /** Thin demo time formatter with deterministic dummy values for conversion fixtures. */
-public class CCTime {
+public class CCTime extends AbstractFormatElement {
     private String dataName = "ExecutionTime";
 
     /** Keep the configured XML/context field name used by the demo formats. */
@@ -18,7 +18,7 @@ public class CCTime {
 
     /** Return a sample time element; the demo deliberately ignores the actual time value. */
     public String format(Context context) throws Exception {
-        return "<" + dataName + ">00:00:00</" + dataName + ">";
+        return element(dataName, applyDecorators("00:00:00"), context);
     }
 
     /** Populate the named field with a dummy Date; input parsing is outside this fixture. */

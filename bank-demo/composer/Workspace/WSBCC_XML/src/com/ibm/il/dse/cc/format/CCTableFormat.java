@@ -38,7 +38,7 @@ public class CCTableFormat extends AbstractFormatElement {
     public String format(Context ctx) throws Exception {
         // Reads key from context, queries DB, writes result as XML element
         String key = (String) ctx.getValueAt(keyValue);
-        if (key == null) return "<" + dataName + "/>";
+        if (key == null) return element(dataName, null, ctx);
 
         Connection conn = ctx.getConnection();
         String sql = "SELECT " + fromColumn + " FROM " + fromTable + " WHERE KEY = ?";
@@ -48,11 +48,11 @@ public class CCTableFormat extends AbstractFormatElement {
                 if (rs.next()) {
                     String result = rs.getString(1);
                     result = applyDecorators(result);
-                    return "<" + dataName + ">" + result + "</" + dataName + ">";
+                    return element(dataName, result, ctx);
                 }
             }
         }
-        return "<" + dataName + "/>";
+        return element(dataName, null, ctx);
     }
 
     @Override
@@ -62,6 +62,6 @@ public class CCTableFormat extends AbstractFormatElement {
         if (value != null) ctx.setValueAt(dataName, value);
     }
 
-    private String applyDecorators(String v) { throw new UnsupportedOperationException(); }
-    private String extractElement(String x, String n) { throw new UnsupportedOperationException(); }
+
+
 }

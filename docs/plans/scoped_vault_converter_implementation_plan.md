@@ -562,3 +562,59 @@ Fresh Mapper/import/preparation under `outputs/decorator-source-check-20261026` 
 10 contexts without blockers and confirmed the four relevant Java sources in the
 `GetClientLinksOp` error-format unit. This is source-evidence/preparation validation, not
 live generated-code or end-to-end acceptance. The failed C9 directory remains unchanged.
+
+
+### Source-linked behavior checks - implementation (2026-10-26)
+
+Scoped `behavior_units_v1` generation now extracts a persisted `BehaviorSpecification`
+before each configured unit and operation assembly. Facts describe source-dependent
+conditions and observable outcomes, cite exact excerpts with source identities/hashes,
+and distinguish implementation evidence from agreed compatibility policy. Stable IDs
+are assigned by deterministic code. Bounded extraction reads all original source parts;
+a separate reconciliation request identifies cross-part conflicts without deleting facts.
+Material evidence questions block generation. This is not a proof of semantic completeness.
+
+Generation receives original XML/Java evidence as well as the facts. Scoped unit requests
+no longer silently replace Java evidence with analysis summaries. Operation assembly reads
+the selected XML occurrence through the existing revision-checked reader and supplies the
+units' supporting Java sources. Candidate `behavior_implementations` must map every fact
+to actual main-source locations; these links are traceability claims, not semantic proof.
+An oversized indivisible request still fails explicitly rather than dropping required code.
+
+Unit evidence is selected deterministically before fact extraction: a format starts from
+its mapped formatter/decorator classes and reachable `refFmt` definitions; a step starts
+from its implementation. Both follow the verified Java syntax dependency graph, including
+superclasses and helpers. Sibling formats and unrelated operation steps are excluded;
+a genuine Java dependency is retained regardless of its role elsewhere. Format prompts
+receive context, format/unformat and decorator manual sections. Operation assembly retains
+the full operation scope. The evidence policy version invalidates older broad bundles;
+checkpoints without the dependency graph require refreshed preparation. Fact coverage and
+source revision validation remain mandatory.
+
+A separate AI `BehaviorComparison` reviews every fact against original evidence and the
+candidate code/tests, and can identify source behavior extraction missed. Deterministic
+checks enforce complete fact assessment and real source/candidate references. Observable
+missing/changed/invented behavior becomes structured correction feedback; material gaps
+remain unresolved; non-behavioral/style suggestions never trigger regeneration. Blocking
+mismatches require source citations, a triggering condition and an observable consequence.
+Existing bounded revision loops rerun schema/API/dependency/build/test validation. Review
+requests preserve facts and original evidence when test files are split across requests.
+
+Extraction/review requests use the existing persisted generation state, source-bound scoped
+ledger and fingerprints. Source, policy or instruction changes invalidate affected reuse.
+The previous legacy path, Mapper, Excel, gate policies and deployment behavior are unchanged.
+The new models and native response field are additive; implementation-location metadata is
+required only on behavior-checked generation tasks. No live conversion or deployment is
+started by implementing these modules; C9 full bank-demo acceptance remains unproven.
+
+
+Verification: 77 focused extraction/comparison, evidence-budget, legacy behavior and scoped
+boundary checks passed. Separately, all 3 scoped native integration checks passed through
+real offline Maven compilation/JUnit execution, including both entry paths, operation
+assembly and unchanged-run reuse. AI candidates/reviews in these tests are deterministic
+fixtures; they do not establish live-model or complete bank-demo acceptance. Original
+source/policy cache invalidation, false citations, exact output spelling correction,
+source behavior omitted during extraction, non-blocking style advice, complete fact-to-code
+links, bounded review retention and registered XML aliases have regression coverage.
+The detailed and overview Mermaid files show the implemented extraction and comparison
+stages. No live run was resumed and nothing was committed or pushed for this change.

@@ -93,7 +93,7 @@ def _declared_nested_types(code, package):
     return aliases
 
 
-def java_type_resolver(source, known_types=()):
+def java_type_resolver(source, known_types=(), *, type_variables=(), preserve_type_arguments=False):
     """Resolve Java source types consistently for methods and constructor contracts."""
     code = declaration_text(source)
     package_match = re.search(r'\bpackage\s+(' + _QUALIFIED_NAME + r')\s*;', code)
@@ -107,6 +107,8 @@ def java_type_resolver(source, known_types=()):
     def resolve(text):
         def token(match):
             name = match.group()
+            if name in type_variables:
+                return name
             if name in {'extends', 'super', 'boolean', 'byte', 'char', 'short', 'int', 'long', 'float', 'double', 'void'}:
                 return name
             head, separator, tail = name.partition('.')
@@ -132,7 +134,7 @@ def java_type_resolver(source, known_types=()):
             if len(wildcards) == 1:
                 return wildcards[0] + name
             return local
-        text = _erase_type_arguments(text).replace('...', '[]')
+        text = (text if preserve_type_arguments else _erase_type_arguments(text)).replace('...', '[]')
         text = re.sub(r'\s*\.\s*', '.', text)
         return re.sub(r"\s+", '', re.sub(_IDENTIFIER + r"(?:\." + _IDENTIFIER + r")*", token, text))
 

@@ -36,7 +36,7 @@ public class CCXML extends AbstractFormatElement {
         if (transparent) {
             return formatChildren(ctx);
         }
-        return "<" + dataName + ">" + formatChildren(ctx) + "</" + dataName + ">";
+        return container(dataName, formatChildren(ctx), ctx);
     }
 
     @Override
@@ -50,13 +50,9 @@ public class CCXML extends AbstractFormatElement {
         }
     }
 
-    private String formatChildren(Context ctx) throws Exception {
-        throw new UnsupportedOperationException("Runtime method");
-    }
-    private void unformatChildren(String xml, Context ctx) throws Exception {
-        throw new UnsupportedOperationException("Runtime method");
-    }
-    private String extractElement(String xml, String name) {
-        throw new UnsupportedOperationException("Runtime method");
-    }
+    public String getElementName() { return dataName; }
+
+
+
+
 }

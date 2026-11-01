@@ -40,6 +40,11 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
                       dependencies=(), require_tests=True, excluded_test_files=(), remove_excluded_tests=False):
     """Build/publish a candidate and verify accepted files during cached reuse."""
     def validate(bundle, cached=False):
+        validate.last=None
+        from runtime.behavior_conversion.verification_ladder import active_verification
+        verification = active_verification()
+        if verification is not None:
+            verification.static(bundle)
         with progress_step("Validating Java files, method contracts, dependencies and behavior coverage"):
             files = validate_bundle(bundle, apis, requirements, evidence, profile.allowed_ibm_classes)
         previous = snapshot(conn, config.run_id, "manifest", identity)
@@ -54,20 +59,32 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
             if data["files"] != expected:
                 raise ValueError("Accepted manifest does not match the requested native bundle")
             verify_manifest(project, data["files"])
+            if verification is not None:
+                verification.compare(project, factory(profile, project, Path(project).name), bundle,
+                                     build_validation=data['validation'])
             return
         owned = json.loads(previous["data_json"])["files"] if previous else {}
         if owned:
             verify_manifest(project, owned)
+        def checked_build(staged,context,result):
+            validate.last=dict(build_validation=result.model_dump(mode='json'))
+            if verification:verification.compare(staged,context,bundle,build_validation=result.model_dump(mode='json'))
         validation, manifest = accept_bundle(project, files, factory, profile,
                                              [*dependencies, *bundle.dependencies], require_tests=require_tests,
                                              owned_files=owned,
                                              required_tests={name for requirement in requirements for name in bundle.coverage[requirement]},
                                              testing_contract=testing_contract(profile) if require_tests else None,
-                                             excluded_test_files=excluded_test_files, remove_excluded_tests=remove_excluded_tests)
+                                             excluded_test_files=excluded_test_files, remove_excluded_tests=remove_excluded_tests,
+                                             pre_publish=checked_build)
         save(conn, config.run_id, "manifest", identity, stable_id(manifest),
              dict(project=str(project), files=manifest, validation=validation))
         pom = file_manifest(project, ["pom.xml"])
         save(conn, config.run_id, "project", str(project), stable_id(pom), dict(files=pom))
+    from runtime.behavior_conversion.stage_compilation import production_compiler
+    validate.compile_implementation=production_compiler(profile,factory,dependencies=dependencies,project=project)
+    validate.stage_prerequisites={p.relative_to(project).as_posix():p.read_text(encoding='utf-8')
+        for p in (Path(project)/'src/main/java').rglob('*.java')} if (Path(project)/'src/main/java').is_dir() else {}
+    validate.last=None
     return validate
 
 
@@ -97,6 +114,7 @@ def _dependency_validation_version(conn, run_id, category, identity, payload,
 @with_resume_budget
 def resume_behavior_pipeline(conn, config, profile, directory, *, model_call=None, context_factory=None, execution_plan=None):
     """Run the opt-in strategy without converting original classes one by one."""
+    if model_call is None:profile=profile.model_copy(update={'staged_unit_conversion':True})
     from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
     if is_scoped_run(conn, config.run_id):
         from runtime.scoped_native.runner import resume_scoped_pipeline
@@ -200,7 +218,7 @@ def resume_behavior_pipeline(conn, config, profile, directory, *, model_call=Non
     return directory
 
 
-def _convert_and_review(conn, config, profile, directory, closures, by_operation, all_units, bindings, factory, model_call, *, execution_plan=None):
+def _convert_and_review(conn, config, profile, directory, closures, by_operation, all_units, bindings, factory, model_call, *, execution_plan=None, component_provider=None):
     """Convert separate units, reuse accepted APIs, then assemble the operation."""
     from agents.behavior_conversion.format_mapping import INSTRUCTION as FORMAT
     from agents.behavior_conversion.configured_step import INSTRUCTION as STEP
@@ -212,7 +230,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
     accepted, reports, installed = {}, [], set()
     ordered = sorted(all_units.values(), key=lambda unit: (
         unit.kind != "request_unformat", not bool(ownership.assignments[unit.unit_id]),
-        unit.kind == "response_format", unit.unit_id))
+        unit.kind == "configured_step", unit.unit_id))
     if any(item.get('operation_calls') for item in closures):
         operation_order = {item['channel'] + '/' + item['operation_id']: i for i, item in enumerate(closures)}
         ordered.sort(key=lambda unit: min(operation_order[name] for name in unit.consumers if name in operation_order))
@@ -241,7 +259,10 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             builds[consumer] = dependencies
         primary = targets[0]
         project, dependencies = projects[primary], builds[primary]
-        payload = bounded_unit_evidence(conn, config, profile, unit, model_call)
+        payload = (unit.model_dump(mode='json') if str(unit.schema_version).startswith('scoped-')
+                   else bounded_unit_evidence(conn, config, profile, unit, model_call))
+        if component_provider is not None:
+            payload['component_default_mapping'] = component_provider.default_mapping(unit)
         requirements = {"business": "Preserve this complete configured unit's evidenced behavior"}
         evidence_ids = [unit.unit_id, *(source.identity for source in unit.sources)]
         payload.update(requirements=requirements, evidence_ids=evidence_ids,
@@ -271,6 +292,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             unit.unit_id if name == primary else unit.unit_id + ":local:" + name, (),
             requirements, evidence_ids, factory, builds[name]) for name, root in projects.items()]
         def validator(bundle, cached=False):
+            validator.last=None
             if unit.operation_calls:
                 from runtime.behavior_conversion.operation_calls import validate_operation_clients, verify_operation_contracts
                 verify_operation_contracts(conn, config, unit.operation_calls, profile)
@@ -287,12 +309,33 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
                 raise ValueError("Unit references an interface that has not been accepted")
             validate_bundle(bundle, api.apis, requirements, evidence_ids, profile.allowed_ibm_classes)
             for validate in validators:
-                validate(bundle, cached=cached)
-        output, fingerprint, reviewed, review_hash = generate_reviewed_bundle(conn, config, profile, "unit", unit.unit_id,
-            STEP if unit.kind == "configured_step" else FORMAT, payload, validator,
-            lambda bundle: dict(unit=payload, generated_bundle=bundle.model_dump(mode="json"),
-                validation=json.loads(snapshot(conn, config.run_id, "manifest", unit.unit_id)["data_json"])["validation"]),
-            model_call, f"Unit {position}/{len(ordered)}: {unit.logical_id}")
+                try:validate(bundle, cached=cached)
+                finally:validator.last=getattr(validate,'last',None)
+        validator.compile_implementation=validators[0].compile_implementation
+        validator.stage_prerequisites=validators[0].stage_prerequisites
+        try:
+            output, fingerprint, reviewed, review_hash = generate_reviewed_bundle(conn, config, profile, "unit", unit.unit_id,
+                STEP if unit.kind == "configured_step" else FORMAT, payload, validator,
+                lambda bundle: dict(unit=payload, generated_bundle=bundle.model_dump(mode="json"),
+                    validation=json.loads(snapshot(conn, config.run_id, "manifest", unit.unit_id)["data_json"])["validation"]),
+                model_call, f"Unit {position}/{len(ordered)}: {unit.logical_id}",
+                bundle_generator=(lambda request: component_provider(unit,request,validator)) if component_provider else None)
+        except Exception as error:
+            from tools.conversion_tools.scoped_reuse.checkpoint import ScopedCheckpointStale
+            if isinstance(error, ScopedCheckpointStale):
+                raise
+            if not str(unit.schema_version).startswith('scoped-'):
+                raise
+            from runtime.behavior_conversion.verification_feedback import VerificationIncomplete
+            from runtime.behavior_conversion.verification_state import record_verification, write_verification_results
+            status = 'verification_incomplete' if isinstance(error, VerificationIncomplete) else 'failed'
+            from tools.behavior_verification.boundary_contracts import boundary_contract
+            original_boundary = boundary_contract(unit.model_dump(mode='json'))
+            record_verification(conn, config, unit.unit_id, status, dict(logical_id=unit.logical_id,
+                source_manifest_hash=original_boundary.source_manifest_hash, configuration_hash=original_boundary.configuration_hash,
+                error=str(error), feedback=getattr(error, 'verification_feedback', {})))
+            write_verification_results(conn, config, directory, all_units)
+            continue
         api = output.unit_contract
         manifest = json.loads(snapshot(conn, config.run_id, "manifest", unit.unit_id)["data_json"])
         accepted[unit.unit_id] = dict(unit_id=unit.unit_id, project=str(project), apis=[item.model_dump() for item in api.apis],
@@ -314,6 +357,12 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             local_instances=accepted[unit.unit_id].get("local_instances", {}),
             dependencies=[item.model_dump(mode="json") for item in [*dependencies, *output.dependencies]]))
         write_run_report(directory, "native_bundle_results.json", json.dumps(reports, indent=2))
+    if any(str(unit.schema_version).startswith('scoped-') for unit in all_units.values()):
+        from runtime.behavior_conversion.verification_state import write_verification_results
+        verification_results = write_verification_results(conn, config, directory, all_units)
+        if verification_results['counts']['failed'] or verification_results['counts']['verification_incomplete']:
+            update_run_status(conn, config.run_id, 'blocked', 'conversion_units_verification_incomplete')
+            return
     gate2 = json.dumps(dict(strategy="behavior_units", accepted_interfaces={key: value["contract"] for key, value in accepted.items()},
         ownership=ownership.model_dump(), units=reports), sort_keys=True)
     if not _gate(conn, config, profile, directory, 2, gate2,
@@ -324,6 +373,9 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         consumer = closure["channel"] + "/" + closure["operation_id"]
         project = Path(config.output_root) / closure["channel"] / closure["operation_id"]
         sources = {key: consumer_artifact(accepted[value], consumer) for key, value in bindings[consumer].items()}
+        if component_provider is not None:
+            from runtime.behavior_conversion.verification_state import require_unit_receipts
+            require_unit_receipts(conn,config,dict(bindings=sources,component_first=True))
         dependencies = []
         for name in sorted({item["project"] for item in sources.values()} - {str(project)}):
             _install(Path(name), factory, profile)
@@ -335,6 +387,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         provisional_build_validator = _bundle_validator(conn, config, profile, project, "service_implementation:" + consumer,
             (), (), (), factory, dependencies, require_tests=False)
         def validator(bundle, cached=False, provisional=False, excluded_tests=()):
+            validator.last=None
             from runtime.behavior_conversion.operation_dependencies import validate_step_injection
             from runtime.behavior_conversion.operation_resources import validate_runtime_resources
             try:
@@ -360,10 +413,13 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
                 _bundle_validator(conn, config, profile, project, "service:" + consumer,
                     (), requirements, (), factory, dependencies, excluded_test_files=excluded_tests,
                     remove_excluded_tests=True) if excluded_tests else build_validator)
-            build(bundle, cached=cached)
+            try:build(bundle, cached=cached)
+            finally:validator.last=getattr(build,'last',None)
+        validator.compile_implementation=provisional_build_validator.compile_implementation
+        validator.stage_prerequisites=provisional_build_validator.stage_prerequisites
         from runtime.behavior_conversion.service_flow import service_request
         from agents.behavior_conversion.service_flow import INSTRUCTION
-        payload = service_request(profile, closure, None, sources)
+        payload = service_request(profile, closure, None, sources, source_units=by_operation[consumer])
         if closure.get('operation_calls'):
             from runtime.behavior_conversion.operation_calls import attach_operation_calls
             attach_operation_calls(conn, config, payload, closure['operation_calls'])
@@ -413,6 +469,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             fingerprint=fingerprint, service_api=api.model_dump(), contract=contracts[consumer].model_dump(),
             bindings=sources, files=manifest["files"], closure=closure, review=review.model_dump(),
             contract_project=str(project), contract_files=manifest["files"])
+        if component_provider is not None:
+            record['component_first'] = True
         if connections:
             record["service_connections"] = payload["service_connections"]
         if closure.get('scoped_workflow'):

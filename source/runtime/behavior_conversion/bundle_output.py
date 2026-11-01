@@ -1,6 +1,7 @@
 """Validate native bundles and stage candidate Maven projects before publishing."""
 
 import hashlib
+import json
 import re
 import shutil
 import tempfile
@@ -11,9 +12,11 @@ from constants import FORBIDDEN_DEPENDENCIES
 from runtime.behavior_conversion.method_contracts import has_method_contract
 from runtime.behavior_conversion.java_api_types import public_api_types
 from runtime.behavior_conversion.validation_progress import progress_step
+from runtime.behavior_conversion.side_road_policy import baseline_stage, ForbiddenFrameworkDependency
+from runtime.behavior_conversion.native_reflection_policy import reject_native_reflection
 
 
-def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_classes=()):
+def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_classes=(), *, dependency_files=(), api_inventory=None):
     """Reject unsafe paths, incomplete code, undeclared contracts and unsupported claims."""
     if bundle.unresolved_questions:
         raise ValueError("Unresolved behavior: " + "; ".join(bundle.unresolved_questions))
@@ -27,7 +30,10 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
             raise ValueError("Native bundles contain only Java main/test sources")
         if name in files:
             raise ValueError("Duplicate generated path: " + name)
-        if "TODO" in item.content or "UnsupportedOperationException" in _code(item.content):
+        reject_native_reflection(name, item.content)
+        code = _code(item.content)
+        unfinished_exception = re.search(r'\bUnsupportedOperationException\b(?!\s*\.\s*class\b)', code)
+        if "TODO" in item.content or unfinished_exception:
             raise ValueError("Native bundle contains unfinished implementation: " + name)
         package, type_name = converted_java_identity(item.content)
         source_root = "src/test/java/" if name.startswith("src/test/java/") else "src/main/java/"
@@ -36,7 +42,7 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
         findings = scan_source(item.content, FORBIDDEN_DEPENDENCIES, allowed_classes=allowed_classes)
         if findings:
             references = sorted(set(re.findall(r"\bcom\.ibm(?:\.\w+)+", _code(item.content))))
-            raise ValueError("Prohibited framework dependency in " + name + " (type " + package + "." + type_name +
+            raise ForbiddenFrameworkDependency("Prohibited framework dependency in " + name + " (type " + package + "." + type_name +
                 "): " + "; ".join(references or findings) +
                 ". Remove these imports/references from implementation and tests. If the unit needs this supporting behavior, "
                 "include a native companion implementation derived from the supplied supporting source evidence and wire its "
@@ -46,7 +52,7 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
                 "Use typed inputs/results for steps and Jackson wire models with plain mapper transformations for formats; "
                 "do not recreate a Composer runtime.")
         recreated = re.search(r"\b(?:class|interface)\s+(Context|CCOperationStep|AbstractFormatElement|FormatDecoratorHolder)\b", _code(item.content))
-        if recreated:
+        if recreated and not baseline_stage():
             raise ValueError("Do not recreate a Composer runtime type: " + recreated.group(1) + " in " + name +
                 ". Remove this type and its callers. Generate typed arguments/results instead of Context; "
                 "implement formatting and decorator behavior as plain mapper methods with Jackson XML models. "
@@ -56,19 +62,33 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
     api_sources = {identity: name for name, content in files.items() if name.startswith("src/main/java/")
                    for identity in public_api_types(content)}
     known_types = set(api_sources)
+    inventory = api_inventory
     for api in apis:
         expected = api_sources.get(api.type_name)
         if expected is None:
             raise ValueError("Planned native API is missing: " + api.type_name)
         for signature in api.method_signatures:
             if not has_method_contract(files[expected], signature, known_types, owner_type=api.type_name):
-                raise ValueError("Native method contract is missing or changed: " + signature)
+                if inventory is None and re.search(r'\b(?:extends|implements)\b', _code(files[expected])):
+                    from models.native_unit_bundle import NativeSourceFile
+                    from runtime.behavior_conversion.native_metadata import inspect_native
+                    combined_files={**dict(dependency_files),**files}
+                    inventory=inspect_native([NativeSourceFile(path=p,content=t) for p,t in combined_files.items() if p.startswith('src/main/java/')])
+                from runtime.behavior_conversion.native_inheritance import has_resolved_method
+                if inventory is None or not has_resolved_method(inventory,api.type_name,signature,files[expected]):
+                    raise ValueError("Native method contract is missing or changed: " + signature)
     if evidence_ids and not set(bundle.evidence_ids).issubset(set(evidence_ids)):
         raise ValueError("Bundle cites unavailable evidence")
     tests = {name for name in files if name.startswith("src/test/java/")}
     for requirement in requirements:
         if not set(bundle.coverage.get(requirement, [])).intersection(tests):
-            raise ValueError("No executable test covers requirement: " + requirement)
+            raise ValueError("No executable test covers requirement: " + requirement +
+                ". Coverage metadata is missing a link to a returned test source; tests have not been run. " +
+                json.dumps(dict(missing_requirement_ids=[key for key in requirements
+                    if not set(bundle.coverage.get(key, [])).intersection(tests)],
+                    returned_coverage_keys=sorted(bundle.coverage), available_test_paths=sorted(tests))) +
+                ". Use the exact requirement IDs as coverage keys and link each to actual returned test files "
+                "that exercise it. Example labels such as business do not replace supplied IDs.")
     return files
 
 
@@ -85,7 +105,7 @@ def verify_manifest(project, manifest):
             raise ValueError("Accepted native source changed or disappeared: " + name)
 
 
-def accept_bundle(project, files, context_factory, profile, dependencies, dependency_files=(), require_tests=True, owned_files=(), required_tests=(), testing_contract=None, excluded_test_files=(), remove_excluded_tests=False):
+def accept_bundle(project, files, context_factory, profile, dependencies, dependency_files=(), require_tests=True, owned_files=(), required_tests=(), testing_contract=None, excluded_test_files=(), remove_excluded_tests=False, pre_publish=None):
     """Build a disposable complete candidate, then publish source and its verified POM."""
     from tools.maven_dependency_tools.pom_manager import merge_dependencies
     from runtime.behavior_conversion.validation import build_candidate
@@ -139,6 +159,10 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
             if correction:
                 raise TestCorrectionError(error, correction)
             raise ValueError(error)
+        from runtime.behavior_conversion.stage_readiness import record_test_build
+        record_test_build(result, files, dependencies, require_tests=require_tests)
+        if pre_publish is not None:
+            pre_publish(staged, context, result)
         project.mkdir(parents=True, exist_ok=True)
         if remove_excluded_tests:
             for name in set(excluded_test_files) - set(files):

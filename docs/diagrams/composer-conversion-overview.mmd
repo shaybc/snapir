@@ -4,9 +4,9 @@ flowchart TD
     PREP["D — Prepare all selected operations<br/>Resolve dependencies, routes and channel overrides<br/>Collect verified source evidence and configured units"]
     READY{"D — All selected contexts ready?<br/>Native conversion enabled?"}
     PLAN["D — Build dependency-ordered plan<br/>Plan approval and Gate 1"]
-    UNITS["AI + D — Convert units one at a time<br/>Generate Java and tests<br/>Validate, compile, test and AI-review<br/>Correct failures within retry limits"]
+    UNITS["AI + D — Convert units one at a time<br/>Extract source-linked behavior facts<br/>Generate Java and tests using original evidence<br/>Validate, compile, test and compare behavior<br/>Correct failures within retry limits"]
     G2{"Gate 2<br/>All units have passing reviews?"}
-    OPS["AI + D — Assemble operations one at a time<br/>Reuse accepted units<br/>Generate implementation, route plan and scenario tests<br/>Build, test and AI-review"]
+    OPS["AI + D — Assemble operations one at a time<br/>Reuse accepted units<br/>Extract operation behavior; retain original source<br/>Generate implementation, route plan and scenario tests<br/>Build, test and AI-review"]
     G3{"Gate 3<br/>Operation reviews accepted?"}
     SERVICES["AI + D — Generate services one at a time<br/>Add Spring Boot wrappers around approved code<br/>Build, test, package and collect validation evidence"]
     FINAL["D — Finalization<br/>Verify evidence and artifact fingerprints<br/>Generate reports and deployment manifests"]

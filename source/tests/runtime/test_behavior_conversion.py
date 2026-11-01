@@ -32,6 +32,7 @@ def state():
 
 
 def profile(**kwargs):
+    kwargs.setdefault("staged_unit_conversion",False)  # Legacy bundle-validator fixtures; staged paths have separate tests.
     return PipelineConfiguration(conversion_strategy="behavior_units", model_provider="mock", **kwargs)
 
 
@@ -176,6 +177,24 @@ def test_bundle_rejects_framework_recreation_and_missing_api_or_test():
     output.files[0].path = "src/main/java/com/company/generated/Context.java"
     output.files[0].content = "package com.company.generated; public class Context {}"
     with pytest.raises(ValueError, match="recreate"):
+        validate_bundle(output)
+
+
+def test_exception_class_assertions_are_not_unfinished_implementations():
+    output = bundle()
+    output.files[1].content = '''package com.company.generated;
+public class StepTest { void check() {
+    assertThrows(UnsupportedOperationException.class, () -> values.add("value"));
+} }'''
+    validate_bundle(output)
+    output.files[1].content = output.files[1].content.replace(
+        'assertThrows(UnsupportedOperationException.class, () -> values.add("value"));',
+        'throw new UnsupportedOperationException();')
+    with pytest.raises(ValueError, match="unfinished implementation"):
+        validate_bundle(output)
+    output.files[0].content = output.files[0].content.replace('return 1;',
+        'throw new UnsupportedOperationException();')
+    with pytest.raises(ValueError, match="unfinished implementation"):
         validate_bundle(output)
 
 

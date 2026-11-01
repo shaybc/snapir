@@ -5,6 +5,7 @@ from runtime.behavior_conversion.generation import generate
 from runtime.behavior_conversion.review_payload import review_requests
 from tools.component_inventory_tools.identity import stable_id
 from tools.state_store_tools.behavior_units import save
+from models.behavior_comparison import BehaviorFinding
 
 
 class BehaviorReview(BaseModel):
@@ -14,6 +15,7 @@ class BehaviorReview(BaseModel):
     approved: bool
     issues: list[str] = Field(default_factory=list)
     unresolved_questions: list[str] = Field(default_factory=list)
+    comparisons: list[BehaviorFinding] = Field(default_factory=list)
 
 
 def review_behavior(conn, config, profile, identity, payload, model_call=None):
@@ -26,6 +28,9 @@ def review_behavior(conn, config, profile, identity, payload, model_call=None):
     payload["versioned_requirements"] = requirements
     if requirements:
         payload["requirements"] = {item["requirement_id"]: item["description"] for item in requirements}
+    if payload.get('behavior_specification'):
+        from runtime.behavior_conversion.behavior_comparison import compare_behavior
+        return compare_behavior(conn, config, profile, identity, payload, model_call)
     requests = review_requests(payload, instruction + "\n" + JSON_INSTRUCTION,
                                BehaviorReview.model_json_schema(), profile.behavior_context_chars)
     if len(requests) == 1:

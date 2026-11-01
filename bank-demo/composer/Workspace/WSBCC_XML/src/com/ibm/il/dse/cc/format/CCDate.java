@@ -36,13 +36,13 @@ public class CCDate extends AbstractFormatElement {
     @Override
     public String format(Context ctx) throws Exception {
         Object val = ctx.getValueAt(dataName);
-        if (val == null) return "<" + dataName + "/>";
+        if (val == null) return element(dataName, null, ctx);
         SimpleDateFormat sdf = new SimpleDateFormat(pattern);
         String formatted = (val instanceof Date)
             ? sdf.format((Date) val)
             : String.valueOf(val);
         formatted = applyDecorators(formatted);
-        return "<" + dataName + ">" + formatted + "</" + dataName + ">";
+        return element(dataName, formatted, ctx);
     }
 
     @Override
@@ -56,7 +56,7 @@ public class CCDate extends AbstractFormatElement {
         ctx.setValueAt(dataName, new SimpleDateFormat(pattern).parse(value));
     }
 
-    private String applyDecorators(String v) { throw new UnsupportedOperationException(); }
-    private String removeDecorators(String v) { throw new UnsupportedOperationException(); }
-    private String extractElement(String x, String n) { throw new UnsupportedOperationException(); }
+
+
+
 }

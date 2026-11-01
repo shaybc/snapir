@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
 
-POLICY_VERSION = 'scoped-v3-c8-v1'
+POLICY_VERSION = 'scoped-v3-unit-evidence-v2'
 
 
 def digest(value):
@@ -29,6 +29,10 @@ def conversion_policy(profile):
         'conversion_requirements', 'maven_settings_path', 'maven_local_repository',
         'approved_maven_repository_urls', 'service_maven_dependencies')
     values = {}
+    settings=getattr(profile,'executable_verification',None)
+    if settings is not None and settings.mode!='checklist_v1':
+        from runtime.behavior_conversion.verification_mode import policy_payload
+        values['executable_verification']=policy_payload(profile)
     for name in names:
         value = getattr(profile, name, None)
         if isinstance(value, list):

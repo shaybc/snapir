@@ -6,13 +6,13 @@ from contextvars import ContextVar
 from tools.conversion_tools.scoped_reuse.checkpoint import validate_checkpoints
 
 _execution = ContextVar('scoped_native_execution', default=None)
-_categories = {'unit', 'service', 'service_implementation', 'route_test_plan', 'route_scenario_test', 'review', 'analysis'}
+_categories = {'unit', 'service', 'service_implementation', 'route_test_plan', 'route_scenario_test', 'review', 'analysis', 'behavior_extraction'}
 
 
 @contextmanager
 def native_execution(conn, config, profile, classpath, by_operation):
     """Permit only exact selected operation/unit tasks; never bypass the global guard."""
-    if profile.scoped_native_mode != 'behavior_units_v1' or profile.conversion_strategy != 'behavior_units':
+    if profile.scoped_native_mode not in {'behavior_units_v1','component_first_v1'} or profile.conversion_strategy != 'behavior_units':
         raise ValueError('Unsupported scoped native profile')
     selected = set(by_operation)
     validate_checkpoints(conn, config, profile, classpath, selected)
@@ -31,7 +31,8 @@ def require_task(conn, config, profile, category, identity, payload):
     execution = _execution.get()
     if not execution or execution['conn'] is not conn or execution['run_id'] != config.run_id:
         raise ValueError('Scoped conversion is gated outside a qualified native execution')
-    if execution['profile'] is not profile or category not in _categories:
+    if execution['profile'] is not profile or (category not in _categories and not (
+            category=='unit_binding' and profile.scoped_native_mode=='component_first_v1')):
         raise ValueError('Unsupported scoped generation task/profile')
     matches = [name for name in execution['identities'] if identity == name or identity.startswith(name + ':')]
     if not matches and category == 'analysis' and payload.get('unit_id') in execution['identities']:

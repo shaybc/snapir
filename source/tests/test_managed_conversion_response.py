@@ -48,9 +48,10 @@ def test_format_response_validates_embedded_requirements():
 
 
 @pytest.mark.parametrize("label", ["json", "JSON", ""])
-def test_enclosing_json_fence_is_cleaned(label):
+@pytest.mark.parametrize("closing_newline", ["", "\n", "\r\n"])
+def test_enclosing_json_fence_is_cleaned(label,closing_newline):
     payload = json.dumps({"java_source": "public class Example {}", "dependencies": []})
-    assert parse_managed_response("  \n```" + label + "\r\n" + payload + "\r\n```\n", "ibm_java") == "public class Example {}"
+    assert parse_managed_response("  \n```" + label + "\r\n" + payload + closing_newline + "```\n", "ibm_java") == "public class Example {}"
 
 
 @pytest.mark.parametrize("response", [
@@ -59,6 +60,10 @@ def test_enclosing_json_fence_is_cleaned(label):
     '```json\n{}\n```\n```json\n{}\n```',
     '```json\n{broken}\n```',
     '```json\n{}',
+    '```json\n{}```Explanation',
+    'Explanation```json\n{}```',
+    '```json\n{}{} ```',
+    '```json\n{broken}```',
 ])
 def test_cleaner_does_not_accept_mixed_or_malformed_response(response):
     with pytest.raises(ValueError, match="one JSON object"):
@@ -68,3 +73,9 @@ def test_cleaner_does_not_accept_mixed_or_malformed_response(response):
 def test_fenced_json_still_requires_conversion_schema():
     with pytest.raises(ValueError, match="required conversion schema"):
         parse_managed_response('```json\n{"java_source": "example"}\n```', "ibm_java")
+
+
+def test_inline_closing_fence_preserves_embedded_java():
+    code='public class Example {\n  String marker = "```";\n  String newline = "\\n";\n}'
+    payload=json.dumps({'java_source':code,'dependencies':[]})
+    assert parse_managed_response('```json\n'+payload+'```','ibm_java')==code

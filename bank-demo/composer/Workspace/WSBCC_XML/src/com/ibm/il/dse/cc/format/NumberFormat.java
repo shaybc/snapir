@@ -32,11 +32,11 @@ public class NumberFormat extends AbstractFormatElement {
     @Override
     public String format(Context ctx) throws Exception {
         Object val = ctx.getValueAt(dataName);
-        if (val == null) return "<" + dataName + "/>";
+        if (val == null) return element(dataName, null, ctx);
         BigDecimal bd = new BigDecimal(String.valueOf(val));
         String formatted = formatNumber(bd);
         formatted = applyDecorators(formatted);
-        return "<" + dataName + ">" + formatted + "</" + dataName + ">";
+        return element(dataName, formatted, ctx);
     }
 
     @Override
@@ -49,8 +49,13 @@ public class NumberFormat extends AbstractFormatElement {
         ctx.setValueAt(dataName, new BigDecimal(value));
     }
 
-    private String formatNumber(BigDecimal bd) { throw new UnsupportedOperationException(); }
-    private String applyDecorators(String v)   { throw new UnsupportedOperationException(); }
-    private String removeDecorators(String v)  { throw new UnsupportedOperationException(); }
-    private String extractElement(String x, String n) { throw new UnsupportedOperationException(); }
+    private String formatNumber(BigDecimal bd) {
+        java.text.DecimalFormat formatter = new java.text.DecimalFormat(
+            showThousandsSep ? "#,##0" : "0", java.text.DecimalFormatSymbols.getInstance(java.util.Locale.ROOT));
+        int places = showDecimalsSep ? decimalPlaces : 0;
+        formatter.setMinimumFractionDigits(places);
+        formatter.setMaximumFractionDigits(places);
+        return formatter.format(bd);
+    }
+
 }

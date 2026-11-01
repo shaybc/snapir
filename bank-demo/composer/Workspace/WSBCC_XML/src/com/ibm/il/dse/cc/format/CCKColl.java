@@ -29,7 +29,7 @@ public class CCKColl extends AbstractFormatElement {
 
     @Override
     public String format(Context ctx) throws Exception {
-        return "<" + dataName + ">" + formatChildren(ctx) + "</" + dataName + ">";
+        return container(dataName, formatChildren(ctx), ctx);
     }
 
     @Override
@@ -38,7 +38,7 @@ public class CCKColl extends AbstractFormatElement {
         unformatChildren(inner, ctx);
     }
 
-    private String formatChildren(Context ctx) throws Exception { throw new UnsupportedOperationException(); }
-    private void unformatChildren(String xml, Context ctx) throws Exception { throw new UnsupportedOperationException(); }
-    private String extractElement(String xml, String name) { throw new UnsupportedOperationException(); }
+
+
+
 }

@@ -17,6 +17,49 @@ def dependency(artifact="client", version="1.0.0", group="org.example"):
     return MavenDependency(group_id=group, artifact_id=artifact, version=version, reason="Required API")
 
 
+@pytest.mark.parametrize("fields", [{}, {"reason": None}, {"reason": ""}, {"reason": " \t\n"}])
+def test_missing_dependency_reason_gets_audit_fallback(fields):
+    value = MavenDependency.model_validate(dict(group_id="org.example", artifact_id="client", version="1.0.0", **fields))
+    assert value.reason == "Model did not supply reason"
+    assert value.model_dump()["reason"] == "Model did not supply reason"
+
+
+def test_supplied_reason_and_dependency_validation_remain_unchanged():
+    assert dependency().reason == "Required API"
+    assert dependency().coordinates == "org.example:client:1.0.0"
+    for fields in [{"version": "LATEST"}, {"scope": "unknown"}, {"group_id": "invalid/group"}, {"reason": 123}]:
+        with pytest.raises(ValueError):
+            MavenDependency.model_validate(dict(group_id="org.example", artifact_id="client", version="1.0.0") | fields)
+
+
+def test_nested_dependency_structures_apply_the_same_fallback():
+    from models.maven_dependency import JavaConversionOutput
+    from models.native_dependency_proposal import NativeDependencyProposal
+    from models.native_unit_bundle import NativeUnitBundle
+    pin = dict(group_id="org.example", artifact_id="client", version="1.0.0")
+    records = [JavaConversionOutput(java_source="source", dependencies=[pin]),
+               NativeDependencyProposal(dependencies=[pin]),
+               NativeUnitBundle(files=[dict(path="src/main/java/example/Client.java", content="source")], dependencies=[pin])]
+    for record in records:
+        assert record.dependencies[0].reason == "Model did not supply reason"
+        schema = type(record).model_json_schema()
+        assert "reason" not in schema["$defs"]["MavenDependency"]["required"]
+
+
+def test_runtime_classpath_fills_reason_before_dependency_verification(tmp_path):
+    from types import SimpleNamespace
+    from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
+    pom = create_pom(tmp_path)
+    merge_dependencies(str(pom), [dependency()], lambda proposal: None)
+    observed = []
+    def resolve(value):
+        observed.append(value.reason)
+        return ["approved.jar"]
+    context = SimpleNamespace(verifier=SimpleNamespace(resolved_runtime_classpath=resolve))
+    assert native_runtime_classpath(tmp_path, context) == ["approved.jar"]
+    assert observed == ["Model did not supply reason"]
+
+
 def create_pom(tmp_path):
     path = tmp_path / "pom.xml"
     initialize_managed_pom(str(path), "org.example", "service")

@@ -6,13 +6,20 @@ from runtime.behavior_conversion.generation import generate
 from pathlib import Path
 
 
-def service_request(profile, closure, contract, accepted_units):
+def service_request(profile, closure, contract, accepted_units, *, source_units=()):
     """Build the explicit workflow contract independently of its generation engine."""
     if closure.get('scoped_workflow'):
         workflow = closure['scoped_workflow']
+        from types import SimpleNamespace
+        from xml.etree import ElementTree
+        from tools.conversion_tools.scoped_closure.source_evidence import SourceEvidence
+        original = SourceEvidence(profile.source_root).xml(SimpleNamespace(
+            evidence=workflow['operation_source'], entity_id=workflow['operation_attributes']['id']))
+        originals = {source.identity: source.model_dump(mode='json') for unit in source_units for source in unit.sources}
         return dict(operation_id=closure['operation_id'], closure=workflow,
+            configuration_xml=ElementTree.tostring(original, encoding='unicode'),
             contract=contract.model_dump(mode='json') if contract else None,
-            accepted_units=accepted_units, operation_sources=[], requirements={**workflow['requirements'],
+            accepted_units=accepted_units, operation_sources=list(originals.values()), requirements={**workflow['requirements'],
                 'operation-flow': 'Preserve the evidenced configured workflow, initialization, routing and side effects.'},
             java_version=profile.java_version)
     requirements = {"route-" + name: str(value) for name, value in closure.get("routing_graph", {}).items()}

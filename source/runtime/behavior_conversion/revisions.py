@@ -13,6 +13,11 @@ from tools.state_store_tools.agent_tasks import upsert_agent_task
 def generate_reviewed_bundle(conn, config, profile, category, identity, instruction, payload,
                              validator, review_payload, model_call=None, label="", bundle_generator=None):
     """Review code against original evidence; retry concrete defects, preserve unknowns."""
+    scoped = str(payload.get('schema_version', '')).startswith('scoped-') or payload.get('closure', {}).get('operation_identity')
+    if scoped and category == 'unit':
+        from runtime.behavior_conversion.verification_units import generate_verified_unit
+        return generate_verified_unit(conn, config, profile, identity, instruction, payload, validator, model_call, label,
+            bundle_generator=bundle_generator)
     revision_hash = stable_id(payload, versioned_requirements(profile, category, payload),
                               profile.java_version, profile.java_home)
     prior = snapshot(conn, config.run_id, "revision", category + ":" + identity)
@@ -38,8 +43,9 @@ def generate_reviewed_bundle(conn, config, profile, category, identity, instruct
                 record("failed", error=str(exc))
                 raise
             record("completed", output=bundle.model_dump(mode="json"), fingerprint=fingerprint)
+        comparison_payload = review_payload(bundle)
         review, review_hash = review_behavior(conn, config, profile, identity,
-            review_payload(bundle), model_call)
+            comparison_payload, model_call)
         if (review.approved and not review.issues and not review.unresolved_questions) or review.unresolved_questions:
             return bundle, fingerprint, review, review_hash
         if revision["number"] >= profile.max_agent_task_retries:

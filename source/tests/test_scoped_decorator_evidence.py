@@ -40,6 +40,13 @@ def test_mapped_decorator_parent_and_helper_reach_model_request(tmp_path, scoped
     for name in expected:
         origin = origins[name]
         assert sources[origin['definition_id']] == Path(origin['source_file']).read_text()
+    assert origins['example.Work']['definition_id'] not in sources
+    step = next(item for item in units if item.kind == 'configured_step')
+    assert {item.identity for item in step.sources} == {origins['example.Work']['definition_id']}
+    assert step.referenced_definitions == []
+    assert {item['attributes']['id'] for item in unit.referenced_definitions} == {'Leaf'}
+    assert '4. Runtime Execution Model' not in {item['heading'] for item in request['composer_behavior_evidence']}
+    assert '6. Formats and the Format/Unformat Process' in {item['heading'] for item in request['composer_behavior_evidence']}
     assert 'FirstDecorator' in str(request['effective_configuration'])
     assert 'runtime context/configuration dependencies as typed parameters' in INSTRUCTION
 
@@ -55,3 +62,40 @@ def test_contract_and_format_instructions_preserve_runtime_dependencies():
                       if '### What a Decorator Is' in item['content'])
     assert 'implementation and transitive Java source evidence determine behavior' in decorators
     assert 'Sets `xsi:nil="true"` when value is null/empty' not in decorators
+
+
+def test_real_formatter_dependency_is_kept_even_when_also_used_by_step(tmp_path, scoped_mapper):
+    def change(root):
+        (root / 'src/example/Field.java').write_text(
+            'package example;\npublic class Field { Work dependency; }')
+        (root / 'src/example/Work.java').write_text(
+            'package example;\npublic class Work { Field dependency; }')
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper, change=change)
+    closure = profiled(conn, root)
+    assert closure.status == 'evidence_ready', closure.blocking_issues
+    config, profile = settings(root, vault)
+    units, _ = build_scoped_units(conn, config, closure, profile=profile)
+    origins = {item['fqcn']: item for item in closure.java_origins}
+    response = next(item for item in units if item.occurrence_id == 'csReplyFormat')
+    assert {source.identity for source in response.sources} == {
+        origins[name]['definition_id'] for name in ('example.Field', 'example.Work')}
+    assert response.referenced_definitions == []
+
+
+def test_old_operation_wide_evidence_requires_fresh_preparation():
+    from types import SimpleNamespace
+    import pytest
+    from tools.conversion_tools.scoped_workflow.unit_evidence import java_evidence
+    closure = SimpleNamespace(java_origins=[dict(fqcn='example.Field', status='verified_source')],
+                              external_dependencies=[])
+    with pytest.raises(ValueError, match='refresh preparation'):
+        java_evidence(closure, {'example.Field'})
+
+
+def test_format_manual_scope_survives_extraction_and_review_wrappers():
+    from runtime.composer_behavior_context import attach_composer_behavior
+    scope = dict(kind='request_unformat', schema_version='scoped-v3-c5')
+    for payload in (scope, dict(subject_scope=scope), dict(unit=scope)):
+        headings = {item['heading'] for item in attach_composer_behavior(payload)['composer_behavior_evidence']}
+        assert headings == {'5. Context', '6. Formats and the Format/Unformat Process', '7. Decorators'}
+    assert len(attach_composer_behavior(dict(kind='request_unformat'))['composer_behavior_evidence']) == 4

@@ -9,6 +9,10 @@ from models.external_dependency import ExternalDependencyRule
 from models.conversion_requirement import ConversionRequirement
 from models.maven_dependency import MavenDependency
 from models.test_deployment_settings import TestDeploymentSettings
+from models.static_check_policy import StaticCheckPolicy
+from models.checklist_exclusion_authorization import ChecklistExclusionAuthorization
+from models.unit_mutation_settings import UnitMutationSettings
+from models.executable_verification_settings import ExecutableVerificationSettings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -19,11 +23,23 @@ class PipelineConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_default=True)
     conversion_strategy: Literal["legacy_components", "behavior_units"] = "legacy_components"
     conversion_requirements: list[ConversionRequirement] = Field(default_factory=list)
-    behavior_context_chars: int = Field(default=300000, ge=60000, le=1000000)
+    behavior_context_chars: int = Field(default=900000, ge=60000, le=1000000)
+    metadata_checklist_batching: bool = True
+    metadata_checklist_batch_items: int = Field(default=15,ge=1,le=50)
+    metadata_checklist_request_chars: int = Field(default=100000,ge=8000,le=1000000)
+    metadata_checklist_response_chars: int = Field(default=16000,ge=1000,le=200000)
+    metadata_checklist_max_calls: int | None = Field(default=None,ge=1)
+    metadata_checklist_max_transport_calls: int | None = Field(default=None,ge=1)
+    metadata_checklist_timeout_split_after: int = Field(default=2,ge=1,le=4)
+    behavior_triage_enabled: bool = False
+    unit_mutation_testing: UnitMutationSettings = Field(default_factory=UnitMutationSettings)
+    executable_verification: ExecutableVerificationSettings = Field(default_factory=ExecutableVerificationSettings)
+    unit_verification_policy: StaticCheckPolicy = Field(default_factory=StaticCheckPolicy)
+    unit_verification_authorizations: list[ChecklistExclusionAuthorization] = Field(default_factory=list)
     source_root: str = constants.COMPOSER_ROOT
     scoped_java_project: str | None = Field(default=None, min_length=1)
     scoped_java_projects: dict[str, str] = Field(default_factory=dict)
-    scoped_native_mode: Literal["prepare", "behavior_units_v1"] = "prepare"
+    scoped_native_mode: Literal["prepare", "behavior_units_v1", "component_first_v1"] = "prepare"
     source_workspace_id: str | None = Field(default=constants.SOURCE_WORKSPACE_ID, min_length=1)
     service_registry_path: str | None = Field(default=None, min_length=1)
     service_maven_dependencies: dict[str, list[MavenDependency]] = Field(default_factory=dict)
@@ -69,6 +85,10 @@ class PipelineConfiguration(BaseModel):
     )
 
     max_agent_task_retries: int = Field(default=constants.MAX_AGENT_TASK_RETRIES, ge=1)
+    side_road_conversion: bool = False
+    staged_unit_conversion: bool = True
+    side_road_baseline_attempts: int = Field(default=4, ge=1, le=4)
+    side_road_simplify_attempts: int = Field(default=4, ge=1, le=4)
     max_parallel_conversion_workers: int = Field(default=constants.MAX_PARALLEL_CONVERSION_WORKERS, ge=1)
     max_parallel_llm_tasks: int = Field(default=constants.MAX_PARALLEL_LLM_TASKS, ge=1)
     max_parallel_build_tasks: int = Field(default=constants.MAX_PARALLEL_BUILD_TASKS, ge=1)
@@ -114,4 +134,11 @@ class PipelineConfiguration(BaseModel):
         """Require a non-empty small-sharing range between configured thresholds."""
         if self.broad_library_usage_threshold < self.shared_library_min_usage:
             raise ValueError("broad_library_usage_threshold must be at least shared_library_min_usage")
+        return self
+
+    @model_validator(mode="after")
+    def validate_executable_staging(self):
+        """Citation-free generation requires the separated implementation/test path."""
+        if self.executable_verification.mode == 'executable_boundary_v1' and not self.staged_unit_conversion:
+            raise ValueError('Executable boundary verification requires staged_unit_conversion')
         return self

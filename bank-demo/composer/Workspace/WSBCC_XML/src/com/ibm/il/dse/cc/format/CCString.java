@@ -27,7 +27,7 @@ public class CCString extends AbstractFormatElement {
     public String format(Context ctx) throws Exception {
         String value = (String) ctx.getValueAt(dataName);
         value = applyDecorators(value);          // addDecoration chain (forward order)
-        return "<" + dataName + ">" + value + "</" + dataName + ">";
+        return element(dataName, value, ctx);
     }
 
     /** unformat: reads XML element -> applies decorators in reverse -> writes context[dataName] */
@@ -38,7 +38,5 @@ public class CCString extends AbstractFormatElement {
         ctx.setValueAt(dataName, value);
     }
 
-    private String applyDecorators(String v)  { throw new UnsupportedOperationException(); }
-    private String removeDecorators(String v)  { throw new UnsupportedOperationException(); }
-    private String extractElement(String xml, String name) { throw new UnsupportedOperationException(); }
+
 }

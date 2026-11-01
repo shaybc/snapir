@@ -13,9 +13,15 @@ def review_requests(payload, instruction, schema, limit):
     fails explicitly. The input and accepted artifacts are never modified.
     """
     result = deepcopy(payload)
-    bundle = result.get("bundle", {})
+    if result.get('behavior_specification') and isinstance(result.get('unit'), dict):
+        for name in ('sources', 'operation_sources'):
+            if name in result and result['unit'].get(name) == result[name]:
+                result['unit'].pop(name)
+                result['unit'][name + '_ref'] = name
+        result['review_evidence_references'] = 'unit source fields ending in _ref refer to the retained top-level source list.'
+    bundle = result.get("bundle", result.get('generated_bundle', {}))
     contract = bundle.get("operation_contract") or {}
-    if not contract:
+    if not contract and not result.get('behavior_specification'):
         return [result]
     units = contract.get("units", [])
     references = False
@@ -49,8 +55,9 @@ def review_requests(payload, instruction, schema, limit):
     def part(files):
         selected = {file["path"] for file in files}
         current = deepcopy(result)
-        current["bundle"]["files"] = main + files
-        current["bundle"]["coverage"] = {key: [path for path in paths if path in selected]
+        key = 'bundle' if 'bundle' in current else 'generated_bundle'
+        current[key]["files"] = main + files
+        current[key]["coverage"] = {key: [path for path in paths if path in selected]
             for key, paths in bundle.get("coverage", {}).items() if any(path in selected for path in paths)}
         current["review_scope"] = dict(test_files=sorted(selected), all_test_files=[file["path"] for file in tests],
             instruction="Review the full service and routing, and only the supplied test subset. Other listed tests are reviewed in separate parts; their absence here is not missing coverage.")

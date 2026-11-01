@@ -41,6 +41,8 @@ def prepare_contract(conn, config, profile, closure, units, model_call=None):
         encode_request(dict(request, schema=OperationDataContract.model_json_schema()), INSTRUCTION,
                        profile.behavior_context_chars)
     except ValueError:
+        if profile.staged_unit_conversion:
+            raise ValueError('Oversized staged contract needs dependency/structure partitioning; complete implementation evidence cannot be replaced by AI summaries')
         # Individual bundles can fit while their combined contract request cannot.
         compact = []
         for item in evidence:

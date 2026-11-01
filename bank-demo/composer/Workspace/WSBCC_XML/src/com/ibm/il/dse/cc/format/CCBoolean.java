@@ -39,5 +39,5 @@ public class CCBoolean extends AbstractFormatElement {
         ctx.setValueAt(dataName, trueValue.equalsIgnoreCase(value));
     }
 
-    private String extractElement(String xml, String name) { throw new UnsupportedOperationException(); }
+
 }

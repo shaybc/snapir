@@ -3,6 +3,33 @@
 A realistic demo of a bank's IBM WebSphere Business Component Composer (WSBCC)
 workspace. Used as a test fixture for the Composer Sunset migration pipeline.
 
+## Fresh component-first acceptance run
+
+From the repository root in PowerShell:
+
+```powershell
+$env:PYTHONPATH = 'source'
+$env:PYTHONDONTWRITEBYTECODE = '1'
+python -B -m tools.behavior_verification.component_pilot_run --output-root outputs/bank-demo-component-first-new
+```
+
+Use a new output folder and the configured model credential in the process environment.
+This reruns the actual Mapper and converter in `component_first_v1` mode on the selected
+bank-demo operations. It retains the 900000-character budget, both four-attempt limits,
+automatic gates and all technical checks. It does not deploy or perform Git actions.
+Existing converter modes and saved runs are unchanged.
+
+The wrapper writes `live-status.json`, `acceptance-report.md`, `cf8-measurement.json`,
+request sizes in decimal KB/MB/GB, executor interaction/transport counts, and the existing
+source-bound pilot measurement. Size checks include oversized probes never sent to the
+model; they are not model-call counts or token counts. Components and preparation are
+not accepted units. Terminal acceptance checks static/build/comparison evidence and
+transitive component/part manifests. Warm reuse is measured only after full cold acceptance.
+Blocked runs retain their actual pending/failed/incomplete counts and causes.
+
+The first CF8 run is under `outputs/bank-demo-component-first-20261027`. Its current
+report is the evidence source; this paragraph does not assert bank or enterprise acceptance.
+
 ## Demo Framework Classes
 
 The shared `WSBCC_XML/src` tree supplies `Context`, `CCOperationStep`, and
@@ -14,8 +41,41 @@ The caller manages the connection and transactions.
 For fraud detection, construct `HTTPService()` and register it
 on the step with `setService("FraudDetectionService", service)`. It returns a fixed
 sample XML response with score 7 and decision ALLOW, without network calls. These
-classes implement the contracts used by this fixture. Other Composer format and
-server framework types still require their own implementations.
+classes implement the contracts used by this fixture.
+
+Every formatter/decorator tag actually configured in the demo XML now has Java
+source in `WSBCC_XML/src`, including `CCMandatory`, `CCNullToZero`, `CCConstant`,
+and `CCSysTimeDate`. Shared format/decorator and operation support is supplied too;
+the demo sources compile together without Composer binaries. Format children,
+decorators, operation steps and format-role entries can be registered explicitly
+by a fixture caller; this is a small demo runtime, not a replacement WAS server.
+The existing tag registry also lists unused Composer types; these are not part of
+the configured demo and are not implementations supplied to conversion units.
+
+The fixture's explicit policies are: `CCMandatory` rejects null/empty values in
+both directions, while `CCNullToZero` changes null/empty to `"0"` in both directions;
+neither trims whitespace. Decorators run forward on output and in reverse on input.
+For example, the configured account-number input strips padding before checking
+mandatory, so an all-zero account number is rejected. `CCConstant` outputs its
+configured value and ignores input. `CCSysTimeDate` deliberately outputs the fixed
+epoch timestamp `1970-01-01T00:00:00Z`; `CCTime` retains its fixed demo time.
+These are test contracts, not claims about proprietary Composer implementations.
+
+The shared formatter support executes decorator chains, XML escaping, runtime
+attribute decoration (including the source-defined conditional `xsi:nil`), child
+formats, and the demo's named-XML collection rows. Indexed collection items are
+maps; each row inherits runtime settings and the caller's JDBC connection without
+overwriting the parent values. Database formatters still require caller-supplied
+JDBC connections. No placeholder `UnsupportedOperationException` remains in the
+demo Java sources.
+
+`source/tests/test_bank_demo_source_completeness.py` checks configured tag/step
+source coverage, compiles all demo Java, executes decorator and format behavior,
+and runs fresh Mapper/preparation to verify that implementing/decorator/helper
+sources reach unit extraction evidence. Missing sources must be implemented or
+their XML usage removed, rather than inferred from a tag name or a manual table.
+Fresh mapping/intake is required after these source changes; prior accepted facts
+and generated output do not establish acceptance of this revised demo.
 
 ## Channels
 
@@ -164,3 +224,52 @@ these conditions as typed native inputs/configuration collaborators. Generated t
 must cover both outcomes; the tag name alone cannot establish an expected nil attribute.
 Changes to this source require fresh Mapper intake and preparation, not reuse of the
 old C9 source fingerprints. This example does not establish full bank-demo acceptance.
+## Isolated thin-path experiment
+
+Run just `GetClientLinksRQFmt`, `StandardErrorRSFmt`, and `NoLinksFound` from an existing
+bank-demo run, using a **new** experiment output directory:
+
+```powershell
+$env:PYTHONPATH = "source"
+python -B -m tools.behavior_verification.thin_path_run --input-run outputs/single-operation-source-validation-smoke-20261029/run/single-get-client-links --output outputs/bank-thin-path-experiment-20261029
+```
+
+This experiment generates each configured unit directly from its XML and complete selected
+Java evidence. It does not schedule framework classes separately or require AI checklist
+citations. Parser data still generates cases and identifies runtime settings. Generated code
+must pass source/API safeguards, actual Maven/JUnit execution, and isolated original/native
+boundary comparison. Failed comparisons return concrete inputs and observations to the bounded
+correction loop; the experiment stops on the first exhausted failure.
+
+`thin-path-status.json` records progress. Each attempt retains build evidence and a
+`comparison/boundary-comparison.json` with outputs, differences, and coverage gaps. A
+`matched_observed_cases` result describes only these three boundaries on observed samples;
+it is neither exhaustive equivalence nor acceptance of the operation, stored procedure,
+complete bank demo, or production deployment. The original run database is opened read-only;
+all experiment state is separate. The normal converter's gates remain unchanged.
+
+### Getter binding and comparison limitations
+
+Request output binding now inspects compiled public getters. Matching case-folds names and
+ignores separators, requires exactly one compatible getter chain, and retains XML parent
+paths for repeated field names. If distinct XML paths cannot be associated with distinct
+legacy context keys, the experiment reports a limitation instead of guessing. Scalar types
+come from actual legacy observations; unknown/incompatible types remain incomplete.
+
+DTOs must expose explicit boolean presence accessors (`hasField` or `wasFieldSet`, for
+example). A null getter value is never evidence that a write occurred. Without presence
+information, observable values may still be compared, but presence remains unverified.
+Legacy exceptions with partial writes are labelled `partial_writes_not_compared`; matching
+exception types alone cannot make those cases pass. Independent later cases still execute.
+Tool/API/environment limitations stop AI correction. Only concrete compared-value differences
+return concise input/expected/actual feedback, without probe/checklist inventories.
+
+Replay the retained third candidate without regenerating its Java (use a fresh output path):
+
+```powershell
+python -B -m tools.behavior_verification.thin_path_run --input-run outputs/single-operation-source-validation-smoke-20261029/run/single-get-client-links --output outputs/bank-thin-path-attempt3-replay-20261029 --replay-database outputs/bank-thin-path-experiment-20261029-v2/experiment.db --replay-attempt 3 --replay-unit GetClientLinksRQFmt
+```
+
+Replay records the original response/source hashes, reruns compilation/tests/comparison,
+and retains every candidate and comparison attempt. It never substitutes the most recent
+failed candidate or writes production acceptance records.

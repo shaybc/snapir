@@ -39,8 +39,9 @@ def check_scoped_java_dependencies(access, context, sources, origins, external, 
     document = getattr(profile, 'composer_behavior_document', None) if profile else None
     # A non-empty map also blocks unrecorded helpers when the intake had no other Java candidates.
     hashes.update({item.source_file: item.source_hash for item in components})
+    graph = {}
     checked, problems = check_java_dependencies(components, scoped_index, classpath_index, hashes,
-                                               rules, document, external)
+                                               rules, document, external, dependency_graph=graph)
     for problem in problems:
         issue(problem.entity_id, problem.detail, problem.kind)
     existing = {origin['fqcn'] for origin in origins}
@@ -50,3 +51,6 @@ def check_scoped_java_dependencies(access, context, sources, origins, external, 
                                                   classpath_index, java_project, profile, issue, captured_dependencies=True)
         origins.extend(additional)
         external.extend(record for record in records if record not in external)
+    for origin in origins:
+        if origin.get('status') == 'verified_source':
+            origin['required_classes'] = sorted(graph.get(origin['fqcn'], ()))

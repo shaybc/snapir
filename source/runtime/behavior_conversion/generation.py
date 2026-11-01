@@ -27,15 +27,52 @@ class EvidenceSummary(BaseModel):
 
 def generate(conn, config, profile, category, identity, instruction, payload, schema,
              validator=None, model_call=None, label="", require_coverage=True):
+    """Keep normal generation strict; opt into isolated recovery only for retained IBM dependencies."""
+    try:
+        if profile.staged_unit_conversion:
+            from runtime.behavior_conversion.conversion_tasks import conversion_task
+            task=conversion_task(category,schema)
+            if task!='metadata':
+                if payload.get('kind')=='thin_path_experiment' and schema.__name__=='NativeUnitBundle':
+                    from runtime.behavior_conversion.staged_conversion import staged_generate
+                    return staged_generate(conn,config,profile,category,identity,instruction,payload,schema,
+                        validator=validator,model_call=model_call,label=label,require_coverage=require_coverage,
+                        implementation_attempt=getattr(validator,'implementation_attempt',None))
+                from runtime.behavior_conversion.staged_pipeline import staged_pipeline
+                return staged_pipeline(conn,config,profile,category,identity,payload,schema,validator,model_call,task,label)
+        return _generate(conn,config,profile,category,identity,instruction,payload,schema,
+            validator=validator,model_call=model_call,label=label,require_coverage=require_coverage)
+    except Exception as error:
+        from runtime.behavior_conversion.side_road_policy import ForbiddenFrameworkDependency
+        if not (profile.side_road_conversion and isinstance(error,ForbiddenFrameworkDependency)
+                and schema.__name__=='NativeUnitBundle' and not category.startswith('side_road_')):
+            raise
+        from runtime.behavior_conversion.side_road_conversion import recover_unit
+        return recover_unit(conn,config,profile,category,identity,payload,schema,validator,model_call,error,
+            generate_stage=_generate,require_coverage=require_coverage)
+
+
+def _generate(conn, config, profile, category, identity, instruction, payload, schema,
+              validator=None, model_call=None, label="", require_coverage=True):
     """Use durable bounded corrections; validators run before a result is accepted."""
     from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
     scoped_binding = None
-    if is_scoped_run(conn, config.run_id):
+    component_task = category == 'component_generation'
+    from runtime.behavior_conversion.stage_scope import verify_stage
+    if verify_stage(conn,config,profile,category,identity):
+        component_task=False  # Child schemas are not component/unit acceptance records.
+    elif component_task:
+        from runtime.component_conversion.scope import require_component_task
+        require_component_task(conn, config, profile, identity, payload)
+    elif is_scoped_run(conn, config.run_id):
         from runtime.scoped_native.scope import require_task
         scoped_binding = require_task(conn, config, profile, category, identity, payload)
     from runtime.behavior_conversion.compatibility import (versioned_requirements, compatibility_fingerprint,
         accepted_compatibility, save_compatibility)
     payload = dict(payload)
+    from runtime.behavior_conversion.typed_boundaries import attach_typed_boundary, validate_typed_boundary, INSTRUCTION as TYPED_BOUNDARY_INSTRUCTION
+    if schema.__name__ == 'NativeUnitBundle' and attach_typed_boundary(payload):
+        instruction += '\n' + TYPED_BOUNDARY_INSTRUCTION
     phase = payload.get("assembly_phase")
     if phase in {"implementation_compile", "route_test_plan"}:
         payload.pop("testing_contract", None)
@@ -110,14 +147,19 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
             from runtime.scoped_native.results import cached_result
             reusable = prior['fingerprint'] == fingerprint and cached_result(
                 scoped_binding, conn, config, profile, category, identity, fingerprint, output.model_dump(mode='json'))
+        elif component_task:
+            reusable = prior['fingerprint'] == fingerprint
         else:
             compatible, compatibility = accepted_compatibility(conn, config.run_id, category, identity,
                 prior, output.model_dump(mode="json"), base, profile, requirements)
             reusable = prior["fingerprint"] == fingerprint or compatible
         if reusable:
+            if hasattr(output,'files'):validate_typed_boundary(output, payload.get('typed_boundary_contract'))
+            if component_task:
+                require_component_task(conn, config, profile, identity, payload)
             if validator:
                 validator(output, cached=True)
-            if not scoped_binding:
+            if not scoped_binding and not component_task:
                 save_compatibility(conn, config.run_id, category, identity, prior["fingerprint"], compatibility, requirements)
             record("completed", output=output.model_dump(mode="json"),
                    request_fingerprint=prior["fingerprint"], compatibility_fingerprint=compatibility)
@@ -133,8 +175,12 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
     attempts = previous["attempt"] if previous else 0
     start, limit = attempt_window(config.run_id, category, identity, fingerprint, attempts,
                                   profile.max_agent_task_retries)
-    if previous and previous["error"]:
+    from runtime.behavior_conversion.verification_mode import executable_mode
+    if previous and previous["error"] and (previous['response'] is not None or not executable_mode(profile)):
         request.update(previous_model_response=previous["response"], correction_feedback=previous["error"])
+        stored_verification = json.loads(previous['request_json']).get('failed_verification_context')
+        if stored_verification:
+            request['verification_feedback'] = stored_verification
         stored = json.loads(previous["request_json"]).get("failed_compiler_context")
         stored_test = json.loads(previous["request_json"]).get("failed_test_context")
         if stored_test:
@@ -168,6 +214,8 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
         output = None
         progress_token = None
         try:
+            if component_task:
+                require_component_task(conn, config, profile, identity, payload)
             if scoped_binding:
                 from runtime.scoped_native.scope import require_task
                 require_task(conn, config, profile, category, identity, payload)
@@ -175,6 +223,7 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
             progress_token = begin_progress(executor.component_label)
             with progress_step("Validating JSON, testing policy and behavior coverage"):
                 output = schema.model_validate_json(clean_structural_escapes(_remove_response_fence(response)))
+                if hasattr(output,'files'):validate_typed_boundary(output, payload.get('typed_boundary_contract'))
                 if schema.__name__ == "NativeUnitBundle":
                     if request.get("testing_contract"):
                         from runtime.behavior_conversion.testing_contract import validate_testing_contract
@@ -188,6 +237,8 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
                         raise ValueError("Native contract must declare all versioned behavior requirements")
             if validator:
                 validator(output, cached=False)
+            if component_task:
+                require_component_task(conn, config, profile, identity, payload)
             if scoped_binding:
                 from runtime.scoped_native.scope import require_task
                 from runtime.scoped_native.results import record_result
@@ -205,7 +256,12 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
                    compatibility_fingerprint=compatibility)
             return output, fingerprint
         except Exception as exc:
+            from runtime.behavior_conversion.verification_feedback import VerificationIncomplete
             error = str(exc)
+            if getattr(exc, 'verification_feedback', None):
+                actual['failed_verification_context'] = exc.verification_feedback
+                conn.execute("UPDATE behavior_attempts SET request_json=? WHERE run_id=? AND category=? AND identity=? AND fingerprint=? AND attempt=?",
+                    (json.dumps(actual), config.run_id, category, identity, fingerprint, attempts))
             if schema.__name__ == "NativeUnitBundle" and payload.get("kind") in ("request_unformat", "response_format"):
                 from agents.behavior_conversion.format_mapping import XML_NULL_MAPPING_GUIDANCE
                 error += "\n" + XML_NULL_MAPPING_GUIDANCE
@@ -236,10 +292,16 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
                          (response, error, config.run_id, category, identity, fingerprint, attempts))
             save(conn, config.run_id, category, identity, fingerprint, {}, "failed", error)
             record("failed", attempts - start, error=error)
+            if isinstance(exc, VerificationIncomplete):
+                raise
+            if getattr(exc,'staged_retry_owner',None) in {'implementation','adapter'}:
+                raise
             if response is None or attempts >= limit:
                 raise
             logging.getLogger(__name__).warning("%s: requesting corrected JSON, API or build output: %s", executor.component_label, error)
             request.update(previous_model_response=response, correction_feedback=error)
+            if getattr(exc, 'verification_feedback', None):
+                request['verification_feedback'] = exc.verification_feedback
         finally:
             if progress_token is not None:
                 end_progress(progress_token)
@@ -248,6 +310,7 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
 def bounded_unit_evidence(conn, config, profile, unit, model_call=None):
     """Use full source when it fits, otherwise retain persisted evidence summaries."""
     data = unit.model_dump(mode="json")
+    if profile.staged_unit_conversion:return data  # Never replace implementation evidence with AI summaries.
     # Reserve half the request for schema, contracts, correction and semantic context.
     if len(json.dumps(data, ensure_ascii=False)) < profile.behavior_context_chars // 2:
         return data

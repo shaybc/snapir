@@ -13,8 +13,16 @@ class MavenDependency(BaseModel):
     artifact_id: str = Field(pattern=r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
     version: str = Field(pattern=r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
     scope: Literal["compile", "runtime", "provided", "test"] = "compile"
-    reason: str = Field(min_length=1)
+    reason: str = Field(default="Model did not supply reason", min_length=1)
     required_classes: list[str] = Field(default_factory=list)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def supply_missing_reason(cls, value):
+        """Keep absent audit descriptions from blocking otherwise valid dependencies."""
+        if value is None or isinstance(value, str) and not value.strip():
+            return "Model did not supply reason"
+        return value
 
     @field_validator("version")
     @classmethod

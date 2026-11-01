@@ -19,6 +19,10 @@ def required_composer_behavior():
 def attach_composer_behavior(payload):
     """Replace optional/manual selections with the mandatory conversion context."""
     result = {**payload, "composer_behavior_evidence": required_composer_behavior()}
+    scope = payload.get('unit') or payload.get('subject_scope') or payload
+    if str(scope.get('schema_version', '')).startswith('scoped-') and scope.get('kind') in {'request_unformat', 'response_format'}:
+        result['composer_behavior_evidence'] = [item for item in result['composer_behavior_evidence']
+                                               if item['heading'] != '4. Runtime Execution Model']
     if payload.get('service_connections') or payload.get('unit', {}).get('service_connections'):
         from runtime.service_behavior_knowledge import service_behavior_evidence
         result['composer_behavior_evidence'].append(service_behavior_evidence())

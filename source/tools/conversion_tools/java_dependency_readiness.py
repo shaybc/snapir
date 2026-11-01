@@ -28,12 +28,15 @@ def _binary_names(name, document):
     return names
 
 
-def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None):
+def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None, *, dependency_graph=None):
     """Follow source dependencies recursively and report unresolved type references with origins."""
     issues = []
     expected_hashes = expected_hashes or {}
     from tools.conversion_tools.external_dependency_resolver import external_dependency
     external_records = external_records if external_records is not None else []
+    def edge(owner, name):
+        if dependency_graph is not None:
+            dependency_graph.setdefault(owner.logical_id, set()).add(name)
     by_path = {str(Path(item.source_file).resolve()): item for item in components if item.kind == "ibm_java"}
     pending = set(by_path)
     visited = set()
@@ -65,6 +68,7 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                         continue
                     if records:
                         for record in records:
+                            edge(owner, record['class_name'])
                             if record not in external_records:
                                 external_records.append(record)
                         continue
@@ -82,9 +86,11 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                             _issue(issues, name, owner, "External replacement contract is unavailable: " + str(exc))
                             continue
                         if record:
+                            edge(owner, record['class_name'])
                             if record not in external_records:
                                 external_records.append(record)
                             continue
+                        edge(owner, fqcn)
                         if target not in by_path:
                             if expected_hashes and target not in expected_hashes:
                                 _issue(issues, name, owner, "Dependency source was not captured by intake; refresh intake")
@@ -119,6 +125,7 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                                    owner.origin + " -> " + owner.logical_id + " requires " + name, allow_framework=True))]
                     if records:
                         for record in records:
+                            edge(owner, record['class_name'])
                             if record not in external_records:
                                 external_records.append(record)
                         continue

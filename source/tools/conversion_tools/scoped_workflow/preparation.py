@@ -18,6 +18,7 @@ from tools.conversion_tools.scoped_reuse.checkpoint import validate_checkpoints,
 from tools.conversion_tools.scoped_reuse.artifacts import remember_prepared, reuse_prepared
 from tools.conversion_tools.scoped_reuse.state import checkpoints
 from tools.conversion_tools.scoped_reuse.fingerprints import digest
+from tools.conversion_tools.component_graph import build_component_plan
 
 GENERATION_GATE = 'Scoped generation remains disabled pending C6 end-to-end acceptance.'
 
@@ -43,7 +44,8 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
     cached = reuse_prepared(conn, config.run_id, checkpoints(conn, config.run_id), selected)
     if cached is not None:
         return dict(run_id=config.run_id, schema_version='scoped-v3-c5', conversion_enabled=False,
-            generation_gate=GENERATION_GATE, operations=cached, reused_contexts=sorted(selected))
+            generation_gate=GENERATION_GATE, operations=cached, reused_contexts=sorted(selected),
+            component_plan=_component_plan(cached,access,conn,config.run_id,profile))
     expected = conn.execute('SELECT manifest_hash FROM scoped_vault_runs WHERE run_id=?', (config.run_id,)).fetchone()[0]
     manifest = Path(config.vault_root) / 'vault-manifest.json'
     if file_digest(manifest) != expected:
@@ -95,7 +97,8 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
                     item['blockers'].append('Selected called operation has blocked preparation evidence')
                     changed = True
         report = dict(run_id=config.run_id, schema_version='scoped-v3-c5', conversion_enabled=False,
-            generation_gate=GENERATION_GATE, operations=operations, reused_contexts=[])
+            generation_gate=GENERATION_GATE, operations=operations, reused_contexts=[],
+            component_plan=_component_plan(operations,access,conn,config.run_id,profile))
         if digest(observe_inputs(conn, config, profile, classpath)) != digest(common):
             raise ValueError('Scoped input profile or layout changed during preparation; refresh/replan')
         for checkpoint in make_checkpoints(conn, config, report, closures, common):
@@ -111,3 +114,18 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
         conn.execute('ROLLBACK TO SAVEPOINT scoped_workflow_preparation')
         conn.execute('RELEASE SAVEPOINT scoped_workflow_preparation')
         raise
+
+
+def _component_plan(operations,access,conn,run_id,profile):
+    """Resolve default step implementations from the same qualified channel evidence as closure analysis."""
+    from tools.composer_mapper_tools.channel_note_parser import parse_channel_note
+    mappings={}
+    for key,item in sorted(operations.items()):
+        if item['status']!='prepared': continue
+        channel,name=key.split('/',1)
+        context=access.operation(channel,name)
+        mappings[key]=dict((tag,fqcn) for tag,fqcn,_ in parse_channel_note(access.channel_evidence(context)['markdown'],context.channel)).get('opStep')
+    plan=build_component_plan(operations,step_mappings=mappings)
+    from tools.state_store_tools.conversion_components import register_component_plan
+    register_component_plan(conn,run_id,plan,profile)
+    return plan.model_dump(mode='json')

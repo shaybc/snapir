@@ -1,7 +1,7 @@
 """Require real test execution and retain bounded compiler feedback for candidates."""
 
 from pathlib import Path
-from xml.etree import ElementTree
+from runtime.behavior_conversion.junit_reports import execution_evidence
 from models.native_unit_validation import NativeUnitValidation
 from runtime.behavior_conversion.validation_progress import progress_step
 
@@ -19,13 +19,8 @@ def build_candidate(project, context, require_tests=True, required_tests=()):
                 result.build_passed = True
             else:
                 reports = list((Path(project) / "target/surefire-reports").glob("TEST-*.xml"))
-                for path in reports:
-                    root = ElementTree.parse(path).getroot()
-                    result.test_count += int(root.get("tests", "0")) - int(root.get("skipped", "0"))
-                    if int(root.get("tests", "0")) > int(root.get("skipped", "0")):
-                        result.executed_test_classes.append(root.get("name") or path.stem.removeprefix("TEST-"))
-                    if int(root.get("failures", "0")) or int(root.get("errors", "0")):
-                        result.issues.append("Failed behavioral tests: " + path.name)
+                result.test_count, result.executed_test_classes, issues = execution_evidence(reports)
+                result.issues.extend(issues)
                 result.tests_passed = result.test_count > 0 and not result.issues
                 if not result.tests_passed:
                     result.issues.append("No passing executable behavior-test evidence")

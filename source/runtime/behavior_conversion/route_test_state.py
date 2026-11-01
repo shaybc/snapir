@@ -42,6 +42,11 @@ def stale_scenario_files(conn, config, identity, plan, source_revision):
         previous = conn.execute("SELECT request_json FROM behavior_attempts WHERE run_id=? AND category='route_scenario_test' AND identity=? AND error IS NULL AND response IS NOT NULL ORDER BY created_at DESC LIMIT 1",
             (config.run_id, scenario_identity)).fetchone()
         request = json.loads(previous["request_json"]) if previous else {}
+        current_result=snapshot(conn,config.run_id,'route_scenario_test',scenario_identity)
+        if current_result:
+            from tools.state_store_tools.staged_conversion_state import accepted_task_request
+            staged=accepted_task_request(conn,config.run_id,'route_scenario_test',scenario_identity,current_result['fingerprint'])
+            if staged is not None:request=staged
         if request.get("source_revision") == source_revision and request.get("scenario") == current.get(scenario_identity):
             continue
         verify_manifest(data["project"], data["files"])

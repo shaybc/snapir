@@ -3,6 +3,8 @@ package com.ibm.il.dse.cc.format;
 import com.ibm.dse.base.Context;
 import com.ibm.dse.base.Tag;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * Index-based collection formatter. Iterates a List stored in the context
@@ -45,9 +47,22 @@ public class CCIColl extends AbstractFormatElement {
 
     @Override
     public void unformat(String xml, Context ctx) throws Exception {
-        // Parse repeated child elements into a List, store in context[dataName]
-        throw new UnsupportedOperationException("Runtime method");
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (childFormats().size() != 1 || !(childFormats().get(0) instanceof CCXML)) {
+            throw new IllegalStateException("Demo indexed collections require one named CCXML item");
+        }
+        CCXML child = (CCXML) childFormats().get(0);
+        for (String fragment : DemoXml.elements(xml, child.getElementName())) {
+            if (items.size() >= maxTimes) break;
+            Context item = new Context();
+            child.unformat(fragment, item);
+            items.add(item.snapshot());
+        }
+        ctx.setValueAt(dataName, items);
     }
 
-    private String formatItem(Object item, Context ctx, int index) { throw new UnsupportedOperationException(); }
+    private String formatItem(Object item, Context ctx, int index) throws Exception {
+        if (!(item instanceof Map)) throw new IllegalArgumentException("Demo collection item must be a map at " + index);
+        return formatChildren(ctx.copyWith((Map<String, ?>) item));
+    }
 }

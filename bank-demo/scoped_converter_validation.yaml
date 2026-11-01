@@ -11,6 +11,12 @@ channels: [INTERNET, IVR]
 include_operations: null
 exclude_operations: null
 conversion_strategy: behavior_units
+staged_unit_conversion: true
+executable_verification:
+  mode: executable_boundary_v1
+  comparison_mutations:
+    timeout_seconds: 600
+model_name: gemini/gemini-3.8-flash
 java_version: 25
 classpath_jars: []
 eclipse_classpath_variables: {}

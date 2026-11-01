@@ -67,6 +67,20 @@ class NativeModel:
         data = json.loads(encoded)
         self.requests.append(data)
         title = data['schema']['title']
+        if title == 'BehaviorSpecification':
+            source = next(item for item in data['sources'] if not item['identity'].startswith('compatibility-policy:'))
+            return json.dumps(dict(facts=[dict(behavior='Preserve configured execution', trigger='When invoked',
+                outcome='Apply evidenced source behavior', evidence=[dict(identity=source['identity'],
+                    content_hash=source['content_hash'], excerpt=source['content'][:100])])], unresolved_questions=[]))
+        if title == 'BehaviorReconciliation':
+            return json.dumps(dict(conflicting_fact_ids=[], unresolved_questions=[]))
+        if title == 'BehaviorComparison':
+            bundle = data.get('generated_bundle', data.get('bundle'))
+            main = next(item for item in bundle['files'] if item['path'].startswith('src/main/'))
+            return json.dumps(dict(findings=[dict(fact_id=fact['fact_id'], status='matched',
+                rationale='Deterministic fixture preserves the evidenced increment workflow',
+                source_evidence=fact['evidence'], generated_evidence=[dict(path=main['path'], excerpt=main['content'][:100])])
+                for fact in data['behavior_specification']['facts']]))
         if title == 'BehaviorReview':
             return json.dumps(dict(approved=True, issues=[], unresolved_questions=[]))
         if title == 'RouteTestPlan':
@@ -89,13 +103,28 @@ class NativeModel:
             amount = int(data['effective_configuration']['attributes']['increment'])
             package, name, method = data['native_package'], 'Increment', 'public int run(int input)'
             source = 'package ' + package + '; public class Increment { ' + method + ' { return input * 10 + ' + str(amount) + '; } }'
+            source = source[:-1] + (' public Outcome apply(String input, String previous) {'
+                'return new Outcome(String.valueOf(run(Integer.parseInt(previous == null ? input : previous)))); }'
+                ' public static class Outcome { private final String value; public Outcome(String value){this.value=value;}'
+                'public String getValue(){return value;} public int getCode(){return 0;} } }')
             testpath = 'src/test/java/' + package.replace('.', '/') + '/IncrementTest.java'
             test = ('package ' + package + '; public class IncrementTest { @org.junit.jupiter.api.Test public void addsConfiguredValue() {'
                 'org.junit.jupiter.api.Assertions.assertEquals(' + str(40 + amount) + ', new Increment().run(4)); } }')
             return NativeUnitBundle(files=[dict(path='src/main/java/' + package.replace('.', '/') + '/Increment.java', content=source),
                 dict(path=testpath, content=test)], dependencies=deps, coverage={key: [testpath] for key in data['requirements']},
+                behavior_implementations={fact['fact_id']: [dict(path='src/main/java/' + package.replace('.', '/') + '/Increment.java',
+                    excerpt=source[:100])] for fact in data.get('behavior_specification', {}).get('facts', [])},
                 evidence_ids=data['evidence_ids'], input_type='int', output_type='int',
-                unit_contract=dict(unit_id=data['unit_id'], apis=[dict(type_name=package + '.Increment', method_signatures=[method])],
+                checklist_answers=dict(unit_id=data['unit_id'], source_manifest_hash=data['boundary']['source_manifest_hash'],
+                    configuration_hash=data['boundary']['configuration_hash'], responses=[dict(checklist_id=item['id'], status='implemented',
+                        locations=[dict(path='src/main/java/' + package.replace('.', '/') + '/Increment.java', excerpt=source)])
+                        for item in data['checklist']['items']]),
+                verification_binding=dict(owner_type=package + '.Increment', method_name='apply',
+                    arguments=[dict(type_name='java.lang.String', source='context', key='input'),
+                               dict(type_name='java.lang.String', source='context', key='result')],
+                    context_writes=[dict(context_key='result', getters=['getValue'])], output_getters=['getCode']),
+                unit_contract=dict(unit_id=data['unit_id'], apis=[dict(type_name=package + '.Increment', method_signatures=[method,
+                    'public Outcome apply(String input, String previous)'])],
                     requirements=data['requirements'], evidence_ids=data['evidence_ids'], dependency_units=[])).model_dump_json()
         dependencies = [dict(binding_id=item['binding_id'], unit_id=item['unit_id'], type_name=item['allowed_types'][0],
             parameter_name='step' + str(index), field_name='step' + str(index)) for index, item in enumerate(data['required_step_dependencies'])]
@@ -105,6 +134,8 @@ class NativeModel:
         body = 'int result = input; ' + ' '.join('result = this.' + item['field_name'] + '.run(result);' for item in dependencies) + ' return result;'
         source = 'package com.company.generated.nativeflow; public class FlowService { ' + fields + constructor + 'public int execute(int input) {' + body + '} }'
         return NativeUnitBundle(files=[dict(path='src/main/java/com/company/generated/nativeflow/FlowService.java', content=source)],
+            behavior_implementations={fact['fact_id']: [dict(path='src/main/java/com/company/generated/nativeflow/FlowService.java',
+                excerpt=source[:100])] for fact in data.get('behavior_specification', {}).get('facts', [])},
             operation_contract=dict(sources=[dict(path='src/main/java/com/company/generated/nativeflow/FlowService.java', content=source)],
                 units=[item['contract'] for item in data['accepted_units'].values()],
                 service_api=dict(type_name='com.company.generated.nativeflow.FlowService', method_signatures=['public int execute(int input)']),
@@ -123,8 +154,18 @@ def scoped_state(tmp_path, mapper):
     </CCDSEServerOperation><context id="Ctx" parent="nil"/></XML>''')
     java = root / 'src/example/Work.java'
     java.parent.mkdir(parents=True)
-    java.write_text('package example;\npublic class Work { private int increment; '
+    java.write_text('package example;\npublic class Work { private int increment; private com.ibm.dse.base.Context context; '
+        'public void initializeFrom(com.ibm.dse.base.Tag tag){increment=Integer.parseInt(tag.getAttribute("increment"));}'
+        'public void setContext(com.ibm.dse.base.Context value){context=value;}'
+        'public int execute(){String previous=(String)context.getValueAt("result");'
+        'String input=previous == null ? (String)context.getValueAt("input") : previous;'
+        'context.setValueAt("result",String.valueOf(run(Integer.parseInt(input)))); return 0;}'
         'public void setIncrement(int value) { increment=value; } public int run(int input) { return input*10+increment; } }')
+    framework = root / 'src/com/ibm/dse/base'
+    framework.mkdir(parents=True)
+    demo_framework = Path(__file__).resolve().parents[3] / 'bank-demo/composer/Workspace/WSBCC_XML/src/com/ibm/dse/base'
+    for name in ('Context', 'Tag'):
+        (framework / (name + '.java')).write_text((demo_framework / (name + '.java')).read_text())
     mapped = invoke_mapper(mapper, root, vault)
     assert mapped.returncode == 0, mapped.stderr
     conn = get_connection(':memory:')
@@ -166,6 +207,12 @@ def test_real_scoped_native_generation_review_compile_and_behavior(tmp_path, sco
     assert implementation['review']['approved']
     assert len(implementation['bindings']) == 2
     assert len({item['unit_id'] for item in implementation['bindings'].values()}) == 2
+    for binding in implementation['bindings'].values():
+        strength = snapshot(conn, 'native', 'unit_test_strength', binding['unit_id'])
+        assert strength and strength['status'] == 'completed', strength
+        measured = json.loads(strength['data_json'])
+        assert measured['advisory'] and not measured['affects_acceptance']
+        assert (Path(measured['report_directory']) / 'test-strength.json').is_file()
     scenarios = conn.execute("SELECT data_json FROM behavior_snapshots WHERE category='route_test_report'").fetchall()
     assert scenarios
     manifest = json.loads(snapshot(conn, 'native', 'manifest', 'service:XML/Flow')['data_json'])
@@ -196,6 +243,29 @@ def test_real_scoped_native_generation_review_compile_and_behavior(tmp_path, sco
     conn.close()
 
 
+def test_failed_scoped_units_retain_source_identities_for_pilot_measurement(tmp_path,scoped_mapper,monkeypatch):
+    from runtime.behavior_conversion import runner
+    from runtime.behavior_conversion.verification_feedback import VerificationIncomplete
+    conn,config=scoped_state(tmp_path,scoped_mapper)
+    profile=PipelineConfiguration(source_root=config.source_root,mapper_vault_layout='scoped',source_workspace_id='native',
+        scoped_native_mode='behavior_units_v1',scoped_java_project='.',conversion_strategy='behavior_units',
+        plan_approval_policy='automatic',java_version=25,java_home=resolve_java_home(25),model_provider='mock',
+        gate_policies={str(number):'automatic' for number in range(1,5)},classpath_jars=[],eclipse_classpath_variables={})
+    def incomplete(*args,**kwargs):
+        raise VerificationIncomplete(dict(stage='test_unsupported_adapter',errors=['Deliberate unavailable test adapter']))
+    monkeypatch.setattr(runner,'generate_reviewed_bundle',incomplete)
+    with java_scope(profile):
+        runner.resume_behavior_pipeline(conn,config,profile,tmp_path,model_call=lambda *args:pytest.fail('No AI call expected'),context_factory=actual_build)
+    rows=conn.execute("SELECT status,data_json FROM behavior_snapshots WHERE category='unit_verification'").fetchall()
+    assert len(rows)==2 and all(row['status']=='verification_incomplete' for row in rows)
+    for row in rows:
+        data=json.loads(row['data_json'])
+        assert data['source_manifest_hash'] and data['configuration_hash']
+        assert data['feedback']['stage']=='test_unsupported_adapter'
+    assert get_run(conn,'native')['current_phase']=='conversion_units_verification_incomplete'
+    conn.close()
+
+
 def test_original_fixture_java_establishes_an_order_sensitive_oracle(tmp_path, scoped_mapper):
     home = Path(resolve_java_home(25))
     conn, config = scoped_state(tmp_path, scoped_mapper)
@@ -206,7 +276,7 @@ def test_original_fixture_java_establishes_an_order_sensitive_oracle(tmp_path, s
         'if(second.run(first.run(4)) != 412 || first.run(second.run(4)) != 421) throw new AssertionError();'
         'System.out.print(second.run(first.run(4))); } }')
     classes = tmp_path / 'oracle-classes'
-    subprocess.run([str(home / 'bin/javac'), '-d', str(classes), str(Path(config.source_root) / 'src/example/Work.java'),
+    subprocess.run([str(home / 'bin/javac'), '-d', str(classes), *map(str, (Path(config.source_root) / 'src').rglob('*.java')),
         str(oracle)], check=True, capture_output=True, text=True)
     result = subprocess.run([str(home / 'bin/java'), '-cp', str(classes), 'Oracle'],
         check=True, capture_output=True, text=True)

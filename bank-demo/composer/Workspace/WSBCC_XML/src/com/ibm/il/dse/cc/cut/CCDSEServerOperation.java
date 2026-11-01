@@ -45,6 +45,7 @@ public class CCDSEServerOperation extends DSEServerOperation {
 
         // Remove opSteps that are not applicable to this channel (onlyFor filtering)
         removeOpStepsNotForThisChannel();
+        if (operationSteps().isEmpty()) return;
 
         // Run the opStep chain
         int index = 0;
@@ -69,23 +70,51 @@ public class CCDSEServerOperation extends DSEServerOperation {
      *   4. onOtherDo    -- default when no on{N}Do matches
      *   5. onOtherDoDefault -- final fallback (logs warning)
      */
-    private int processOpStep(KeyedCollection kc, String opName, int currentIndex) {
-        // Implementation provided by WAS runtime
-        throw new UnsupportedOperationException("Runtime method");
+    private int processOpStep(KeyedCollection kc, String opName, int currentIndex) throws Exception {
+        kc.getImplementation().setContext(getContext());
+        int code = kc.getImplementation().execute();
+        String reply = kc.getAttribute("on" + code + "Return");
+        if (reply != null) {
+            returnedErrorBodyChanged = true;
+            returnedErrorBodyChanger = reply;
+        }
+        String target = code == RC_TIMEOUT ? kc.getAttribute("onTimeoutDo") : null;
+        if (target == null) target = kc.getAttribute("on" + code + "Do");
+        if (target == null) target = kc.getAttribute("onOtherDo");
+        if (target == null) {
+            target = kc.getAttribute("onOtherDoDefault");
+            java.util.logging.Logger.getLogger(getClass().getName()).warning("Using default route for " + opName);
+        }
+        if (target == null || "end".equals(target)) return -1;
+        if ("next".equals(target)) return currentIndex + 1 < operationSteps().size() ? currentIndex + 1 : -1;
+        for (int offset = 0; offset < operationSteps().size(); offset++) {
+            int candidate = (currentIndex + offset) % operationSteps().size();
+            if (target.equals(getOperationStep(candidate).getAttribute("id"))) return candidate;
+        }
+        throw new IllegalStateException("Unknown demo step target: " + target);
     }
 
     private void removeOpStepsNotForThisChannel() {
-        // Reads onlyFor attribute on each opStep; removes non-matching steps
-        throw new UnsupportedOperationException("Runtime method");
+        String channel = String.valueOf(getContext().getValueAt("CHANNEL_NAME"));
+        operationSteps().removeIf(step -> {
+            String onlyFor = step.getAttribute("onlyFor");
+            return onlyFor != null && !java.util.Arrays.stream(onlyFor.split("[,;\\s]+")).anyMatch(channel::equalsIgnoreCase);
+        });
     }
 
     private void setFields(String operationFields) {
-        // Parses "KEY=VALUE,KEY2=VALUE2" and sets each in context
-        throw new UnsupportedOperationException("Runtime method");
+        for (String field : operationFields.split(",")) {
+            String[] pair = field.split("=", 2);
+            if (pair.length != 2) throw new IllegalArgumentException("Invalid demo operation field: " + field);
+            getContext().setValueAt(pair[0].trim(), pair[1].trim());
+        }
     }
 
     private void substituteErrorReplyFormat() {
-        throw new UnsupportedOperationException("Runtime method");
+        if (!formats.containsKey(returnedErrorBodyChanger)) {
+            throw new IllegalStateException("Unknown error reply format: " + returnedErrorBodyChanger);
+        }
+        formats.put("csErrorReplyFormat", formats.get(returnedErrorBodyChanger));
     }
 
     public boolean isReturnedErrorBodyChanged()  { return returnedErrorBodyChanged; }

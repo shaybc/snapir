@@ -68,3 +68,5 @@ def verify_operation(conn, config, profile, key, record):
         'native_artifact', 'native-operation:' + key, validator=lambda value: value == record)
     if data != record:
         raise ValueError('Qualified native operation artifact proof is missing: ' + key)
+    from runtime.behavior_conversion.verification_state import require_unit_receipts
+    require_unit_receipts(conn, config, record)

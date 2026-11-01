@@ -303,6 +303,11 @@ def test_runtime_paths_prepare_then_stop_before_models_and_component_gates(tmp_p
     assert 'preparation_error' not in report, report
     assert all(item['status'] == 'prepared' for item in report['operations'].values()), report
 
+    boundaries = json.loads(run_report_path(directory, 'behavior_verification_boundaries.json').read_text())
+    assert boundaries['counts']['total'] == sum(len(item['units']) for item in report['operations'].values())
+    assert boundaries['verification_status'] == 'not_run'
+    assert not boundaries['acceptance_gate_enabled']
+
 
 def test_checkpoint_dispatches_scoped_before_legacy_planning(tmp_path, scoped_mapper, monkeypatch):
     import constants

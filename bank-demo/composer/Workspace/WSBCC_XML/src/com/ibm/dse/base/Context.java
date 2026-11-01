@@ -18,6 +18,17 @@ public class Context {
         values.put(Objects.requireNonNull(name, "Context field name"), value);
     }
 
+    /** Isolate a collection row while retaining runtime settings and the caller's connection. */
+    public Context copyWith(Map<String, ?> row) {
+        Context copy = new Context();
+        copy.values.putAll(values);
+        copy.values.putAll(row);
+        copy.connection = connection;
+        return copy;
+    }
+
+    public Map<String, Object> snapshot() { return new HashMap<>(values); }
+
     /** The caller owns the connection and its transaction lifecycle. */
     public void setConnection(Connection connection) {
         this.connection = Objects.requireNonNull(connection, "JDBC connection");

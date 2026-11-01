@@ -3,6 +3,9 @@
 from pydantic import BaseModel, ConfigDict, Field
 from models.maven_dependency import MavenDependency
 from models.operation_data_contract import UnitContract, OperationDataContract
+from models.behavior_comparison import GeneratedBehaviorLocation
+from models.unit_checklist_answers import UnitChecklistAnswers
+from models.native_verification_binding import NativeVerificationBinding
 
 
 class NativeSourceFile(BaseModel):
@@ -27,4 +30,7 @@ class NativeUnitBundle(BaseModel):
     output_type: str | None = None
     wire_type: str | None = None
     operation_contract: OperationDataContract | None = None
+    behavior_implementations: dict[str, list[GeneratedBehaviorLocation]] = Field(default_factory=dict)
+    checklist_answers: UnitChecklistAnswers | None = None
+    verification_binding: NativeVerificationBinding | None = None
     schema_version: str = "v1"

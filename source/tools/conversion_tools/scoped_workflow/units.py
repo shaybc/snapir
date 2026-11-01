@@ -10,6 +10,8 @@ from models.scoped_operation_closure import ScopedOperationClosure
 from tools.composer_mapper_tools.scoped_vault_access import ScopedVaultAccess
 from tools.conversion_tools.scoped_closure.source_evidence import SourceEvidence
 from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.composer_mapper_tools.channel_note_parser import parse_channel_note
+from tools.conversion_tools.scoped_workflow.unit_evidence import format_evidence, java_evidence
 
 
 def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, profile=None, classpath_index=None):
@@ -24,33 +26,35 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
     if {call['step_note'] for call in closure.calls} != {call['note'] for call in calls}:
         raise ValueError('Scoped operation calls require occurrence-bound service contracts')
     sources, cache = SourceEvidence(config.source_root), source_cache if source_cache is not None else {}
-    implementations = []
-    for origin in closure.java_origins:
-        if origin['status'] != 'verified_source':
-            continue
-        identity = (origin['definition_id'], origin['source_hash'])
-        # The guarded read checks current bytes even when another context used this source.
-        content = read_java_source(origin['source_file'], expected_hash=origin['source_hash'])
-        if identity not in cache:
-            cache[identity] = UnitSource(identity=identity[0], content=content, content_hash=identity[1])
-        implementations.append(cache[identity])
-    definitions = [node.model_dump(mode='json') for _, node in sorted(closure.formats.items())]
+    mappings = dict((name, fqcn) for name, fqcn, _ in parse_channel_note(
+        access.channel_evidence(context)['markdown'], context.channel))
     units, bindings = [], {}
     from tools.conversion_tools.scoped_reuse.fingerprints import POLICY_VERSION, conversion_policy
     policy = conversion_policy(profile)
 
-    def make(kind, label, occurrence, definition, xml, configuration, attached_calls):
+    def make(kind, label, occurrence, definition, xml, configuration, attached_calls, roots, definitions):
+        origins, external = java_evidence(closure, roots)
+        implementations = []
+        for origin in origins:
+            if origin['status'] != 'verified_source':
+                continue
+            identity = (origin['definition_id'], origin['source_hash'])
+            # Check current bytes even when another unit has cached this source.
+            content = read_java_source(origin['source_file'], expected_hash=origin['source_hash'])
+            if identity not in cache:
+                cache[identity] = UnitSource(identity=identity[0], content=content, content_hash=identity[1])
+            implementations.append(cache[identity])
         facts = dict(policy_version=POLICY_VERSION, conversion_policy=policy,
             operation_identity=closure.operation_identity, occurrence_id=occurrence,
             source_definition_id=definition, kind=kind, configuration=configuration,
             closure_evidence_hash=closure.evidence_hash, calls=list(attached_calls),
-            java_origins=closure.java_origins, external_dependencies=closure.external_dependencies)
+            java_origins=origins, external_dependencies=external, referenced_definitions=definitions)
         digest = hashlib.sha256(json.dumps(facts, sort_keys=True).encode()).hexdigest()
         unit = ScopedConfiguredUnit(unit_id='scoped-unit-' + digest, kind=kind, logical_id=label,
             operation_identity=closure.operation_identity, occurrence_id=occurrence, source_definition_id=definition,
             effective_configuration=configuration,
             configuration_xml=xml, sources=implementations, consumers=[closure.channel + '/' + closure.operation_id],
-            referenced_definitions=definitions, external_dependencies=closure.external_dependencies,
+            referenced_definitions=definitions, external_dependencies=external,
             operation_calls=list(attached_calls), fingerprint=digest, schema_version='scoped-v3-c5')
         from tools.conversion_tools.scoped_workflow.connections import attach_scoped_connections
         return attach_scoped_connections(conn, config, closure, unit, profile, classpath_index)
@@ -61,7 +65,8 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
         unit = make('configured_step', step.source.entity_id, step.source.definition_id, step.source.definition_id,
             ElementTree.tostring(element, encoding='unicode'),
             dict(attributes=dict(element.attrib), routes=closure.routing_graph[step.source.note],
-                 return_body_switches=closure.return_body_switches.get(step.source.note, {})), attached)
+                 return_body_switches=closure.return_body_switches.get(step.source.note, {})), attached,
+            {element.get('implClass') or mappings.get('opStep')}, [])
         units.append(unit)
         bindings[step.source.note] = unit.unit_id
     directions = [(role, kind, closure.format_roles[role]) for role, kind in (
@@ -75,8 +80,10 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
         reference = access.resource(context, 'formats:' + node.attributes['id'])
         if reference.definition_id != identity:
             raise ValueError('Format role no longer selects the closure definition: ' + role)
+        roots, definitions = format_evidence(closure, identity)
         unit = make(kind, reference.entity_id, role, identity,
-            ElementTree.tostring(sources.xml(reference), encoding='unicode'), node.model_dump(mode='json'), ())
+            ElementTree.tostring(sources.xml(reference), encoding='unicode'), node.model_dump(mode='json'), (),
+            roots, definitions)
         units.append(unit)
         bindings[role] = unit.unit_id
         if kind == 'response_format':

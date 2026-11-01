@@ -49,7 +49,7 @@ def managed_instruction(instruction, kind):
 
 def _remove_response_fence(output):
     """Remove one enclosing JSON or unlabelled Markdown fence, leaving other output intact."""
-    match = re.fullmatch(r"\s*```(?:json)?[ \t]*\r?\n(.*?)\r?\n```[ \t]*\s*", output, re.DOTALL | re.IGNORECASE)
+    match = re.fullmatch(r"\s*```(?:json)?[ \t]*\r?\n(.*?)(?:\r?\n)?```[ \t]*\s*", output, re.DOTALL | re.IGNORECASE)
     return match.group(1) if match else output
 
 

@@ -34,8 +34,10 @@ flowchart TD
     subgraph UNITLOOP["C — Convert all configured units sequentially"]
         ORDER["behavior_conversion.runner._convert_and_review<br/>Choose unit order and artifact ownership<br/>Supply already accepted compatible APIs"]
         NEXTUNIT{"Another unit?"}
-        EVIDENCE["bounded_unit_evidence<br/>Use complete evidence when it fits<br/>Otherwise request AI analysis in bounded parts"]
-        PAYLOAD["Build unit request<br/>XML, source evidence, accepted APIs<br/>Requirements, examples, schema and test policy"]
+        EVIDENCE["runner._convert_and_review<br/>Use original XML and verified Java evidence<br/>Never substitute lossy summaries in this scoped path"]
+        FACTS["AI - behavior_extraction.extract_behavior<br/>Extract source-linked conditions and outcomes in bounded parts<br/>Reconcile cross-part conflicts without dropping facts"]
+        FACTCHECK["D - behavior_fact_validation<br/>Validate source IDs, hashes and exact excerpts<br/>Assign stable fact IDs; stop on material evidence gaps"]
+        PAYLOAD["Build unit request<br/>XML, source evidence, accepted APIs<br/>Behavior facts, requirements, examples, schema and test policy"]
         CACHE{"Matching accepted result<br/>And valid manifests?"}
         REUSE["Revalidate cached result<br/>Reuse when compatible"]
         BUDGET{"request_context.encode_request<br/>Instructions + payload fit budget?<br/>Compact correction content if needed"}
@@ -45,13 +47,13 @@ flowchart TD
         PASS{"Validation and tests passed?"}
         RETRY{"Correction attempts remain?"}
         FEEDBACK["D — Collect compiler/test diagnostics<br/>Attach previous response and correction feedback"]
-        REVIEW["AI — review_behavior<br/>Compare source/XML evidence with code and tests<br/>Check transformations, routing and side effects"]
+        REVIEW["AI - compare_behavior<br/>Compare original sources, extracted facts, code and tests<br/>Check missed extraction facts and material differences<br/>Style advice is non-blocking"]
         DECISION{"Review outcome"}
         REVISE["generate_reviewed_bundle<br/>Attach review findings and previous bundle"]
         ACCEPT["Persist result, files, hashes and review<br/>Update native_bundle_results"]
         G2{"Gate 2<br/>Every unit review approved<br/>Without issues or unresolved questions?"}
         ORDER --> NEXTUNIT
-        NEXTUNIT -->|Yes| EVIDENCE --> PAYLOAD --> CACHE
+        NEXTUNIT -->|Yes| EVIDENCE --> FACTS --> FACTCHECK --> PAYLOAD --> CACHE
         CACHE -->|Yes| REUSE --> REVIEW
         CACHE -->|No| BUDGET
         BUDGET -->|Fits| GENERATE --> CHECK --> BUILD --> PASS
@@ -70,16 +72,17 @@ flowchart TD
     subgraph OPLOOP["D — Assemble operations sequentially after the unit stage"]
         NEXTOP{"Another operation?"}
         OPINPUT["service_request + required_steps + required_resources<br/>Accepted unit contracts and files<br/>Routing, call contracts and resource dependencies"]
+        OPFACTS["AI + D - Extract and validate operation behavior<br/>Read selected original XML and Java dependencies<br/>Supply original evidence and facts to assembly"]
         IMPL["AI — generate_incremental_operation<br/>Generate main implementation first"]
         COMPILE["D — Validate constructor injection and resources<br/>Prevent overwriting accepted units<br/>Compile provisional implementation"]
         ROUTEPLAN["AI — Generate RouteTestPlan<br/>D — Check routes and requirement references"]
         NEXTSCENARIO{"Another planned scenario?"}
         SCENARIO["AI — Generate one assigned test file<br/>D — Validate, compile and execute it"]
         MERGE["D — Merge implementation and accepted scenario tests<br/>Run complete operation validation"]
-        OPREVIEW["AI — Review assembled operation<br/>Review issues can trigger bounded regeneration"]
+        OPREVIEW["AI - compare_behavior<br/>Compare operation facts, original evidence and native code<br/>Material issues trigger bounded regeneration"]
         OPSAVE["Persist operation contract and accepted snapshot"]
         G3{"Gate 3"}
-        NEXTOP -->|Yes| OPINPUT --> IMPL --> COMPILE --> ROUTEPLAN
+        NEXTOP -->|Yes| OPINPUT --> OPFACTS --> IMPL --> COMPILE --> ROUTEPLAN
         ROUTEPLAN --> NEXTSCENARIO
         NEXTSCENARIO -->|Yes| SCENARIO --> NEXTSCENARIO
         NEXTSCENARIO -->|No| MERGE --> OPREVIEW --> OPSAVE --> NEXTOP
@@ -105,6 +108,8 @@ flowchart TD
     G3 -->|Approved| SERVICE
     STOP["Persist diagnostic evidence and stop or pause<br/>Explicit resume rechecks source freshness<br/>Accepted results are reused only when compatible"]
     STORE[("migration.db + generated files + reports<br/>Requests, responses, attempts, reviews<br/>Fingerprints, manifests and checkpoints")]
+    FACTCHECK -->|Material evidence unresolved| STOP
+    OPFACTS -->|Material evidence unresolved| STOP
     READY -->|No| STOP
     NATIVE -->|Preparation-only mode| STOP
     G1 -->|Not approved| STOP
