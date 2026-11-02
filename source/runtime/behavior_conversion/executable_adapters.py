@@ -5,7 +5,7 @@ from runtime.behavior_conversion.native_binding_builder import build_binding,val
 from runtime.behavior_conversion.verification_binding import validate_binding
 from runtime.behavior_conversion.verification_feedback import VerificationFailure,VerificationIncomplete
 from runtime.behavior_conversion.java_api_types import public_api_types
-from tools.behavior_verification.thin_path_binding import configured_fields
+from runtime.behavior_conversion.context_key_evidence import with_context_key_evidence
 from runtime.behavior_conversion.adapter_configuration import resolve_configuration
 
 VERSION='restricted-executable-adapter-v1'
@@ -39,10 +39,8 @@ def resolve_adapter(tasks,payload,production,inventory,*,repair_feedback=None):
     if len(owners)!=1:
         raise VerificationIncomplete(dict(stage='adapter',errors=['Selected production entry owner is missing or ambiguous'],candidates=sorted(owners)))
     selected_owner=next(iter(owners))
-    metadata=dict(inventory,owned_types={selected_owner})
-    keys={item['name'] for item in inventory.get('context_keys',[])}
-    keys.update(field['context_key'] for field in configured_fields(unit))
-    metadata['context_keys']=[dict(name=key) for key in sorted(keys)]
+    evidenced_inventory=with_context_key_evidence(unit,inventory)
+    metadata=dict(evidenced_inventory,owned_types={selected_owner})
     controls=payload.get('runtime_controls',[])
     evidence=payload.get('evidence_ids') or [s['identity'] for s in payload.get('sources',[])]
     if not evidence:
@@ -67,7 +65,7 @@ def resolve_adapter(tasks,payload,production,inventory,*,repair_feedback=None):
     except (BindingAmbiguous,VerificationFailure,ValueError) as error:
         ambiguity=str(error)
     request=dict(unit_id=unit['unit_id'],kind=unit['kind'],configuration=unit.get('effective_configuration'),
-        configuration_xml=unit.get('configuration_xml'),parsed_apis=inventory,runtime_controls=controls,
+        configuration_xml=unit.get('configuration_xml'),parsed_apis=evidenced_inventory,runtime_controls=controls,
         production_files=[f.model_dump(mode='json') for f in production.files],ambiguity=ambiguity,
         adapter_version=VERSION)
     if repair_feedback:request['adapter_feedback']=repair_feedback

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-from tools.validation_tools.java_comments import mask_java_comments
+from tools.validation_tools.java_comments import mask_java_non_code
 
 
 def scan_for_ibm_dependencies(
@@ -18,7 +18,7 @@ def scan_for_ibm_dependencies(
     for path in paths:
         if path.suffix != ".java":
             continue
-        for line_number, line in enumerate(mask_java_comments(path.read_text(encoding="utf-8")).splitlines(), start=1):
+        for line_number, line in enumerate(mask_java_non_code(path.read_text(encoding="utf-8")).splitlines(), start=1):
             if not _should_scan_line(line):
                 continue
             for pattern in _matched_patterns(line, forbidden_patterns, allowed_classes):
@@ -26,15 +26,16 @@ def scan_for_ibm_dependencies(
     return findings
 
 
-def scan_source(java_source: str, forbidden_patterns: list[str], *, allowed_classes=()) -> list[str]:
-    """Scan one Java source string and return forbidden patterns found."""
+def scan_source(java_source: str, forbidden_patterns: list[str], *, allowed_classes=(), include_locations=False) -> list[str]:
+    """Scan Java code, optionally returning line numbers; comments/literals are not dependencies."""
     matches = []
-    for line in mask_java_comments(java_source).splitlines():
+    for line_number, line in enumerate(mask_java_non_code(java_source).splitlines(), start=1):
         if not _should_scan_line(line):
             continue
         for pattern in _matched_patterns(line, forbidden_patterns, allowed_classes):
-            if pattern not in matches:
-                matches.append(pattern)
+            finding = f'{line_number}:{pattern}' if include_locations else pattern
+            if finding not in matches:
+                matches.append(finding)
     return matches
 
 

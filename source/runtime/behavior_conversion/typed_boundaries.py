@@ -75,6 +75,9 @@ def validate_typed_boundary(bundle, contract, selection=None):
     if selection is None and getattr(bundle,'verification_binding',None) is not None:
         from runtime.behavior_conversion.typed_boundary_selection import selected_boundary_signatures
         selection=selected_boundary_signatures(bundle,bundle.verification_binding)
+    elif selection is None and contract.get('kind')=='configured_step' and getattr(bundle,'contracts',None):
+        from runtime.behavior_conversion.typed_boundary_selection import configured_step_entry_signatures
+        selection=configured_step_entry_signatures(bundle)
     for api in apis:
         resolve = java_type_resolver(sources.get(api.type_name, ''), sources)
         for declaration in api.method_signatures:

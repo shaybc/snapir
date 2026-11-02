@@ -6,6 +6,7 @@ from runtime.behavior_conversion.native_binding_builder import validate_parsed_b
 from runtime.behavior_conversion.verification_binding import validate_binding
 from runtime.behavior_conversion.verification_cases import controlled_cases
 from tools.component_inventory_tools.identity import stable_id
+from runtime.behavior_conversion.context_key_evidence import with_context_key_evidence
 
 
 def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inventory=None):
@@ -19,6 +20,7 @@ def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inv
             if control.get('source_identity') and control.get('source_content'):
                 originals[control['source_identity']]=dict(identity=control['source_identity'],content=control['source_content'])
         inventory=inspect_native(bundle.files,tool,list(originals.values()))
+    inventory=with_context_key_evidence(unit,inventory)
     for control in controls:
         original=[m for m in inventory.get('original_methods',[]) if m['target']==control['target']]
         if len(original)!=1:

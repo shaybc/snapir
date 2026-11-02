@@ -2,7 +2,16 @@
 
 from runtime.behavior_conversion.native_reflection_policy import INSTRUCTION as NO_REFLECTION
 
-IMPLEMENTATION = NO_REFLECTION + '''Generate only production native Java files for the selected configured unit.
+IMPLEMENTATION_CONTRACT = '''MANDATORY IMPLEMENTATION CONTRACT — initial response and every correction:
+1. No IBM package imports/references and no recreated Composer runtime or reflection.
+2. Use specific scalar/native DTO boundary types; no Object/Object[], maps, JSON nodes or raw/Object collections.
+3. Reuse supplied accepted native APIs unchanged and preserve source-defined behavior and settings.
+4. Return one valid JSON object matching NativeImplementation, with correctly escaped Java strings.
+For corrections, repair only the reported defects using implementation_repair when supplied; preserve
+unaffected code and previously satisfied rules. Return complete corrected files, not patches.
+'''
+
+IMPLEMENTATION = IMPLEMENTATION_CONTRACT + NO_REFLECTION + '''Generate only production native Java files for the selected configured unit.
 Original XML, implementing sources and Composer documentation are behavior evidence, not target APIs.
 Convert all required supporting behavior; do not import/reference IBM packages or keep IBM runtime
 dependencies. Use typed inputs/results, ordinary Java transformations and reusable accepted native

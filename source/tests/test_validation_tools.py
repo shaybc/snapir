@@ -26,10 +26,14 @@ def test_ibm_guard_clean_spring_service_returns_empty(tmp_path):
     assert is_clean(str(tmp_path), ["com.ibm", "websphere"]) is True
 
 
-def test_ibm_guard_catches_class_for_name_string_literal():
+def test_ibm_string_is_data_but_class_for_name_is_rejected_by_reflection_guard():
     source = 'public class Loader { void load() throws Exception { Class.forName("com.ibm.Legacy"); } }'
 
-    assert scan_source(source, ["com.ibm"]) == ["com.ibm"]
+    assert scan_source(source, ["com.ibm"]) == []
+    import pytest
+    from runtime.behavior_conversion.native_reflection_policy import reject_native_reflection
+    with pytest.raises(ValueError, match='Reflection is forbidden'):
+        reject_native_reflection('src/main/java/Loader.java', source)
 
 
 def test_ibm_guard_ignores_line_block_and_javadoc_comments():
@@ -54,22 +58,26 @@ public class Loader { void run() { com.ibm.Legacy.invoke(); } }
     assert findings == [f'{path}:3:com.ibm', f'{path}:4:com.ibm']
 
 
-def test_ibm_guard_keeps_comment_like_text_inside_runtime_strings():
+def test_ibm_guard_masks_comment_like_text_inside_runtime_strings():
     source = r'''public class Loader {
  String value = "http://example/*literal*/\"";
  Class<?> type = Class.forName("com.ibm.Legacy");
 }'''
-    assert scan_source(source, ['com.ibm']) == ['com.ibm']
+    assert scan_source(source, ['com.ibm']) == []
+    import pytest
+    from runtime.behavior_conversion.native_reflection_policy import reject_native_reflection
+    with pytest.raises(ValueError, match='Reflection is forbidden'):
+        reject_native_reflection('src/main/java/Loader.java', source)
 
 
-def test_ibm_guard_keeps_runtime_text_block_content():
+def test_ibm_guard_ignores_runtime_text_block_content():
     source = '''public class Loader {
  String value = """
  // com.ibm.Legacy
  /* literal text, not a comment */
  """;
 }'''
-    assert scan_source(source, ['com.ibm']) == ['com.ibm']
+    assert scan_source(source, ['com.ibm']) == []
 
 
 def test_comment_masking_preserves_literals_and_offsets():

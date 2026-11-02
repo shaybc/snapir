@@ -39,11 +39,11 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
         source_root = "src/test/java/" if name.startswith("src/test/java/") else "src/main/java/"
         if name != source_root + package.replace(".", "/") + "/" + type_name + ".java":
             raise ValueError("Source filename/package mismatch: " + name)
-        findings = scan_source(item.content, FORBIDDEN_DEPENDENCIES, allowed_classes=allowed_classes)
+        findings = scan_source(item.content, FORBIDDEN_DEPENDENCIES, allowed_classes=allowed_classes, include_locations=True)
         if findings:
             references = sorted(set(re.findall(r"\bcom\.ibm(?:\.\w+)+", _code(item.content))))
             raise ForbiddenFrameworkDependency("Prohibited framework dependency in " + name + " (type " + package + "." + type_name +
-                "): " + "; ".join(references or findings) +
+                "): " + "; ".join(references or findings) + " (line:pattern " + "; ".join(findings) + ")" +
                 ". Remove these imports/references from implementation and tests. If the unit needs this supporting behavior, "
                 "include a native companion implementation derived from the supplied supporting source evidence and wire its "
                 "callers, public API metadata and tests to that returned type. Reuse an accepted native API if supplied; "

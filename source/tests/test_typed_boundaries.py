@@ -102,6 +102,64 @@ def test_projection_checks_the_selected_getter_chain_only():
         validate_typed_boundary(result,{'version':'typed-boundary-v1'})
 
 
+def test_unbound_configured_step_ignores_inherited_service_registry_helpers():
+    result=bundle('public int execute()',component=True)
+    result.contracts['id'].apis[0].method_signatures.extend([
+        'public int execute(example.Values values)',
+        'public void setService(java.lang.String name, java.lang.Object service)',
+        'public java.lang.Object getService(java.lang.String name)',
+        'public java.util.Map<String,Object> unrelated()'])
+    validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
+@pytest.mark.parametrize('signature',[
+    'public int execute(Object values)',
+    'public int execute(Map<String,Object> values)',
+    'public Object execute()',
+    'public int execute(List<Object> values)',
+])
+def test_unbound_configured_step_still_checks_execute_inputs_and_results(signature):
+    result=bundle(signature,component=True)
+    result.contracts['id'].apis[0].method_signatures.append('public void setService(String name, Object value)')
+    with pytest.raises(ValueError,match='Typed boundary requires'):
+        validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
+def test_missing_step_entry_keeps_the_existing_validation_instead_of_selecting_nothing():
+    result=bundle('public void setService(String name, Object value)',component=True)
+    with pytest.raises(ValueError,match='Typed boundary requires'):
+        validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
+def test_generic_helper_is_checked_when_explicitly_selected_as_binding():
+    from models.native_verification_binding import NativeVerificationBinding
+    result=bundle('public Object getService(String name)',component=True)
+    result.contracts['id'].apis[0].method_signatures.append('public int execute()')
+    result.verification_binding=NativeVerificationBinding(owner_type='example.Mapper',method_name='getService',
+        arguments=[dict(type_name='java.lang.String',source='context',key='ServiceName')])
+    with pytest.raises(ValueError,match='Typed boundary requires'):
+        validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
+def test_bound_step_still_checks_selected_projection_types():
+    result=selected_bundle(getter='Object')
+    result.unit_contract.apis[0].method_signatures[0]='public String execute(example.Values values)'
+    result.verification_binding.method_name='execute'
+    with pytest.raises(ValueError,match='Typed boundary requires'):
+        validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
+def test_bound_step_still_checks_selected_constructor_types():
+    from models.native_boundary_value import NativeBoundaryValue
+    result=selected_bundle()
+    result.unit_contract.apis[0].method_signatures[0]='public String execute(example.Values values)'
+    result.unit_contract.apis[0].method_signatures.append('public Mapper(Object service)')
+    result.verification_binding.method_name='execute'
+    result.verification_binding.constructor_arguments=[NativeBoundaryValue(type_name='java.lang.Object',source='context',key='Service')]
+    with pytest.raises(ValueError,match='Typed boundary requires'):
+        validate_typed_boundary(result,{'version':'typed-boundary-v1','kind':'configured_step'})
+
+
 def test_thin_path_supplies_accepted_sources_and_pins_without_modifying_them():
     from test_thin_path_experiment import preparation
     from tools.behavior_verification.thin_path_request import select_units, build_request

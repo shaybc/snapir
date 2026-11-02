@@ -3,6 +3,21 @@ from runtime.behavior_conversion.java_api_types import public_api_types
 from runtime.behavior_conversion.method_contracts import _signature, java_type_resolver
 
 
+def configured_step_entry_signatures(bundle):
+    """Check possible execute entries before binding; setup/projection APIs are checked once bound."""
+    sources={name:file.content for file in bundle.files if file.path.startswith('src/main/java/')
+             for name in public_api_types(file.content)}
+    selected=set()
+    for contract in bundle.contracts.values():
+        for api in contract.apis:
+            resolve=java_type_resolver(sources.get(api.type_name,''),sources)
+            for declaration in api.method_signatures:
+                signature=_signature(declaration,resolve)
+                if signature and signature[0]=='execute':selected.add((api.type_name,signature))
+    # Missing entries retain the existing validation/routing rather than silently selecting no methods.
+    return selected or None
+
+
 def selected_boundary_signatures(bundle,binding):
     """Keep helpers out of typed-boundary policy without removing their normal validation."""
     apis = list(bundle.unit_contract.apis) if getattr(bundle,'unit_contract',None) else [

@@ -32,6 +32,12 @@ class StageTasks:
         def counted(instruction,encoded):
             nonlocal current,raw
             fresh()
+            if stage=='implementation':
+                from runtime.behavior_conversion.implementation_repair import repair_baseline,focused_repair
+                from runtime.behavior_conversion.request_context import encode_request
+                baseline=repair_baseline(state.read(self.conn,self.config.run_id,self.identity,self.revision,'implementation'),
+                    state.read(self.conn,self.config.run_id,self.identity,self.revision,'compile'))
+                _,encoded=encode_request(focused_repair(json.loads(encoded),baseline),instruction,settings.behavior_context_chars)
             current=state.reserve(self.conn,self.config.run_id,self.identity,self.revision,stage,
                                   self.profile.max_agent_task_retries,json.loads(encoded))
             if stage=='implementation' and self.implementation_attempt:self.implementation_attempt()
