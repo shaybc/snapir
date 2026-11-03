@@ -34,7 +34,7 @@ def generate_boundary_cases(unit, boundary, *, seed=1729, settings=(), random_ca
     for name, attributes in fields.items():
         pattern = attributes.get('pattern', '')
         baseline[name] = _pattern_value(pattern) if pattern else '123'
-    literals = [item.properties.get('value', '') for item in boundary.parser_checklist.items if item.kind == 'literal']
+    literals = [item.properties.get('value', '') for item in (boundary.parser_checklist.items if boundary.parser_checklist is not None else ()) if item.kind == 'literal']
     values = [None, '', ' ', '0', '1', '-1', '0005', ' 123 ', 'a&<b>', '20240102', 'invalid']
     values += [value for value in literals if re.fullmatch(r'-?\d{1,8}', value) and value not in values][:8]
     rng = random.Random(seed)
@@ -60,11 +60,11 @@ def _context_cases(unit, boundary, fields, seed, settings, random_cases, default
         return node.get('collection_kind') == 'indexed' or any(indexed(child) for child in node.get('children', []))
     if indexed(unit['effective_configuration']):
         raise ValueError('Structured collection inputs require an explicit case adapter')
-    literals = {item.excerpt: item.properties.get('value') for item in boundary.parser_checklist.items
+    literals = {item.excerpt: item.properties.get('value') for item in (boundary.parser_checklist.items if boundary.parser_checklist is not None else ())
                 if item.kind == 'literal' and item.detail == 'StringLiteralExpr'}
     baseline = {name: {'$date_millis': 1704153600000} if attributes.get('pattern') else '123'
                 for name, attributes in fields.items()}
-    for item in boundary.parser_checklist.items:
+    for item in boundary.parser_checklist.items if boundary.parser_checklist is not None else ():
         target = item.properties.get('target', '')
         if (item.kind == 'call' and any(target.startswith(context_class + '.' + name + '(') for name in (reader, remover))
                 and len(item.arguments) == 1 and item.arguments[0] in literals):

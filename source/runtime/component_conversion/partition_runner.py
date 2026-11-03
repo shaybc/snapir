@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from models.native_component_bundle import NativeComponentBundle
 from models.native_format_component_bundle import NativeFormatComponentBundle
+from models.native_format_subtree_bundle import NativeFormatSubtreeBundle
 from runtime.behavior_conversion.generation import generate
 from runtime.component_conversion.scope import partition_task
 from runtime.component_conversion.partition_requests import partition_request, fits_partition, PART_INSTRUCTION
@@ -71,9 +72,12 @@ def convert_partitioned_format(conn, config, profile, plan, group, original, ins
         dependency_files = {**files, **generated}
         if selector:
             validator = SubtreeCandidateValidator(conn, config, profile, request, folder, factory, dependency_files, pins)
-            schema = NativeComponentBundle
+            schema = NativeFormatSubtreeBundle
         else:
             complete_request = dict(original,format_partition_records=[children[path]['result_revision'] for path in sorted(children)])
+            if original.get('format_chain_policy'):
+                complete_request['inherited_format_chain_ownership']=request.get('inherited_format_chain_ownership',[])
+                complete_request['prerequisite_components']=request['prerequisite_components']
             validator = ComponentCandidateValidator(conn, config, profile, plan, group, complete_request, output,
                 factory, dependency_files, pins, units=units, boundaries=boundaries, owned_dependency_sources=tuple(generated))
             schema = NativeFormatComponentBundle

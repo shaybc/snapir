@@ -12,9 +12,11 @@ include_operations: null
 exclude_operations: null
 conversion_strategy: behavior_units
 staged_unit_conversion: true
+metadata_checklist_request_chars: 900000
 executable_verification:
-  mode: executable_boundary_v1
+  mode: conversion_checklist_v1
   comparison_mutations:
+    enabled: false
     timeout_seconds: 600
 model_name: gemini/gemini-3.8-flash
 java_version: 25

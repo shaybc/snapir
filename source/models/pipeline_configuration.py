@@ -13,6 +13,7 @@ from models.static_check_policy import StaticCheckPolicy
 from models.checklist_exclusion_authorization import ChecklistExclusionAuthorization
 from models.unit_mutation_settings import UnitMutationSettings
 from models.executable_verification_settings import ExecutableVerificationSettings
+from models.format_comparison_settings import FormatComparisonSettings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -26,7 +27,7 @@ class PipelineConfiguration(BaseModel):
     behavior_context_chars: int = Field(default=900000, ge=60000, le=1000000)
     metadata_checklist_batching: bool = True
     metadata_checklist_batch_items: int = Field(default=15,ge=1,le=50)
-    metadata_checklist_request_chars: int = Field(default=100000,ge=8000,le=1000000)
+    metadata_checklist_request_chars: int = Field(default=900000,ge=8000,le=1000000)
     metadata_checklist_response_chars: int = Field(default=16000,ge=1000,le=200000)
     metadata_checklist_max_calls: int | None = Field(default=None,ge=1)
     metadata_checklist_max_transport_calls: int | None = Field(default=None,ge=1)
@@ -34,6 +35,7 @@ class PipelineConfiguration(BaseModel):
     behavior_triage_enabled: bool = False
     unit_mutation_testing: UnitMutationSettings = Field(default_factory=UnitMutationSettings)
     executable_verification: ExecutableVerificationSettings = Field(default_factory=ExecutableVerificationSettings)
+    format_comparison: FormatComparisonSettings = Field(default_factory=FormatComparisonSettings)
     unit_verification_policy: StaticCheckPolicy = Field(default_factory=StaticCheckPolicy)
     unit_verification_authorizations: list[ChecklistExclusionAuthorization] = Field(default_factory=list)
     source_root: str = constants.COMPOSER_ROOT
@@ -43,6 +45,7 @@ class PipelineConfiguration(BaseModel):
     source_workspace_id: str | None = Field(default=constants.SOURCE_WORKSPACE_ID, min_length=1)
     service_registry_path: str | None = Field(default=None, min_length=1)
     service_maven_dependencies: dict[str, list[MavenDependency]] = Field(default_factory=dict)
+    dependency_policy_path: str | None = Field(default=None,min_length=1)
     plan_approval_policy: Literal["human", "automatic", "skip"] = "human"
     shared_library_min_usage: int = Field(default=constants.SHARED_LIBRARY_MIN_USAGE, ge=1)
     broad_library_usage_threshold: int = Field(default=constants.BROAD_LIBRARY_USAGE_THRESHOLD, ge=1)
@@ -141,4 +144,6 @@ class PipelineConfiguration(BaseModel):
         """Citation-free generation requires the separated implementation/test path."""
         if self.executable_verification.mode == 'executable_boundary_v1' and not self.staged_unit_conversion:
             raise ValueError('Executable boundary verification requires staged_unit_conversion')
+        if self.executable_verification.mode == 'conversion_checklist_v1' and (not self.staged_unit_conversion or not self.metadata_checklist_batching):
+            raise ValueError('Conversion checklist readiness requires staged conversion and bounded checklist batching')
         return self

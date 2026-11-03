@@ -71,3 +71,23 @@ def test_oversized_single_item_never_truncates_source():
     value=items(1)[0];value['source_hash']=hashlib.sha256(original.encode()).hexdigest()
     with pytest.raises(EvidenceTooLarge):build_request([value['id']],{value['id']:value},catalog,
         PipelineConfiguration(metadata_checklist_request_chars=20000,metadata_checklist_response_chars=2000),'r','p')
+
+
+def test_default_checklist_budget_reserves_16000_from_900000():
+    profile=PipelineConfiguration()
+    assert profile.metadata_checklist_request_chars==900000
+    assert min(profile.behavior_context_chars,profile.metadata_checklist_request_chars)-profile.metadata_checklist_response_chars==884000
+
+
+def test_rejection_reports_effective_limit_and_measured_size_without_source(caplog):
+    original=ORIGINAL+' '*90000
+    catalog=source_catalog({'sources':[dict(identity='original',content=original)]},{PATH:CODE},{})
+    value=items(1)[0];value['source_hash']=hashlib.sha256(original.encode()).hexdigest()
+    profile=PipelineConfiguration(metadata_checklist_request_chars=20000,metadata_checklist_response_chars=2000)
+    with caplog.at_level('WARNING'),pytest.raises(EvidenceTooLarge) as failure:
+        build_request([value['id']],{value['id']:value},catalog,profile,'r','p')
+    for message in (str(failure.value),caplog.text):
+        assert 'effective_limit_chars=18000' in message
+        assert 'payload_chars=' in message and 'instruction_chars=' in message and 'total_chars=' in message
+        assert 'response_reserve_chars=2000' in message
+        assert ORIGINAL not in message and CODE not in message

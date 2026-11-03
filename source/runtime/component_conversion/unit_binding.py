@@ -43,6 +43,12 @@ def resolve_checklist(artifacts, boundary):
 
 def native_unit_binding(conn, config, profile, unit, artifacts, build_bundle, validator, model_call):
     """Reuse trusted format recipes; ask only for missing step metadata through bounded retries."""
+    from runtime.behavior_conversion.verification_mode import conversion_mode
+    if conversion_mode(profile):
+        from types import SimpleNamespace
+        bundle=build_bundle(SimpleNamespace(verification_binding=None,input_type=None,output_type=None,wire_type=None))
+        validator(bundle,cached=False)
+        return bundle
     candidate = artifacts['root_report'].get('format_candidate')
     if candidate:
         metadata = ComponentUnitBinding(verification_binding=candidate['verification_binding'])

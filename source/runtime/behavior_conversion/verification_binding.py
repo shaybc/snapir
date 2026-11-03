@@ -48,11 +48,17 @@ def validate_binding(bundle, extra_types=()):
             raise VerificationFailure(dict(stage='binding', errors=['XML binding must pass the original String unchanged']))
         if recipe.source == 'context' and (not recipe.key or recipe.arguments or recipe.properties):
             raise VerificationFailure(dict(stage='binding', errors=['Context binding needs only an original context key']))
+        if recipe.source == 'configuration' and (not recipe.key or recipe.arguments or recipe.properties or recipe.factory_method):
+            raise VerificationFailure(dict(stage='binding', errors=['Configuration binding needs only an exact attribute key']))
         if recipe.source == 'object':
             if recipe.type_name not in names or recipe.key or any(not _member(name) for name in recipe.properties):
                 raise VerificationFailure(dict(stage='binding', errors=['Object bindings construct native types only']))
             for child in [*recipe.arguments, *recipe.properties.values()]: value(child, depth + 1)
     for recipe in [*binding.arguments, *binding.constructor_arguments]: value(recipe)
+    for setter, recipe in binding.configuration_setters.items():
+        if not _member(setter) or recipe.source != 'configuration' or binding.static_method:
+            raise VerificationFailure(dict(stage='binding', errors=['Configuration setters require instance configuration inputs']))
+        value(recipe)
     keys = [projection.context_key for projection in binding.context_writes]
     if len(set(keys)) != len(keys):
         raise VerificationIncomplete(dict(stage='binding', errors=['Repeated dynamic writes need an explicit supported observer']))

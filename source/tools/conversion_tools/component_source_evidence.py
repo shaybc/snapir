@@ -4,7 +4,7 @@ from copy import deepcopy
 
 def attach_supporting_sources(components):
     """Collapse verified supporting sources, retaining unresolved/external prerequisites and cycles."""
-    generated_roles = {'step_implementation', 'format_leaf', 'format_wrapper'}
+    generated_roles = {'step_implementation', 'format_leaf', 'format_wrapper', 'decorator'}
     supporting = {key for key, node in components.items() if node.kind == 'java_implementation'
                   and not generated_roles.intersection(node.roles)}
     for key, node in list(components.items()):
@@ -31,7 +31,7 @@ def attach_supporting_sources(components):
         node.dependencies = dependencies
         node.dependency_reasons = {target: node.dependency_reasons.get(target,
             ['dependency reached through supporting source evidence']) for target in node.dependencies}
-    # Decorators belong to their configured format's implementing source, not standalone tasks.
+    # Shared runtime evidence follows each independently generated format/decorator.
     for node in components.values():
         if node.kind != 'format_node':
             continue

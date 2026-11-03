@@ -18,7 +18,8 @@ class ComponentUnitProvider:
         self.plan = checked_plan(preparation['component_plan'])
         from tools.behavior_verification.boundaries import build_boundary_report
         from runtime.component_conversion.steps import default_step_mappings
-        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan))
+        from runtime.behavior_conversion.verification_mode import facts_disabled
+        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan), collect_checklists=not facts_disabled(profile))
         self.units = {unit['unit_id']:unit for item in preparation['operations'].values() for unit in item['units']}
 
     def __call__(self, unit, payload, validator):
@@ -33,8 +34,8 @@ class ComponentUnitProvider:
         limit = max(1,self.profile.max_agent_task_retries)
         for attempt in range(limit):
             artifacts = load_unit_artifacts(self.conn,self.config,self.profile,self.plan,unit.unit_id)
-            from runtime.behavior_conversion.verification_mode import executable_mode
-            answers = None if executable_mode(self.profile) else resolve_checklist(artifacts,boundary)
+            from runtime.behavior_conversion.verification_mode import executable_mode, facts_disabled
+            answers = None if executable_mode(self.profile) or facts_disabled(self.profile) else resolve_checklist(artifacts,boundary)
             def build(metadata):
                 from runtime.behavior_conversion.compatibility import versioned_requirements
                 declared = versioned_requirements(self.profile,'unit',payload)

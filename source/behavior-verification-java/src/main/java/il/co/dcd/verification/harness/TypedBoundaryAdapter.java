@@ -24,10 +24,25 @@ public final class TypedBoundaryAdapter implements BoundaryAdapter {
         List<Map<String, Object>> recipes = (List<Map<String, Object>>) binding.get("arguments");
         NativeBoundaryValues.validate(constructors, nativeTypes);
         NativeBoundaryValues.validate(recipes, nativeTypes);
-        Object target = Boolean.TRUE.equals(binding.get("static_method")) ? null : owner.getConstructor(NativeBoundaryValues.types(constructors))
-            .newInstance(NativeBoundaryValues.values(constructors, xml, context));
-        Object[] arguments = NativeBoundaryValues.values(recipes, xml, context);
+        Map<String, Object> attributes = (Map<String, Object>) BoundaryValues.read(BoundaryValues.child(configuration, "attributes"));
+        Object target = null;
+        if (!Boolean.TRUE.equals(binding.get("static_method"))) {
+            Constructor<?> constructor = owner.getConstructor(NativeBoundaryValues.types(constructors));
+            Object[] inputs = NativeBoundaryValues.values(constructors, xml, context, attributes);
+            NativeBoundaryValues.checkArguments(constructor.getGenericParameterTypes(), inputs);
+            target = constructor.newInstance(inputs);
+        }
+        Map<String, Map<String, Object>> setters = (Map<String, Map<String, Object>>) binding.getOrDefault("configuration_setters", Map.of());
+        for (var setter : setters.entrySet()) {
+            Map<String, Object> recipe = setter.getValue();
+            if (!"configuration".equals(recipe.get("source"))) throw new BoundaryRuntime.Incomplete("Configuration setters require configuration inputs");
+            NativeBoundaryValues.validate(List.of(recipe), nativeTypes);
+            if (attributes.containsKey((String) recipe.get("key"))) owner.getMethod(setter.getKey(), NativeBoundaryValues.type((String) recipe.get("type_name")))
+                .invoke(target, NativeBoundaryValues.value(recipe, xml, context, attributes));
+        }
+        Object[] arguments = NativeBoundaryValues.values(recipes, xml, context, attributes);
         Method method = owner.getMethod((String) binding.get("method_name"), NativeBoundaryValues.types(recipes));
+        NativeBoundaryValues.checkArguments(method.getGenericParameterTypes(), arguments);
         if (Modifier.isStatic(method.getModifiers()) != Boolean.TRUE.equals(binding.get("static_method")))
             throw new BoundaryRuntime.Incomplete("Native static/instance entry differs from binding");
         Object result = null;
@@ -44,7 +59,7 @@ public final class TypedBoundaryAdapter implements BoundaryAdapter {
                     if (Boolean.FALSE.equals(present)) continue;
                 }
                 // A result unavailable on failure cannot fabricate the legacy's partial writes.
-                if (source == null) throw new BoundaryRuntime.Incomplete("Native partial state is unavailable after failure");
+                if (source == null && !returned) throw new BoundaryRuntime.Incomplete("Native partial state is unavailable after failure");
                 context.put((String) projection.get("context_key"), NativeBoundaryValues.read(source, (List<String>) projection.get("getters"), nativeTypes));
             }
         }

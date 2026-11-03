@@ -37,6 +37,10 @@ def prepare_metadata(tasks,payload,production,inventory,bundle,check):
                 'implementation_ready',receipt,stable_id(receipt))
             return receipt
         except AdapterRepairRequired as error:
+            from runtime.behavior_conversion.verification_mode import conversion_mode
+            if conversion_mode(tasks.profile):
+                raise VerificationIncomplete(dict(stage='conversion_readiness',errors=[str(error)],
+                    action='Resolve native production wiring; comparison adapter generation is disabled')) from error
             if repaired:record_correction(tasks,'adapter',error.verification_feedback)
             from runtime.behavior_conversion.executable_adapters import resolve_adapter
             context=dict(payload);context.update(getattr(error,'preparation_context',{}))

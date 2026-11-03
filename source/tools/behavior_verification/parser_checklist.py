@@ -7,7 +7,7 @@ from models.unit_parser_checklist import UnitParserChecklist
 from tools.behavior_verification.reachable_slice import _provenance
 
 
-def read_parser_checklist(element, boundary, sources, paths):
+def read_parser_checklist(element, boundary, sources, paths, *, fact_scope='complete_unit'):
     """Reject unavailable source, duplicate identities and references outside the slice."""
     result = UnitParserChecklist(source_manifest_hash=boundary.source_manifest_hash,
                                  configuration_hash=boundary.configuration_hash)
@@ -28,6 +28,14 @@ def read_parser_checklist(element, boundary, sources, paths):
         if status not in {'extracted', 'verification_incomplete'}:
             raise ValueError('Unexpected parser checklist status')
         nodes = {node.id: node for node in graph.nodes}
+        if element.get('fact_scope','complete_unit')!=fact_scope:
+            raise ValueError('Unexpected deterministic checklist scope')
+        result.fact_scope=fact_scope
+        composition=[item.get('id') for item in element.findall('composition-code')]
+        if len(composition)!=len(set(composition)) or not set(composition)<=set(nodes):
+            raise ValueError('Basic checklist composition nodes are outside the original graph')
+        if composition and fact_scope!='basic_element':raise ValueError('Complete checklist cannot omit composition nodes')
+        result.composition_code_nodes=composition
         permitted = set(nodes) | set(graph.external_signatures)
         items = {}
         for item in element.findall('item'):

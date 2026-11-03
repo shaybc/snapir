@@ -14,6 +14,7 @@ class NativeVerificationBinding(BaseModel):
     static_method: bool = False
     constructor_arguments: list[NativeBoundaryValue] = Field(default_factory=list)
     arguments: list[NativeBoundaryValue] = Field(default_factory=list)
+    configuration_setters: dict[str, NativeBoundaryValue] = Field(default_factory=dict)
     context_writes: list[NativeBoundaryProjection] = Field(default_factory=list)
     output: Literal['none', 'result'] = 'result'
     output_getters: list[str] = Field(default_factory=list)

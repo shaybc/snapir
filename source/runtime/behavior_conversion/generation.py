@@ -28,28 +28,30 @@ class EvidenceSummary(BaseModel):
 def generate(conn, config, profile, category, identity, instruction, payload, schema,
              validator=None, model_call=None, label="", require_coverage=True):
     """Keep normal generation strict; opt into isolated recovery only for retained IBM dependencies."""
-    try:
-        if profile.staged_unit_conversion:
-            from runtime.behavior_conversion.conversion_tasks import conversion_task
-            task=conversion_task(category,schema)
-            if task!='metadata':
-                if payload.get('kind')=='thin_path_experiment' and schema.__name__=='NativeUnitBundle':
-                    from runtime.behavior_conversion.staged_conversion import staged_generate
-                    return staged_generate(conn,config,profile,category,identity,instruction,payload,schema,
-                        validator=validator,model_call=model_call,label=label,require_coverage=require_coverage,
-                        implementation_attempt=getattr(validator,'implementation_attempt',None))
-                from runtime.behavior_conversion.staged_pipeline import staged_pipeline
-                return staged_pipeline(conn,config,profile,category,identity,payload,schema,validator,model_call,task,label)
-        return _generate(conn,config,profile,category,identity,instruction,payload,schema,
-            validator=validator,model_call=model_call,label=label,require_coverage=require_coverage)
-    except Exception as error:
-        from runtime.behavior_conversion.side_road_policy import ForbiddenFrameworkDependency
-        if not (profile.side_road_conversion and isinstance(error,ForbiddenFrameworkDependency)
-                and schema.__name__=='NativeUnitBundle' and not category.startswith('side_road_')):
-            raise
-        from runtime.behavior_conversion.side_road_conversion import recover_unit
-        return recover_unit(conn,config,profile,category,identity,payload,schema,validator,model_call,error,
-            generate_stage=_generate,require_coverage=require_coverage)
+    from runtime.dependency_policy import dependency_policy_scope
+    with dependency_policy_scope(conn,config.run_id,profile,payload):
+        try:
+            if profile.staged_unit_conversion:
+                from runtime.behavior_conversion.conversion_tasks import conversion_task
+                task=conversion_task(category,schema)
+                if task!='metadata':
+                    if payload.get('kind')=='thin_path_experiment' and schema.__name__=='NativeUnitBundle':
+                        from runtime.behavior_conversion.staged_conversion import staged_generate
+                        return staged_generate(conn,config,profile,category,identity,instruction,payload,schema,
+                            validator=validator,model_call=model_call,label=label,require_coverage=require_coverage,
+                            implementation_attempt=getattr(validator,'implementation_attempt',None))
+                    from runtime.behavior_conversion.staged_pipeline import staged_pipeline
+                    return staged_pipeline(conn,config,profile,category,identity,payload,schema,validator,model_call,task,label)
+            return _generate(conn,config,profile,category,identity,instruction,payload,schema,
+                validator=validator,model_call=model_call,label=label,require_coverage=require_coverage)
+        except Exception as error:
+            from runtime.behavior_conversion.side_road_policy import ForbiddenFrameworkDependency
+            if not (profile.side_road_conversion and isinstance(error,ForbiddenFrameworkDependency)
+                    and schema.__name__=='NativeUnitBundle' and not category.startswith('side_road_')):
+                raise
+            from runtime.behavior_conversion.side_road_conversion import recover_unit
+            return recover_unit(conn,config,profile,category,identity,payload,schema,validator,model_call,error,
+                generate_stage=_generate,require_coverage=require_coverage)
 
 
 def _generate(conn, config, profile, category, identity, instruction, payload, schema,

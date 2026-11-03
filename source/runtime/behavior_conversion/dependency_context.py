@@ -6,7 +6,7 @@ from xml.etree import ElementTree
 from models.maven_dependency import MavenDependency
 
 
-def known_dependencies(projects, planned):
+def known_dependencies(projects, planned, profile=None):
     """Read pinned direct target dependencies and planned native-library dependencies."""
     known = {}
     for project in projects:
@@ -34,9 +34,10 @@ def known_dependencies(projects, planned):
             dependency = MavenDependency(group_id=group, artifact_id=artifact, version=version, scope=scope,
                 reason="Current target POM dependency", required_classes=[])
             _remember(known, dependency)
-    for dependency in planned:
+    from runtime.dependency_policy import canonical_dependencies,inventory,load_policy
+    for dependency in (canonical_dependencies(profile,planned,historical=True) if load_policy(profile) else planned):
         _remember(known, dependency)
-    return [dependency.model_dump(mode="json") for dependency in known.values()]
+    return inventory(profile,[dependency.model_dump(mode="json") for dependency in known.values()])
 
 
 def _remember(known, dependency):

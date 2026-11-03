@@ -43,7 +43,7 @@ def generate_service(conn, config, profile, closure, contract, accepted_units, v
     from runtime.behavior_conversion.dependency_context import known_dependencies
     project = Path(config.output_root) / closure["channel"] / closure["operation_id"]
     request = service_request(profile, closure, contract, accepted_units)
-    request["known_dependencies"] = known_dependencies([project], [])
+    request["known_dependencies"] = known_dependencies([project], [],profile)
     from runtime.behavior_conversion.testing_contract import attach_testing_contract
     attach_testing_contract(request, profile)
     return generate(conn, config, profile, "service", identity, INSTRUCTION, request,

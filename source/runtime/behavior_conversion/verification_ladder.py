@@ -45,6 +45,9 @@ class UnitVerificationSession:
     def prepare_tests(self,bundle):
         """Finish source, invocation, settings and case preparation before test generation."""
         self.static(bundle)
+        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+            return dict(mapping_status=self.static_report.status,behavioral_equivalence='not_assessed',
+                native_settings_apis=self.native_settings_apis)
         if self.executable_settings is not None and self.executable_settings.mode=='executable_boundary_v1':
             return self.executable_structure['comparison_preparation']
         from runtime.behavior_conversion.settings_readiness import prepare_settings
@@ -52,6 +55,9 @@ class UnitVerificationSession:
 
     def static(self, bundle):
         """Schema/mapping/exclusion checks happen before compilation or file publication."""
+        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+            from runtime.behavior_conversion.conversion_readiness import prepare_conversion
+            return prepare_conversion(self,bundle)
         if self.executable_settings is not None and self.executable_settings.mode=='executable_boundary_v1':
             from runtime.behavior_conversion.executable_verification import prepare_boundary
             return prepare_boundary(self,bundle)
@@ -70,6 +76,13 @@ class UnitVerificationSession:
                 decisions=[item for item in report.decisions if item['status'] == 'rejected'], evidence=str(self.attempt)))
         if report.status != 'mapping_valid':
             raise VerificationIncomplete(dict(stage='checklist', errors=report.errors, decisions=report.decisions, evidence=str(self.attempt)))
+
+    def complete(self,project,context,bundle,*,build_validation=None):
+        """Complete the selected policy without invoking legacy execution in conversion mode."""
+        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+            from runtime.behavior_conversion.conversion_readiness import complete_conversion
+            return complete_conversion(self,bundle,build_validation)
+        return self.compare(project,context,bundle,build_validation=build_validation)
 
     def compare(self, project, context, bundle, *, build_validation=None):
         """Called after Maven compile/tests and before candidate files are copied into the project."""

@@ -27,7 +27,7 @@ def validate_service_project(project, context):
         elif goal == "test":
             from xml.etree import ElementTree
             reports = list((Path(project) / "target/surefire-reports").glob("TEST-*.xml"))
-            count = sum(int(ElementTree.parse(path).getroot().get("tests", "0")) for path in reports)
+            count = sum(int(ElementTree.parse(path).getroot().get("tests", "0"))-int(ElementTree.parse(path).getroot().get("skipped", "0")) for path in reports)
             results["test_status"] = "passed" if count else "not_available"
             results["test_count"] = count
         else:

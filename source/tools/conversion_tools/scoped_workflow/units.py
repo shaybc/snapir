@@ -40,8 +40,8 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
                 continue
             identity = (origin['definition_id'], origin['source_hash'])
             # Check current bytes even when another unit has cached this source.
-            content = read_java_source(origin['source_file'], expected_hash=origin['source_hash'])
-            if identity not in cache:
+            content = read_java_source(origin['source_file'], expected_hash=origin['source_hash'], preserve_line_endings=True)
+            if identity not in cache or cache[identity].content != content:
                 cache[identity] = UnitSource(identity=identity[0], content=content, content_hash=identity[1])
             implementations.append(cache[identity])
         facts = dict(policy_version=POLICY_VERSION, conversion_policy=policy,
@@ -91,3 +91,19 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
     if not units:
         raise ValueError('No configured behavior units were discovered')
     return units, bindings
+
+
+def restore_cached_source_text(operation):
+    """Restore exact source text in memory after immutable cache and file checks succeed."""
+    origins={origin['definition_id']:origin for origin in operation['behavior_request']['java_origins']
+             if origin['status']=='verified_source'}
+    for unit in operation['units']:
+        for source in unit['sources']:
+            origin=origins[source['identity']]
+            if source['content_hash']!=origin['source_hash']:
+                raise ValueError('Cached source revision differs from original evidence')
+            content=read_java_source(origin['source_file'],expected_hash=source['content_hash'],preserve_line_endings=True)
+            normalized=content.replace('\r\n','\n').replace('\r','\n')
+            if source['content'] not in (content,normalized):
+                raise ValueError('Cached source content differs from original evidence')
+            source['content']=content

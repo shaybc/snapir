@@ -26,3 +26,22 @@ def test_semantic_budget_respects_selected_verification_mode(monkeypatch,mode,si
     tasks=SimpleNamespace(profile=profile,ask=ask)
     with pytest.raises(RequestReached if allowed else VerificationIncomplete):
         metadata_semantics.describe(tasks,{},None,None,NativeComponentBundle,lambda _:None)
+
+
+def test_conversion_chain_metadata_is_explicit_and_receives_accepted_apis(monkeypatch):
+    from models.native_format_component_bundle import NativeFormatComponentBundle
+    profile=PipelineConfiguration()
+    profile.executable_verification.mode='conversion_checklist_v1'
+    payload=dict(format_chain_policy='configured-format-chains-v1',format_chains=[dict(
+        occurrence_id='occurrence',class_name='Chain',direction='format',attributes={},operations=[],inactive_decorators=[])],
+        prerequisite_components=[dict(contracts={'basic':dict(apis=[dict(type_name='accepted.Basic',method_signatures=['public String format(String value)'])])})])
+    request=metadata_semantics.semantic_request(payload,SimpleNamespace(files=[]),dict(apis=[]))
+    assert 'prerequisite_apis' not in request
+    assert 'format_chains' not in request
+    monkeypatch.setattr(metadata_semantics,'semantic_request',lambda *args:request)
+    def ask(stage,supplied,instruction,schema,check,**kwargs):
+        assert 'format_chain_bindings' not in instruction
+        assert 'format_chain_bindings' not in schema.model_fields
+        raise RequestReached()
+    with pytest.raises(RequestReached):
+        metadata_semantics.describe(SimpleNamespace(profile=profile,ask=ask),payload,None,None,NativeFormatComponentBundle,lambda _:None)

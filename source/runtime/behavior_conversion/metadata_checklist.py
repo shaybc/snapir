@@ -26,6 +26,7 @@ def checklist_context(tasks,payload):
     if session is None:
         from runtime.behavior_conversion.verification_ladder import active_verification
         session=active_verification()
+    if session is None:session=getattr(tasks.validator,'session',None)
     items=payload.get('parser_checklist') or []
     if isinstance(items,dict):items=items.get('items',[])
     if session:items=[i.model_dump(mode='json') for i in session.boundary.parser_checklist.items]
@@ -33,6 +34,8 @@ def checklist_context(tasks,payload):
 
 
 def mapping_enabled(tasks,payload):
+    from runtime.behavior_conversion.verification_mode import facts_disabled
+    if facts_disabled(tasks.profile):return False
     return tasks.profile.metadata_checklist_batching and bool(checklist_context(tasks,payload)[0])
 
 
@@ -47,7 +50,8 @@ def _policy_check(session,items,files,entries):
     answers=UnitChecklistAnswers(unit_id=boundary.unit_id,source_manifest_hash=boundary.source_manifest_hash,
         configuration_hash=boundary.configuration_hash,responses=entries)
     report=validate_unit_static(session.unit,boundary,[dict(path=p,content=t) for p,t in files.items()],answers,
-        tool=session.tool,policy=session.policy,authorizations=session.authorizations)
+        tool=session.tool,policy=session.policy,authorizations=session.authorizations,
+        conversion_only=getattr(session,'executable_settings',None) is not None and session.executable_settings.mode=='conversion_checklist_v1')
     if any(e.get('kind') in {'analysis_unavailable','invalid_contract'} for e in report.errors):
         raise VerificationIncomplete(dict(stage='metadata_checklist_tooling',errors=report.errors))
     return [dict(item_id=e.get('checklist_id'),code='policy_rejected',message=e.get('message','Existing policy rejected mapping')) for e in report.errors]
@@ -55,6 +59,8 @@ def _policy_check(session,items,files,entries):
 
 def map_checklist(tasks,payload,production,inventory):
     """Keep valid siblings, repair only unfinished IDs, and bound all descendant requests."""
+    from runtime.behavior_conversion.verification_mode import facts_disabled
+    if facts_disabled(tasks.profile):return {}
     values,session=checklist_context(tasks,payload)
     if not values:return {}
     items={i['id']:i for i in values}
@@ -71,6 +77,9 @@ def map_checklist(tasks,payload,production,inventory):
     proof=stable_id(POLICY,values,files,catalog,policy.model_dump(mode='json'),
         [a.model_dump(mode='json') for a in authorizations],session.boundary.model_dump(mode='json') if session else None,
         profile.metadata_checklist_request_chars)
+    from runtime.component_conversion.format_chains import checklist_chain_context
+    chain_context=checklist_chain_context(payload)
+    if chain_context:proof=stable_id(proof,chain_context)
     conn,run=tasks.conn,tasks.config.run_id
     initial=plan_batches(values,profile.metadata_checklist_batch_items)
     maximum=profile.metadata_checklist_max_calls or max(1,len(initial))*profile.max_agent_task_retries*2
@@ -97,7 +106,7 @@ def map_checklist(tasks,payload,production,inventory):
                 context=dict(configuration=(payload.get('configured_unit') or payload.get('configured_format') or {}).get('configuration_xml'),
                     boundary=session.boundary.model_dump(mode='json',exclude={'parser_checklist'}) if session else None,
                     exclusion_policy=policy.model_dump(mode='json') if session else None,
-                    authorizations=[a.model_dump(mode='json') for a in authorizations]))
+                    authorizations=[a.model_dump(mode='json') for a in authorizations],**chain_context))
         except (EvidenceTooLarge,ValueError) as error:
             state.mark_items(conn,run,revision,ids,'evidence_incomplete')
             state.batch(conn,run,revision,key,parent,dict(ids=ids,extra=extra),'evidence_incomplete',[dict(code='request_size_or_evidence',message=str(error))])
@@ -117,7 +126,8 @@ def map_checklist(tasks,payload,production,inventory):
                 state.mark_items(conn,run,revision,ids,'terminal_failure')
                 raise VerificationIncomplete(dict(stage='metadata_checklist_budget',item_ids=ids,errors=[str(error)])) from error
             try:
-                raw=call(MAPPING,encoded)
+                from agents.behavior_conversion.metadata_checklist import CHAIN_MAPPING
+                raw=call(MAPPING+(CHAIN_MAPPING if chain_context else ''),encoded)
                 state.finish_transport(conn,run,revision,logical,number,response=raw);break
             except (OSError,TimeoutError,RuntimeError) as error:
                 transport_error=error;state.finish_transport(conn,run,revision,logical,number,error=error)
@@ -141,7 +151,8 @@ def map_checklist(tasks,payload,production,inventory):
             if e['kind']=='native':visible.setdefault(e['owner'],[]).append(e['content'])
         check=(lambda entries:_policy_check(session,items,files,entries)) if session else None
         result=validate_batch(decoded,ids,files,revision=revision,production=production_revision,batch_id=request['batch_id'],
-                              allow_exclusions=session is not None,check=check,visible=visible)
+                              allow_exclusions=session is not None,check=check,visible=visible,
+                              require_code=profile.executable_verification.mode=='conversion_checklist_v1')
         tasks.fresh()
         state.save_items(conn,run,revision,proof,result['accepted']);accepted.update(result['accepted'])
         pending=[key for key in ids if key not in accepted]

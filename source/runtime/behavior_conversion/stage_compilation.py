@@ -21,7 +21,9 @@ def production_compiler(profile,factory=None,*,prerequisites=None,dependencies=(
         # Existing project files are compile inputs only; final publication still enforces ownership.
         frozen={path:text for path,text in frozen.items() if path not in files and path.startswith('src/main/java/')}
         pins={}
-        for value in [*dependencies,*bundle.dependencies]:
+        from runtime.dependency_policy import canonical_dependencies
+        inherited=canonical_dependencies(profile,dependencies,historical=True)
+        for value in [*inherited,*canonical_dependencies(profile,bundle.dependencies)]:
             pin=value if isinstance(value,MavenDependency) else MavenDependency.model_validate(value)
             key=(pin.group_id,pin.artifact_id)
             if key in pins and (pins[key].version,pins[key].scope)!=(pin.version,pin.scope):raise ValueError('Compile stage changed a pinned dependency')

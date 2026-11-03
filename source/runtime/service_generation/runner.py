@@ -38,6 +38,8 @@ def generation_settings_identity(profile):
         "approved_maven_repository_urls", "allowed_ibm_artifacts", "allowed_ibm_classes",
         "runtime_validation_mode")}, sort_keys=True) + str(getattr(profile, "java_version", JAVA_VERSION)) + str(getattr(profile, "java_home", None)) + SPRING_BOOT_VERSION
     if profile.conversion_strategy == "behavior_units":
+        from runtime.behavior_conversion.verification_mode import conversion_mode,policy_payload
+        if conversion_mode(profile):identity += json.dumps(policy_payload(profile),sort_keys=True)
         from runtime.service_generation.operation_wiring import WIRING_VERSION
         identity += WIRING_VERSION
         from runtime.service_generation.response import RESPONSE_VERSION
@@ -197,8 +199,14 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 conn.execute("UPDATE service_generation_checkpoints SET project_hash=?, validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                              (_project_hash(project), json.dumps(result), *key))
             if result.get("build_passed") and result.get("package_passed"):
-                from runtime.runtime_validation.executor import RuntimeTestExecutor
-                result.update(RuntimeTestExecutor(profile).execute(item, directory))
+                from runtime.behavior_conversion.verification_mode import conversion_mode
+                if conversion_mode(profile):
+                    result.update(readiness_status='conversion_ready',verification_version='conversion-checklist-v1',
+                        xml_compatibility='not_assessed',behavioral_equivalence='not_assessed',legacy_trace_comparison='not_assessed',
+                        runtime_validation_notice='Conversion build/JUnit readiness only; original/native equivalence is not assessed.')
+                else:
+                    from runtime.runtime_validation.executor import RuntimeTestExecutor
+                    result.update(RuntimeTestExecutor(profile).execute(item, directory))
                 conn.execute("UPDATE service_generation_checkpoints SET validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                              (json.dumps(result), *key))
             passed = result.get("build_passed") and result.get("package_passed") and result.get("ibm_guard_passed") and result.get("test_status") == "passed"

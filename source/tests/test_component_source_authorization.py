@@ -79,3 +79,26 @@ def test_single_source_and_shared_support_remain_unique(source_case):
     main_only = component_sources(plan, group, {})
     assert len(main_only) == 1
     validate_component_sources(plan, group, {}, main_only)
+
+
+@pytest.mark.parametrize('newline,bom', [('\n',False),('\r\n',False),('\r\n',True)])
+def test_source_catalog_preserves_raw_hash_for_main_and_support(tmp_path,newline,bom):
+    import hashlib
+    from runtime.behavior_conversion.metadata_checklist_evidence import source_catalog
+    origins=[]
+    for name in ('Work','Context'):
+        raw=(('\ufeff' if bom else '')+'class '+name+' {'+newline+'}'+newline).encode('utf-8')
+        path=tmp_path/(name+'.java');path.write_bytes(raw)
+        origins.append(dict(definition_id=name,source_file=str(path),source_hash=hashlib.sha256(raw).hexdigest()))
+    origins[0]['supporting_sources']=[origins[1]]
+    plan=SimpleNamespace(components={'work':SimpleNamespace(provenance=origins[0])})
+    group=SimpleNamespace(members=['work'])
+    sources=component_sources(plan,group,{})
+    assert all(hashlib.sha256(s['content'].encode('utf-8')).hexdigest()==s['content_hash'] for s in sources)
+    assert len(source_catalog(dict(sources=sources),{},{}))==2
+    validate_component_sources(plan,group,{},sources)
+    changed=deepcopy(sources);changed[1]['content']+='// altered'
+    with pytest.raises(ValueError,match='Original evidence hash changed'):
+        source_catalog(dict(sources=changed),{},{})
+    with pytest.raises(ValueError,match='changed original source evidence'):
+        validate_component_sources(plan,group,{},changed)

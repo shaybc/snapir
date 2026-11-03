@@ -18,7 +18,7 @@ An ambiguous binding remains unresolved. No checklist mapping is requested.'''
 
 def enabled(payload,schema):
     """Apply only to configured units and component contracts in the explicit new mode."""
-    return (payload.get('executable_verification',{}).get('mode')=='executable_boundary_v1'
+    return (payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}
         and ('contracts' in schema.model_fields or payload.get('kind') in
              {'request_unformat','response_format','configured_step'}))
 
@@ -33,7 +33,7 @@ def derive(value,payload,inventory,production):
     owned={name for f in production.files for name in public_api_types(f.content)}
     apis={api['type_name']:api for api in inventory['apis'] if api['type_name'] in owned}
     binding=data.get('verification_binding') or {}
-    root=binding.get('owner_type')
+    root=binding.get('owner_type') or data.pop('entry_type',None)
     if root:
         if root not in apis:raise ValueError('Boundary binding owner must be a parsed, owned public type')
     elif 'component_details' in data:

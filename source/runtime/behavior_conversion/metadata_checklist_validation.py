@@ -7,7 +7,7 @@ from models.metadata_checklist_batch import MetadataChecklistBatch
 import json
 
 
-def validate_batch(raw,expected,files,*,revision,production,batch_id,allow_exclusions=False,check=None,visible=None):
+def validate_batch(raw,expected,files,*,revision,production,batch_id,allow_exclusions=False,check=None,visible=None,require_code=False):
     """Return valid entries, all detectable errors and explicit evidence requests."""
     errors=[];accepted={}
     def error(identity,code,message,**details):
@@ -40,6 +40,8 @@ def validate_batch(raw,expected,files,*,revision,production,batch_id,allow_exclu
             elif location.path not in files:error(identity,'missing_file','Cited file is not current supplied native evidence',path=location.path)
             elif not location.excerpt.strip():error(identity,'empty_excerpt','Cite nonempty exact production code',path=location.path)
             elif location.excerpt not in files[location.path]:error(identity,'excerpt_not_found','Cite exact text from the supplied current file',path=location.path,excerpt=location.excerpt)
+            elif require_code and not _code_excerpt(location.excerpt):
+                error(identity,'comment_only_evidence','Cite actual production code, not comments or JavaDoc',path=location.path)
             elif visible is not None and not any(location.excerpt in text for text in visible.get(location.path,[])):
                 error(identity,'evidence_unavailable','Request the catalog range containing this excerpt before citing it',path=location.path)
         if len(errors)==start:accepted[identity]=entry.model_dump(mode='json')
@@ -53,9 +55,14 @@ def validate_batch(raw,expected,files,*,revision,production,batch_id,allow_exclu
     return dict(accepted=accepted,errors=errors,evidence_requests=envelope.evidence_requests)
 
 
-def validate_component_mappings(mappings,expected,files):
+def validate_component_mappings(mappings,expected,files,*,require_code=False):
     """Use the same aggregate report in all final component/subtree owner validators."""
     entries=[dict(checklist_id=k,status='implemented',locations=[v.model_dump(mode='json') if hasattr(v,'model_dump') else v for v in values]) for k,values in mappings.items()]
     result=validate_batch(dict(task_revision='owner',production_revision='owner',batch_id='owner',entries=entries),expected,files,
-                          revision='owner',production='owner',batch_id='owner')
+                          revision='owner',production='owner',batch_id='owner',require_code=require_code)
     if result['errors']:raise ValueError('Invalid checklist mappings: '+json.dumps(result['errors']))
+
+
+def _code_excerpt(excerpt):
+    from tools.validation_tools.java_comments import mask_java_comments
+    return bool(mask_java_comments(excerpt).strip())

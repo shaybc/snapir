@@ -16,16 +16,28 @@ python -B -m tools.behavior_verification.component_pilot_run --output-root outpu
 Use a new output folder and the configured model credential in the process environment.
 This reruns the actual Mapper and converter in `component_first_v1` mode on the selected
 bank-demo operations. It retains the 900000-character budget, both four-attempt limits,
-automatic gates and all technical checks. It does not deploy or perform Git actions.
+automatic gates and the selected policy's technical checks. It does not deploy or perform Git actions.
 Existing converter modes and saved runs are unchanged.
 
 The wrapper writes `live-status.json`, `acceptance-report.md`, `cf8-measurement.json`,
 request sizes in decimal KB/MB/GB, executor interaction/transport counts, and the existing
 source-bound pilot measurement. Size checks include oversized probes never sent to the
 model; they are not model-call counts or token counts. Components and preparation are
-not accepted units. Terminal acceptance checks static/build/comparison evidence and
+not accepted units. The selected `conversion_checklist_v1` policy requires bounded
+source-checklist mappings, native API/configuration checks, compilation and executed JUnit
+tests before operation assembly. Terminal conversion readiness checks those receipts and
 transitive component/part manifests. Warm reuse is measured only after full cold acceptance.
 Blocked runs retain their actual pending/failed/incomplete counts and causes.
+
+Checklist mapping uses bounded batches, reports every detectable error in each batch,
+retains valid sibling items, and corrects only unfinished IDs with precise feedback and
+persistent retry limits. It establishes traceability, not Composer equivalence.
+This policy does not prepare/run legacy code, approve individual library calls, generate
+comparison inputs or execute comparison coverage/mutation checks. Normal dependency,
+IBM-reference, reflection, native settings, routing, Spring wiring and JUnit checks remain.
+Delivery reports distinguish `conversion_ready` from `production_ready`; original/native
+behavioral equivalence is `not_assessed`, and production publication remains separately gated.
+Historical standalone comparison experiments below require an explicit comparison policy.
 
 The first CF8 run is under `outputs/bank-demo-component-first-20261027`. Its current
 report is the evidence source; this paragraph does not assert bank or enterprise acceptance.

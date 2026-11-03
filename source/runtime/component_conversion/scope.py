@@ -89,6 +89,12 @@ def require_component_task(conn, config, profile, identity, payload=None):
             raise ValueError('Component request changed occurrence-specific external contracts')
         from runtime.component_conversion.source_evidence import validate_component_sources
         validate_component_sources(execution['plan'], group, bindings, payload.get('sources', []))
+        if composed is not None:
+            from runtime.component_conversion.format_chains import attach_format_chains
+            trusted=dict(configured_format=composed,requirements={})
+            attach_format_chains(trusted,execution['plan'],group,execution['units'])
+            if any(payload.get(key)!=trusted[key] for key in ('format_chains','format_chain_policy')):
+                raise ValueError('Component request changed original decorator order/scope obligations')
     validate_checkpoints(conn, config, profile, execution['classpath'], execution['selected'])
     verify_original_sources(execution['plan'], group)
     if bindings:

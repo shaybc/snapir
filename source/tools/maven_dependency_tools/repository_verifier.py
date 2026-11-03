@@ -125,11 +125,17 @@ class MavenRepositoryVerifier:
             if resolved.returncode:
                 return resolved
             nodes = json.loads(tree_path.read_text(encoding="utf-8")).get("children", [])
+            dependencies=[]
             while nodes:
                 node = nodes.pop()
                 validate_dependency_policy(MavenDependency(
                     group_id=node["groupId"], artifact_id=node["artifactId"], version=node["version"],
                     scope=node.get("scope") or "compile", reason="Resolved Maven dependency",
                 ), allowed_ibm_artifacts)
+                dependencies.append(MavenDependency(group_id=node['groupId'],artifact_id=node['artifactId'],version=node['version'],scope=node.get('scope') or 'compile',reason='Resolved Maven dependency'))
                 nodes.extend(node.get("children", []))
-            return self._run(arguments + [goal], project_root)
+            from runtime.dependency_policy import check_resolved
+            check_resolved(getattr(self,'dependency_profile',None),dependencies)
+            result=self._run(arguments + [goal], project_root)
+            if result.returncode==0:check_resolved(getattr(self,'dependency_profile',None),dependencies,remember=True)
+            return result

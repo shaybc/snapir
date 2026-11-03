@@ -124,7 +124,7 @@ def native_instructions(kind, known=(), *, include_example=True):
 
 def reuse_known_dependencies(instruction, known, java_version=None):
     """Align response examples with current versions and guide every native code request."""
-    if instruction.startswith("Mandatory target-code contract"):
+    if instruction.startswith(("Mandatory target-code contract",NO_REFLECTION+"Mandatory target-code contract")):
         _, specific = instruction.split("\nUnit-specific instructions:\n", 1)
         kind = "format" if "Implement the complete configured format unit" in specific else "step"
         instruction = native_instructions(kind, known) + specific

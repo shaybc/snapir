@@ -60,6 +60,8 @@ class ComponentCandidateValidator:
         self.plan, self.group, self.request = plan, group, request
         self.output, self.factory = Path(output), factory
         self.dependency_files, self.dependencies = dependency_files, dependencies
+        from runtime.dependency_policy import canonical_dependencies
+        self.dependencies=canonical_dependencies(profile,dependencies,historical=True)
         self.results = {}
         self.units,self.boundaries=units,boundaries
         self.owned_dependency_sources=tuple(owned_dependency_sources)
@@ -77,7 +79,8 @@ class ComponentCandidateValidator:
             from runtime.component_conversion.format_verification import format_bundle,session_for
             identity=self.request['configured_format']['unit_id']
             session=session_for(self.config,self.profile,self.units[identity],self.boundaries['boundaries'][identity])
-            session.prepare_tests(format_bundle(bundle,self.request,self.dependency_files))
+            self.preparation=session.prepare_tests(format_bundle(bundle,self.request,self.dependency_files))
+            return self.preparation
 
     def __call__(self, bundle, cached=False):
         """Validate interfaces/citations, compile/test, then record only component progress."""
@@ -126,10 +129,10 @@ class ComponentCandidateValidator:
             session=session_for(self.config,self.profile,self.units[identity],self.boundaries['boundaries'][identity])
             session.static(verified_bundle)
         expected = {item['id'] for item in self.request['parser_checklist']}
-        from runtime.behavior_conversion.verification_mode import executable_mode
-        if session is None and not executable_mode(self.profile):
+        from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,facts_disabled
+        if session is None and not executable_mode(self.profile) and not facts_disabled(self.profile):
             from runtime.behavior_conversion.metadata_checklist_validation import validate_component_mappings
-            validate_component_mappings(bundle.checklist_implementations,expected,all_files)
+            validate_component_mappings(bundle.checklist_implementations,expected,all_files,require_code=conversion_mode(self.profile))
         known = {(item['group_id'], item['artifact_id']): item for item in self.request.get('known_dependencies', [])}
         for dependency in bundle.dependencies:
             pin = known.get((dependency.group_id, dependency.artifact_id))
@@ -138,14 +141,21 @@ class ComponentCandidateValidator:
         registered = register_component_contracts(self.conn, self.config.run_id, self.plan, self.group.group_id, bundle.contracts, self.profile)
         project = self.output / (self.group.group_id[-16:] + '-' + uuid.uuid4().hex[:12])
         required_tests = sorted({name for key in requirements for name in bundle.coverage[key]})
+        diagnostic_classpath = []
         def retain(staged, context, validation):
-            nonlocal comparison
+            nonlocal comparison, diagnostic_classpath
             self.last=dict(build_validation=validation.model_dump(mode='json'),component_only=True)
             require_component_task(self.conn, self.config, self.profile, self.group.group_id, self.request)
             if session is not None:
                 from runtime.component_conversion.format_verification import retain_format_evidence
-                session.compare(staged,context,verified_bundle,build_validation=validation.model_dump(mode='json'))
+                session.complete(staged,context,verified_bundle,build_validation=validation.model_dump(mode='json'))
                 comparison=retain_format_evidence(session,project)
+            if self.profile.format_comparison.enabled and self.request.get('configured_format') is not None:
+                from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
+                try:
+                    diagnostic_classpath = native_runtime_classpath(staged, context)
+                except Exception:
+                    diagnostic_classpath = []  # Missing runtime dependencies stay unavailable in the diagnostic.
             shutil.copytree(staged / 'target', project / 'target')
         dependencies = [MavenDependency.model_validate(item) for item in self.dependencies] + bundle.dependencies
         validation, _ = accept_bundle(project, files, self.factory, self.profile, dependencies,
@@ -156,6 +166,9 @@ class ComponentCandidateValidator:
             path = project / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding='utf-8', newline='\n')
+        if self.profile.format_comparison.enabled and self.request.get('configured_format') is not None:
+            from runtime.format_comparison.component_diagnostics import diagnose_component
+            diagnose_component(self, bundle, all_files, project / 'format-diagnostic', native_classpath=diagnostic_classpath)
         manifest = {path.relative_to(project).as_posix(): file_digest(path) for path in project.rglob('*') if path.is_file()}
         results = {}
         for key in self.group.members:
@@ -169,6 +182,11 @@ class ComponentCandidateValidator:
                 checklist_implementations={item: [location.model_dump() for location in locations] for item, locations in bundle.checklist_implementations.items()},
                 source_entry_points=self.request['source_entry_points'], comparison_limitations=self.request['comparison_limitations'])
             report['requirements'] = self.request['requirements']
+            report['format_chains'] = self.request.get('format_chains',[])
+            report['format_chain_policy'] = self.request.get('format_chain_policy')
+            report['composition_obligations'] = self.request.get('composition_obligations',[])
+            from runtime.component_conversion.format_chain_ownership import chain_ownership
+            report['format_chain_ownership'] = chain_ownership(self.request)
             report['whole_unit_feedback'] = self.request.get('whole_unit_feedback')
             report['format_partition_records'] = self.request.get('format_partition_records', [])
             if self.request.get('configured_unit') is not None:
@@ -176,7 +194,7 @@ class ComponentCandidateValidator:
             if session is not None:
                 report.update(configured_format=self.request['configured_format'],format_comparison=comparison,
                     format_candidate=dict(checklist_answers=bundle.checklist_answers.model_dump(mode='json') if bundle.checklist_answers else None,
-                        verification_binding=bundle.verification_binding.model_dump(mode='json'),
+                        verification_binding=bundle.verification_binding.model_dump(mode='json') if bundle.verification_binding else None,
                         requirements=requirements,evidence_ids=bundle.evidence_ids))
             path = project / report_name
             path.write_text(json.dumps(report, indent=2), encoding='utf-8')

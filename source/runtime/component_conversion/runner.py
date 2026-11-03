@@ -28,10 +28,14 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     output = Path(config.output_root).resolve() / 'components'
     if not output.resolve().is_relative_to(Path(config.output_root).resolve()):
         raise ValueError('Component output is outside the run root')
-    boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan))
+    from runtime.behavior_conversion.verification_mode import facts_disabled
+    boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile))
     units = {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}
     report = dict(capability='component-first-cf6' if include_formats else 'component-first-cf4' if include_steps else 'component-first-cf3', configured_units=len(plan.unit_roots), accepted_units=0,
-        accepted_operations=0, behavioral_acceptance=False, groups={}, component_validated=0, reused_components=0)
+        accepted_operations=0, behavioral_acceptance=False, groups={}, total_groups=len(plan.groups), format_chain_status='not_reached', component_validated=0, reused_components=0)
+    if facts_disabled(profile):
+        report.update(experimental_only=True,fact_collection=False,fact_validation='disabled_for_test',fact_validation_blocking=False)
+    write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
     with component_execution(conn, config, profile, classpath, preparation, include_steps=include_steps,include_formats=include_formats):
         try:
             for position, group in enumerate(plan.groups, 1):
@@ -53,6 +57,10 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
                     report['groups'][group.group_id] = dict(status='incomplete', members=group.members, reason='Unresolved prerequisite evidence')
                     continue
                 logging.getLogger(__name__).info('Basic component group %s/%s: %s', position, len(plan.groups), group.members)
+                report['groups'][group.group_id]=dict(status='running',members=group.members)
+                if any(plan.components[key].kind=='format_composition' for key in group.members):
+                    report['format_chain_status']='running'
+                write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
                 try:
                     result = _convert_group(conn, config, profile, plan, group, boundaries, output, factory, model_call, units=units)
                     report['groups'][group.group_id] = result
@@ -69,6 +77,10 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
             update_run_status(conn, config.run_id, 'failed', 'conversion_components_failed')
             raise
         finally:
+            format_groups=[item for item in plan.groups if any(plan.components[key].kind=='format_composition' for key in item.members)]
+            states=[report['groups'].get(item.group_id,{}).get('status') for item in format_groups]
+            report['format_chain_status']=('validated' if states and all(value=='component_validated' for value in states) else
+                'blocked' if any(value in {'incomplete','running'} for value in states) else 'not_reached')
             write_run_report(directory, 'component-generation.json', json.dumps(report, indent=2))
     from tools.state_store_tools.runs import update_run_status
     update_run_status(conn, config.run_id, 'blocked', 'conversion_components_incomplete' if any(

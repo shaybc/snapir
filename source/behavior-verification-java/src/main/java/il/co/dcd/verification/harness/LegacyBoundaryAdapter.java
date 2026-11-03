@@ -13,10 +13,15 @@ public final class LegacyBoundaryAdapter implements BoundaryAdapter {
 
     @SuppressWarnings("unchecked")
     public Object invoke(String xml, Map<String, Object> state, Element configuration) throws Exception {
-        Class<?> contextClass = load(job.getAttribute("context_class"));
-        context = contextClass.getConstructor().newInstance();
-        for (var entry : state.entrySet()) contextClass.getMethod(job.getAttribute("context_writer"), String.class, Object.class)
-            .invoke(context, entry.getKey(), entry.getValue());
+        Class<?> contextClass;
+        try {
+            contextClass = load(job.getAttribute("context_class"));
+            context = contextClass.getConstructor().newInstance();
+            for (var entry : state.entrySet()) contextClass.getMethod(job.getAttribute("context_writer"), String.class, Object.class)
+                .invoke(context, entry.getKey(), entry.getValue());
+        } catch (ReflectiveOperationException | RuntimeException setupFailure) {
+            throw new BoundaryRuntime.Incomplete("Composer context setup failed: " + setupFailure.getClass().getSimpleName());
+        }
         BoundaryRuntime.writes.clear();
         Object component;
         if (job.getAttribute("kind").equals("configured_step")) {

@@ -31,12 +31,15 @@ def metadata_schema(schema,batched=False):
 
 
 @lru_cache
-def deterministic_metadata_schema(schema):
+def deterministic_metadata_schema(schema,conversion_only=False):
     """Ask only for interpretation; application code supplies API ownership and identities."""
     from models.metadata_checklist_batch import ComponentSemantics
     base=metadata_schema(schema,True)
     excluded={'unit_contract','behavior_implementations'}
+    if conversion_only:excluded.add('verification_binding')
     overrides={}
+    if conversion_only and 'unit_contract' in schema.model_fields:
+        overrides['entry_type']=(str | None,None)
     if 'contracts' in schema.model_fields:
         excluded.add('contracts')
         details=_without_sources(ComponentSemantics,'ComponentDetails',{'api_types','api_members'})

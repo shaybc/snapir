@@ -38,7 +38,18 @@ public final class BoundaryHarness {
             if (failure instanceof BoundaryRuntime.Incomplete || failure instanceof ReflectiveOperationException || failure instanceof LinkageError) {
                 result.put("status", "verification_incomplete"); result.put("issues", List.of(failure.toString()));
             } else {
-                result.put("exception", Map.of("type", failure.getClass().getName(), "message", String.valueOf(failure.getMessage())));
+                Map<String, Object> exception = new LinkedHashMap<>();
+                exception.put("type", failure.getClass().getName());
+                exception.put("message", String.valueOf(failure.getMessage()));
+                List<Map<String, String>> causes = new ArrayList<>();
+                Throwable cause = failure.getCause();
+                while (cause != null && causes.size() < 8) {
+                    causes.add(Map.of("type", cause.getClass().getName(), "message", String.valueOf(cause.getMessage())));
+                    cause = cause.getCause();
+                }
+                if (!causes.isEmpty()) exception.put("causes", causes);
+                if (cause != null) exception.put("cause_chain_truncated", true);
+                result.put("exception", exception);
                 result.put("invocation_completed", invoked);
             }
         }

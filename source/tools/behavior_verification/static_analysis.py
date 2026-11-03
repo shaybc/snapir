@@ -49,13 +49,13 @@ def inspect_static_sources(unit, boundary, files, answers, policy, tool=None):
     for contract in policy.tag_contracts:
         ET.SubElement(legacy, 'tag_contract', **{'class': contract.tag_class, 'hash': contract.source_hash,
                                               'getter': contract.getter, 'id': contract.contract_id})
-    for item in boundary.parser_checklist.items:
+    for item in boundary.parser_checklist.items if boundary.parser_checklist is not None else ():
         fields = ('id', 'kind', 'detail', 'code_node_id', 'syntax_type', 'source_identity', 'source_hash',
                   'start_line', 'start_column', 'end_line', 'end_column')
         ET.SubElement(legacy, 'item', **{key: str(getattr(item, key)) for key in fields})
     with tempfile.TemporaryDirectory(prefix='snapir-static-checks-') as folder:
         input_path, output_path = Path(folder) / 'input.xml', Path(folder) / 'output.xml'
-        ET.ElementTree(root).write(input_path, encoding='utf-8', xml_declaration=True)
+        input_path.write_bytes(ET.tostring(root, encoding='utf-8', xml_declaration=True).replace(b'\r', b'&#13;'))
         result = run_java(['java', '-cp', str(tool), 'il.co.dcd.verification.StaticCheckAnalysis',
                            str(input_path), str(output_path)], capture_output=True, text=True, timeout=180, check=False)
         if result.returncode:

@@ -107,6 +107,8 @@ def verify_manifest(project, manifest):
 
 def accept_bundle(project, files, context_factory, profile, dependencies, dependency_files=(), require_tests=True, owned_files=(), required_tests=(), testing_contract=None, excluded_test_files=(), remove_excluded_tests=False, pre_publish=None):
     """Build a disposable complete candidate, then publish source and its verified POM."""
+    from runtime.dependency_policy import canonical_dependencies
+    dependencies=canonical_dependencies(profile,dependencies)
     from tools.maven_dependency_tools.pom_manager import merge_dependencies
     from runtime.behavior_conversion.validation import build_candidate
     project = Path(project)

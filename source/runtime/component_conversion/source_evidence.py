@@ -8,7 +8,7 @@ def component_sources(plan, group, bindings):
     origins = [(key, plan.components[bindings.get(key, key)].provenance) for key in group.members]
     for key, origin in origins:
         sources.append(dict(component_id=key, identity=origin['definition_id'], content_hash=origin['source_hash'],
-                            content=Path(origin['source_file']).read_text(encoding='utf-8-sig')))
+                            content=Path(origin['source_file']).read_bytes().decode('utf-8')))
     seen = {source['identity'] for source in sources}
     for key, origin in origins:
         for supporting in origin.get('supporting_sources', []):
@@ -17,7 +17,7 @@ def component_sources(plan, group, bindings):
             seen.add(supporting['definition_id'])
             sources.append(dict(component_id=key, identity=supporting['definition_id'],
                 content_hash=supporting['source_hash'], role='supporting_source_only',
-                content=Path(supporting['source_file']).read_text(encoding='utf-8-sig')))
+                content=Path(supporting['source_file']).read_bytes().decode('utf-8')))
     return sources
 
 

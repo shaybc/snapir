@@ -144,9 +144,10 @@ def test_format_children_decorators_references_and_collection_semantics_stay_ord
     assert [node.provenance['selector'] for node in children]==['root/child:0/child:0','root/child:0/child:1','root/child:0/child:2']
     first=children[0]
     assert [record['attributes']['mode'] for record in first.configuration['decorators']]==['one','two']
-    assert not any(node.label=='example.Decorator' for node in plan.components.values())
+    decorator=next(node for node in plan.components.values() if node.label=='example.Decorator')
+    assert decorator.roles==['decorator'] and decorator.component_id in first.dependencies
     implementation=next(node for node in plan.components.values() if node.label=='example.String')
-    assert {source['fqcn'] for source in implementation.provenance['supporting_sources']}=={'example.Helper','example.Decorator'}
+    assert {source['fqcn'] for source in implementation.provenance['supporting_sources']}=={'example.Helper'}
     assert children[2].dependencies and plan.components[children[2].dependencies[0]].label=='fmtDef'
     assert_order(plan)
 
@@ -202,11 +203,11 @@ def test_fresh_bank_plan_retains_all_83_units_without_native_generation(tmp_path
     units=[unit for operation in report['operations'].values() for unit in operation.get('units',[])]
     assert len(units)==len(plan.unit_roots)==83
     assert plan.status=='planned',plan.issues[:10]
-    assert all({'format_leaf','format_wrapper','step_implementation'}.intersection(node.roles)
+    assert all({'format_leaf','format_wrapper','step_implementation','decorator'}.intersection(node.roles)
                for node in plan.components.values() if node.kind=='java_implementation')
     supporting=[source for node in plan.components.values() if node.kind=='java_implementation'
                 for source in node.provenance.get('supporting_sources',[])]
-    assert any(source['fqcn'].endswith('.NilDecorator') for source in supporting)
+    assert any(node.label.endswith('.NilDecorator') and 'decorator' in node.roles for node in plan.components.values())
     assert any(source['fqcn'].endswith('.Context') for source in supporting)
     assert not plan.generation_enabled and not report['conversion_enabled']
     assert all(root in plan.components for root in plan.unit_roots.values())

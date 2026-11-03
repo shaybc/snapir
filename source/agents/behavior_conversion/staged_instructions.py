@@ -36,6 +36,8 @@ as its own oracle. Use the supplied parsed native APIs and testing platform. Do 
 code or invent APIs. The selected_boundary is the required test scope: exercise its selected method,
 required DTO accessors and runtime controls. Call the native class/method targets in
 selected_boundary.settings_bindings for settings setup. Keep settings isolated between cases;
+For conversion-checklist scopes, entries lists allowed native entry calls and native_settings_apis
+lists the actual settings methods to exercise; no comparison binding is required.
 never import the original framework settings class. Do not add reverse-direction or round-trip tests just
 because an unused formatter method exists. Do not weaken assertions to hide a failure; report an
 unresolved production defect if the frozen implementation contradicts the original evidence.

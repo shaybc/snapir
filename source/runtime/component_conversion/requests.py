@@ -7,6 +7,7 @@ from agents.behavior_conversion.component_generation import component_instructio
 from tools.conversion_tools.component_identity import component_target, input_revision
 from tools.behavior_verification.component_artifacts import verify_original_sources
 from runtime.component_conversion.source_evidence import component_sources
+from runtime.component_conversion.saved_experiment import saved_package
 
 
 def basic_group(plan, group):
@@ -18,7 +19,7 @@ def basic_group(plan, group):
 def build_component_request(plan, group, boundaries, dependencies, profile, *, check_budget=True, units=None):
     """Keep exact source and parser obligations; reject indivisible oversized groups without summaries."""
     if any(plan.components[key].kind=='java_implementation' and not
-           {'step_implementation','format_leaf','format_wrapper'}.intersection(plan.components[key].roles)
+           {'step_implementation','format_leaf','format_wrapper','decorator'}.intersection(plan.components[key].roles)
            for key in group.members):
         raise ValueError('Supporting Java source is not a standalone format or operation-step generation target')
     from runtime.component_conversion.steps import source_bindings, configured_step
@@ -32,18 +33,34 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     step = configured_step(plan, group, units or {})
     composed = configured_format(plan, group, units or {})
     sources, entries, checklist = component_sources(plan, group, bindings), {}, {}
+    from runtime.behavior_conversion.verification_mode import facts_disabled
+    skip_facts = facts_disabled(profile)
+    composition_obligations={}
+    basic_members={key for key in group.members if composed is None and {'format_leaf','format_wrapper','decorator'}.intersection(plan.components[key].roles)}
+    basic_format=bool(basic_members)
     for key in group.members:
         node = plan.components[bindings.get(key, key)]
         identity = node.provenance['definition_id']
+        basic_element=key in basic_members
         methods = set()
         for unit_id, boundary in boundaries['boundaries'].items():
             if unit_id not in plan.components[key].unit_ids:
                 continue
             graph = boundary.get('reachable_slice') or {}
+            composition_nodes=set((boundary.get('basic_parser_checklist') or {}).get('composition_code_nodes',[])) if basic_element else set()
             for method in graph.get('nodes', []):
-                if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method':
+                if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
                     methods.add(method['signature'])
-            for item in (boundary.get('parser_checklist') or {}).get('items', []):
+            full_checklist=boundary.get('parser_checklist') or {}
+            selected_checklist={} if skip_facts else full_checklist
+            if basic_element and not skip_facts:
+                selected_checklist=boundary.get('basic_parser_checklist') or {}
+                if selected_checklist.get('status')!='extracted' or selected_checklist.get('fact_scope')!='basic_element':
+                    raise ValueError('Basic formats/decorators require the current deterministic basic-element fact collector')
+                basic_ids={item['id'] for item in selected_checklist.get('items',[])}
+                composition_obligations.update({item['id']:item for item in full_checklist.get('items',[]) if
+                    item['source_identity']==identity and item['id'] not in basic_ids})
+            for item in selected_checklist.get('items', []):
                 if item['source_identity'] == identity and item['source_hash'] == node.provenance['source_hash']:
                     existing = checklist.get(item['id'])
                     if existing and {name:value for name,value in existing.items() if name!='path_certainty'} != {name:value for name,value in item.items() if name!='path_certainty'}:
@@ -53,10 +70,10 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         if composed is not None:
             from runtime.component_conversion.formats import current_format_boundary
             boundary=current_format_boundary(units[composed['unit_id']],boundaries)
-            if boundary.get('analysis_status')!='identified' or (boundary.get('parser_checklist') or {}).get('status')!='extracted':
+            if boundary.get('analysis_status')!='identified' or not skip_facts and (boundary.get('parser_checklist') or {}).get('status')!='extracted':
                 raise ValueError('Complete format requires identified original boundary and parser checklist')
             methods={boundary['legacy_method']['signature']}
-            checklist={item['id']:item for item in boundary['parser_checklist']['items']}
+            checklist={} if skip_facts else {item['id']:item for item in boundary['parser_checklist']['items']}
         if not methods:
             raise ValueError('Component has no parser-backed entry points: ' + node.label)
         entries[key] = sorted(methods)
@@ -65,13 +82,17 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     requirements = {'entry-' + digest([key, method]): 'Exercise original entry point ' + method
                     for key, methods in entries.items() for method in methods}
     request = dict(group_id=group.group_id, input_revision=revision, kind='basic_component',
-        native_package='com.company.generated.components.c' + revision[:16],
+        native_package=saved_package(profile,group.group_id,'com.company.generated.components.c' + revision[:16],
+            {key:plan.components[key] for key in group.members}),
         components={key: plan.components[key].model_dump(mode='json') for key in group.members},
         source_entry_points=entries, sources=sources,
-        parser_checklist=[checklist[key] for key in sorted(checklist)], analysis_tool_hash=boundaries['analysis_tool_hash'],
+        parser_checklist=[] if skip_facts else [checklist[key] for key in sorted(checklist)], analysis_tool_hash=boundaries['analysis_tool_hash'],
         prerequisite_components=dependencies, java_version=profile.java_version, requirements=requirements,
         validation_scope='build_and_tests', behavioral_equivalence='not_established',
         comparison_limitations=['No independent component invocation adapter; whole configured-unit comparison remains required.'])
+    if basic_format:
+        request['composition_obligations']=[dict(checklist_id=key,source_identity=composition_obligations[key]['source_identity'],
+            source_hash=composition_obligations[key]['source_hash'],owner='complete_configured_format') for key in sorted(composition_obligations)]
     if step is not None:
         request.update(kind='configured_step', configured_unit=step, configuration_evidence_ids=[step['source_definition_id']],
             operation_calls=step['operation_calls'], service_connections=step['service_connections'])
@@ -90,8 +111,15 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             'configured-format-boundary':'Invoke validated implementations and match original output/state/exception behavior at this configured direction'})
     elif any('format_wrapper' in plan.components[key].roles for key in group.members):
         request['kind']='format_implementation'
+    from runtime.component_conversion.format_chains import attach_format_chains
+    attach_format_chains(request,plan,group,units or {})
     from agents.behavior_conversion.step_component import step_instruction
     specific = step_instruction(request['kind'])
+    if skip_facts:
+        specific+='\nExperimental test only: parser facts and fact validation are disabled. Leave checklist mappings empty and checklist_answers null. Preserve all source behavior, API, settings, dependency, chain, compilation and JUnit requirements.'
+    if request.get('format_chain_policy'):
+        from runtime.component_conversion.format_chains import INSTRUCTION
+        specific+='\n'+INSTRUCTION
     instruction_factory=component_instruction; schema=NativeComponentBundle
     if composed is not None:
         from agents.behavior_conversion.format_component import format_instruction
@@ -104,14 +132,21 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     if attach_typed_boundary(request):
         specific += '\n' + TYPED_BOUNDARY_INSTRUCTION
     request['component_generation_policy'] = digest(dict(instruction=instruction_factory()+specific, schema=schema.model_json_schema()))
+    from runtime.behavior_conversion.verification_mode import conversion_mode,policy_payload
+    if conversion_mode(profile):
+        request['conversion_acceptance_policy']=policy_payload(profile)
+        request['component_generation_policy']=digest(dict(base=request['component_generation_policy'],conversion_policy=policy_payload(profile)))
     pins = {}
     for dependency in dependencies:
-        for pin in dependency.get('dependencies', []):
+        from runtime.dependency_policy import canonical_dependencies
+        for selected in canonical_dependencies(profile,dependency.get('dependencies', []),historical=True):
+            pin=selected.model_dump(mode='json')
             key = (pin['group_id'], pin['artifact_id'])
             if key in pins and (pins[key]['version'], pins[key]['scope']) != (pin['version'], pin['scope']):
                 raise ValueError('Conflicting prerequisite dependency pins')
             pins[key] = pin
-    request['known_dependencies'] = list(pins.values())
+    from runtime.dependency_policy import inventory
+    request['known_dependencies'] = inventory(profile,list(pins.values()))
     if step is not None:
         from runtime.behavior_conversion.connection_contract import attach_connections
         attach_connections(request, step['service_connections'])

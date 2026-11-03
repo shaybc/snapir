@@ -9,8 +9,9 @@ from tools.component_inventory_tools.identity import stable_id
 from runtime.behavior_conversion.context_key_evidence import with_context_key_evidence
 
 
-def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inventory=None):
-    """Require real native settings APIs, complete wiring and constructible comparison cases."""
+def prepare_native_settings(unit,bundle,controls,*,tool=None,inventory=None):
+    """Require source-defined native settings APIs without invoking or preparing a harness."""
+    if not controls:return inventory,[]
     if controls and not unit.get('effective_configuration'):
         raise VerificationIncomplete(dict(stage='configuration_preparation',errors=['Resolved configuration XML is required before test generation']))
     if inventory is None:
@@ -21,6 +22,7 @@ def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inv
                 originals[control['source_identity']]=dict(identity=control['source_identity'],content=control['source_content'])
         inventory=inspect_native(bundle.files,tool,list(originals.values()))
     inventory=with_context_key_evidence(unit,inventory)
+    targets=[]
     for control in controls:
         original=[m for m in inventory.get('original_methods',[]) if m['target']==control['target']]
         if len(original)!=1:
@@ -31,6 +33,13 @@ def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inv
         if not candidates:
             raise ImplementationInterfaceError('Missing native runtime-settings API for '+control['target']+
                 '; required static parameter types: '+str(parameters))
+        targets.append(dict(original_target=control['target'],native_candidates=[dict(owner_type=owner,method_name=name) for owner,name in candidates]))
+    return inventory,targets
+
+
+def prepare_settings(unit,boundary,bundle,controls,*,tool=None,settings=None,inventory=None):
+    """Require real native settings APIs, complete wiring and constructible comparison cases."""
+    inventory,_=prepare_native_settings(unit,bundle,controls,tool=tool,inventory=inventory)
     try:
         validate_binding(bundle)
         validate_parsed_binding(bundle.verification_binding,inventory,controls)

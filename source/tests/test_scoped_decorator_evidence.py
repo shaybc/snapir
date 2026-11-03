@@ -39,7 +39,7 @@ def test_mapped_decorator_parent_and_helper_reach_model_request(tmp_path, scoped
     sources = {item['identity']: item['content'] for item in json.loads(encoded)['sources']}
     for name in expected:
         origin = origins[name]
-        assert sources[origin['definition_id']] == Path(origin['source_file']).read_text()
+        assert sources[origin['definition_id']] == Path(origin['source_file']).read_bytes().decode('utf-8')
     assert origins['example.Work']['definition_id'] not in sources
     step = next(item for item in units if item.kind == 'configured_step')
     assert {item.identity for item in step.sources} == {origins['example.Work']['definition_id']}

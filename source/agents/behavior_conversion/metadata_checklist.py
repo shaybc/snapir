@@ -15,6 +15,13 @@ exclusion rules/authorizations support them. Citations establish traceability, n
 The errors array names ALL detectable previous defects and the correction needed per item.
 No example IDs or illustrative business values are task data.'''
 
+CHAIN_MAPPING=''' For format_chain_policy tasks, basic_element facts describe only the basic
+format/decorator behavior; chaining is owned by complete_unit composition. Map complete-unit
+chaining items to the assembled concrete chain and accepted basic APIs, using format_chains
+for original order and value-versus-XML-attribute scope. An empty configured value chain preserves
+the basic result; an attribute decorator does not imply a value transformation. Do not invent
+missing chaining behavior inside a basic element or treat chain traceability as equivalence.'''
+
 SEMANTICS='''Return only the semantic metadata schema. The application owns identities,
 hashes, known dependencies, checklist mappings and actual Java method signatures. Select
 exported api_types only from parsed APIs belonging to this target; do not export every

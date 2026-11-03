@@ -46,9 +46,10 @@ def recheck_format(config,profile,contracts,results,project,context,validation,r
     files=[dict(path=path.relative_to(project).as_posix(),content=path.read_text(encoding='utf-8'))
            for path in (Path(project)/'src').rglob('*.java')]
     candidate=NativeFormatComponentBundle(contracts=contracts,files=files,evidence_ids=report['format_candidate']['evidence_ids'],
-        checklist_answers=report['format_candidate']['checklist_answers'],verification_binding=report['format_candidate']['verification_binding'])
+        checklist_answers=report['format_candidate']['checklist_answers'],verification_binding=report['format_candidate']['verification_binding'],
+        )
     bundle=format_bundle(candidate,dict(configured_format=composed,requirements=report['format_candidate']['requirements']),{})
     session=session_for(config,profile,units[identity],boundaries['boundaries'][identity])
     session.static(bundle)
-    session.compare(project,context,bundle,build_validation=validation.model_dump(mode='json'))
+    session.complete(project,context,bundle,build_validation=validation.model_dump(mode='json'))
     return session.last_report

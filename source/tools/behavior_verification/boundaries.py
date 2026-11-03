@@ -7,7 +7,7 @@ from tools.behavior_verification.reachable_slice import read_reachable_slice
 from tools.behavior_verification.parser_checklist import read_parser_checklist
 
 
-def build_boundary_report(preparation, *, mappings=None, tool_jar=None):
+def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True):
     """Identify entry methods and conservative slices; no behavioral pass is claimed."""
     boundaries, scopes, unit_sources, source_paths = {}, {}, {}, {}
     for operation, item in sorted(preparation.get('operations', {}).items()):
@@ -32,7 +32,8 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None):
     tool_hash = None
     if scopes:
         try:
-            analysis, tool_hash = analyze_entries(scopes, tool_jar)
+            analysis, tool_hash = (analyze_entries(scopes, tool_jar) if collect_checklists else
+                                   analyze_entries(scopes, tool_jar, collect_checklists=False))
             returned = set()
             for entry in analysis.findall('entry'):
                 identity = entry.get('id')
@@ -55,8 +56,11 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None):
                 boundary.analysis_status = 'identified'
                 boundary.reachable_slice = read_reachable_slice(entry.find('reachability'), boundary,
                     unit_sources[identity], source_paths[identity])
-                boundary.parser_checklist = read_parser_checklist(entry.find('checklist'), boundary,
-                    unit_sources[identity], source_paths[identity])
+                if collect_checklists:
+                    boundary.parser_checklist = read_parser_checklist(entry.find('checklist'), boundary,
+                        unit_sources[identity], source_paths[identity])
+                    boundary.basic_parser_checklist = read_parser_checklist(entry.find('basic-checklist'), boundary,
+                        unit_sources[identity], source_paths[identity],fact_scope='basic_element')
             for scope in scopes.values():
                 for boundary in scope['boundaries']:
                     if boundary.unit_id not in returned:
@@ -80,7 +84,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None):
         incomplete=sum(item.status == 'verification_incomplete' for item in checklists),
         not_run=len(boundaries) - len(checklists), items=sum(len(item.items) for item in checklists))
     return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'),
-        analysis_stage='boundary_reachability_and_checklist', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
+        analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,
         verification_status='not_run', reachability_status=('not_run' if not slices else
             'analyzed' if analyzed == len(boundaries) and analyzed else 'verification_incomplete'),

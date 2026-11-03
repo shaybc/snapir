@@ -139,6 +139,7 @@ def measure_component_run(base, run_id, *, running=False):
     components_path = run_report_path(directory,'component-generation.json')
     if components_path.is_file():
         components = json.loads(components_path.read_text(encoding='utf-8'))
+        if components.get('experimental_only'):result['experimental_only']=True
         result.update(component_statuses=dict(Counter(item['status'] for item in components['groups'].values())),
             component_validated=components['component_validated'],reused_components=components['reused_components'])
         result['blockers'].extend(dict(component_group=key,stage='component_generation',detail=value.get('reason',value['status']))
@@ -157,7 +158,15 @@ def measure_component_run(base, run_id, *, running=False):
     result['acceptance_complete'] = bool(not running and result['status']=='completed' and units and operations
         and result['accepted_units']==len(units) and result['accepted_operations']==len(operations)
         and not result['unverified_units'] and not result['unverified_operations'] and not result['blockers'])
-    result['acceptance_basis'] = 'Final unit static/build/boundary and transitive component receipts plus checked operation artifacts; component/fixture progress is not acceptance.'
+    conversion=any(json.loads(row['data_json']).get('verification_version')=='conversion-checklist-v1' for row in outcomes) if database.is_file() and 'behavior_snapshots' in tables else False
+    result['acceptance_basis'] = ('Conversion readiness: complete checklist traceability, compilation, executed JUnit and transitive component receipts plus operation validation; Composer equivalence is not assessed.' if conversion else
+        'Final unit static/build/boundary and transitive component receipts plus checked operation artifacts; component/fixture progress is not acceptance.')
+    if conversion:result['behavioral_equivalence']='not_assessed'
+    experimental=any(json.loads(row['data_json']).get('verification_version')=='conversion-facts-experiment-v1' for row in outcomes) if database.is_file() and 'behavior_snapshots' in tables else False
+    if experimental or result.get('experimental_only'):
+        result.update(experimental_only=True,experimental_complete=result['acceptance_complete'],acceptance_complete=False,
+                      behavioral_equivalence='not_assessed',readiness_status='experimental_only',
+                      acceptance_basis='Experimental build/JUnit results only; fact collection and validation disabled. Not normal conversion acceptance.')
     return result
 
 
@@ -171,6 +180,8 @@ def publish_component_run(base, run_id, *, running=False, error=None):
         temporary = base/(name+'.'+uuid.uuid4().hex+'.tmp')
         temporary.write_text(json.dumps(result,indent=2,ensure_ascii=True),encoding='utf-8')
         temporary.replace(base/name)
+    from tools.behavior_verification.conversion_checklist import publish_conversion_checklist
+    publish_conversion_checklist(base,result)
     (base/'acceptance-report.md').write_text('# Component-first bank-demo acceptance\n\n'
         + f"Status: {result['status']}; phase: {result['phase']}.\n\n"
         + f"Accepted units: {result['accepted_units']}/{result['total_units']}; accepted operations: {result['accepted_operations']}/{result['total_operations']}.\n\n"

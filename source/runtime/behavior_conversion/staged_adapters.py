@@ -19,7 +19,7 @@ def production_request(payload,kind):
     excluded={'parser_checklist','analysis_tool_hash','schema','testing_contract','coverage_example',
         'coverage_response_example','versioned_requirements','expected_contract_fields','requirements',
         'final_validation_feedback','final_validation_requirements','approved_exclusions'}
-    if payload.get('executable_verification',{}).get('mode')=='executable_boundary_v1':excluded.add('checklist')
+    if payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}:excluded.add('checklist')
     request={key:value for key,value in payload.items() if key not in excluded}
     request['task_kind']=kind
     request['behavior_requirements']=list(payload.get('requirements',{}).values())
@@ -74,8 +74,8 @@ def check_metadata(bundle,inventory,profile,payload=None,prerequisites=None):
         for key,fields in expected.items():
             actual=bundle.contracts[key].model_dump(mode='json')
             if any(actual.get(name)!=value for name,value in fields.items()):raise ValueError('Component metadata changed expected identity/configuration: '+key)
-        from runtime.behavior_conversion.verification_mode import executable_mode
+        from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode
         if not payload.get('configured_format') and not executable_mode(profile):
             files={**(prerequisites or {}),**{f.path:f.content for f in bundle.files}}
             from runtime.behavior_conversion.metadata_checklist_validation import validate_component_mappings
-            validate_component_mappings(bundle.checklist_implementations,{i['id'] for i in payload.get('parser_checklist',[])},files)
+            validate_component_mappings(bundle.checklist_implementations,{i['id'] for i in payload.get('parser_checklist',[])},files,require_code=conversion_mode(profile))

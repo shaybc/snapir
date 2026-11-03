@@ -10,8 +10,10 @@ final class ParserChecklist {
     final ReachableSlice graph;
     final Map<String, ChecklistItem> items = new TreeMap<>();
     final Set<String> issues = new TreeSet<>();
+    final boolean basicElement;
 
-    ParserChecklist(ReachableSlice graph) { this.graph = graph; }
+    ParserChecklist(ReachableSlice graph) { this(graph, false); }
+    ParserChecklist(ReachableSlice graph, boolean basicElement) { this.graph = graph; this.basicElement = basicElement; }
 
     ChecklistItem add(CodeNode owner, Node site, String kind, String detail) {
         ChecklistItem item = new ChecklistItem(owner, site, kind, detail);
@@ -21,6 +23,7 @@ final class ParserChecklist {
     void analyze() {
         ChecklistSyntax syntax = new ChecklistSyntax(this);
         for (CodeNode node : graph.nodes.values()) {
+            if (basicElement && BasicElementChecklist.owner(node)) continue;
             try {
                 if (node.anchor instanceof com.github.javaparser.ast.body.CallableDeclaration<?> callable) {
                     for (var type : callable.getThrownExceptions()) add(node, type, "exception", "declared")
@@ -50,9 +53,16 @@ final class ParserChecklist {
     }
 
     void write(XMLStreamWriter output) throws XMLStreamException {
-        output.writeStartElement("checklist");
+        output.writeStartElement(basicElement ? "basic-checklist" : "checklist");
         output.writeAttribute("schema_version", "parser-checklist-v1");
+        output.writeAttribute("fact_scope", basicElement ? "basic_element" : "complete_unit");
         output.writeAttribute("status", issues.isEmpty() ? "extracted" : "verification_incomplete");
+        if (basicElement) for (CodeNode node : graph.nodes.values()) {
+            if (BasicElementChecklist.owner(node)) {
+                output.writeEmptyElement("composition-code");
+                output.writeAttribute("id", node.id);
+            }
+        }
         for (ChecklistItem item : items.values()) item.write(output);
         for (String issue : issues) {
             output.writeEmptyElement("issue"); output.writeAttribute("message", issue);

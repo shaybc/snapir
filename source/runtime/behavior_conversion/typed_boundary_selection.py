@@ -3,7 +3,7 @@ from runtime.behavior_conversion.java_api_types import public_api_types
 from runtime.behavior_conversion.method_contracts import _signature, java_type_resolver
 
 
-def configured_step_entry_signatures(bundle):
+def configured_step_entry_signatures(bundle,kind='configured_step'):
     """Check possible execute entries before binding; setup/projection APIs are checked once bound."""
     sources={name:file.content for file in bundle.files if file.path.startswith('src/main/java/')
              for name in public_api_types(file.content)}
@@ -13,7 +13,8 @@ def configured_step_entry_signatures(bundle):
             resolve=java_type_resolver(sources.get(api.type_name,''),sources)
             for declaration in api.method_signatures:
                 signature=_signature(declaration,resolve)
-                if signature and signature[0]=='execute':selected.add((api.type_name,signature))
+                entries={'configured_step':{'execute'},'response_format':{'format','serialize'},'request_unformat':{'unformat','parse'}}
+                if signature and signature[0] in entries[kind]:selected.add((api.type_name,signature))
     # Missing entries retain the existing validation/routing rather than silently selecting no methods.
     return selected or None
 

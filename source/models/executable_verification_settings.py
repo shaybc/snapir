@@ -1,6 +1,6 @@
 """Versioned opt-in policy for citation-free isolated boundary verification."""
 from typing import Literal
-from pydantic import BaseModel,ConfigDict,Field,field_validator
+from pydantic import BaseModel,ConfigDict,Field,field_validator,model_validator
 from models.executable_input_fixture import ExecutableInputFixture
 from models.comparison_mutation_settings import ComparisonMutationSettings
 
@@ -8,7 +8,8 @@ from models.comparison_mutation_settings import ComparisonMutationSettings
 class ExecutableVerificationSettings(BaseModel):
     """Keep rollout explicit; coverage gaps never silently become verified behavior."""
     model_config=ConfigDict(extra='forbid')
-    mode: Literal['checklist_v1','executable_boundary_v1']='checklist_v1'
+    mode: Literal['checklist_v1','executable_boundary_v1','conversion_checklist_v1']='checklist_v1'
+    experimental_disable_facts: bool = False
     max_cases: int=Field(default=512,ge=1,le=512)
     require_branch_coverage: bool=True
     seed: int=Field(default=1729,ge=-(2**63),le=2**63-1)
@@ -25,6 +26,12 @@ class ExecutableVerificationSettings(BaseModel):
     fixtures: dict[str,list[ExecutableInputFixture]]=Field(default_factory=dict)
     replays: dict[str,list[dict]]=Field(default_factory=dict)
     schema_version: Literal['executable-verification-policy-v1']='executable-verification-policy-v1'
+
+    @model_validator(mode='after')
+    def explicit_experiment_policy(self):
+        if self.experimental_disable_facts and self.mode != 'conversion_checklist_v1':
+            raise ValueError('experimental_disable_facts requires the explicit conversion_checklist_v1 test profile')
+        return self
 
     @field_validator('replays')
     @classmethod

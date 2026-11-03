@@ -15,7 +15,7 @@ from tools.behavior_verification.supporting_static_checks import supporting_chec
 
 
 def validate_unit_static(unit, boundary, files, answers, *, policy=None, authorizations=(), comparison_report=None,
-                         trusted_harness_sources=(), tool=None, directory=None):
+                         trusted_harness_sources=(), tool=None, directory=None, conversion_only=False):
     """Check complete mapping and supported exclusions; warnings never establish acceptance."""
     report = UnitStaticCheckReport(unit_id=boundary.unit_id, source_manifest_hash=boundary.source_manifest_hash,
                                   configuration_hash=boundary.configuration_hash)
@@ -63,7 +63,8 @@ def validate_unit_static(unit, boundary, files, answers, *, policy=None, authori
                 report.errors.append(dict(checklist_id=item.id, message=str(error)))
                 decision['status'] = 'rejected'
             report.decisions.append(decision)
-        supporting_checks(unit, boundary, analysis['native']['files'], excluded, cases, report)
+        if not conversion_only:
+            supporting_checks(unit, boundary, analysis['native']['files'], excluded, cases, report)
         report.status = 'mapping_invalid' if report.errors else 'verification_incomplete' if unresolved else 'mapping_valid'
     except (ValueError, ValidationError, KeyError, TypeError) as error:
         report.errors.append(dict(kind='invalid_contract', message=str(error)))

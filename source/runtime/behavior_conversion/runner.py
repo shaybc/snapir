@@ -60,7 +60,7 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
                 raise ValueError("Accepted manifest does not match the requested native bundle")
             verify_manifest(project, data["files"])
             if verification is not None:
-                verification.compare(project, factory(profile, project, Path(project).name), bundle,
+                verification.complete(project, factory(profile, project, Path(project).name), bundle,
                                      build_validation=data['validation'])
             return
         owned = json.loads(previous["data_json"])["files"] if previous else {}
@@ -68,7 +68,7 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
             verify_manifest(project, owned)
         def checked_build(staged,context,result):
             validate.last=dict(build_validation=result.model_dump(mode='json'))
-            if verification:verification.compare(staged,context,bundle,build_validation=result.model_dump(mode='json'))
+            if verification:verification.complete(staged,context,bundle,build_validation=result.model_dump(mode='json'))
         validation, manifest = accept_bundle(project, files, factory, profile,
                                              [*dependencies, *bundle.dependencies], require_tests=require_tests,
                                              owned_files=owned,
@@ -274,7 +274,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             # A shared artifact keeps the same request identity as the wrapper advances consumers.
             payload['artifact_targets'] = {ownership.assignments[unit.unit_id]: str(project)}
         payload["known_dependencies"] = known_dependencies(projects.values(),
-            [item for values in builds.values() for item in values])
+            [item for values in builds.values() for item in values],profile)
         if unit.service_connections:
             from runtime.behavior_conversion.connection_contract import attach_connections
             attach_connections(payload, unit.service_connections)
@@ -375,7 +375,9 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         sources = {key: consumer_artifact(accepted[value], consumer) for key, value in bindings[consumer].items()}
         if component_provider is not None:
             from runtime.behavior_conversion.verification_state import require_unit_receipts
-            require_unit_receipts(conn,config,dict(bindings=sources,component_first=True))
+            from runtime.behavior_conversion.verification_mode import facts_disabled,conversion_version
+            require_unit_receipts(conn,config,dict(bindings=sources,component_first=True),
+                                  expected_version=conversion_version(profile) if facts_disabled(profile) else None)
         dependencies = []
         for name in sorted({item["project"] for item in sources.values()} - {str(project)}):
             _install(Path(name), factory, profile)
@@ -435,7 +437,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             from runtime.behavior_conversion.connection_contract import attach_connections
             attach_connections(payload, connections)
         payload["constructor_example"] = (Path(__file__).resolve().parents[2] / "templates/native_operations/constructor_example.java").read_text(encoding="utf-8")
-        payload["known_dependencies"] = known_dependencies([project], dependencies)
+        payload["known_dependencies"] = known_dependencies([project], dependencies,profile)
         attach_testing_contract(payload, profile)
         payload["final_validation_feedback"] = correction_feedback(conn, config.run_id, "service", consumer)
         payload["method_contract_validation"] = "resolved-java-types-v1"
@@ -469,6 +471,11 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             fingerprint=fingerprint, service_api=api.model_dump(), contract=contracts[consumer].model_dump(),
             bindings=sources, files=manifest["files"], closure=closure, review=review.model_dump(),
             contract_project=str(project), contract_files=manifest["files"])
+        from runtime.behavior_conversion.verification_mode import conversion_mode
+        if conversion_mode(profile):
+            from runtime.behavior_conversion.verification_mode import facts_disabled,conversion_version
+            record.update(readiness_status='experimental_only' if facts_disabled(profile) else 'conversion_ready',
+                          behavioral_equivalence='not_assessed',verification_version=conversion_version(profile))
         if component_provider is not None:
             record['component_first'] = True
         if connections:

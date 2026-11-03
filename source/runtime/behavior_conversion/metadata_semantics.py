@@ -21,7 +21,7 @@ def semantic_request(payload,production,inventory):
     # Exact original methods/configuration can be followed through this local source
     # selection. Do not resend test examples, checklist entries or previous giant bundles.
     result['sources']=payload.get('sources',[])
-    if payload.get('executable_verification',{}).get('mode')=='executable_boundary_v1':
+    if payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}:
         result['slice_sources']=payload.get('slice_sources',[])
     return result
 
@@ -53,7 +53,7 @@ def materialize(value,payload,inventory,production):
             contracts[key]={**semantics,**expected[key],'apis':selected(names,members)}
         data['contracts']=contracts
     evidence=list(dict.fromkeys([item for fields in expected.values() for item in fields['evidence_ids']] or [s['identity'] for s in payload.get('sources',[])]))
-    if not evidence and payload.get('executable_verification',{}).get('mode')=='executable_boundary_v1':
+    if not evidence and payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}:
         evidence=list(payload.get('evidence_ids',[]))
     if data.get('unit_contract') is not None:
         unit=payload.get('unit') or payload.get('selected_unit') or payload
@@ -68,11 +68,15 @@ def describe(tasks,payload,production,inventory,schema,check):
     request=semantic_request(payload,production,inventory)
     from runtime.behavior_conversion.deterministic_contracts import enabled,derive,INSTRUCTION
     from models.staged_metadata import deterministic_metadata_schema
+    from runtime.behavior_conversion.verification_mode import conversion_mode
     local=enabled(payload,schema)
-    meta=deterministic_metadata_schema(schema) if local else metadata_schema(schema,True)
+    meta=deterministic_metadata_schema(schema,conversion_mode(tasks.profile)) if local else metadata_schema(schema,True)
     instruction=INSTRUCTION if local else SEMANTICS
+    if conversion_mode(tasks.profile):
+        instruction='Return only the supplied semantic details schema for compiled native code. The application derives APIs, ownership and provenance. Where entry_type is supplied, select the actual native entry owner from parsed_apis. Describe required configuration, initialization, runtime inputs and effects. Do not return comparison bindings, invocation recipes, checklist mappings, source code or tests.'
     from runtime.behavior_conversion.verification_mode import executable_mode
-    limit=(tasks.profile.behavior_context_chars if executable_mode(tasks.profile) else
+    from runtime.behavior_conversion.verification_mode import conversion_mode
+    limit=(tasks.profile.behavior_context_chars if executable_mode(tasks.profile) or conversion_mode(tasks.profile) else
            min(tasks.profile.behavior_context_chars,tasks.profile.metadata_checklist_request_chars)-tasks.profile.metadata_checklist_response_chars)
     try:encode_request(dict(request,schema=meta.model_json_schema()),instruction,limit)
     except ValueError as error:
@@ -80,7 +84,7 @@ def describe(tasks,payload,production,inventory,schema,check):
         raise VerificationIncomplete(dict(stage='metadata_semantic_evidence',errors=[str(error)],
             action='Partition this semantic contract/evidence; no checklist request has been sent')) from error
     def completed(value):
-        if local and 'verification_binding' in type(value).model_fields and value.verification_binding is None:
+        if local and not conversion_mode(tasks.profile) and 'verification_binding' in type(value).model_fields and value.verification_binding is None:
             from runtime.behavior_conversion.executable_adapters import resolve_adapter
             binding=resolve_adapter(tasks,payload,production,inventory)
             value=value.model_copy(update={'verification_binding':binding})

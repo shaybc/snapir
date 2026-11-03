@@ -22,7 +22,7 @@ def scalar_domain(attributes,checklist,limit=32):
     for name in ('minInclusive','maxInclusive'):
         number=bounds[name]
         if number is not None:numbers.update({number-1,number,number+1})
-    for item in checklist.items:
+    for item in checklist.items if checklist is not None else ():
         value=item.properties.get('value','')
         if (item.kind=='literal' and getattr(item,'detail','')=='StringLiteralExpr' and len(value)<=128
             and all(char in '\t\n\r' or 32<=ord(char)<=0xd7ff or 0xe000<=ord(char)<=0xfffd or 0x10000<=ord(char)<=0x10ffff for char in value)):

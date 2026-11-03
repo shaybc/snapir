@@ -10,11 +10,11 @@ from runtime.behavior_conversion.verification_state import record_verification
 
 def generate_verified_unit(conn, config, profile, identity, instruction, payload, validator, model_call=None, label='', *, bundle_generator=None):
     """Reuse the existing durable generation/retry mechanism, replacing only its unit check ladder."""
-    request, boundary, original = attach_verification(payload)
-    from runtime.behavior_conversion.verification_mode import executable_mode,policy_payload
-    if executable_mode(profile):
+    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload,facts_disabled,conversion_version
+    request, boundary, original = attach_verification(payload,collect_facts=not facts_disabled(profile))
+    if executable_mode(profile) or conversion_mode(profile):
         request['executable_verification']=policy_payload(profile)
-        request['verification_version']='executable-boundary-v1'
+        request['verification_version']=conversion_version(profile) if conversion_mode(profile) else 'executable-boundary-v1'
     from tools.behavior_verification.boundary_contracts import digest
     policy = profile.unit_verification_policy
     authorizations = [item for item in profile.unit_verification_authorizations if item.unit_id == identity]
@@ -29,8 +29,13 @@ def generate_verified_unit(conn, config, profile, identity, instruction, payload
     try:
         with verification_session(session):
             if bundle_generator is None:
+                checklist_instruction = (CHECKLIST_INSTRUCTION.split('Return verification_binding',1)[0] +
+                    'Do not return comparison bindings, adapters, invocation recipes or comparison inputs; equivalence is not assessed.'
+                    if conversion_mode(profile) else CHECKLIST_INSTRUCTION)
+                if facts_disabled(profile):
+                    checklist_instruction = 'Experimental test only: do not create or map checklist facts. Preserve source behavior, configuration, APIs and build/JUnit requirements. This is not normal conversion acceptance.'
                 bundle, fingerprint = generate(conn, config, profile, 'unit', identity,
-                    instruction + ('\nPreserve the selected executable boundary; no AI checklist citations are required.' if executable_mode(profile) else '\n' + CHECKLIST_INSTRUCTION), request, NativeUnitBundle, validator, model_call, label)
+                    instruction + ('\nPreserve the selected executable boundary; no AI checklist citations are required.' if executable_mode(profile) else '\n' + checklist_instruction), request, NativeUnitBundle, validator, model_call, label)
             else:
                 bundle, fingerprint = bundle_generator(request)
     except ValueError as error:
@@ -42,12 +47,13 @@ def generate_verified_unit(conn, config, profile, identity, instruction, payload
     receipt = record_verification(conn, config, identity, 'accepted', session.last_report)
     from runtime.behavior_conversion.verification_test_strength import measure_accepted_unit
     from tools.state_store_tools.behavior_units import save
-    try:
-        strength = measure_accepted_unit(session, profile, receipt)
-        save(conn, config.run_id, 'unit_test_strength', identity, digest(strength), strength, strength['status'])
-    except Exception:
-        import logging
-        logging.getLogger(__name__).exception('Advisory test-strength reporting failed for accepted unit %s', identity)
+    if not conversion_mode(profile):
+        try:
+            strength = measure_accepted_unit(session, profile, receipt)
+            save(conn, config.run_id, 'unit_test_strength', identity, digest(strength), strength, strength['status'])
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Advisory test-strength reporting failed for accepted unit %s', identity)
     if getattr(profile, 'behavior_triage_enabled', False):
         from runtime.behavior_conversion.review import review_behavior
         import logging

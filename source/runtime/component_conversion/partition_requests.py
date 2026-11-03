@@ -2,6 +2,7 @@
 from copy import deepcopy
 from models.native_component_bundle import NativeComponentBundle
 from models.native_format_component_bundle import NativeFormatComponentBundle
+from models.native_format_subtree_bundle import NativeFormatSubtreeBundle
 from tools.conversion_tools.component_partition import partition_tree, parent_configuration, partition_identity, subtree_at
 from tools.conversion_tools.scoped_reuse.fingerprints import digest
 from runtime.behavior_conversion.request_context import encode_request
@@ -41,6 +42,12 @@ def partition_request(original, tree, selector, children):
         dependency.pop('sources', None)
     request['prerequisite_components'].extend(children[path] for path in sorted(children)
         if path[:-1] == tuple(selector))
+    if original.get('format_chain_policy'):
+        from runtime.component_conversion.format_chains import chain_occurrences
+        occurrences=chain_occurrences(subtree_at(tree,selector),original['configured_format'].get('referenced_definitions',[]))
+        request['format_chains']=[chain for chain in original.get('format_chains',[]) if chain['occurrence_id'] in occurrences]
+        request['inherited_format_chain_ownership']=[item for path,child in sorted(children.items()) if path[:-1]==tuple(selector)
+            for item in child.get('format_chain_ownership',[])]
     if not selector:
         request['configured_format'] = {key: value for key, value in original['configured_format'].items()
             if key not in {'effective_configuration', 'configuration_xml', 'referenced_definitions'}}
@@ -52,7 +59,7 @@ def partition_request(original, tree, selector, children):
 def fits_partition(request, instruction, profile):
     """Measure the real schema, manual context and generation metadata before choosing a cut."""
     from runtime.behavior_conversion.compatibility import versioned_requirements
-    schema = NativeFormatComponentBundle if request['kind'] == 'format_composition' else NativeComponentBundle
+    schema = NativeFormatComponentBundle if request['kind'] == 'format_composition' else NativeFormatSubtreeBundle
     payload = dict(request, schema=schema.model_json_schema(),
         versioned_requirements=versioned_requirements(profile, 'component_generation', request))
     try:

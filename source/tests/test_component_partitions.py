@@ -77,11 +77,11 @@ def test_format_root_exports_extracted_sources_without_claiming_shared_prerequis
 
 def test_real_budget_includes_schema_manual_checklist_and_source():
     from runtime.behavior_conversion.request_context import encode_request
-    from models.native_component_bundle import NativeComponentBundle
+    from models.native_format_subtree_bundle import NativeFormatSubtreeBundle
     from runtime.behavior_conversion.response_json import JSON_INSTRUCTION
     original=original_request();tree=original['configured_format']['effective_configuration']
     part=partition_request(original,tree,(0,1),{})
-    _,encoded=encode_request(dict(part,schema=NativeComponentBundle.model_json_schema(),versioned_requirements=[
+    _,encoded=encode_request(dict(part,schema=NativeFormatSubtreeBundle.model_json_schema(),versioned_requirements=[
         dict(requirement_id='preserve',version=1,description='Preserve behavior')]),'instruction\n'+JSON_INSTRUCTION,10**7)
     limit=len(encoded)+len('instruction\n'+JSON_INSTRUCTION)
     profile=SimpleNamespace(behavior_context_chars=limit,conversion_requirements=[])
@@ -210,7 +210,7 @@ def test_real_maven_subtree_reuse_and_assembled_original_native_comparison(forma
         with pytest.raises(ValueError,match='parent-environment'):
             validator(invalid)
         invalid=native.model_copy(deep=True);invalid.checklist_implementations={}
-        with pytest.raises(ValueError,match='every supplied parser'):
+        with pytest.raises(ValueError,match='missing_item'):
             validator(invalid)
         generate(conn,config,profile,'component_generation',part['group_id'],PART_INSTRUCTION,part,NativeComponentBundle,
             validator=validator,model_call=model)

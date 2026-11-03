@@ -13,7 +13,7 @@ def default_tool_path():
     return Path(__file__).resolve().parents[2] / 'behavior-verification-java/target/behavior-verification-1.0.0-jar-with-dependencies.jar'
 
 
-def analyze_entries(scopes, tool_jar=None):
+def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
     """Batch isolated source scopes; a missing tool is reported by the caller as incomplete."""
     tool = Path(tool_jar or default_tool_path()).resolve()
     if not tool.is_file():
@@ -41,7 +41,11 @@ def analyze_entries(scopes, tool_jar=None):
                     for name, value in sorted(binding.attributes.items()):
                         ElementTree.SubElement(configured, 'attribute', name=name, value=value)
                 entry.set('reachability', 'true')
-        ElementTree.ElementTree(manifest).write(folder / 'input.xml', encoding='utf-8', xml_declaration=True)
+                if not collect_checklists:
+                    entry.set('checklist', 'false')
+        # XML parsers normalize literal CR/CRLF; character references retain exact source text.
+        (folder / 'input.xml').write_bytes(ElementTree.tostring(manifest, encoding='utf-8',
+            xml_declaration=True).replace(b'\r', b'&#13;'))
         try:
             result = run_java(['java', '-jar', str(tool), str(folder / 'input.xml'), str(folder / 'output.xml')],
                               capture_output=True, text=True, timeout=180, check=False)
@@ -51,5 +55,5 @@ def analyze_entries(scopes, tool_jar=None):
             raise ValueError('Converter boundary analysis failed: ' + result.stderr[-2000:])
         if file_digest(tool) != tool_hash:
             raise ValueError('Converter analysis tool changed during boundary discovery')
-        report = ElementTree.parse(folder / 'output.xml').getroot()
+        report = ElementTree.fromstring((folder / 'output.xml').read_bytes().replace(b'\r', b'&#13;'))
         return report, tool_hash

@@ -99,7 +99,7 @@ def test_runner_supplies_pom_dependencies_to_units_and_service(tmp_path, monkeyp
     model = Model()
     invoke(tmp_path, data, model)
     requests = [request for request in model.requests if request["schema"]["title"] == "NativeUnitBundle"]
-    assert len(requests) == 2
+    assert {request['kind'] for request in requests} == {'configured_step','service'}
     for request in requests:
         from runtime.behavior_conversion.testing_contract import TEST_PINS
         assert {(d["artifact_id"], d["version"], d["scope"]) for d in request["known_dependencies"]} == {

@@ -40,6 +40,9 @@ def require_observed_match(report):
 class ThinPathValidator:
     """Retain each attempt's build and paired observations; never write unit acceptance receipts."""
     def __init__(self, unit, boundary, controls, request, profile, directory, fresh, *, tool=None, factory=None):
+        from runtime.behavior_conversion.verification_mode import conversion_mode
+        if conversion_mode(profile):
+            raise ValueError('Thin-path execution experiments require an explicit comparison policy; use staged unit conversion for conversion_checklist_v1')
         from runtime.managed_projects import create_build_context
         self.unit, self.boundary, self.controls, self.request = unit, boundary, controls, request
         self.profile, self.directory, self.fresh = profile, Path(directory), fresh

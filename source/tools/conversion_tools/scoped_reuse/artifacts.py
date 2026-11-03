@@ -95,6 +95,8 @@ def reuse_prepared(conn, run_id, records, selected):
         item = load_bound_artifact(conn, run_id, checkpoint, 'workflow', checkpoint.operation_identity, checkpoint.fingerprint)
         if item is None:
             return None
+        from tools.conversion_tools.scoped_workflow.units import restore_cached_source_text
+        restore_cached_source_text(item)
         from tools.state_store_tools.operation_calls import get_contract
         item['contract'] = get_contract(conn, run_id, key)
         for name in ('behavior_request', 'assembly_request'):

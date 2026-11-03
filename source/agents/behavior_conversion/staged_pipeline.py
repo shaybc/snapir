@@ -46,6 +46,8 @@ production contradictions remain unresolved or implementation failures, not weak
 def code_instruction(payload):
     """Carry task-specific implementation obligations without mixed response duties."""
     prompt=CODE
+    if payload.get('executable_verification',{}).get('mode')=='conversion_checklist_v1':
+        prompt+='\nConversion readiness uses source checklist traceability, compilation and JUnit. Expose typed production APIs and settings normally; no legacy execution, comparison adapters or harness invocation recipes are required. Behavioral equivalence is not assessed.'
     if payload.get('kind')=='step_implementation':
         from agents.behavior_conversion.step_component import step_instruction
         prompt+=step_instruction('step_implementation')
@@ -73,4 +75,7 @@ steps. No HTTP controller or test-specific switches. Do not return accepted unit
         prompt+='\nTemporary internal original-like helper structure is allowed for this baseline; public APIs stay typed and IBM-free. Simplification and all validation still follow.'
     if payload.get('side_road_origin',{}).get('stage')=='simplify':
         prompt+='\nSimplify verified_baseline without changing its public APIs, verification binding or observed behavior. Remove framework plumbing.'
+    if payload.get('format_chain_policy'):
+        from runtime.component_conversion.format_chains import INSTRUCTION
+        prompt+='\n'+INSTRUCTION
     return prompt

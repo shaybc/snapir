@@ -59,7 +59,8 @@ def format_case(tmp_path,boundary_tool,monkeypatch):
     assert boundaries['counts']['identified']==2,boundaries
     conn=get_connection(str(tmp_path/'state.db'));create_all_tables(conn);upsert_run(conn,run_id='cf5',run_mode='conversion')
     config=SimpleNamespace(run_id='cf5',source_root=str(original),output_root=str(tmp_path/'generated'))
-    profile=PipelineConfiguration(source_root=str(original),java_version=25,conversion_strategy='behavior_units',scoped_native_mode='component_first_v1',max_agent_task_retries=1)
+    # This fixture returns combined bundles; staged code/metadata/test protocols have separate tests.
+    profile=PipelineConfiguration(source_root=str(original),java_version=25,conversion_strategy='behavior_units',scoped_native_mode='component_first_v1',max_agent_task_retries=1,staged_unit_conversion=False)
     yield conn,config,profile,preparation,plan,boundaries,{unit['unit_id']:unit for unit in units}
     conn.close()
 
@@ -78,11 +79,12 @@ def candidate(request,*,dependencies=(),defect=False):
         name='XmlValue';apis=['public String xml()'];body='public String xml(){return '+json.dumps(XML)+';}'
         assertion='assertEquals('+json.dumps(XML)+',new XmlValue().xml());'
     else:
-        dep=next(item for item in request['prerequisite_components'] if item.get('contracts'))
-        target=next(iter(dep['contracts'].values()))['apis'][0]['type_name']
+        dep=next((item for item in request['prerequisite_components'] if item.get('contracts')),None)
+        target=next(iter(dep['contracts'].values()))['apis'][0]['type_name'] if dep else None
         if kind!='format_composition':
             name='FormatLogic';apis=['public String format()','public void unformat(String xml)']
-            body='public String format(){return new '+target+'().xml();} public void unformat(String xml){}'
+            expression='new '+target+'().xml()' if target else json.dumps(XML)
+            body='public String format(){return '+expression+';} public void unformat(String xml){}'
             assertion='assertEquals('+json.dumps(XML)+',new FormatLogic().format());new FormatLogic().unformat("<Reply/>");'
         else:
             mode='specialized';name='ReplyMapper' if request['configured_format']['kind']=='response_format' else 'RequestMapper'
@@ -261,10 +263,10 @@ def test_real_maven_composition_compares_both_directions_and_reuses_without_mode
     directory=tmp_path/'run'
     convert_basic_components(conn,config,profile,directory,preparation,None,model_call=model,context_factory=actual_build,include_formats=True)
     report=json.loads(run_report_path(directory,'component-generation.json').read_text())
-    assert report['component_validated']==4,report
-    assert len(calls)==4 and len([item for item in calls if item['kind']=='format_composition'])==2
+    assert report['component_validated']==3,report
+    assert len(calls)==3 and len([item for item in calls if item['kind']=='format_composition'])==2
     assert any(item['status']=='configuration_bound' for item in report['groups'].values())
     assert report['accepted_units']==report['accepted_operations']==0
     convert_basic_components(conn,config,profile,directory,preparation,None,model_call=lambda *a:pytest.fail('Unchanged formats must reuse'),context_factory=actual_build,include_formats=True)
     report=json.loads(run_report_path(directory,'component-generation.json').read_text())
-    assert report['reused_components']==4,report
+    assert report['reused_components']==3,report

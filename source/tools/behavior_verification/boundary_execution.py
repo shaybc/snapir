@@ -56,7 +56,7 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
                 'method': 'MethodDeclaration', 'constructor': 'ConstructorDeclaration',
                 'static_initializer': 'InitializerDeclaration', 'instance_initializer': 'InitializerDeclaration'}[node.kind],
                 **{key: str(getattr(node, key)) for key in ('source_identity', 'start_line', 'end_line', 'start_column', 'end_column')})
-        for item in boundary.parser_checklist.items:
+        for item in boundary.parser_checklist.items if boundary.parser_checklist is not None else ():
             if item.kind != 'branch': continue
             ET.SubElement(manifest, 'probe', id=item.id, kind=item.kind, detail=item.detail, syntax_type=item.syntax_type,
                 **{key: str(getattr(item, key)) for key in ('source_identity', 'start_line', 'end_line', 'start_column', 'end_column')})
@@ -65,7 +65,7 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
         path = Path(name).resolve()
         if not path.is_file() or path.suffix.lower() != '.jar': raise ValueError('Boundary dependencies must be explicit existing JARs')
         hashes['dependency:' + str(path)] = _digest(path); classpath.append(str(path))
-    ET.ElementTree(manifest).write(directory / 'sources.xml', encoding='utf-8')
+    (directory / 'sources.xml').write_bytes(ET.tostring(manifest, encoding='utf-8').replace(b'\r', b'&#13;'))
     _run(['java', '-cp', os.pathsep.join(classpath), 'il.co.dcd.verification.HarnessInstrumentation',
           str(directory / 'sources.xml'), str(directory / 'instrumented'), str(directory / 'instrumentation.xml')], 120)
     issues = [item.get('message') for item in ET.parse(directory / 'instrumentation.xml').getroot().findall('issue')]
@@ -115,8 +115,10 @@ def execute_boundary_case(compiled, unit, boundary, binding, case, timeout=15,de
         if deadline is not None:
             timeout=min(timeout,deadline-time.monotonic())
             if timeout<=0:raise subprocess.TimeoutExpired('boundary expansion deadline',0)
-        _run(['java', '-ea', '-cp', os.pathsep.join(compiled['classpath']), 'il.co.dcd.verification.harness.BoundaryHarness',
+        execution = _run(['java', '-ea', '-cp', os.pathsep.join(compiled['classpath']), 'il.co.dcd.verification.harness.BoundaryHarness',
               str(directory / 'job.xml'), str(directory / 'observation.xml')], timeout)
+        (directory / 'stdout.txt').write_text(execution.stdout, encoding='utf-8')
+        (directory / 'stderr.txt').write_text(execution.stderr, encoding='utf-8')
         result = read_value(ET.parse(directory / 'observation.xml').getroot())
         return BoundaryObservation.model_validate(result)
     except (OSError, ValueError, ET.ParseError, subprocess.TimeoutExpired) as error:

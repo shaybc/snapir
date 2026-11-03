@@ -6,7 +6,8 @@ from runtime.behavior_conversion.test_feedback import TEST_CORRECTION_INSTRUCTIO
 
 def format_instruction(known=()):
     """Compose one actual configured format from frozen native implementations."""
-    return native_instructions('format', known, include_example=False) + CORRECTION_INSTRUCTION + TEST_CORRECTION_INSTRUCTION + '''
+    from runtime.component_conversion.format_chains import INSTRUCTION
+    return native_instructions('format', known, include_example=False) + CORRECTION_INSTRUCTION + TEST_CORRECTION_INSTRUCTION + INSTRUCTION + '''
 Return NativeFormatComponentBundle, not unit_contract. Request sources/XML are input evidence.
 coverage_response_example is a metadata template, not source code or a completed test.
 Use every exact requirements key as a coverage key; never substitute business.

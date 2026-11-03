@@ -27,6 +27,9 @@ def create_build_context(profile, project_root: Path, artifact_id: str) -> Manag
     pom = project_root / "pom.xml"
     initialize_managed_pom(str(pom), COMMON_LIB_GROUP_ID, artifact_id,
                            java_version=getattr(profile, "java_version", int(JAVA_VERSION)))
+    from tools.maven_dependency_tools.shared_policy_pom import apply_shared_policy
+    apply_shared_policy(pom,profile)
+    verifier.dependency_profile=profile
     retained = [rule for rule in getattr(profile, "external_dependencies", []) if rule.treatment == "retain"]
     return ManagedBuildContext(str(pom), verifier,
         tuple(dict.fromkeys([*profile.allowed_ibm_artifacts, *(rule.maven_coordinates for rule in retained if rule.maven_coordinates)])),

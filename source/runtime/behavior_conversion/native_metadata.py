@@ -97,6 +97,10 @@ def resolve_dependencies(metadata, known, proposed=()):
             # The managed compiler/verifier must still prove that it supplies the imported class.
             matches=[item for item in inventory.values() if name.startswith(item.group_id+'.')]
         if len(matches)!=1:
+            from runtime.dependency_policy import import_owner
+            actual=import_owner(imp,matches or list(inventory.values()))
+            if actual is not None:matches=[actual];direct_owner=True
+        if len(matches)!=1:
             unknown.append(name)
         else:
             item=matches[0].model_copy(deep=True)

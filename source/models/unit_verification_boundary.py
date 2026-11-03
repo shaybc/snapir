@@ -31,6 +31,7 @@ class UnitVerificationBoundary(BaseModel):
     legacy_method: LegacyBoundaryMethod | None = None
     reachable_slice: UnitReachableSlice | None = None
     parser_checklist: UnitParserChecklist | None = None
+    basic_parser_checklist: UnitParserChecklist | None = None
     configuration_preparation: dict = Field(default_factory=dict)
     analysis_status: Literal['identified', 'verification_incomplete'] = 'verification_incomplete'
     verification_status: Literal['not_run'] = 'not_run'

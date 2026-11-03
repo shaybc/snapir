@@ -11,7 +11,7 @@ def record_verification(conn, config, identity, status, report):
         raise ValueError('Unknown unit verification outcome')
     if status == 'accepted':
         _require_evidence(config, identity, report)
-    data = dict(unit_id=identity, status=status, **report)
+    data = dict(report,unit_id=identity,status=status)
     data.setdefault('verification_version','parser-boundary-v1')
     fingerprint = hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
     save(conn, config.run_id, 'unit_verification', identity, fingerprint, data, status)
@@ -35,7 +35,7 @@ def write_verification_results(conn, config, directory, unit_ids=None):
     return data
 
 
-def require_unit_receipts(conn, config, record):
+def require_unit_receipts(conn, config, record, *, expected_version=None):
     """Packaging cannot promote old fact-only bundles or changed native/evidence bytes."""
     from tools.state_store_tools.behavior_units import snapshot
     from tools.behavior_verification.boundary_contracts import digest
@@ -44,9 +44,13 @@ def require_unit_receipts(conn, config, record):
         if row is None or row['status'] != 'accepted':
             raise ValueError('Unit lacks technical boundary acceptance: ' + binding['unit_id'])
         receipt = json.loads(row['data_json'])
+        if expected_version is not None and receipt.get('verification_version')!=expected_version:
+            raise ValueError('Unit readiness policy changed; revalidate source, mappings and tests')
         if record.get('component_first') and not receipt.get('component_receipt'):
             raise ValueError('Component-first unit lacks transitive component acceptance: ' + binding['unit_id'])
-        if receipt.get('verification_version') not in {'parser-boundary-v1','executable-boundary-v1'} or receipt.get('candidate_hash') != digest(binding['files']):
+        allowed = {'parser-boundary-v1','executable-boundary-v1','conversion-checklist-v1'}
+        if expected_version == 'conversion-facts-experiment-v1':allowed.add(expected_version)
+        if receipt.get('verification_version') not in allowed or receipt.get('candidate_hash') != digest(binding['files']):
             raise ValueError('Unit verification receipt does not match native source manifest')
         _require_evidence(config, binding['unit_id'], receipt)
         if receipt.get('component_receipt'):
@@ -56,6 +60,12 @@ def require_unit_receipts(conn, config, record):
 
 def _require_evidence(config, identity, receipt):
     """An Accepted row needs matching, nonempty boundary and static reports, not a boolean claim."""
+    if receipt.get('verification_version')=='conversion-facts-experiment-v1':
+        from runtime.behavior_conversion.fact_validation_experiment import require_experiment_evidence
+        return require_experiment_evidence(config,identity,receipt)
+    if receipt.get('verification_version')=='conversion-checklist-v1':
+        from runtime.behavior_conversion.conversion_readiness import require_conversion_evidence
+        return require_conversion_evidence(config,identity,receipt)
     from models.boundary_comparison_report import BoundaryComparisonReport
     from models.unit_static_check_report import UnitStaticCheckReport
     folder = Path(receipt.get('evidence', '')).resolve()

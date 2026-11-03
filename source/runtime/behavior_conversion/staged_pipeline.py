@@ -32,8 +32,8 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
     from runtime.behavior_conversion.stage_scope import verify_parent
     verify_parent(conn,config,profile,category,identity,payload)
     payload=dict(payload)
-    from runtime.behavior_conversion.verification_mode import executable_mode,policy_payload
-    if executable_mode(profile):payload['executable_verification']=policy_payload(profile)
+    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload
+    if executable_mode(profile) or conversion_mode(profile):payload['executable_verification']=policy_payload(profile)
     if not payload.get('typed_boundary_contract'):attach_typed_boundary(payload)
     from runtime.behavior_conversion.compatibility import versioned_requirements
     platform=(payload.get('testing_contract') or {}).get('requirement',{}).get('requirement_id')
@@ -76,8 +76,8 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
             frozen=getattr(validator,'stage_prerequisites',{})
             owned_paths={f.path for f in value.files}
             inherited=[NativeSourceFile(path=p,content=t) for p,t in frozen.items() if p.startswith('src/main/java/') and p not in owned_paths]
-            originals=payload.get('sources',[]) if executable_mode(profile) or profile.metadata_checklist_batching and payload.get('parser_checklist') else ()
-            if executable_mode(profile) and not originals:
+            originals=payload.get('sources',[]) if executable_mode(profile) or conversion_mode(profile) or profile.metadata_checklist_batching and payload.get('parser_checklist') else ()
+            if (executable_mode(profile) or conversion_mode(profile)) and not originals:
                 from runtime.behavior_conversion.verification_ladder import active_verification
                 session=active_verification()
                 if session:originals=session.unit['sources']
@@ -141,7 +141,8 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
                 check_description(structure);description=structure
             else:
                 from runtime.behavior_conversion.metadata_checklist import mapping_enabled,map_checklist
-                if executable_mode(profile):
+                from runtime.behavior_conversion.verification_mode import facts_disabled
+                if executable_mode(profile) or facts_disabled(profile):
                     from runtime.behavior_conversion.metadata_semantics import describe
                     data=describe(tasks,payload,production,inventory,schema,lambda data:check_description(meta_schema.model_validate(data)))
                     description=context['metadata']
@@ -186,6 +187,15 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
             unit=payload.get('configured_format') or payload.get('configured_unit') or payload.get('unit') or payload
             if isinstance(unit,dict) and unit.get('kind'):
                 test_request['selected_boundary']=test_scope(unit,description.verification_binding,payload.get('runtime_controls',[]))
+        if conversion_mode(profile):
+            from runtime.behavior_conversion.native_test_scope import conversion_test_scope
+            unit=payload.get('configured_format') or payload.get('configured_unit') or payload.get('selected_unit') or payload.get('unit') or payload
+            settings=getattr(validator,'preparation',{}).get('native_settings_apis',[])
+            scope=conversion_test_scope(unit,inventory,production.files,settings)
+            if scope:test_request['selected_boundary']=scope
+        if payload.get('format_chains'):
+            from runtime.component_conversion.format_chain_tests import INSTRUCTION as CHAIN_TESTS
+            test_request['chain_regression_policy']=CHAIN_TESTS
         eligibility=stable_id(revision,TESTS_ONLY)
         test_context=dict(revision=revision,eligibility_hash=eligibility,production_hash=stable_id(production.model_dump(mode='json')),
             source_hash=stable_id(payload),selected_boundary=test_request.get('selected_boundary'),
@@ -193,6 +203,8 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
         def check_tests(value):
             state.invalidate_readiness(conn,config.run_id,identity,revision,'tests')
             if value.unresolved_questions or any(not f.path.startswith('src/test/java/') for f in value.files):raise ValueError('Tests-only stage must return complete executable tests')
+            from runtime.component_conversion.format_chain_tests import validate_chain_tests
+            validate_chain_tests(value,payload)
             test_inventory=inspect_native(value.files,getattr(validator,'tool',None))
             if test_request.get('selected_boundary'):
                 from runtime.behavior_conversion.native_test_scope import validate_test_scope
@@ -240,6 +252,13 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
             except VerificationFailure as error:
                 if error.verification_feedback.get('stage') in {'boundary','thin_path_boundary'}:raise ProductionCorrection(error) from error
                 raise
+            except ValueError as error:
+                from runtime.component_conversion.format_chain_tests import assertion_regression
+                regression=assertion_regression(error,payload)
+                if regression:
+                    state.retain(conn,config.run_id,identity,revision,'regression_tests',value.model_dump(mode='json'),stable_id(value.model_dump(mode='json')))
+                    raise ProductionCorrection(VerificationFailure(regression)) from error
+                raise
             finally:
                 latest=getattr(validator,'last',None)
                 proof=outcome if isinstance(outcome,dict) else latest if latest is not previous else None
@@ -249,6 +268,11 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
             retained=state.passing_tests(conn,config.run_id,identity,revision,eligibility)
             reused=False
             supplied=getattr(validator,'frozen_tests',None)
+            regression=state.read(conn,config.run_id,identity,revision,'regression_tests')
+            if supplied is None and regression['artifact_json']:
+                import json
+                supplied=NativeTestBundle.model_validate_json(regression['artifact_json'])
+                if stable_id(supplied.model_dump(mode='json'))!=regression['artifact_hash']:raise ValueError('Retained chain regression tests changed')
             if supplied is not None:
                 check_tests(NativeTestBundle.model_validate(supplied.model_dump(mode='json')))
                 reused=True

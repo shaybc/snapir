@@ -46,10 +46,12 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
             for name in ("build_passed", "package_passed", "ibm_guard_passed"):
                 if validation.get(name) is not True:
                     issues.append(name + " has not passed")
-            for name in ("test_status", "xml_compatibility", "behavioral_equivalence", "legacy_trace_comparison"):
+            from runtime.behavior_conversion.verification_mode import conversion_mode
+            checks=('test_status',) if conversion_mode(profile) else ('test_status','xml_compatibility','behavioral_equivalence','legacy_trace_comparison')
+            for name in checks:
                 if validation.get(name) != "passed":
                     issues.append(name + " evidence is unavailable or failed")
-            for name in ("xml_compatibility", "behavioral_equivalence", "legacy_trace_comparison"):
+            for name in (() if conversion_mode(profile) else ('xml_compatibility','behavioral_equivalence','legacy_trace_comparison')):
                 paths = validation.get("evidence_paths", {}).get(name, [])
                 if not paths:
                     issues.append(name + " supporting evidence files are missing")
@@ -100,6 +102,10 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
     inventory = dict(run_id=config.run_id, operations=deliverables, blockers=blockers,
                      deployed=False, validation_notices=validation_notices,
                      production_ready=bool(evidence) and not blockers)
+    from runtime.behavior_conversion.verification_mode import conversion_mode
+    if conversion_mode(profile):
+        inventory.update(conversion_ready=bool(evidence) and not blockers,production_ready=False,
+            behavioral_equivalence='not_assessed',verification_version='conversion-checklist-v1')
     write_run_report(directory, "delivery_manifest.json", json.dumps(inventory, sort_keys=True, indent=2))
     final_report = "# Migration deliverable review\n\nNo cluster deployment or image publication was performed.\n\n" + json.dumps(inventory, sort_keys=True, indent=2)
     write_run_report(directory, "final_report.md", final_report)

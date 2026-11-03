@@ -16,6 +16,7 @@ final class ChecklistCalls {
             CodeNode owner = checklist.graph.nodes.get(edge.from);
             if (owner == null) continue;
             Node site = edge.site == null ? owner.anchor : edge.site;
+            if (checklist.basicElement && BasicElementChecklist.call(owner, site)) continue;
             var item = checklist.add(owner, site, "call", edge.kind + ":" + edge.declaredTarget)
                 .property("target", edge.declaredTarget).property("binding_kind", edge.kind)
                 .property("binding_status", edge.unbounded ? "unbounded" : edge.uncertain ? "uncertain" : "resolved")

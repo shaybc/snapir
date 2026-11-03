@@ -1,0 +1,149 @@
+{
+  "conversion_strategy": "behavior_units",
+  "conversion_requirements": [],
+  "behavior_context_chars": 900000,
+  "metadata_checklist_batching": true,
+  "metadata_checklist_batch_items": 15,
+  "metadata_checklist_request_chars": 900000,
+  "metadata_checklist_response_chars": 16000,
+  "metadata_checklist_max_calls": null,
+  "metadata_checklist_max_transport_calls": null,
+  "metadata_checklist_timeout_split_after": 2,
+  "behavior_triage_enabled": false,
+  "unit_mutation_testing": {
+    "enabled": true,
+    "timeout_seconds": 180,
+    "recommended_score": 80
+  },
+  "executable_verification": {
+    "mode": "conversion_checklist_v1",
+    "experimental_disable_facts": true,
+    "max_cases": 512,
+    "require_branch_coverage": true,
+    "seed": 1729,
+    "clock_millis": 1704153600000,
+    "random_cases": 12,
+    "max_domain_values": 32,
+    "max_case_chars": 131072,
+    "max_collection_items": 8,
+    "coverage_expansion_rounds": 2,
+    "coverage_expansion_cases": 16,
+    "coverage_expansion_batch_size": 4,
+    "coverage_expansion_seconds": 30.0,
+    "comparison_mutations": {
+      "enabled": false,
+      "max_mutants": 4,
+      "timeout_seconds": 600.0
+    },
+    "fixtures": {},
+    "replays": {},
+    "schema_version": "executable-verification-policy-v1"
+  },
+  "format_comparison": {
+    "enabled": true,
+    "max_cases": 64,
+    "case_timeout_seconds": 15.0,
+    "discovery_request_chars": 900000,
+    "compare_exception_messages": false,
+    "collect_facts": false
+  },
+  "unit_verification_policy": {
+    "plumbing_rules": [
+      "implicit_constructor_marker",
+      "configured_setup_marker",
+      "throws_declaration_metadata"
+    ],
+    "tag_contracts": [],
+    "schema_version": "static-check-policy-v1"
+  },
+  "unit_verification_authorizations": [],
+  "source_root": "C:\\GitHub\\shaybc\\snapir\\bank-demo\\composer\\Workspace",
+  "scoped_java_project": null,
+  "scoped_java_projects": {
+    "INTERNET": "WSBCC_INTERNET",
+    "IVR": "WSBCC_IVR",
+    "XML": "WSBCC_XML"
+  },
+  "scoped_native_mode": "component_first_v1",
+  "source_workspace_id": "bank-demo-scoped-validation",
+  "service_registry_path": "C:\\GitHub\\shaybc\\snapir\\outputs\\getclientlinks-conversion-checklist-20261102-160733\\service-registry.sqlite",
+  "service_maven_dependencies": {},
+  "plan_approval_policy": "automatic",
+  "shared_library_min_usage": 5,
+  "broad_library_usage_threshold": 10,
+  "mapper_jar": "C:\\GitHub\\shaybc\\snapir\\source\\composer-mapper\\target\\composer-mapper-1.1.1-jar-with-dependencies.jar",
+  "mapper_vault_layout": "scoped",
+  "java_version": 25,
+  "java_home": "C:\\Program Files\\Java\\jdk-25.0.3",
+  "output_root": "C:\\GitHub\\shaybc\\snapir\\outputs\\getclientlinks-dependency-alignment-20261103",
+  "channels": [
+    "INTERNET"
+  ],
+  "include_operations": [
+    "GetClientLinksOp"
+  ],
+  "exclude_operations": null,
+  "target_languages": [
+    "java"
+  ],
+  "model_name": "gemini/gemini-3.8-flash",
+  "model_base_url": "",
+  "auto_rerun_impacted_operations": true,
+  "model_provider": "gemini",
+  "classpath_jars": [],
+  "external_dependencies": [],
+  "maven_settings_path": null,
+  "approved_maven_repository_urls": [],
+  "maven_local_repository": null,
+  "allowed_ibm_artifacts": [],
+  "allowed_ibm_classes": [],
+  "deployment_template_dir": null,
+  "deployment_values": {},
+  "deployment_defaults": {
+    "namespace": "default",
+    "replicas": 1,
+    "image_pull_policy": "IfNotPresent",
+    "container_port": 8080,
+    "cpu_request": "100m",
+    "cpu_limit": "500m",
+    "memory_request": "256Mi",
+    "memory_limit": "512Mi",
+    "liveness_path": "/actuator/health",
+    "readiness_path": "/actuator/health",
+    "managed_by_label": "snapir",
+    "schema_version": "v1"
+  },
+  "deployment_platform": "openshift",
+  "deployment_environment": "prod",
+  "deployment_env_vars": {
+    "SPRING_PROFILES_ACTIVE": "prod"
+  },
+  "test_deployment": {
+    "service_base_url": "https://openshift/microservices/",
+    "service_external_port": null,
+    "service_route_pattern": "ms_${ms_name}"
+  },
+  "runtime_validation_mode": "disabled",
+  "eclipse_classpath_variables": {},
+  "model_api_key_environment": "GOOGLE_API_KEY",
+  "model_timeout_seconds": 300,
+  "max_model_attempts": 4,
+  "max_operations_per_batch": 5,
+  "gate_policies": {
+    "1": "automatic",
+    "2": "automatic",
+    "3": "automatic",
+    "4": "automatic"
+  },
+  "max_agent_task_retries": 4,
+  "side_road_conversion": false,
+  "staged_unit_conversion": true,
+  "side_road_baseline_attempts": 4,
+  "side_road_simplify_attempts": 4,
+  "max_parallel_conversion_workers": 4,
+  "max_parallel_llm_tasks": 2,
+  "max_parallel_build_tasks": 2,
+  "inter_batch_delay_secs": 1.0,
+  "enable_git": false,
+  "dependency_policy_path": "C:\\GitHub\\shaybc\\snapir\\outputs\\getclientlinks-facts-disabled-experiment-20261103\\dependency-policy\\jackson-2.18.2-v1.json"
+}

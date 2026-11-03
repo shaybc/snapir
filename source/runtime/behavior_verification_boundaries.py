@@ -9,7 +9,7 @@ from tools.composer_mapper_tools.channel_note_parser import parse_channel_note
 from tools.composer_mapper_tools.scoped_vault_access import ScopedVaultAccess
 
 
-def write_boundary_report(conn, config, preparation, directory):
+def write_boundary_report(conn, config, preparation, directory, *, collect_checklists=True):
     """Keep incomplete analysis visible while the new verification pipeline is being built."""
     mappings = {}
     access = ScopedVaultAccess(conn, config.run_id)
@@ -18,7 +18,7 @@ def write_boundary_report(conn, config, preparation, directory):
         context = access.operation(channel, operation)
         mappings[key] = {name: fqcn for name, fqcn, _ in parse_channel_note(
             access.channel_evidence(context)['markdown'], context.channel)}
-    report = build_boundary_report(preparation, mappings=mappings)
+    report = build_boundary_report(preparation, mappings=mappings, collect_checklists=collect_checklists)
     write_run_report(directory, 'behavior_verification_boundaries.json', json.dumps(report, indent=2))
     logging.getLogger(__name__).info('Boundary discovery: %s/%s entries identified; behavioral verification has not run',
         report['counts']['identified'], report['counts']['total'])

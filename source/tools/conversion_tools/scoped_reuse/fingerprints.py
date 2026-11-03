@@ -42,6 +42,10 @@ def conversion_policy(profile):
                      if isinstance(items, list) else items for key, items in value.items()}
         values[name] = value
     files = {str(Path(path).resolve()): revision(path) for path in getattr(profile, 'classpath_jars', ())}
+    dependency_policy=getattr(profile,'dependency_policy_path',None)
+    if dependency_policy:
+        values['dependency_policy_path']=str(Path(dependency_policy).resolve())
+        files[values['dependency_policy_path']]=revision(dependency_policy)
     for name in ('maven_settings_path', 'composer_behavior_document'):
         path = getattr(profile, name, None)
         if path:

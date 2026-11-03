@@ -19,6 +19,8 @@ class SubtreeCandidateValidator:
         self.conn, self.config, self.profile, self.request = conn, config, profile, request
         self.output, self.factory = Path(output), factory
         self.files, self.dependencies = dict(files), list(dependencies)
+        from runtime.dependency_policy import canonical_dependencies
+        self.dependencies=canonical_dependencies(profile,dependencies,historical=True)
         self.descriptor = None
         self.generated_files = {}
         from runtime.behavior_conversion.stage_compilation import production_compiler
@@ -54,9 +56,11 @@ class SubtreeCandidateValidator:
             raise ValueError('Subtree cannot overwrite frozen prerequisite sources')
         all_files = {**self.files, **files}
         from runtime.behavior_conversion.metadata_checklist_validation import validate_component_mappings
-        from runtime.behavior_conversion.verification_mode import executable_mode
+        from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode
         if not executable_mode(self.profile):
-            validate_component_mappings(bundle.checklist_implementations,{item['id'] for item in request['parser_checklist']},all_files)
+            from runtime.behavior_conversion.verification_mode import facts_disabled
+            if not facts_disabled(self.profile):
+                validate_component_mappings(bundle.checklist_implementations,{item['id'] for item in request['parser_checklist']},all_files,require_code=conversion_mode(self.profile))
         pins = {(item['group_id'], item['artifact_id']): item for item in request['known_dependencies']}
         for pin in bundle.dependencies:
             known = pins.get((pin.group_id, pin.artifact_id))
@@ -108,3 +112,5 @@ class SubtreeCandidateValidator:
             evidence_ids=sorted(evidence), dependencies=[item.model_dump(mode='json') for item in dependencies],
             checklist_implementations={key:[location.model_dump(mode='json') for location in locations]
                 for key,locations in bundle.checklist_implementations.items()})
+        from runtime.component_conversion.format_chain_ownership import chain_ownership
+        self.descriptor['format_chain_ownership']=chain_ownership(request)

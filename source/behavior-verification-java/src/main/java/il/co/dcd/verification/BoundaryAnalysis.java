@@ -47,9 +47,14 @@ public final class BoundaryAnalysis {
                     try { graph.analyze(entry); }
                     catch (RuntimeException exception) { graph.issues.add("Reachability did not finish: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()); }
                     graph.write(output);
-                    ParserChecklist checklist = new ParserChecklist(graph);
-                    checklist.analyze();
-                    checklist.write(output);
+                    if (!entry.getAttribute("checklist").equals("false")) {
+                        ParserChecklist checklist = new ParserChecklist(graph);
+                        checklist.analyze();
+                        checklist.write(output);
+                        ParserChecklist basicChecklist = new ParserChecklist(graph, true);
+                        basicChecklist.analyze();
+                        basicChecklist.write(output);
+                    }
                 }
             } catch (RuntimeException exception) {
                 output.writeEmptyElement("issue");

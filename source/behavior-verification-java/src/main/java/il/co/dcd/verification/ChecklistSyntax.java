@@ -12,6 +12,11 @@ final class ChecklistSyntax {
     ChecklistSyntax(ParserChecklist checklist) { this.checklist = checklist; }
 
     void scan(Node site, CodeNode owner) {
+        if (checklist.basicElement && BasicElementChecklist.traversal(site)) return;
+        if (checklist.basicElement && BasicElementChecklist.item(site)) {
+            for (Node child : site.getChildNodes()) scan(child, owner);
+            return;
+        }
         if (site instanceof CallableDeclaration<?> || site instanceof TypeDeclaration<?>) return;
         if (site instanceof LiteralExpr literal) literal(literal, owner);
         if (site instanceof IfStmt value) branch(owner, site, "if", value.getCondition().toString());

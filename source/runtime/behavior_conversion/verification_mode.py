@@ -6,9 +6,33 @@ def executable_mode(profile):
     return profile.executable_verification.mode=='executable_boundary_v1'
 
 
+def conversion_mode(profile):
+    """Conversion readiness requires mappings/build/JUnit, without paired execution."""
+    return getattr(getattr(profile,'executable_verification',None),'mode',None)=='conversion_checklist_v1'
+
+
+def facts_disabled(profile_or_settings):
+    """Only the explicit experimental profile may omit fact collection and validation."""
+    settings = getattr(profile_or_settings, 'executable_verification', profile_or_settings)
+    return getattr(settings, 'mode', None) == 'conversion_checklist_v1' and bool(getattr(settings, 'experimental_disable_facts', False))
+
+
+def conversion_version(profile):
+    """Experimental build results cannot satisfy normal conversion-ready receipts."""
+    return 'conversion-facts-experiment-v1' if facts_disabled(profile) else 'conversion-checklist-v1'
+
+
 def policy_payload(profile):
     """Bind requests, cached stages and reuse to the complete verification policy."""
     data=profile.executable_verification.model_dump(mode='json')
+    data.pop('experimental_disable_facts',None)
+    if conversion_mode(profile):
+        if facts_disabled(profile):
+            return dict(mode='conversion_checklist_v1', schema_version='conversion-facts-experiment-v1',
+                        experimental_only=True, equivalence='not_assessed', checklist_mapping='disabled_for_test',
+                        fact_collection=False, fact_validation_blocking=False)
+        return dict(mode='conversion_checklist_v1',schema_version='conversion-checklist-policy-v1',
+            equivalence='not_assessed',checklist_mapping='bounded-required-v1')
     if executable_mode(profile):
         import hashlib
         import json

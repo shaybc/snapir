@@ -3,6 +3,8 @@ from models.component_conversion_plan import ComponentConversionPlan
 from tools.conversion_tools.scoped_reuse.fingerprints import digest,conversion_policy
 
 COMPONENT_POLICY_VERSION='component-contracts-format-step-v2'
+FORMAT_CHAIN_POLICY_VERSION='configured-format-chains-v1'
+FORMAT_COMPOSITION_POLICY_VERSION='configured-format-tests-v2'
 
 
 def checked_plan(value):
@@ -35,8 +37,13 @@ def component_target(profile):
 
 def input_revision(plan,group,target):
     """Consumer membership is bookkeeping; source, configuration and dependency choices are identity."""
-    return digest(dict(target=target,components={member:plan.components[member].model_dump(mode='json',
-        exclude={'unit_ids','operations','source_characters'}) for member in sorted(group.members)}))
+    payload=dict(target=target,components={member:plan.components[member].model_dump(mode='json',
+        exclude={'unit_ids','operations','source_characters'}) for member in sorted(group.members)})
+    if any(plan.components[member].kind=='format_composition' for member in group.members):
+        payload['format_chain_policy']=FORMAT_COMPOSITION_POLICY_VERSION
+    elif any({'format_leaf','format_wrapper','decorator'}.intersection(plan.components[member].roles) for member in group.members):
+        payload['format_chain_policy']=FORMAT_CHAIN_POLICY_VERSION
+    return digest(payload)
 
 
 def component_group(plan,component_id):

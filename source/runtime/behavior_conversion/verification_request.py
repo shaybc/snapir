@@ -25,13 +25,13 @@ All code will be built/tested and compared at the original unit boundary on the 
 Fix verification_feedback item IDs and failing cases without weakening checks or approved APIs.'''
 
 
-def attach_verification(payload):
+def attach_verification(payload, *, collect_facts=True):
     """Use only the configured unit's already-selected original sources and parser evidence."""
     unit = dict(payload)
     report = build_boundary_report(dict(operations={'unit': dict(units=[unit])}),
-        mappings={'unit':payload.get('component_default_mapping',{})})
+        mappings={'unit':payload.get('component_default_mapping',{})},collect_checklists=collect_facts)
     boundary = UnitVerificationBoundary.model_validate(report['boundaries'][unit['unit_id']])
-    if boundary.analysis_status != 'identified' or boundary.parser_checklist is None or boundary.parser_checklist.status != 'extracted':
+    if boundary.analysis_status != 'identified' or collect_facts and (boundary.parser_checklist is None or boundary.parser_checklist.status != 'extracted'):
         raise VerificationIncomplete(dict(stage='parser', unit_id=unit['unit_id'], issues=boundary.issues or ['Parser checklist unavailable']))
     result = dict(payload)
     for key in ('behavior_specification', 'behavior_specification_fingerprint', 'behavior_evidence'):
@@ -39,7 +39,7 @@ def attach_verification(payload):
     references = {node.id: index for index, node in enumerate(boundary.reachable_slice.nodes)}
     checklist = dict(schema_version='parser-checklist-delivery-v1',
         source_manifest_hash=boundary.source_manifest_hash, configuration_hash=boundary.configuration_hash, items=[])
-    for item in boundary.parser_checklist.items:
+    for item in boundary.parser_checklist.items if boundary.parser_checklist is not None else ():
         delivered = dict(id=item.id, kind=item.kind, detail=item.detail, syntax_type=item.syntax_type, source_ref=references[item.code_node_id],
                          span=[item.start_line,item.start_column,item.end_line,item.end_column])
         if item.properties: delivered['properties'] = item.properties
