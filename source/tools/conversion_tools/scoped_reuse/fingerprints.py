@@ -29,6 +29,9 @@ def conversion_policy(profile):
         'conversion_requirements', 'maven_settings_path', 'maven_local_repository',
         'approved_maven_repository_urls', 'service_maven_dependencies')
     values = {}
+    preparation=getattr(profile,'test_preparation',None)
+    if preparation is not None and preparation.mode!='existing':
+        values['test_preparation']=preparation.model_dump(mode='json')
     settings=getattr(profile,'executable_verification',None)
     if settings is not None and settings.mode!='checklist_v1':
         from runtime.behavior_conversion.verification_mode import policy_payload

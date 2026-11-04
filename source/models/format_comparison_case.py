@@ -17,6 +17,8 @@ class FormatComparisonCase(BoundaryCase):
     citations: list[FormatSourceCitation] = Field(default_factory=list)
     targeted_branch_ids: list[str] = Field(default_factory=list)
     targeted_branch_outcomes: dict[str, str] = Field(default_factory=dict)
+    scenario_unresolved: list[str] = Field(default_factory=list,exclude_if=lambda value:not value)
+    observe_context_keys: list[str] | None = Field(default=None,exclude_if=lambda value:value is None)
 
     @field_validator('case_id')
     @classmethod

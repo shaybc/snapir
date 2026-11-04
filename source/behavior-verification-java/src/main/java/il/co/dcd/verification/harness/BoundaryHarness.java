@@ -28,9 +28,13 @@ public final class BoundaryHarness {
             for (Map<String, Object> setting : (List<Map<String, Object>>) input.get("settings")) settings(setting);
             adapter = (BoundaryAdapter) LegacyBoundaryAdapter.load(job.getAttribute("adapter_class")).getConstructor().newInstance();
             if (adapter instanceof LegacyBoundaryAdapter legacy) legacy.configure(job);
+            if (adapter instanceof LegacyDecoratorAdapter decorator) decorator.configure(job);
             invoked = true;
-            result.put("output", adapter.invoke((String) input.get("input_xml"), context, BoundaryValues.child(job, "configuration").getFirstChild() instanceof Element element
-                ? element : BoundaryValues.children(BoundaryValues.child(job, "configuration"), null).get(0)));
+            Object returned=adapter.invoke((String) input.get("input_xml"), context, BoundaryValues.child(job, "configuration").getFirstChild() instanceof Element element
+                ? element : BoundaryValues.children(BoundaryValues.child(job, "configuration"), null).get(0));
+            Element getters=BoundaryValues.children(job,"original_output_getters").stream().findFirst().orElse(null);
+            if(getters!=null&&(adapter instanceof LegacyBoundaryAdapter||adapter instanceof LegacyDecoratorAdapter))returned=LegacyInputValues.project(returned,(List<String>)BoundaryValues.read(getters));
+            result.put("output",returned);
             result.put("invocation_completed", true);
         } catch (Throwable failure) {
             while (failure instanceof InvocationTargetException invocation && invocation.getCause() != null) failure = invocation.getCause();
@@ -55,6 +59,7 @@ public final class BoundaryHarness {
         }
         try {
             if (adapter instanceof LegacyBoundaryAdapter legacy) context.replaceState(legacy.snapshot(initial));
+            if (adapter instanceof LegacyDecoratorAdapter decorator) context.replaceState(decorator.snapshot(initial));
             try { BoundaryRuntime.finish(); }
             catch (BoundaryRuntime.Incomplete incomplete) {
                 result.put("status", "verification_incomplete");
@@ -63,6 +68,7 @@ public final class BoundaryHarness {
             }
             result.put("context", context); result.put("writes", BoundaryRuntime.writes); result.put("removals", BoundaryRuntime.removals);
             result.put("external_calls", BoundaryRuntime.calls); result.put("probes", BoundaryRuntime.probes);
+            if (input.containsKey("test_assets")) result.put("resource_events", il.co.dcd.verification.fixtures.FixtureResources.events());
             Path output = Path.of(args[1]), temporary = output.resolveSibling(output.getFileName() + ".tmp");
             try (var stream = Files.newOutputStream(temporary)) {
                 var writer = XMLOutputFactory.newFactory().createXMLStreamWriter(stream, "UTF-8");

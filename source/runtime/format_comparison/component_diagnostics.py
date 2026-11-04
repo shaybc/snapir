@@ -19,7 +19,10 @@ def diagnose_component(validator, candidate, files, directory, *, model_call=Non
     try:
         return _diagnose_component(validator, candidate, files, directory, model_call=model_call, native_classpath=native_classpath)
     except Exception as error:
-        return dict(status='comparison_unavailable', reason=type(error).__name__, acceptance_changed=False)
+        result=dict(status='comparison_unavailable', reason=type(error).__name__+': '+str(error), acceptance_changed=False)
+        root=Path(directory);root.mkdir(parents=True,exist_ok=True)
+        (root/'unavailable.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+        return result
 
 
 def _diagnose_component(validator, candidate, files, directory, *, model_call=None, native_classpath=()):
@@ -31,6 +34,19 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
     from models.unit_verification_boundary import UnitVerificationBoundary
     boundary = UnitVerificationBoundary.model_validate(validator.boundaries['boundaries'][identity])
     sources = [NativeSourceFile(path=name, content=content) for name, content in files.items() if name.startswith('src/main/java/')]
+    from runtime.test_assets.preparation import current,enabled
+    assets=current()
+    if enabled(validator.profile):
+        if not assets:raise ValueError('Shared comparison scenarios are not prepared; no deterministic fallback')
+        from runtime.test_assets.materialization import comparison_plan
+        plan=comparison_plan(validator.request['configured_format']['logical_id'],unit,sources,
+            assets['bank'],assets['comparisons'],assets['manifest_hash'])
+        plan.native_classpath=list(native_classpath);plan.original_framework.classpath=list(validator.profile.classpath_jars)
+        from runtime.composer_units.comparison import prepare_comparison
+        plan=prepare_comparison(plan,validator.profile,directory/'original-packages')
+        result=run_comparison(plan,validator.profile,directory/'execution')
+        return dict(status=result['status'],counts=result['counts'],acceptance_changed=False,
+            fixture_manifest_hash=assets['manifest_hash'],report='execution/format-comparison.json')
     direction = 'format' if unit['kind'] == 'response_format' else 'unformat'
     prior = getattr(candidate, 'verification_binding', None)
     entries = {'configured': FormatComparisonEntry(direction=direction, binding=prior)} if prior else None
@@ -68,6 +84,8 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
             return preparation
         plan.native_classpath = list(native_classpath)
         plan.original_framework.classpath = list(profile.classpath_jars)
+        from runtime.composer_units.comparison import prepare_comparison
+        plan=prepare_comparison(plan,profile,directory/'original-packages')
         # Use only approved runtime dependencies from the existing build verifier.
         result = run_comparison(plan, profile, directory / 'execution')
         return dict(status=result['status'], counts=result['counts'], acceptance_changed=False,

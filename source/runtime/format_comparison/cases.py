@@ -9,6 +9,9 @@ def expand_fixtures(plan, settings):
     """Overlay one source-backed/exploratory branch value per supplied baseline; never infer outputs."""
     validate_discovery(plan.discovery, plan.original_unit)
     cases = list(plan.cases)
+    if getattr(plan,'explicit_scenarios',False):
+        if len(cases)>settings.max_cases:raise ValueError('Declared scenarios exceed the case budget; no cases dropped')
+        return cases
     for case in cases:
         validate_citations(case.citations, evidence_catalog(plan.original_unit))
         if case.origin == 'source_backed' and not case.citations:
@@ -46,6 +49,7 @@ def unresolved_inputs(plan, case):
     """An unresolved required input prevents that case, while independent cases may execute."""
     selected = case.required_inputs
     issues = []
+    issues.extend(getattr(case,'scenario_unresolved',[]))
     requirements = {item.requirement_id: item for item in plan.discovery.requirements}
     if selected is not None:
         issues.extend('Unknown input requirement: ' + key for key in selected if key not in requirements)

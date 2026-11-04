@@ -81,4 +81,7 @@ def record_test_build(validation,files,dependencies,*,require_tests=True):
     receipt=dict(version=VERSION,acceptance=False,candidate_hash=stable_id(bundle.model_dump(mode='json')),
         built_files_hash=stable_id(files),dependencies=[d.model_dump(mode='json') for d in dependencies],
         build_validation=validation.model_dump(mode='json'))
+    from runtime.test_assets.preparation import current
+    assets=current()
+    if assets:receipt['fixture_manifest_hash']=assets['manifest_hash']
     state.retain(tasks.conn,tasks.config.run_id,tasks.identity,tasks.revision,'tests_ready',receipt,stable_id(receipt))

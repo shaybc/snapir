@@ -32,17 +32,39 @@ def test_unavailable_adapter_never_counts_as_a_match(tmp_path):
     assert report['counts']['matched'] == 0 and report['counts']['unexecuted'] == 1
 
 
-def test_business_exception_difference_and_message_policy_are_separate():
+def test_format_business_exceptions_match_without_type_message_or_implicit_state_requirements():
     a = obs(exception={'type': 'java.lang.IllegalArgumentException', 'message': 'original'})
-    b = obs(exception={'type': 'java.lang.IllegalArgumentException', 'message': 'native'})
-    result = compare_case(a, b, 'unformat', FormatComparisonSettings())
-    assert result['status'] == 'comparison_unavailable'  # Partial state is explicitly unknown.
-    assert result['differences'] == []
-    strict = compare_case(a, b, 'unformat', FormatComparisonSettings(compare_exception_messages=True))
-    assert strict['status'] == 'different'
-    assert strict['differences'][0]['path'] == 'exception.message'
+    b = obs(exception={'type': 'nativecode.ValidationException', 'message': 'native'}, context={'temporary': 'value'})
+    for direction in ['format', 'unformat']:
+        for settings in [FormatComparisonSettings(), FormatComparisonSettings(compare_exception_messages=True)]:
+            result = compare_case(a, b, direction, settings)
+            assert result['status'] == 'matched'
+            assert result['differences'] == [] and result['limitations'] == []
+    assert a.exception['type'] == 'java.lang.IllegalArgumentException'
+    assert b.exception['type'] == 'nativecode.ValidationException'
     changed = compare_case(a, obs(output=False), 'unformat', FormatComparisonSettings())
     assert changed['status'] == 'different'
+
+
+def test_exception_matching_keeps_declared_state_resource_and_adapter_checks():
+    a = obs(exception={'type': 'ibm.BusinessException'}, context={'value': 1})
+    b = obs(exception={'type': 'nativecode.BusinessException'}, context={'value': 2})
+    assert compare_case(a, b, 'format', FormatComparisonSettings(), observe_context_keys=['value'])['status'] == 'different'
+    assert compare_case(a, b, 'format', FormatComparisonSettings(), observe_context_keys=[])['status'] == 'matched'
+    incomplete = obs(exception={'type': 'HarnessError'}, failure_origin='adapter_binding', issues=['Missing fixture'])
+    assert compare_case(a, incomplete, 'format', FormatComparisonSettings())['status'] == 'comparison_unavailable'
+    a.resource_events = [{'operation': 'commit'}]
+    assert compare_case(a, b, 'format', FormatComparisonSettings())['status'] == 'different'
+
+
+def test_operation_step_exception_policy_is_unchanged():
+    a = obs(exception={'type': 'original.Exception', 'message': 'original'})
+    b = obs(exception={'type': 'original.Exception', 'message': 'native'})
+    assert compare_case(a, b, 'step_execute', FormatComparisonSettings())['status'] == 'comparison_unavailable'
+    strict = compare_case(a, b, 'step_execute', FormatComparisonSettings(compare_exception_messages=True))
+    assert strict['status'] == 'different' and strict['differences'][0]['path'] == 'exception.message'
+    b.exception['type'] = 'different.Exception'
+    assert compare_case(a, b, 'step_execute', FormatComparisonSettings())['status'] == 'different'
 
 
 def test_a_branch_decision_does_not_prove_the_targeted_outcome():

@@ -9,13 +9,13 @@ from runtime.behavior_conversion.response_json import clean_structural_escapes
 from agents.behavior_conversion.format_context_discovery import BINDING
 
 
-def resolved_binding(entry, unit, native_sources):
+def resolved_binding(entry, unit, native_sources, *, constructor_entry=False):
     """Resolve configuration-selected keys and validate all recipes before reflection."""
     binding = entry.binding.model_copy(deep=True)
     names = {name for file in native_sources for name in public_api_types(file.content)}
     if any(name.startswith(('il.co.dcd.verification.', 'com.ibm.')) for name in names):
         raise ValueError('Native snapshots cannot replace harness/framework classes')
-    if binding.owner_type not in names or not _member(binding.method_name):
+    if binding.owner_type not in names or not constructor_entry and not _member(binding.method_name):
         raise ValueError('Entry must select an actual supplied public native type and method')
     attributes = unit['effective_configuration'].get('attributes', {})
 
@@ -27,8 +27,16 @@ def resolved_binding(entry, unit, native_sources):
         return value
 
     def recipe(value, depth=0):
-        if depth > 12 or value.type_name not in names | SCALARS | {'java.util.List'}:
+        if depth > 12 or value.type_name not in names | SCALARS | {'java.util.List','java.util.Set','java.sql.Connection'}:
             raise ValueError('Unsupported recipe type or depth; adapter capability missing')
+        if value.type_name=='java.sql.Connection' and value.source!='resource':
+            raise ValueError('Connections require an explicit fixture resource')
+        if value.source in {'fixture','item','resource','collection'}:
+            if value.source=='collection':
+                if value.type_name not in {'java.util.List','java.util.Set'} or value.element is None:raise ValueError('Collection element mapping is required')
+                recipe(value.element,depth+1)
+            elif value.element is not None:raise ValueError('Element mapping only applies to collections')
+            if value.key is None:raise ValueError('Fixture recipes require an explicit key or pointer')
         if value.factory_method and (value.source != 'object' or not _member(value.factory_method)):
             raise ValueError('Object factory must be an exact public native method')
         if value.source == 'xml' and (value.type_name != 'java.lang.String' or value.key or value.arguments or value.properties or value.factory_method):
@@ -53,11 +61,19 @@ def resolved_binding(entry, unit, native_sources):
             raise ValueError('Configuration setters require an instance and configuration-only inputs')
         recipe(value)
     for projection in binding.context_writes:
+        if projection.source=='receiver' and binding.static_method:raise ValueError('Static entry has no receiver state')
         projection.context_key = key(projection.context_key)
         if projection.source == 'argument' and projection.argument_index >= len(binding.arguments):
             raise ValueError('Projection argument index is outside method arguments')
         if not all(_member(name) for name in [*projection.getters, *projection.presence_getters]):
             raise ValueError('Only exact public getter paths may project observations')
+        for field,getters in projection.collection_fields.items():
+            if not field or not getters or not all(_member(name) for name in getters):
+                raise ValueError('Collection observations require explicit public getter paths')
+        for field,getters in projection.collection_fields.items():
+            key(field)
+            if not getters or not all(_member(name) for name in getters):
+                raise ValueError('Collection observations require explicit public getter paths')
     if len({item.context_key for item in binding.context_writes}) != len(binding.context_writes):
         raise ValueError('Duplicate output projection key')
     if not all(_member(name) for name in binding.output_getters):
@@ -76,16 +92,20 @@ def missing_binding_inputs(binding, case):
             missing.append('Native input requires an unresolved context value: ' + value.key)
         for child in [*value.arguments, *value.properties.values()]:
             visit(child)
+        if value.element:visit(value.element)
     for value in [*binding.arguments, *binding.constructor_arguments]:
         visit(value)
     return missing
 
 
-def propose_bindings(unit, native_sources, model_call, settings, directory):
+def propose_bindings(unit, native_sources, model_call, settings, directory, *, directions=None, fixture_inputs=None):
     """Offer an AI mapping-only fallback; unresolved wiring is never guessed or implemented."""
     payload = dict(original_configuration=unit['effective_configuration'],
                    original_sources=unit['sources'],
                    native_apis=api_surface(type('Files', (), {'files': native_sources})()),
+                   native_sources=[file.model_dump(mode='json') for file in native_sources],
+                   execution=dict(selected_directions=directions or ['format','unformat']),
+                   fixture_inputs=fixture_inputs or dict(status='not_prepared'),
                    entry_schema=FormatComparisonEntry.model_json_schema())
     encoded = json.dumps(payload, ensure_ascii=True)
     if len(BINDING) + len(encoded) > settings.discovery_request_chars:
@@ -99,6 +119,8 @@ def propose_bindings(unit, native_sources, model_call, settings, directory):
         decoded = json.loads(clean_structural_escapes(_remove_response_fence(response)))
         entries = {name: FormatComparisonEntry.model_validate(value) for name, value in decoded['entries'].items()}
         for entry in entries.values():
+            if directions and entry.direction not in directions:
+                raise ValueError('Binding proposal selected an unrequested direction')
             resolved_binding(entry, unit, native_sources)
         return entries, [str(value) for value in decoded.get('unresolved', [])]
     except (ValueError, KeyError, TypeError, RuntimeError, OSError, TimeoutError) as error:

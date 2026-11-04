@@ -10,7 +10,7 @@ from models.java_classpath_index import JavaClasspathIndex
 
 
 def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
-                            variables: dict[str, str] | None = None) -> JavaClasspathIndex:
+                            variables: dict[str, str] | None = None, *, visible_source_roots: list[str] | None = None) -> JavaClasspathIndex:
     """Read explicit libraries and metadata; report unresolved containers and variables.
 
     This index describes workspace availability, not Maven coordinates, transitive
@@ -20,6 +20,8 @@ def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
     index = JavaClasspathIndex()
     libraries = {Path(path).resolve() for path in jars or []}
     for metadata in sorted(workspace.rglob(".classpath")):
+        if visible_source_roots is not None and not any(Path(root).resolve().is_relative_to(metadata.parent.resolve()) for root in visible_source_roots):
+            continue
         try:
             entries = ElementTree.parse(metadata).getroot().findall("classpathentry")
         except (ElementTree.ParseError, OSError) as exc:

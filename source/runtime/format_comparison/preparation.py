@@ -17,14 +17,20 @@ def prepare_plan(label, scope, unit, native_sources, cases, profile, directory, 
         raise ValueError('Diagnostic preparation is disabled')
     unresolved = []
     discovery = None
+    directions = (sorted({entry.direction for entry in entries.values()}) if entries else
+                  ['format'] if unit.get('kind')=='response_format' else
+                  ['unformat'] if unit.get('kind')=='request_unformat' else None)
+    fixture_inputs = (dict(status='not_prepared') if callable(cases) else
+                      dict(status='prepared',cases=[case.model_dump(mode='json') if hasattr(case,'model_dump') else case for case in cases]))
     if not entries:
         if model_call is None:
             unresolved.append('Native API binding unavailable; provide metadata or an explicit mapping-only model call')
         else:
-            entries, unresolved = propose_bindings(unit, native_sources, model_call, profile.format_comparison, directory / 'binding-proposal')
+            entries, unresolved = propose_bindings(unit, native_sources, model_call, profile.format_comparison,
+                directory / 'binding-proposal', directions=directions, fixture_inputs=fixture_inputs)
     if model_call is not None:
         discovery = discover_context(unit, model_call, profile.format_comparison, directory / 'context-discovery',
-            directions=sorted({entry.direction for entry in entries.values()}) if entries else None)
+            directions=sorted({entry.direction for entry in entries.values()}) if entries else directions)
     report = dict(status='preparing' if entries else 'comparison_unavailable', unresolved=unresolved,
                   acceptance_changed=False, java_regenerated=False)
     (directory / 'preparation.json').write_text(json.dumps(report, indent=2), encoding='utf-8')

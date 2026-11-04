@@ -370,6 +370,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         return
     operation_reports = []
     for closure in closures:
+        from runtime.behavior_conversion.runtime_config import ensure_runtime_config
+        ensure_runtime_config(config.output_root)
         consumer = closure["channel"] + "/" + closure["operation_id"]
         project = Path(config.output_root) / closure["channel"] / closure["operation_id"]
         sources = {key: consumer_artifact(accepted[value], consumer) for key, value in bindings[consumer].items()}
@@ -396,7 +398,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
                 validate_step_injection(bundle, step_dependencies)
                 validate_runtime_resources(bundle, runtime_resources)
             except ValueError as exc:
-                raise ValueError("Operation constructor/resource contract: " + str(exc)) from exc
+                from runtime.behavior_conversion.interface_feedback import ImplementationInterfaceError
+                raise ImplementationInterfaceError("Operation constructor/resource contract: " + str(exc)) from exc
             protected = {name for unit in sources.values() for name in unit.get("files", {})}
             copied = {file.path for file in bundle.files}.intersection(protected)
             if copied:
@@ -466,6 +469,10 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             model_call, "Operation flow: " + consumer, bundle_generator=incremental)
         manifest = json.loads(snapshot(conn, config.run_id, "manifest", "service:" + consumer)["data_json"])
         contracts[consumer] = bundle.operation_contract
+        from runtime.behavior_conversion.standalone_runner import write_standalone_runner
+        write_standalone_runner(project, config.output_root, bundle.operation_contract)
+        from runtime.behavior_conversion.standalone_sample import write_operation_sample
+        write_operation_sample(conn, config, project, sources)
         api = bundle.operation_contract.service_api
         record = dict(operation_id=closure["operation_id"], channel=closure["channel"], project=str(project),
             fingerprint=fingerprint, service_api=api.model_dump(), contract=contracts[consumer].model_dump(),

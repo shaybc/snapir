@@ -63,7 +63,9 @@ class ComponentUnitProvider:
                 if load_unit_artifacts(self.conn,self.config,self.profile,self.plan,unit.unit_id)['proof'] != artifacts['proof']:
                     raise ValueError('Component changed during whole-unit verification')
             try:
-                bundle = native_unit_binding(self.conn,self.config,self.profile,unit,artifacts,build,checked,self.model_call)
+                from runtime.test_assets.preparation import asset_scope
+                with asset_scope(artifacts.get('test_assets')):
+                    bundle = native_unit_binding(self.conn,self.config,self.profile,unit,artifacts,build,checked,self.model_call)
             except VerificationIncomplete:
                 raise
             except VerificationFailure as error:

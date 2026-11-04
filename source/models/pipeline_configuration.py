@@ -14,6 +14,7 @@ from models.checklist_exclusion_authorization import ChecklistExclusionAuthoriza
 from models.unit_mutation_settings import UnitMutationSettings
 from models.executable_verification_settings import ExecutableVerificationSettings
 from models.format_comparison_settings import FormatComparisonSettings
+from models.test_preparation_settings import TestPreparationSettings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -36,6 +37,7 @@ class PipelineConfiguration(BaseModel):
     unit_mutation_testing: UnitMutationSettings = Field(default_factory=UnitMutationSettings)
     executable_verification: ExecutableVerificationSettings = Field(default_factory=ExecutableVerificationSettings)
     format_comparison: FormatComparisonSettings = Field(default_factory=FormatComparisonSettings)
+    test_preparation: TestPreparationSettings = Field(default_factory=TestPreparationSettings)
     unit_verification_policy: StaticCheckPolicy = Field(default_factory=StaticCheckPolicy)
     unit_verification_authorizations: list[ChecklistExclusionAuthorization] = Field(default_factory=list)
     source_root: str = constants.COMPOSER_ROOT

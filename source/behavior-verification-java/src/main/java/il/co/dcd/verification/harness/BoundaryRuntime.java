@@ -4,7 +4,7 @@ import java.util.*;
 
 /** Process-local controls and observable event recording, reset for every isolated JVM case. */
 public final class BoundaryRuntime {
-    public static final class Incomplete extends RuntimeException { public Incomplete(String message) { super(message); incomplete.add(message); } }
+    public static final class Incomplete extends RuntimeException { public Incomplete(String message) { super(message); incomplete.add(message); il.co.dcd.verification.fixtures.FixtureResources.incomplete(message); } }
     public static final List<Map<String, Object>> writes = new ArrayList<>(), removals = new ArrayList<>(), calls = new ArrayList<>();
     public static final List<Map<String, String>> probes = new ArrayList<>();
     private static List<Map<String, Object>> replay = List.of();
@@ -17,9 +17,11 @@ public final class BoundaryRuntime {
 
     @SuppressWarnings("unchecked")
     static void reset(Map<String, Object> controls) {
+        LegacyInputValues.clear();
         clock = ((Number) controls.get("clock_millis")).longValue();
         random = new Random(((Number) controls.get("random_seed")).longValue());
         replay = (List<Map<String, Object>>) controls.get("external_responses"); cursor = 0;
+        il.co.dcd.verification.fixtures.FixtureResources.reset((Map<String, Object>) controls.getOrDefault("test_assets", Map.of()));
         writes.clear(); removals.clear(); calls.clear(); probes.clear(); incomplete.clear();
         TimeZone.setDefault(TimeZone.getTimeZone("UTC")); Locale.setDefault(Locale.ROOT);
     }
@@ -69,7 +71,7 @@ public final class BoundaryRuntime {
     public static void written(String key, Object value) { writes.add(event(key, value)); }
     public static void removed(String key, Object value) { removals.add(event(key, value)); }
     private static Map<String, Object> event(String key, Object value) {
-        Map<String, Object> event = new LinkedHashMap<>(); event.put("key", key); event.put("value", BoundaryValues.snapshot(value)); return event;
+        Map<String, Object> event = new LinkedHashMap<>(); event.put("key", key); event.put("value", LegacyInputValues.snapshot(key,value)); return event;
     }
 
     public static Object external(Object receiver, String target, Object[] arguments) {

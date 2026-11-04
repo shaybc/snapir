@@ -12,6 +12,12 @@ def evidence_catalog(unit):
     if len(catalog) != len(unit['sources']):
         raise ValueError('Duplicate source evidence identities')
     catalog['configuration'] = json.dumps(unit['effective_configuration'], ensure_ascii=False, sort_keys=True)
+    if unit.get('configuration_xml'):
+        catalog['configuration_xml'] = unit['configuration_xml']
+        for identity in {unit.get('source_definition_id'),unit.get('occurrence_id')} - {None,''}:
+            if identity in catalog and catalog[identity]!=unit['configuration_xml']:
+                raise ValueError('Conflicting configuration evidence identity: '+identity)
+            catalog[identity] = unit['configuration_xml']
     for definition in unit.get('referenced_definitions', []):
         catalog['configuration:' + definition['definition_id']] = json.dumps(definition, ensure_ascii=False, sort_keys=True)
     return catalog

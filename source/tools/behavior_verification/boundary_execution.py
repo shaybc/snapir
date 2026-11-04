@@ -14,7 +14,7 @@ from tools.behavior_verification.boundary_protocol import value_element, read_va
 from tools.behavior_verification.boundary_contracts import boundary_contract
 
 
-def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *, settings=()):
+def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *, settings=(), fixture_resources=False, allow_unknown_calls=False):
     """Return classes and hashes only after control instrumentation and compilation succeed."""
     directory.mkdir(parents=True)
     tool = Path(tool or default_tool_path()).resolve()
@@ -24,11 +24,15 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
     manifest = ET.Element('scope', side=side, context_class=binding.context_class,
         context_writer=binding.context_writer, context_remover=binding.context_remover)
     manifest.set('typed_native', str(side == 'native' and binding.native_entry is not None).lower())
+    if fixture_resources:manifest.set('fixture_resources','true')
+    if allow_unknown_calls:
+        if unit['kind'] not in {'response_format','request_unformat'}:raise ValueError('Unknown-call relaxation is limited to format comparisons')
+        manifest.set('allow_unknown_calls','true')
     manifest.set('context_reader', binding.context_reader)
     manifest.set('context_snapshot', binding.context_snapshot)
     for setting in _settings(settings, binding):
         ET.SubElement(manifest, 'setting_method', implementation=setting['class'], method=setting['method'])
-    if side == 'legacy':
+    if side in {'legacy','original'}:
         current = boundary_contract(unit, {'opStep': boundary.implementation_class})
         if current.source_manifest_hash != boundary.source_manifest_hash or current.configuration_hash != boundary.configuration_hash:
             raise ValueError('Boundary source/configuration revision changed before compilation')
@@ -36,7 +40,7 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
     else:
         sources = [dict(identity=item.path, content=item.content,
                         content_hash=hashlib.sha256(item.content.encode()).hexdigest()) for item in binding.sources]
-    if not sources: raise ValueError('No supplied source for ' + side + ' boundary')
+    if not sources and side!='original': raise ValueError('No supplied source for ' + side + ' boundary')
     for source in sources:
         text_hash = hashlib.sha256(source['content'].encode()).hexdigest()
         if side != 'legacy' and text_hash != source['content_hash']:
@@ -72,8 +76,9 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
     if issues: raise ValueError('; '.join(issues[:12]))
     classes = directory / 'classes'; classes.mkdir()
     files = sorted((directory / 'instrumented').rglob('*.java'))
-    _run(['javac', '--release', java_version(), '-encoding', 'UTF-8', '-cp', os.pathsep.join(classpath),
-          '-d', str(classes), *map(str, files)], 120)
+    if files:
+        _run(['javac', '--release', java_version(), '-encoding', 'UTF-8', '-cp', os.pathsep.join(classpath),
+              '-d', str(classes), *map(str, files)], 120)
     if _digest(tool) != hashes['tool']: raise ValueError('Harness tool changed during compilation')
     for path in sorted(classes.rglob('*.class')): hashes['class:' + str(path.relative_to(classes))] = _digest(path)
     return dict(directory=directory, classes=classes, classpath=[str(classes), *classpath], hashes=hashes)
@@ -95,10 +100,19 @@ def execute_boundary_case(compiled, unit, boundary, binding, case, timeout=15,de
     directory.mkdir(parents=True, exist_ok=False)
     job = ET.Element('job', adapter_class=binding.adapter_class, kind=unit['kind'], implementation=boundary.implementation_class,
         **{name: getattr(binding, name) for name in ('context_class', 'tag_class', 'context_writer', 'context_remover', 'context_snapshot', 'step_context_setter')})
+    if binding.original_action:job.set('original_action',binding.original_action)
     values = case.model_dump(mode='json')
+    if case.original_inputs and unit['kind']=='configured_step':raise ValueError('Original object recipes are limited to formats/decorators')
     values['settings'] = _settings(values['settings'], binding)
     job.append(value_element(values, 'case'))
     configuration = ET.SubElement(job, 'configuration')
+    if unit['kind']!='configured_step':
+        from runtime.behavior_conversion.java_api_types import public_api_types
+        names=set(unit.get('original_input_types',[]))
+        for source in unit['sources']:names.update(public_api_types(source['content']))
+        job.append(value_element(sorted(names),'original_types'))
+        job.append(value_element(binding.original_context_getters,'original_context_getters'))
+        job.append(value_element(binding.original_output_getters,'original_output_getters'))
     if unit['kind'] == 'configured_step':
         component = ET.SubElement(configuration, 'component', implementation=boundary.implementation_class)
         component.append(value_element(unit['effective_configuration']['attributes'], 'attributes'))

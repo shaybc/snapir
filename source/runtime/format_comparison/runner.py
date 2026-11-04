@@ -33,11 +33,16 @@ def run_comparison(plan, profile, directory=None, *, tool=None):
                   fact_validation='not_run', fact_validation_blocking=False,
                   unresolved_inputs=plan.discovery.model_dump(mode='json'),
                   isolation='fresh JVM per side per case; disposable compiled snapshots')
+    if plan.fixture_manifest_hash:
+        report.update(fixture_manifest_hash=plan.fixture_manifest_hash,scenario_preparation='ai_shared_fixtures_v1')
     if not settings.collect_facts:
         report['limitations'].append('Fact collection and fact-derived branch probes are disabled for this diagnostic; fact validation is not run')
-    compiled = {}; boundaries = {}
+    compiled = {}; boundaries = {}; compilation_failures = {}
     try:
         cases = expand_fixtures(plan, settings)
+        if plan.explicit_scenarios:
+            from runtime.test_assets.limits import validate_case_limits
+            validate_case_limits(cases,profile)
         report['planned_cases'] = len(cases)
         publish(report, directory)
         harness = directory / 'harness.jar'
@@ -64,9 +69,10 @@ def run_comparison(plan, profile, directory=None, *, tool=None):
                         item['limitations'] = missing
                         publish(report, directory)
                         continue
-                    left, right = execute_pair(plan, unit, binding, case, directory, harness, settings, compiled, boundaries)
+                    left, right = execute_pair(plan, unit, binding, case, directory, harness, settings, compiled, boundaries,compilation_failures=compilation_failures,profile=profile)
                     item.update(legacy=left.model_dump(mode='json'), native=right.model_dump(mode='json'))
-                    item.update(compare_case(left, right, entry.direction, settings))
+                    item.update(compare_case(left, right, entry.direction, settings,
+                        **({'observe_context_keys':case.observe_context_keys} if case.observe_context_keys is not None else {})))
                     item['targeted_branches'] = branch_results(case, left.probes)
                     if case.roundtrip_binding_id is not None:
                         if left.exception or right.exception or not isinstance(left.output, str) or not isinstance(right.output, str):
@@ -85,7 +91,7 @@ def run_comparison(plan, profile, directory=None, *, tool=None):
                             read_case.initial_context = {key: value for key, value in case.initial_context.items() if key not in result_keys}
                             read_native = read_case.model_copy(update={'input_xml': right.output})
                             a, b = execute_pair(plan, read_unit, read_binding, read_case, directory, harness, settings,
-                                                compiled, boundaries, native_case=read_native)
+                                                compiled, boundaries, native_case=read_native,compilation_failures=compilation_failures,profile=profile)
                             roundtrip = compare_case(a, b, 'unformat', settings)
                             item['roundtrip'] = dict(legacy=a.model_dump(mode='json'), native=b.model_dump(mode='json'), **roundtrip)
                             if roundtrip['status'] == 'different' or item['status'] == 'matched':

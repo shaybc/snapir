@@ -133,6 +133,11 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
                 if target.is_file():
                     target.unlink()
             context = context_factory(profile, staged, project.name)
+            from runtime.test_assets.preparation import current as current_assets
+            assets=current_assets() if require_tests else None
+            if assets:
+                from runtime.test_assets.junit_support import stage
+                stage(staged,assets)
             for name, content in dict(dependency_files).items():
                 target = staged / name
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -161,6 +166,9 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
             if correction:
                 raise TestCorrectionError(error, correction)
             raise ValueError(error)
+        if assets:
+            from runtime.test_assets.junit_support import check_execution
+            check_execution(staged,assets['tests'])
         from runtime.behavior_conversion.stage_readiness import record_test_build
         record_test_build(result, files, dependencies, require_tests=require_tests)
         if pre_publish is not None:
@@ -183,5 +191,8 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
             target = project / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(staged / name, target)
+        if assets:
+            from runtime.test_assets.junit_support import stage
+            stage(project,assets)
         shutil.copy2(staged / "pom.xml", project / "pom.xml")
     return result.model_dump(mode="json"), file_manifest(project, files)

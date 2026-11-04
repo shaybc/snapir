@@ -20,4 +20,7 @@ class BoundaryHarnessBinding(BaseModel):
     settings_bindings: dict[str, dict[str, str]] = Field(default_factory=dict)
     classpath: list[str] = Field(default_factory=list)
     native_entry: NativeVerificationBinding | None = None
+    original_action: str | None = Field(default=None,exclude_if=lambda value:value is None)
+    original_context_getters: dict[str,list[str]] = Field(default_factory=dict,exclude_if=lambda value:not value)
+    original_output_getters: list[str] = Field(default_factory=list,exclude_if=lambda value:not value)
 

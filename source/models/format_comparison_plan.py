@@ -11,7 +11,7 @@ from models.format_context_requirement import FormatContextDiscovery
 class FormatComparisonEntry(BaseModel):
     """Select one exact production overload for one direction."""
     model_config = ConfigDict(extra='forbid')
-    direction: Literal['format', 'unformat']
+    direction: Literal['format', 'unformat', 'step_execute']
     binding: NativeVerificationBinding
 
 
@@ -30,6 +30,11 @@ class FormatComparisonPlan(BaseModel):
         adapter_class='il.co.dcd.verification.harness.LegacyBoundaryAdapter'))
     native_classpath: list[str] = Field(default_factory=list)
     native_external_bindings: dict[str, str] = Field(default_factory=dict)
+    explicit_scenarios: bool = Field(default=False,exclude_if=lambda value:not value)
+    fixture_manifest_hash: str | None = Field(default=None,exclude_if=lambda value:value is None)
+    original_step_implementation: str | None = Field(default=None,exclude_if=lambda value:value is None)
+    original_packages: dict[str,str] = Field(default_factory=dict,exclude_if=lambda value:not value)
+    original_packages: dict[str,str] = Field(default_factory=dict,exclude_if=lambda value:not value)
 
     @model_validator(mode='after')
     def distinct_cases(self):

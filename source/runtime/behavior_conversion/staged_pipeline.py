@@ -18,6 +18,7 @@ from runtime.behavior_conversion.bundle_output import validate_bundle
 from agents.behavior_conversion.staged_pipeline import code_instruction,METADATA,STRUCTURE,TESTS_ONLY,DEPENDENCIES
 from tools.component_inventory_tools.identity import stable_id
 from tools.state_store_tools import staged_conversion_state as state
+from runtime.test_assets.preparation_feedback import PreparationCorrection,load_feedback,retain_feedback,tests_for_manifest
 
 
 class ProductionCorrection(ValueError):
@@ -161,6 +162,10 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
                 else:
                     description=ask('metadata',dict(payload,task_kind=kind,production_files=[f.model_dump(mode='json') for f in production.files],
                         parsed_apis=inventory),METADATA,meta_schema,check_description)
+            if kind in {'contract','implementation'}:
+                bundle=assemble(schema,description,production,dependencies,payload)
+                if kind!='contract':validator(bundle,cached=False)
+                return _complete(conn,config,category,identity,revision,bundle,parent)
         except (TypedBoundaryError,ImplementationInterfaceError) as error:
             from runtime.behavior_conversion.frozen_implementation import refuse_production_change
             refuse_production_change(validator,error)
@@ -171,13 +176,36 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
                 record_correction(tasks,'implementation',feedback)
             state.retain(conn,config.run_id,identity,revision,'feedback',feedback,stable_id(feedback))
             continue
-        if kind in {'contract','implementation'}:
-            bundle=assemble(schema,description,production,dependencies,payload)
-            if kind!='contract':validator(bundle,cached=False)
-            return _complete(conn,config,category,identity,revision,bundle,parent)
+        from runtime.test_assets.preparation import enabled as shared_assets_enabled,prepare as prepare_assets,asset_scope
+        assets=None
+        if shared_assets_enabled(profile):
+            from runtime.test_assets.junit_support import install_runtime,dependency as fixture_dependency
+            install_runtime(profile)
+            asset_test_scope=None
+            if conversion_mode(profile):
+                from runtime.behavior_conversion.native_test_scope import conversion_test_scope
+                asset_unit=payload.get('configured_format') or payload.get('configured_unit') or payload.get('selected_unit') or payload.get('unit') or payload
+                asset_test_scope=conversion_test_scope(asset_unit,inventory,production.files,getattr(validator,'preparation',{}).get('native_settings_apis',[]))
+            elif hasattr(description,'verification_binding') and description.verification_binding:
+                from runtime.behavior_conversion.native_test_scope import test_scope
+                asset_unit=payload.get('configured_format') or payload.get('configured_unit') or payload.get('unit') or payload
+                if asset_unit.get('kind'):asset_test_scope=test_scope(asset_unit,description.verification_binding,payload.get('runtime_controls',[]))
+            preparation_feedback=load_feedback(tasks,[f.model_dump(mode='json') for f in production.files])
+            assets=prepare_assets(tasks,payload,production,inventory,getattr(validator,'stage_prerequisites',{}).items(),test_scope=asset_test_scope,feedback=preparation_feedback)
+            if assets['bank'].unresolved or assets['junit'].unresolved or any(s.unresolved for s in assets['junit'].scenarios):
+                raise VerificationIncomplete(dict(stage='test_asset_inputs',errors=['JUnit scenario preparation has unresolved inputs'],asset_root=assets['root']))
+            dependencies=[*dependencies,fixture_dependency()]
         test_request=dict(task_kind=kind,original_evidence=payload,production_files=[f.model_dump(mode='json') for f in production.files],
             parsed_apis=inventory,requirements=payload.get('requirements',{}),testing_contract=payload.get('testing_contract'),
             known_dependencies=payload.get('known_dependencies',[]))
+        test_instruction=TESTS_ONLY
+        if assets:
+            from agents.behavior_conversion.test_scenarios import TESTS as FIXTURE_TESTS
+            test_request.update(shared_fixture_manifest_hash=assets['manifest_hash'],
+                shared_fixture_root='src/test/resources/shared-test-assets/'+assets['manifest_hash'],
+                junit_scenarios=assets['junit'].model_dump(mode='json'),fixture_bank=assets['bank'].model_dump(mode='json'))
+            test_request['known_dependencies']=[*test_request['known_dependencies'],fixture_dependency().model_dump(mode='json')]
+            test_instruction+='\n'+FIXTURE_TESTS
         if executable_mode(profile):
             test_request['original_evidence']={key:value for key,value in payload.items()
                 if key not in {'parser_checklist','checklist','analysis_tool_hash','approved_exclusions'}}
@@ -196,21 +224,28 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
         if payload.get('format_chains'):
             from runtime.component_conversion.format_chain_tests import INSTRUCTION as CHAIN_TESTS
             test_request['chain_regression_policy']=CHAIN_TESTS
-        eligibility=stable_id(revision,TESTS_ONLY)
+        eligibility=stable_id(revision,test_instruction,assets['manifest_hash']) if assets else stable_id(revision,TESTS_ONLY)
         test_context=dict(revision=revision,eligibility_hash=eligibility,production_hash=stable_id(production.model_dump(mode='json')),
             source_hash=stable_id(payload),selected_boundary=test_request.get('selected_boundary'),
             parsed_api_hash=stable_id(inventory['apis']),metadata_hash=stable_id(description.model_dump(mode='json')))
         def check_tests(value):
             state.invalidate_readiness(conn,config.run_id,identity,revision,'tests')
+            if assets and value.unresolved_questions:raise PreparationCorrection(value.unresolved_questions)
+            if assets:
+                from runtime.test_assets.junit_support import check_definition
+                check_definition(value,assets)
             if value.unresolved_questions or any(not f.path.startswith('src/test/java/') for f in value.files):raise ValueError('Tests-only stage must return complete executable tests')
             from runtime.component_conversion.format_chain_tests import validate_chain_tests
             validate_chain_tests(value,payload)
             test_inventory=inspect_native(value.files,getattr(validator,'tool',None))
+            if assets:
+                from runtime.test_assets.junit_support import invocation_evidence
+                test_inventory=invocation_evidence(test_inventory,assets)
             if test_request.get('selected_boundary'):
                 from runtime.behavior_conversion.native_test_scope import validate_test_scope
                 validate_test_scope(test_inventory,test_request['selected_boundary'])
             test_inventory['types']={**inventory['types'],**test_inventory['types']}
-            pins,missing=resolve_dependencies(test_inventory,payload.get('known_dependencies',[]),[p.model_dump(mode='json') for p in dependencies])
+            pins,missing=resolve_dependencies(test_inventory,test_request['known_dependencies'],[p.model_dump(mode='json') for p in dependencies])
             if missing:raise ValueError('Tests must use pinned libraries/native APIs: '+str(missing))
             all_pins={(d.group_id,d.artifact_id):d for d in [*dependencies,*pins]}
             bundle=assemble(schema,description,production,list(all_pins.values()),payload,value)
@@ -243,11 +278,11 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
                         validate_test_scope(test_inventory,selected)
                         test_context.update(selected_boundary=selected,metadata_hash=stable_id(description.model_dump(mode='json')))
                     from runtime.behavior_conversion.stage_readiness import testing_gate
-                    with testing_gate(tasks,bundle):
+                    with asset_scope(dict(assets,tests=value) if assets else None),testing_gate(tasks,bundle):
                         outcome=validate_with_adapter_repair(tasks,payload,production,inventory,bundle,validator,recheck)
                 else:
                     from runtime.behavior_conversion.stage_readiness import testing_gate
-                    with testing_gate(tasks,bundle):outcome=validator(bundle,cached=False)
+                    with asset_scope(dict(assets,tests=value) if assets else None),testing_gate(tasks,bundle):outcome=validator(bundle,cached=False)
             except VerificationIncomplete:raise
             except VerificationFailure as error:
                 if error.verification_feedback.get('stage') in {'boundary','thin_path_boundary'}:raise ProductionCorrection(error) from error
@@ -287,8 +322,13 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
                     test_request.update(retained_test_bundle=retained['tests'],retained_test_revalidation_error=str(error))
                     if correction:test_request['compiler_correction']=correction
                     if getattr(error,'test_correction',None):test_request['test_correction']=error.test_correction
-            if not reused:ask('tests',test_request,TESTS_ONLY,NativeTestBundle,check_tests)
+            if not reused:
+                test_ask=tests_for_manifest(tasks,assets['manifest_hash']).ask if assets else ask
+                test_ask('tests',test_request,test_instruction,NativeTestBundle,check_tests)
             return _complete(conn,config,category,identity,revision,context['bundle'],parent)
+        except PreparationCorrection as error:
+            retain_feedback(tasks,error.verification_feedback['errors'],assets['junit'])
+            continue
         except VerificationIncomplete:raise
         except (ProductionCorrection,CompilerCorrectionError) as error:
             from runtime.behavior_conversion.frozen_implementation import refuse_production_change

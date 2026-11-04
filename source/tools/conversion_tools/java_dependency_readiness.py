@@ -28,7 +28,7 @@ def _binary_names(name, document):
     return names
 
 
-def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None, *, dependency_graph=None):
+def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None, *, dependency_graph=None,source_parser=None):
     """Follow source dependencies recursively and report unresolved type references with origins."""
     issues = []
     expected_hashes = expected_hashes or {}
@@ -45,7 +45,7 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
         if not batch:
             break
         visited.update(batch)
-        analysis = parse_source_references(batch)
+        analysis = (source_parser or parse_source_references)(batch)
         for document in analysis.findall("source"):
             path = str(Path(document.get("path")).resolve())
             owner = by_path[path]

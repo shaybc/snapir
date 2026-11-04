@@ -74,6 +74,13 @@ class FormatResolver:
                 self.issue(reference.definition_id, str(exc), ClosureStatus.BLOCKED_MISSING_FORMAT)
         return resolved_switches
 
+    def resolve_format(self,name):
+        """Resolve one qualified format using the same reference/occurrence traversal."""
+        from xml.etree.ElementTree import Element,SubElement
+        operation=Element('operation');SubElement(operation,'refFormat',name='selected',refid=name)
+        self.resolve(operation,{})
+        return self.roles.get('selected')
+
     def _decorator(self, element):
         return 'decorator' in self.mappings.get(element.tag, '').lower()
 

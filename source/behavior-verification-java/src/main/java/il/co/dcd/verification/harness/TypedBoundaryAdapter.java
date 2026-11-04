@@ -50,7 +50,7 @@ public final class TypedBoundaryAdapter implements BoundaryAdapter {
         try { result = method.invoke(target, arguments); returned = true; }
         finally {
             for (Map<String, Object> projection : (List<Map<String, Object>>) binding.get("context_writes")) {
-                Object source = projection.get("source").equals("result") ? result : arguments[((Number) projection.get("argument_index")).intValue()];
+                Object source = projection.get("source").equals("result") ? result : projection.get("source").equals("receiver") ? target : arguments[((Number) projection.get("argument_index")).intValue()];
                 if (!returned && projection.get("source").equals("result")) continue;
                 List<String> presence = (List<String>) projection.get("presence_getters");
                 if (!presence.isEmpty()) {
@@ -60,7 +60,23 @@ public final class TypedBoundaryAdapter implements BoundaryAdapter {
                 }
                 // A result unavailable on failure cannot fabricate the legacy's partial writes.
                 if (source == null && !returned) throw new BoundaryRuntime.Incomplete("Native partial state is unavailable after failure");
-                context.put((String) projection.get("context_key"), NativeBoundaryValues.read(source, (List<String>) projection.get("getters"), nativeTypes));
+                Object observed = NativeBoundaryValues.read(source, (List<String>) projection.get("getters"), nativeTypes);
+                Map<String,List<String>> fields = (Map<String,List<String>>) projection.getOrDefault("collection_fields", Map.of());
+                if (!fields.isEmpty() && observed != null) {
+                    if (!(observed instanceof Collection<?> rows)) throw new BoundaryRuntime.Incomplete("Collection observation requires an actual collection");
+                    List<Object> projected = new ArrayList<>();
+                    for (Object row : rows) {
+                        if (row == null) { projected.add(null); continue; }
+                        Map<String,Object> values = new LinkedHashMap<>();
+                        for (var field : fields.entrySet()) {
+                            if (field.getValue().isEmpty()) throw new BoundaryRuntime.Incomplete("Collection field requires a public getter path");
+                            values.put(field.getKey(),NativeBoundaryValues.read(row,field.getValue(),nativeTypes));
+                        }
+                        projected.add(values);
+                    }
+                    observed = projected;
+                }
+                context.put((String) projection.get("context_key"), observed);
             }
         }
         return binding.get("output").equals("none") ? null : NativeBoundaryValues.read(result, (List<String>) binding.get("output_getters"), nativeTypes);

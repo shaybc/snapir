@@ -2,25 +2,29 @@ package il.co.dcd.verification.harness;
 
 import java.lang.reflect.*;
 import java.util.*;
+import il.co.dcd.verification.fixtures.FixtureResources;
 
 /** Strict typed argument construction; no evaluated expressions, constants or framework recreation. */
 final class NativeBoundaryValues {
     private NativeBoundaryValues() { }
+    private static final ThreadLocal<Object> fixtureItem = new ThreadLocal<>();
 
     @SuppressWarnings("unchecked") static void validate(List<Map<String, Object>> recipes, Set<String> nativeTypes) {
         Set<String> scalars = Set.of("java.lang.String", "java.lang.Integer", "java.lang.Long", "java.lang.Boolean", "java.lang.Double",
-            "java.math.BigDecimal", "java.util.Date", "int", "long", "boolean", "double", "float", "short", "byte", "char", "java.util.List");
+            "java.math.BigDecimal", "java.util.Date", "int", "long", "boolean", "double", "float", "short", "byte", "char", "java.util.List", "java.util.Set");
         for (Map<String, Object> recipe : recipes) {
             String name = (String) recipe.get("type_name");
-            if (recipe.get("source").equals("object") ? !nativeTypes.contains(name) : !scalars.contains(name) && !nativeTypes.contains(name))
+            if (recipe.get("source").equals("resource") ? !name.equals("java.sql.Connection")
+                    : recipe.get("source").equals("object") ? !nativeTypes.contains(name) : !scalars.contains(name) && !nativeTypes.contains(name))
                 throw new BoundaryRuntime.Incomplete("Boundary arguments require native types or controlled scalars");
             validate((List<Map<String, Object>>) recipe.get("arguments"), nativeTypes);
             validate(new ArrayList<>(((Map<String, Map<String, Object>>) recipe.get("properties")).values()), nativeTypes);
+            if (recipe.get("element") instanceof Map<?, ?> element) validate(List.of((Map<String, Object>) element), nativeTypes);
         }
     }
 
     static Class<?> type(String name) throws ClassNotFoundException {
-        if (name.startsWith("com.ibm.") || name.equals("java.util.Map") || name.endsWith("Context"))
+        if (name.startsWith("com.ibm.") || name.equals("java.util.Map"))
             throw new BoundaryRuntime.Incomplete("Unsupported native boundary type: " + name);
         return switch (name) {
             case "int" -> int.class; case "long" -> long.class; case "boolean" -> boolean.class;
@@ -32,6 +36,29 @@ final class NativeBoundaryValues {
     @SuppressWarnings("unchecked") static Object value(Map<String, Object> recipe, String xml, Map<String, Object> context, Map<String, Object> configuration) throws Exception {
         Class<?> target = type((String) recipe.get("type_name"));
         String source = (String) recipe.get("source");
+        if (source.equals("resource")) {
+            Object resource = FixtureResources.resource((String) recipe.get("key"));
+            if (!target.isInstance(resource)) throw new BoundaryRuntime.Incomplete("Fixture resource type differs from entry");
+            return resource;
+        }
+        if (source.equals("collection")) {
+            Object input = FixtureResources.input((String) recipe.get("key"));
+            if (input == null && (target == List.class || target == Set.class)) return null;
+            if (!(input instanceof List<?> rows) || (target != List.class && target != Set.class) || !(recipe.get("element") instanceof Map<?, ?> element))
+                throw new BoundaryRuntime.Incomplete("Fixture collection requires explicit typed element mapping");
+            List<Object> result = new ArrayList<>(); Object previous = fixtureItem.get();
+            try {
+                for (Object row : rows) { fixtureItem.set(row); result.add(value((Map<String, Object>) element, xml, context, configuration)); }
+            } finally { if (previous == null) fixtureItem.remove(); else fixtureItem.set(previous); }
+            return target == Set.class ? new LinkedHashSet<>(result) : result;
+        }
+        if (source.equals("fixture") || source.equals("item")) {
+            Object selected = source.equals("fixture") ? FixtureResources.input((String) recipe.get("key"))
+                : FixtureResources.pointer(fixtureItem.get(), (String) recipe.get("key"));
+            Map<String, Object> mapped = new HashMap<>(recipe); mapped.put("source", "context"); mapped.put("key", "fixture-value");
+            Map<String, Object> values = new HashMap<>(); values.put("fixture-value", selected);
+            return value(mapped, xml, values, configuration);
+        }
         if (source.equals("xml")) {
             if (target != String.class) throw new BoundaryRuntime.Incomplete("XML boundary input must be a native String facade");
             return xml;
@@ -108,7 +135,7 @@ final class NativeBoundaryValues {
     private static void checkValue(Type declared, Object value) {
         if (value == null) return;
         if (declared instanceof ParameterizedType generic) {
-            if (value instanceof List<?> items && generic.getRawType() instanceof Class<?> raw && List.class.isAssignableFrom(raw)) {
+            if (value instanceof Collection<?> items && generic.getRawType() instanceof Class<?> raw && Collection.class.isAssignableFrom(raw)) {
                 for (Object item : items) checkValue(generic.getActualTypeArguments()[0], item);
             } else if (value instanceof Map<?, ?> items && generic.getRawType() instanceof Class<?> raw && Map.class.isAssignableFrom(raw)) {
                 for (var item : items.entrySet()) {

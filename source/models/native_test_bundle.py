@@ -9,3 +9,5 @@ class NativeTestBundle(BaseModel):
     files: list[NativeSourceFile] = Field(min_length=1)
     coverage: dict[str,list[str]] = Field(default_factory=dict)
     unresolved_questions: list[str] = Field(default_factory=list)
+    fixture_manifest_hash: str | None = Field(default=None,exclude_if=lambda value:value is None)
+    scenario_methods: dict[str,str] = Field(default_factory=dict,exclude_if=lambda value:not value)

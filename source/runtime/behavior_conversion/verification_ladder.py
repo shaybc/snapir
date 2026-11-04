@@ -39,6 +39,9 @@ class UnitVerificationSession:
         key = hashlib.sha256(unit['unit_id'].encode()).hexdigest()[:24]
         self.root = Path(config.output_root) / '.unit-verification' / key
         self.root.mkdir(parents=True, exist_ok=True)
+        from tools.behavior_verification.java_tool import default_tool_path
+        from tools.behavior_verification.tool_snapshot import snapshot_tool
+        self.tool=snapshot_tool(tool or default_tool_path(),self.root/'analysis-tools')
         self.last_report = None
         self.static_report = None
 

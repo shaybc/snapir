@@ -5,13 +5,21 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.expr.*;
 import java.util.*;
 
-/** Controlled JDK time/random sources and explicit replay adapters; unsupported effects fail closed. */
+/** Controlled time/random and replay; only format comparisons opt out of unknown-library rejection. */
 final class HarnessCalls {
     private final Map<String, String> bindings;
     private final Set<String> issues;
     private final java.util.function.Predicate<Node> included;
+    private final boolean fixtureResources;
+    private final boolean allowUnknownCalls;
     HarnessCalls(Map<String, String> bindings, Set<String> issues, java.util.function.Predicate<Node> included) {
-        this.bindings = bindings; this.issues = issues; this.included = included;
+        this(bindings,issues,included,false);
+    }
+    HarnessCalls(Map<String, String> bindings, Set<String> issues, java.util.function.Predicate<Node> included, boolean fixtureResources) {
+        this(bindings,issues,included,fixtureResources,false);
+    }
+    HarnessCalls(Map<String, String> bindings, Set<String> issues, java.util.function.Predicate<Node> included, boolean fixtureResources, boolean allowUnknownCalls) {
+        this.bindings = bindings; this.issues = issues; this.included = included; this.fixtureResources = fixtureResources; this.allowUnknownCalls = allowUnknownCalls;
     }
 
     void scan(Node unit) {
@@ -23,7 +31,7 @@ final class HarnessCalls {
                     reference.replace(StaticJavaParser.parseExpression("() -> " + HarnessProbes.RUNTIME + ".now()"));
                 else if (owner.equals("java.lang.Math") && method.getName().equals("random"))
                     reference.replace(StaticJavaParser.parseExpression("() -> " + HarnessProbes.RUNTIME + ".random()"));
-                else if (bindings.containsKey(method.getQualifiedSignature()) || method.toAst().isEmpty() && !safe(owner))
+                else if (bindings.containsKey(method.getQualifiedSignature()) || !allowUnknownCalls && method.toAst().isEmpty() && !safe(owner))
                     unsupported("Method reference requires an explicit adapter: " + reference);
             } catch (RuntimeException exception) { issues.add("Unresolved harness method reference: " + reference); }
         }
@@ -35,6 +43,11 @@ final class HarnessCalls {
                 var method = call.resolve();
                 String owner = method.declaringType().getQualifiedName(), name = method.getName(), target = method.getQualifiedSignature();
                 if (owner.startsWith("il.co.dcd.verification.harness.")) continue;
+                if (fixtureResources && Set.of("java.sql.Connection", "java.sql.PreparedStatement", "java.sql.CallableStatement", "java.sql.Statement", "java.sql.ResultSet").contains(owner)
+                        && !method.isStatic() && call.getScope().isPresent()) {
+                    Expression checked = StaticJavaParser.parseExpression("il.co.dcd.verification.fixtures.FixtureResources.checked(null)");
+                    checked.asMethodCallExpr().setArgument(0,call.getScope().orElseThrow().clone()); call.setScope(checked); continue;
+                }
                 if (bindings.containsKey(target) || owner.startsWith("java.util.logging.") && Set.of("log", "warning", "info", "severe", "fine").contains(name)) {
                     String canonical = bindings.getOrDefault(target, "logging:" + target);
                     Expression receiver = method.isStatic() ? new NullLiteralExpr() : call.getScope().map(Expression::clone).orElse(new ThisExpr());
@@ -52,7 +65,7 @@ final class HarnessCalls {
                 else if (owner.equals("java.lang.System") && !name.equals("arraycopy")) unsupported(target);
                 else if (owner.equals("java.lang.Class") && Set.of("forName", "newInstance", "getClassLoader").contains(name)) unsupported(target);
                 else if (owner.equals("java.util.Calendar") && name.equals("getInstance")) unsupported(target);
-                else if (method.toAst().isEmpty() && !safe(owner) && !NativeCodecPolicy.method(owner, name, call)) unsupported(target);
+                else if (!allowUnknownCalls && method.toAst().isEmpty() && !safe(owner) && !NativeCodecPolicy.method(owner, name, call)) unsupported(target);
             } catch (RuntimeException exception) {
                 issues.add("Unresolved harness call: " + call + " (" + exception.getClass().getSimpleName() + ")");
             }
@@ -65,7 +78,7 @@ final class HarnessCalls {
                 if (owner.equals("java.util.Date") && creation.getArguments().isEmpty()) creation.addArgument(HarnessProbes.call("now"));
                 else if (owner.equals("java.util.Random") && creation.getArguments().isEmpty()) creation.addArgument(HarnessProbes.call("nextSeed"));
                 else if (owner.equals("java.text.SimpleDateFormat")) creation.replace(HarnessProbes.call("dateFormat", creation.clone()));
-                else if (constructor.toAst().isEmpty() && constructor.declaringType().toAst().isEmpty() && !safe(owner)
+                else if (!allowUnknownCalls && constructor.toAst().isEmpty() && constructor.declaringType().toAst().isEmpty() && !safe(owner)
                     && !NativeCodecPolicy.constructor(owner, creation.getArguments().size())) unsupported(constructor.getQualifiedSignature());
             } catch (RuntimeException exception) { issues.add("Unresolved harness construction: " + creation); }
         }

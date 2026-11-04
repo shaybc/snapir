@@ -34,20 +34,20 @@ def unit_for_case(plan, case):
         if not node.get('java_class'):
             raise ValueError('Configuration variants require an explicit implementing root')
         node['attributes'] = deepcopy(case.configuration_attributes)
-    unit['kind'] = {'format': 'response_format', 'unformat': 'request_unformat'}[plan.entries[case.binding_id].direction]
+    unit['kind'] = {'format': 'response_format', 'unformat': 'request_unformat','step_execute':'configured_step'}[plan.entries[case.binding_id].direction]
     # Case grouping includes direction and configuration; source identity remains intact.
     unit['unit_id'] = 'diagnostic-' + digest((plan.label, unit['kind'], unit['effective_configuration']))[:20]
     return unit
 
 
-def analyze_unit(unit, tool, *, collect_facts=True):
+def analyze_unit(unit, tool, *, collect_facts=True, step_implementation=None):
     """Reuse parser/reachability discovery for real instrumentation and observed branch probes."""
     report = build_boundary_report({'operations': {'diagnostic': {'units': [unit]}}}, tool_jar=tool,
-                                  collect_checklists=collect_facts)
+                                  collect_checklists=collect_facts,**({'mappings':{'opStep':step_implementation}} if step_implementation else {}))
     boundary = UnitVerificationBoundary.model_validate(report['boundaries'][unit['unit_id']])
     if boundary.analysis_status != 'identified' or boundary.issues:
         raise ValueError('Original boundary cannot be identified: ' + '; '.join(boundary.issues))
-    current = boundary_contract(unit)
+    current = boundary_contract(unit,{'opStep':step_implementation} if step_implementation else None)
     if boundary.source_manifest_hash != current.source_manifest_hash or boundary.configuration_hash != current.configuration_hash:
         raise ValueError('Source/configuration changed during analysis')
     return boundary

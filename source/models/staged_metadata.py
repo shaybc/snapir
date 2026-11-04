@@ -1,7 +1,7 @@
 """Metadata-only stage schemas derived from existing final bundle contracts."""
 from copy import deepcopy
 from functools import lru_cache
-from pydantic import ConfigDict,create_model
+from pydantic import ConfigDict,create_model,Field
 from models.operation_data_contract import OperationDataContract
 
 
@@ -12,6 +12,8 @@ def _without_sources(model,name,excluded,overrides=None):
 
 
 OperationContractMetadata=_without_sources(OperationDataContract,'OperationContractMetadata',{'sources'})
+OperationContractSemantics=_without_sources(OperationDataContract,'OperationContractSemantics',{'sources'},
+    {'units':(OperationDataContract.model_fields['units'].annotation,Field(default_factory=list))})
 
 
 @lru_cache
@@ -26,7 +28,8 @@ def metadata_schema(schema,batched=False):
         if 'contracts' in schema.model_fields:overrides['contracts']=(dict[str,ComponentSemantics],...)
         if 'unit_contract' in schema.model_fields:overrides['unit_contract']=(UnitSemantics | None,None)
     if 'operation_contract' in schema.model_fields:
-        overrides['operation_contract']=(OperationContractMetadata | None,None)
+        operation=OperationContractSemantics if batched else OperationContractMetadata
+        overrides['operation_contract']=(operation | None,None)
     return _without_sources(schema,schema.__name__.replace('Bundle','Semantics' if batched else 'Metadata'),excluded,overrides)
 
 

@@ -30,11 +30,13 @@ public class SourceReferenceScanner {
                 evidence.add(new ForwardingJavaFileObject<JavaFileObject>(file) {
                     @Override public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
                         Path path = Paths.get(toUri());
+                        String text;
                         try {
-                            return Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
+                            text=Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
                         } catch (java.nio.charset.MalformedInputException ex) {
-                            return Files.readString(path, java.nio.charset.Charset.forName("windows-1255"));
+                            text=Files.readString(path, java.nio.charset.Charset.forName("windows-1255"));
                         }
+                        return args.length>2 && args[2].equals("--strip-bom") && text.startsWith("\ufeff") ? text.substring(1) : text;
                     }
                 });
             }

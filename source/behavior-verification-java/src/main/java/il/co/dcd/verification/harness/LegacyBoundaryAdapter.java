@@ -13,32 +13,76 @@ public final class LegacyBoundaryAdapter implements BoundaryAdapter {
 
     @SuppressWarnings("unchecked")
     public Object invoke(String xml, Map<String, Object> state, Element configuration) throws Exception {
-        Class<?> contextClass;
-        try {
-            contextClass = load(job.getAttribute("context_class"));
-            context = contextClass.getConstructor().newInstance();
-            for (var entry : state.entrySet()) contextClass.getMethod(job.getAttribute("context_writer"), String.class, Object.class)
-                .invoke(context, entry.getKey(), entry.getValue());
-        } catch (ReflectiveOperationException | RuntimeException setupFailure) {
-            throw new BoundaryRuntime.Incomplete("Composer context setup failed: " + setupFailure.getClass().getSimpleName());
-        }
-        BoundaryRuntime.writes.clear();
+        prepareContext(state);
         Object component;
         if (job.getAttribute("kind").equals("configured_step")) {
             component = load(job.getAttribute("implementation")).getConstructor().newInstance();
             initialize(component, (Map<String, Object>) BoundaryValues.read(BoundaryValues.child(configuration, "attributes")));
-            component.getClass().getMethod(job.getAttribute("step_context_setter"), contextClass).invoke(component, context);
+            component.getClass().getMethod(job.getAttribute("step_context_setter"), context.getClass()).invoke(component, context);
             return call(component.getClass().getMethod("execute"), component);
         }
-        component = build(configuration);
+        component = prepared(configuration);
         return job.getAttribute("kind").equals("request_unformat")
-            ? call(component.getClass().getMethod("unformat", String.class, contextClass), component, xml, context)
-            : call(component.getClass().getMethod("format", contextClass), component, context);
+            ? call(component.getClass().getMethod("unformat", String.class, context.getClass()), component, xml, context)
+            : call(component.getClass().getMethod("format", context.getClass()), component, context);
+    }
+
+    @SuppressWarnings("unchecked") private void prepareContext(Map<String,Object> state) throws Exception {
+        if(!job.getAttribute("kind").equals("configured_step"))LegacyInputValues.configure(job);
+        Class<?> contextClass;
+        try {
+            contextClass = load(job.getAttribute("context_class"));
+            context = contextClass.getConstructor().newInstance();
+            Map<String,Object> populated=job.getAttribute("kind").equals("configured_step")?state:LegacyInputValues.inputs(job,state);
+            for (var entry : populated.entrySet()) contextClass.getMethod(job.getAttribute("context_writer"), String.class, Object.class)
+                .invoke(context, entry.getKey(), entry.getValue());
+            Element values = BoundaryValues.child(job, "case");
+            Map<String, Object> input = (Map<String, Object>) BoundaryValues.read(values);
+            Map<String, Object> assets = (Map<String, Object>) input.getOrDefault("test_assets", Map.of());
+            for (var setter : ((Map<String, String>) assets.getOrDefault("composer_resource_setters", Map.of())).entrySet()) {
+                Object resource = il.co.dcd.verification.fixtures.FixtureResources.resource(setter.getValue());
+                List<Method> matches = Arrays.stream(contextClass.getMethods()).filter(method -> method.getName().equals(setter.getKey())
+                    && method.getParameterCount()==1 && method.getParameterTypes()[0].isInstance(resource)).toList();
+                if (matches.size()!=1) throw new BoundaryRuntime.Incomplete("Composer resource setter is missing or ambiguous");
+                matches.get(0).invoke(context, resource);
+            }
+        } catch (ReflectiveOperationException | RuntimeException setupFailure) {
+            throw new BoundaryRuntime.Incomplete("Composer context setup failed: " + setupFailure.getClass().getSimpleName());
+        }
+        BoundaryRuntime.writes.clear();
+    }
+
+    Object invokeDecorator(Map<String,Object> state,Element configuration) throws Exception {
+        prepareContext(state);Object component=prepared(configuration);
+        @SuppressWarnings("unchecked") Map<String,Object> input=(Map<String,Object>)BoundaryValues.read(BoundaryValues.child(job,"case"));
+        Object value=input.get("decorator_value");String action=job.getAttribute("original_action");
+        if(action.equals("formatXmlAttributes"))return call(component.getClass().getMethod(action,context.getClass(),String.class),component,context,value);
+        if(!Set.of("addDecoration","removeDecoration").contains(action))throw new BoundaryRuntime.Incomplete("Unsupported decorator interface");
+        return call(component.getClass().getMethod(action,String.class),component,value);
+    }
+
+    private Object prepared(Element configuration) {
+        try {return build(configuration);}
+        catch(Exception error) {
+            Throwable reason=error;
+            while(reason instanceof InvocationTargetException call && call.getCause()!=null)reason=call.getCause();
+            throw new BoundaryRuntime.Incomplete("Original format/decorator initialization failed: "+reason);
+        }
     }
 
     @SuppressWarnings("unchecked")
     Map<String, Object> snapshot(Map<String, Object> initial) throws Exception {
-        return context == null ? initial : (Map<String, Object>) context.getClass().getMethod(job.getAttribute("context_snapshot")).invoke(context);
+        Map<String,Object> result=context == null ? initial : (Map<String, Object>) context.getClass().getMethod(job.getAttribute("context_snapshot")).invoke(context);
+        if(job.getAttribute("kind").equals("configured_step"))return result;
+        Element projections=BoundaryValues.children(job,"original_context_getters").stream().findFirst().orElse(null);
+        if(projections!=null) {
+            result=new LinkedHashMap<>(result);
+            for(var entry:((Map<String,List<String>>)BoundaryValues.read(projections)).entrySet()) {
+                if(!result.containsKey(entry.getKey()))throw new BoundaryRuntime.Incomplete("Missing original observation key: "+entry.getKey());
+                result.put(entry.getKey(),LegacyInputValues.project(result.get(entry.getKey()),entry.getValue()));
+            }
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked") private Object build(Element node) throws Exception {

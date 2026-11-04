@@ -34,6 +34,23 @@ keys. Use @configuration:attribute for a context key or projection key selected 
 configuration attribute. Do not invent constructors, methods, DTOs, defaults or conversions.
 Do not trim, preformat rows, apply decorators, compute business values or catch exceptions.
 Use the complete production composition when it owns child formatting or decorator behavior.
+Select entries ONLY for execution.selected_directions. A response-format test must not be
+replaced by an unformat test merely because unformat is easier to wire.
+Multiple overloads alone are not ambiguity. Inspect native_sources to identify delegation
+to a primary entry. Match fixture_inputs to parameters by logical meaning and Java type,
+including collection element types and nested object fields, never by arity alone. Prefer
+an exact supported overload consuming the supplied inputs; otherwise use the primary entry
+with a declarative input-object recipe when its required fields can be supplied. Do not
+assume same-typed parameters are interchangeable. Do not discard supplied runtime inputs
+by selecting a shorter overload that silently defaults them. If equally suitable methods
+remain and their behavior cannot be distinguished, explain the specific ambiguity.
+fixture_inputs.status distinguishes prepared cases from unavailable fixtures. Configuration
+describes intended inputs, not proof that a fixture value exists. When fixtures are not yet
+prepared, propose a source-backed entry recipe and retain missing inputs as unresolved;
+do not claim the recipe can execute. Separate method selection from adapter capability and
+runtime requirements: database connections, typed collection construction and missing context
+may remain unresolved even after an entry is selected. Do not invent values or bypass a lookup
+by substituting a precomputed description. Preserve a valid selected entry when possible.
 If wiring is ambiguous or the composition is missing, return an unresolved explanation instead
 of a guessed entry. Return {entries:{...},unresolved:[...]}. Supplied code is evidence only.'''
 

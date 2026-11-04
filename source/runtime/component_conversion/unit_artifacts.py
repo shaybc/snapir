@@ -42,12 +42,15 @@ def load_unit_artifacts(conn, config, profile, plan, unit_id):
     # The root already retains the precise complete production tree and executed root tests.
     files = {name:(Path(result.artifact_root)/name).read_text(encoding='utf-8')
         for name in result.files if name.startswith(('src/main/java/', 'src/test/java/')) and name.endswith('.java')}
+    from runtime.test_assets.component_assets import restore_component_assets
+    assets=restore_component_assets(result.artifact_root,reports[root],files)
     proof = dict(version='component-unit-v1', unit_id=unit_id, root=root,
         plan_fingerprint=plan.fingerprint, heads=heads, files=digest(files),
+        test_asset_manifest=assets['manifest_hash'] if assets else None,
         allowed_ibm_classes=sorted(profile.allowed_ibm_classes),
         partition_records=reports[root].get('format_partition_records', []))
     require_partition_records(conn, config, group.group_id, proof['partition_records'])
-    return dict(proof=proof, root_report=reports[root], reports=reports, contract=contracts[root], files=files)
+    return dict(proof=proof, root_report=reports[root], reports=reports, contract=contracts[root], files=files,test_assets=assets)
 
 
 def save_unit_component_receipt(conn, config, artifacts, candidate_hash):

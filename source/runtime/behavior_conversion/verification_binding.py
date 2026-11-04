@@ -63,10 +63,18 @@ def validate_binding(bundle, extra_types=()):
     if len(set(keys)) != len(keys):
         raise VerificationIncomplete(dict(stage='binding', errors=['Repeated dynamic writes need an explicit supported observer']))
     for projection in binding.context_writes:
+        if projection.source=='receiver' and binding.static_method:
+            raise VerificationFailure(dict(stage='binding',errors=['Static boundary has no receiver state']))
         if projection.source == 'argument' and projection.argument_index >= len(binding.arguments):
             raise VerificationFailure(dict(stage='binding', errors=['Projection argument is outside the declared method']))
         if not all(_member(name) for name in [*projection.getters, *projection.presence_getters]):
             raise VerificationFailure(dict(stage='binding', errors=['Projection paths contain public accessors only']))
+        if any(not field or not getters or not all(_member(name) for name in getters)
+               for field,getters in projection.collection_fields.items()):
+            raise VerificationFailure(dict(stage='binding',errors=['Collection observations require exact field names and public accessor paths']))
+        if any(not field or not getters or not all(_member(name) for name in getters)
+               for field,getters in projection.collection_fields.items()):
+            raise VerificationFailure(dict(stage='binding',errors=['Collection observations require exact field names and public accessor paths']))
     if not all(_member(name) for name in binding.output_getters):
         raise VerificationFailure(dict(stage='binding', errors=['Invalid output accessor']))
     for destination in binding.settings_bindings.values():

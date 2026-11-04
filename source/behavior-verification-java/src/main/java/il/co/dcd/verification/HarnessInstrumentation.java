@@ -55,8 +55,10 @@ public final class HarnessInstrumentation {
                         } catch (RuntimeException unresolved) { issues.add("Native public API could not be instrumented: " + method.getSignature()); }
                     }
                 }
-                new HarnessCalls(bindings, issues, node -> included(node, source, manifest, bindings)).scan(unit);
-                if (manifest.getAttribute("side").equals("legacy")) contextHooks(unit, manifest);
+                new HarnessCalls(bindings, issues, node -> included(node, source, manifest, bindings),
+                    manifest.getAttribute("fixture_resources").equals("true"),
+                    manifest.getAttribute("allow_unknown_calls").equals("true")).scan(unit);
+                if (Set.of("legacy","original").contains(manifest.getAttribute("side"))) contextHooks(unit, manifest);
                 String pkg = unit.getPackageDeclaration().map(value -> value.getNameAsString()).orElse("");
                 String type = unit.getTypes().stream().filter(value -> value.isPublic()).findFirst().orElse(unit.getType(0)).getNameAsString();
                 Path file = Path.of(args[1]).resolve(pkg.replace('.', '/')).resolve(type + ".java");

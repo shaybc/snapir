@@ -65,6 +65,10 @@ def code_instruction(payload):
 Receive EVERY required_step_dependencies role as a public constructor argument, store each in its
 own field and call that supplied object. No new step instances, hidden factories, service locators
 or no-argument fallback. Receive each required_runtime_resources provider through the constructor.
+The current constructor contract checks EVERY public constructor on the exported service class:
+each must directly assign every supplied step to its own declared field and call those fields.
+Use a single explicit constructor when possible. Do not use this(...) or super(...) forwarding
+constructors, inherited step fields, or a compatibility facade as the exported service entry.
 Preserve source-resolved connection ownership, transaction scope, release and early-return behavior;
 never invent commits, credentials or pooling. Reuse accepted API return types exactly, without
 assuming a wire-to-business conversion when an accepted method already returns business data.

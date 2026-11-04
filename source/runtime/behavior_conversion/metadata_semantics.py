@@ -59,6 +59,14 @@ def materialize(value,payload,inventory,production):
         unit=payload.get('unit') or payload.get('selected_unit') or payload
         data['unit_contract']=dict(unit_id=unit.get('unit_id') or payload['unit_id'],apis=selected(data['unit_contract']['api_types'],data['unit_contract']['api_members']),
             requirements=payload['requirements'],evidence_ids=evidence,dependency_units=[d['unit_id'] for d in payload.get('converted_dependency_apis',[])])
+    if data.get('operation_contract') is not None and payload.get('accepted_units') is not None:
+        units={}
+        for accepted in payload['accepted_units'].values():
+            contract=deepcopy(accepted['contract']);identity=contract['unit_id']
+            if identity in units and units[identity]!=contract:
+                raise ValueError('Conflicting accepted unit contracts: '+identity)
+            units[identity]=contract
+        data['operation_contract']['units']=[units[key] for key in sorted(units)]
     data['evidence_ids']=evidence
     return data
 
@@ -74,6 +82,8 @@ def describe(tasks,payload,production,inventory,schema,check):
     instruction=INSTRUCTION if local else SEMANTICS
     if conversion_mode(tasks.profile):
         instruction='Return only the supplied semantic details schema for compiled native code. The application derives APIs, ownership and provenance. Where entry_type is supplied, select the actual native entry owner from parsed_apis. Describe required configuration, initialization, runtime inputs and effects. Do not return comparison bindings, invocation recipes, checklist mappings, source code or tests.'
+    if payload.get('kind')=='service' and 'unit_contract' in meta.model_fields:
+        instruction+='\nThis is whole-operation metadata, not a single configured unit: leave unit_contract null. Describe operation_contract and its actual compiled service API. The application populates operation_contract.units from verified accepted contracts; do not invent or reconstruct unit identities.'
     from runtime.behavior_conversion.verification_mode import executable_mode
     from runtime.behavior_conversion.verification_mode import conversion_mode
     limit=(tasks.profile.behavior_context_chars if executable_mode(tasks.profile) or conversion_mode(tasks.profile) else

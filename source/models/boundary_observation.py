@@ -18,4 +18,5 @@ class BoundaryObservation(BaseModel):
     exception: dict[str, Any] | None = None
     probes: list[dict[str, str]] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
+    resource_events: list[dict[str, Any]] = Field(default_factory=list,exclude_if=lambda value:not value)
 

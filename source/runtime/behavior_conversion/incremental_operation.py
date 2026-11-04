@@ -25,6 +25,7 @@ def generate_incremental_operation(conn, config, profile, identity, payload, val
             bundle, cached, provisional_validator)
     validate_implementation.compile_implementation=getattr(validator,'compile_implementation',getattr(provisional_validator,'compile_implementation',None))
     validate_implementation.stage_prerequisites=getattr(validator,'stage_prerequisites',getattr(provisional_validator,'stage_prerequisites',{}))
+    validate_implementation.validate_metadata=validate_implementation
     implementation, implementation_hash = generate(conn, config, profile, "service_implementation", identity,
         IMPLEMENTATION, implementation_request, NativeUnitBundle, validate_implementation, model_call,
         "Operation implementation: " + identity, require_coverage=False)

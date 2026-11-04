@@ -174,6 +174,52 @@ def test_assembly_code_and_route_tests_keep_their_separate_responsibilities(kind
     finally:conn.close()
 
 
+def test_provisional_operation_interface_failure_returns_to_the_implementation_budget():
+    from runtime.behavior_conversion.interface_feedback import ImplementationInterfaceError
+    conn,config=state();calls=[]
+    class OperationValidator(Validator):
+        def __call__(self,bundle,cached=False):
+            super().__call__(bundle,cached)
+            if self.checks==1:raise ImplementationInterfaceError('Operation constructor must store the supplied step')
+    validator=OperationValidator()
+    def model(prompt,encoded):
+        req=json.loads(encoded);title=req['schema']['title'];calls.append(title)
+        if title=='NativeImplementation':
+            if calls.count(title)==2:assert req['implementation_feedback']['stage']=='implementation_interface'
+            return NativeImplementation(files=[dict(path=PATH,content=CODE)]).model_dump_json()
+        assert title=='NativeUnitMetadata'
+        return json.dumps(metadata(NativeUnitBundle))
+    try:
+        result,_=generate(conn,config,PipelineConfiguration(model_provider='mock'),'service_implementation','op','unused',request('service'),
+            NativeUnitBundle,validator=validator,model_call=model)
+        assert len(result.files)==1 and validator.checks==validator.compiles==2
+        assert calls.count('NativeImplementation')==2 and 'NativeTestBundle' not in calls
+        assert conn.execute("SELECT attempts FROM staged_conversion_tasks WHERE stage='implementation'").fetchone()[0]==2
+    finally:conn.close()
+
+
+def test_operation_metadata_feedback_is_corrected_without_regenerating_java():
+    conn,config=state();calls=[]
+    class OperationValidator(Validator):
+        def validate_metadata(self,bundle):
+            if bundle.output_type!='java.lang.String':raise ValueError('Operation contract must describe the compiled String result')
+    validator=OperationValidator()
+    def model(prompt,encoded):
+        req=json.loads(encoded);title=req['schema']['title'];calls.append(title)
+        if title=='NativeImplementation':return NativeImplementation(files=[dict(path=PATH,content=CODE)]).model_dump_json()
+        assert title=='NativeUnitMetadata'
+        data=metadata(NativeUnitBundle)
+        if calls.count(title)>1:data['output_type']='java.lang.String'
+        return json.dumps(data)
+    try:
+        result,_=generate(conn,config,PipelineConfiguration(model_provider='mock'),'service_implementation','op','unused',request('service'),
+            NativeUnitBundle,validator=validator,model_call=model)
+        assert result.output_type=='java.lang.String'
+        assert calls.count('NativeImplementation')==1 and calls.count('NativeUnitMetadata')==2
+        assert validator.compiles==1 and validator.checks==1
+    finally:conn.close()
+
+
 def test_unknown_code_task_and_missing_compile_adapter_fail_before_model_call():
     assert PipelineConfiguration().staged_unit_conversion is True
     assert conversion_task('route_test_plan',type('RouteTestPlan',(),{}))=='metadata'

@@ -55,3 +55,38 @@ def test_diagnostic_preparation_error_is_not_a_conversion_failure(tmp_path):
                                 request={'configured_format': {'unit_id': 'missing'}})
     result = diagnose_component(validator, None, {}, tmp_path)
     assert result['status'] == 'comparison_unavailable' and not result['acceptance_changed']
+
+
+def test_response_selection_receives_fixture_data_and_delegating_code(tmp_path):
+    plan=channel_plan();plan.original_unit['kind']='response_format';calls=[]
+    plan.native_sources[0].content='package nativecode; public class Format { public String format(String x) { return format(x, "default"); } public String format(String x, String channel) { return x; } }'
+    def model(instruction,encoded):
+        payload=json.loads(encoded);calls.append(payload)
+        if 'native_apis' in payload:
+            assert payload['execution']['selected_directions']==['format']
+            assert payload['fixture_inputs']['cases'][0]['initial_context']=={'runtime.channel':'INTERNET'}
+            assert 'return format(x,' in payload['native_sources'][0]['content']
+            assert 'Multiple overloads alone are not ambiguity' in instruction
+            return json.dumps(dict(entries={'write':plan.entries['write'].model_dump(mode='json')},unresolved=[]))
+        assert payload['execution']['selected_directions']==['format']
+        return json.dumps(dict(requirements=[],unresolved=[],limitations=[]))
+    result,report=prepare_plan(plan.label,plan.scope,plan.original_unit,plan.native_sources,plan.cases,
+        PipelineConfiguration(format_comparison={'enabled':True}),tmp_path,model_call=model)
+    assert result is not None and report['status']=='prepared' and len(calls)==2
+
+
+def test_wrong_direction_is_rejected_and_discovery_keeps_requested_direction(tmp_path):
+    plan=channel_plan();plan.original_unit['kind']='response_format'
+    def model(instruction,encoded):
+        payload=json.loads(encoded)
+        assert payload['execution']['selected_directions']==['format']
+        if 'native_apis' in payload:
+            assert payload['fixture_inputs']['status']=='not_prepared'
+            entry=plan.entries['write'].model_dump(mode='json');entry['direction']='unformat'
+            return json.dumps(dict(entries={'wrong':entry},unresolved=[]))
+        return json.dumps(dict(requirements=[],unresolved=[],limitations=[]))
+    def fixtures(*args):
+        raise AssertionError('No fixtures should run for a rejected opposite-direction entry')
+    result,report=prepare_plan(plan.label,plan.scope,plan.original_unit,plan.native_sources,fixtures,
+        PipelineConfiguration(format_comparison={'enabled':True}),tmp_path,model_call=model)
+    assert result is None and report['status']=='comparison_unavailable'

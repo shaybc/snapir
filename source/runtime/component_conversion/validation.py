@@ -46,6 +46,11 @@ def revalidate_components(profile, factory, *, config=None, units=None, boundari
                 validation = build_candidate(project, context, True, report.get('required_tests', []))
                 if not validation.build_passed or not validation.tests_passed or validation.issues:
                     raise ValueError('Saved component failed fresh Maven/test validation: ' + '; '.join(validation.issues))
+                if report.get('test_assets'):
+                    from types import SimpleNamespace
+                    from runtime.test_assets.junit_support import check_execution
+                    assets=report['test_assets']
+                    check_execution(project,SimpleNamespace(scenario_methods=assets['scenario_methods'],fixture_manifest_hash=assets['manifest_hash']))
                 if report.get('configured_format') is not None:
                     from runtime.component_conversion.format_verification import recheck_format
                     recheck_format(config,profile,contracts,results,project,context,validation,report,units,boundaries)
@@ -150,7 +155,9 @@ class ComponentCandidateValidator:
                 from runtime.component_conversion.format_verification import retain_format_evidence
                 session.complete(staged,context,verified_bundle,build_validation=validation.model_dump(mode='json'))
                 comparison=retain_format_evidence(session,project)
-            if self.profile.format_comparison.enabled and self.request.get('configured_format') is not None:
+            from runtime.test_assets.preparation import enabled as shared_assets_enabled
+            if self.profile.format_comparison.enabled and (self.request.get('configured_format') is not None or
+                    shared_assets_enabled(self.profile) and self.request.get('configured_unit') is not None):
                 from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
                 try:
                     diagnostic_classpath = native_runtime_classpath(staged, context)
@@ -169,6 +176,9 @@ class ComponentCandidateValidator:
         if self.profile.format_comparison.enabled and self.request.get('configured_format') is not None:
             from runtime.format_comparison.component_diagnostics import diagnose_component
             diagnose_component(self, bundle, all_files, project / 'format-diagnostic', native_classpath=diagnostic_classpath)
+        if self.request.get('configured_unit') is not None:
+            from runtime.step_comparison.component_diagnostics import diagnose_step
+            diagnose_step(self,all_files,project/'step-diagnostic',diagnostic_classpath)
         manifest = {path.relative_to(project).as_posix(): file_digest(path) for path in project.rglob('*') if path.is_file()}
         results = {}
         for key in self.group.members:
@@ -181,6 +191,11 @@ class ComponentCandidateValidator:
                 analysis_tool_hash=self.request['analysis_tool_hash'], component_generation_policy=self.request['component_generation_policy'],
                 checklist_implementations={item: [location.model_dump() for location in locations] for item, locations in bundle.checklist_implementations.items()},
                 source_entry_points=self.request['source_entry_points'], comparison_limitations=self.request['comparison_limitations'])
+            from runtime.test_assets.preparation import current
+            assets=current()
+            if assets:report['test_assets']=dict(manifest_hash=assets['manifest_hash'],
+                resource_path='src/test/resources/shared-test-assets/'+assets['manifest_hash'],
+                scenario_methods=assets['tests'].scenario_methods)
             report['requirements'] = self.request['requirements']
             report['format_chains'] = self.request.get('format_chains',[])
             report['format_chain_policy'] = self.request.get('format_chain_policy')
