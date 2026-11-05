@@ -100,6 +100,8 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "java_version": 25, "java_home": str(project / "jdk-25"),
         "java_scan_inactivity_timeout_seconds": 900,
         "external_dependencies": [], "conversion_strategy": "legacy_components",
+        "plan_approval_policy": "human",
+        "gate_policies": {str(number): "human" for number in range(1, 6)},
         "model_provider": "litellm", "model_name": "openai/your-model-name",
         "model_base_url": "https://your-endpoint.example/v1",
         "model_api_key_environment": "SNAPIR_LLM_API_KEY",
@@ -108,8 +110,20 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
     loaded = load_configuration(destination)
     assert loaded.source_root == str((project / "bank-demo/composer/Workspace").resolve())
     assert loaded.output_root == str((project / "work/migration_runs").resolve())
-    assert len(prompts) == 13
+    assert len(prompts) == 14
     assert list(destination.parent.iterdir()) == [destination]
+
+
+@pytest.mark.parametrize("answers", [["automatic"], ["invalid", "automatic"]])
+def test_new_config_saves_automatic_gate_control(project, monkeypatch, answers):
+    collect_defaults(monkeypatch)
+    choices = iter(answers)
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+                        next(choices) if title == "Gate control (human or automatic)" else default or "automatic_gates")
+    destination = wizard.create_configuration()
+    loaded = load_configuration(destination)
+    assert loaded.plan_approval_policy == "automatic"
+    assert loaded.gate_policies == {str(number): "automatic" for number in range(1, 6)}
 
 
 def test_new_config_saves_custom_model_settings(project, monkeypatch):

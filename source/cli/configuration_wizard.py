@@ -23,6 +23,7 @@ from cli.external_dependency_settings import collect_external_dependencies
 from cli.test_deployment_settings import collect_test_deployment_settings
 from cli.model_configuration import collect_model_configuration
 from cli.composer_map_configuration import collect_composer_map_configuration
+from cli.gate_configuration import collect_gate_configuration
 
 
 def prompt_text(title: str, default: str = "") -> str:
@@ -131,6 +132,7 @@ def create_configuration() -> Path:
                 java_version=java_version, java_home=java_home, conversion_strategy=strategy)
     data.update(map_settings)
     data.update(external_settings)
+    data.update(collect_gate_configuration(prompt_text))
     data.update(collect_model_configuration(prompt_text))
     data["java_scan_inactivity_timeout_seconds"] = collect_java_scan_timeout(prompt_text)
     data.update(collect_test_deployment_settings(prompt_text))
