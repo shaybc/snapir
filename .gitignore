@@ -2,6 +2,7 @@
 /outputs/
 /work/
 /configs/
+/huge-bank-demo/
 
 # Locally built converter fixture JDBC tools (maintained sources stay tracked).
 /source/jdbc-fixture-java/**/target/

@@ -36,11 +36,13 @@ class WorkspaceAnalysis:
         self.hits = self.misses = 0
         self.observed = {}
 
-    def observe_workspace(self, workspace):
+    def observe_workspace(self, workspace, progress=None):
         """Capture the input file set before analysis so later changes cannot publish mixed evidence."""
         for path in sorted(Path(workspace).resolve().rglob('*')):
             if self._input(path):
                 self.observed[str(path)] = content_hash(path)
+                if progress:
+                    progress.advance(detail=str(path))
 
     @staticmethod
     def _input(path):
@@ -79,7 +81,7 @@ class WorkspaceAnalysis:
                 self.conn.execute('INSERT OR REPLACE INTO syntax VALUES (?,?,?,?)',
                     (str(path), hashes[path], self.version + str(strip_bom), ElementTree.tostring(document, encoding='unicode')))
 
-    def publish(self, workspace, index):
+    def publish(self, workspace, index, progress=None):
         """Bind a completed revision to current source, XML, and visibility metadata hashes."""
         workspace = Path(workspace).resolve()
         digest = hashlib.sha256(self.version.encode())
@@ -95,6 +97,8 @@ class WorkspaceAnalysis:
                 if str(path) in self.observed and current != self.observed[str(path)]:
                     raise ValueError('Source changed before workspace revision publication: ' + str(path))
                 digest.update(current.encode())
+                if progress:
+                    progress.advance(detail=str(path))
         if seen != set(self.observed):
             raise ValueError('Source inputs were removed during workspace analysis')
         revision = digest.hexdigest()

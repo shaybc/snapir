@@ -25,6 +25,7 @@ def make_run(root, run_id="existing", phase="planning_inputs_ready"):
 @pytest.fixture
 def terminal(monkeypatch):
     monkeypatch.setattr(interactive, "is_interactive", lambda: True)
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: 'start')
 
 
 @pytest.fixture
@@ -85,6 +86,7 @@ def test_explicit_command_preserved(tmp_path, monkeypatch, terminal, command):
 
 
 def test_explicit_start_never_prompts(tmp_path, monkeypatch, terminal):
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: pytest.fail('Explicit command must not ask for confirmation'))
     monkeypatch.setattr(interactive, "select_option", lambda *_: pytest.fail("Unexpected prompt"))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id: tmp_path if run_id == "supplied" else pytest.fail())

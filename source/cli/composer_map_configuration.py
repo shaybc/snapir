@@ -1,5 +1,7 @@
 """Collect an existing Composer map location without generating or modifying it."""
 
+from runtime.model_execution.error_details import sanitize_diagnostic
+
 from tools.workspace_intake_tools.vault_validator import check_existing_composer_map
 
 
@@ -20,4 +22,4 @@ def collect_composer_map_configuration(configs, prompt_text, select_option):
             print("Existing map selected. It will be validated once when migration imports it; no remapping.")
             return dict(existing_composer_map=value)
         except (ValueError, OSError) as exc:
-            print(exc)
+            print(sanitize_diagnostic(str(exc)))

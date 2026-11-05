@@ -21,6 +21,8 @@ from cli.gate_decisions import pending_gate_number, record_gate_decision
 from cli.gate_report_menu import offer_gate_one_report, offer_dependency_closure_report
 from runtime.workflow_stages import workflow_stage_label
 from cli.workflow_progress import display_workflow_progress
+from cli.migration_start_review import confirm_migration_start
+from cli.interactive import select_configuration, is_interactive
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
         while True:
             directory = None
             command_selected_from_menu = args.command is None
+            interactive_start = command_selected_from_menu or (args.command == 'start' and not args.config and is_interactive())
             complete_arguments(args, parser)
             if args.command == "create_config":
                 create_configuration()
@@ -49,6 +52,22 @@ def main(argv: list[str] | None = None) -> int:
                 open_readme()
             elif args.command == "start":
                 profile = load_configuration(args.config)
+                if interactive_start:
+                    while True:
+                        action = confirm_migration_start(args.config, profile)
+                        if action != 'back':
+                            break
+                        try:
+                            args.config = select_configuration(initial=args.config)
+                        except SelectionCancelled:
+                            action = 'cancel'
+                            break
+                        profile = load_configuration(args.config)
+                    if action != 'start':
+                        if not command_selected_from_menu:
+                            return 0
+                        args.command = None
+                        continue
                 complete_run_selection(args, profile)
                 run_id = args.run_id or f"run-{uuid.uuid4().hex}"
                 directory = run_pipeline(profile, run_id)

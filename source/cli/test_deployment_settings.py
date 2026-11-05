@@ -1,5 +1,7 @@
 """Collect connection settings for manually deployed test services."""
 
+from runtime.model_execution.error_details import sanitize_diagnostic
+
 from models.test_deployment_settings import TestDeploymentSettings
 
 
@@ -19,5 +21,5 @@ def collect_test_deployment_settings(prompt_text):
                 values = validated.model_dump(mode="json")
                 break
             except (ValueError, TypeError) as exc:
-                print(exc)
+                print(sanitize_diagnostic(str(exc)))
     return dict(test_deployment=values)

@@ -22,6 +22,8 @@ def build_stored_java_dependencies(workspace, source_index, implementations, con
     conn.execute('CREATE TABLE graph_edges (identity TEXT PRIMARY KEY, caller TEXT, target TEXT)')
     conn.execute('CREATE INDEX graph_callers ON graph_edges(caller,identity)')
     conn.execute('CREATE INDEX graph_targets ON graph_edges(target,caller)')
+    if storage.progress:
+        storage.progress.stage('Parsing/resolving global Java syntax for exact sharing counts', len(by_path))
     for document in iter_source_references(by_path, cache=storage.cache):
         path = str(Path(document.get('path')).resolve()) if document.get('path') else None
         caller = by_path.get(path)
@@ -51,6 +53,15 @@ def build_stored_java_dependencies(workspace, source_index, implementations, con
                     target_implementation_id=target.implementation_id, source_offset=offset,
                     reference_kind=reference.get('kind'), reference_name=reference.get('name'))
                 conn.execute('INSERT OR REPLACE INTO graph_edges VALUES (?,?,?)', (identity, caller.implementation_id, target.implementation_id))
+        if storage.progress:
+            storage.progress.advance(detail=path)
+    if storage.selection is not None:
+        from tools.component_inventory_tools.segmented_java_usage import build_segmented_usage
+        factors = build_segmented_usage(storage, implementations, uses)
+        result = StoredJavaDependencyGraph(dependencies=RecordSequence(edges), uses=RecordSequence(uses), issues=RecordSequence(issues),
+            analysis_scope='Global source graph; detailed uses restricted to selected/required operations; exact global sharing factors retained for selected targets')
+        result.usage_factors = factors
+        return result
     for use in configured_uses:
         if not use.implementation_id or use.resolution_issue:
             continue

@@ -102,6 +102,8 @@ def test_readme_menu_requests_new_browser_tab(tmp_path, monkeypatch, menu_only, 
 
 
 def test_help_returns_to_menu_then_executes_next_command(monkeypatch, menu_only, capsys):
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: 'start')
+    monkeypatch.setattr('cli.main.display_workflow_progress', lambda *_: None)
     choices = iter(["documentation", "help", "start", "exit"])
     menus = []
     def select(title, options):

@@ -5,7 +5,8 @@ from cli.terminal_display import clear_screen, separate_result_from_menu
 
 
 def select_multiple(title: str, options: list[tuple[str, str]], *, select_all: bool = False,
-                    filterable: bool = False) -> list[str]:
+                    filterable: bool = False, initial=None, heading=None, allow_back=False,
+                    clear_after_selection=True) -> list[str]:
     """Return checked values on Done, refusing an empty selection; cancellation writes nothing.
 
     Optional filtering matches labels without discarding hidden selections. Select all
@@ -25,7 +26,7 @@ def select_multiple(title: str, options: list[tuple[str, str]], *, select_all: b
         raise ValueError(f"{title}: no options available")
     operation_start = 1 + int(filterable) + int(select_all)
     visible = list(options)
-    selected: set[str] = set()
+    selected: set[str] = set(initial or []) & {value for value, _ in options}
     selected_index = 0
     operation_index = 0
     message = ""
@@ -43,7 +44,7 @@ def select_multiple(title: str, options: list[tuple[str, str]], *, select_all: b
         get_cursor_position=lambda: Point(0, operation_index))
     operation_window = Window(operation_control, wrap_lines=False)
     done_control = FormattedTextControl(
-        lambda: [("reverse" if selected_index == 0 else "", "    Done")],
+        lambda: [("reverse" if selected_index == 0 else "", "    Next" if heading else "    Done")],
         focusable=True, show_cursor=False)
 
     def focus_selection():
@@ -86,8 +87,13 @@ def select_multiple(title: str, options: list[tuple[str, str]], *, select_all: b
         count = f"{len(visible)} matches of {len(options)} · {len(selected)} selected" if filterable else f"{len(selected)} selected"
         return f"{message} · {count}" if message else count
 
-    layout = Layout(HSplit(header + [operation_window,
-                                   Window(FormattedTextControl(status_text), height=1)]),
+    wizard_header = [Window(FormattedTextControl(heading + '\nINPUT REQUIRED\n' + title), wrap_lines=True)] if heading else []
+    navigation = ([Window(FormattedTextControl('Back: Ctrl+B (discard unfinished section edits)' if allow_back else
+                                              'First section'), wrap_lines=True),
+                   Window(FormattedTextControl('Cancel: Esc   Enter on Next   Space: toggle   Type to filter' if filterable else
+                                              'Cancel: Esc   Enter on Next   Space: toggle'), wrap_lines=True)] if heading else [])
+    layout = Layout(HSplit(wizard_header + header + [operation_window,
+                                   Window(FormattedTextControl(status_text), height=1)] + navigation),
                     focused_element=done_control)
 
     def move_selection(offset):
@@ -172,15 +178,25 @@ def select_multiple(title: str, options: list[tuple[str, str]], *, select_all: b
     def cancel(event):
         event.app.exit(result=None)
 
-    separate_result_from_menu()
-    print(f"{title} (Up/Down to move, Space to toggle, Page Up/Down to scroll, "
-          f"Home/End to jump, {'type to filter, ' if filterable else ''}Enter on Done, Esc to cancel)")
+    if allow_back:
+        @bindings.add('c-b', eager=True)
+        def back(event):
+            from cli.configuration_inputs import WizardBack
+            event.app.exit(exception=WizardBack())
+
+    if not heading:
+        separate_result_from_menu()
+        print(f"{title} (Up/Down to move, Space to toggle, Page Up/Down to scroll, "
+              f"Home/End to jump, {'type to filter, ' if filterable else ''}Enter on Done, Esc to cancel)")
     try:
-        result = Application(layout=layout, key_bindings=bindings).run()
-    except (KeyboardInterrupt, EOFError) as exc:
+        result = Application(layout=layout, key_bindings=bindings, full_screen=bool(heading)).run()
+    except EOFError as exc:
+        raise SelectionCancelled(input_closed=True) from exc
+    except KeyboardInterrupt as exc:
         raise SelectionCancelled from exc
     finally:
-        clear_screen()
+        if clear_after_selection:
+            clear_screen()
     if result is None:
         raise SelectionCancelled
     return result

@@ -88,6 +88,7 @@ def test_diagnostics_preserve_file_exception_and_restore_logging(tmp_path, capsy
 
 @pytest.mark.parametrize("arguments", [[], ["start", "--config", "supplied.yaml", "--run-id", "supplied"]])
 def test_verbose_preserves_argument_completion(arguments, monkeypatch, tmp_path):
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: 'start')
     completions = 0
     def complete(args, _):
         nonlocal completions

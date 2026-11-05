@@ -176,6 +176,7 @@ def test_production_intake_streams_reports_and_binds_completed_revision(tmp_path
     scope = json.loads((reports / 'conversion_scope.json').read_text())
     assert scope['required_implementations'] == 3
     assert scope['workspace_totals']['implementations'] == 4
+    assert scope['workspace_totals']['dependency_uses'] == 3
     assert {use['channel'] for use in inventory['uses']} == {'A'}
     usage = json.loads((reports / 'component_usage.json').read_text())
     helper_usage = next(item for item in usage if item['implementation']['class_name'] == 'Helper')
@@ -185,6 +186,7 @@ def test_production_intake_streams_reports_and_binds_completed_revision(tmp_path
     try:
         assert conn.execute('SELECT revision FROM workspace_analysis_revision WHERE run_id=?', ('selected',)).fetchone()
         assert conn.execute('SELECT count(*) FROM java_dependency_edges').fetchone()[0] > 0
+        assert conn.execute('SELECT count(*) FROM java_usage_operations').fetchone()[0] == 1
     finally:
         conn.close()
 

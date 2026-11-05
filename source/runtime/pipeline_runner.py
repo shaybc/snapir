@@ -88,15 +88,20 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         import tempfile
         scratch = tempfile.TemporaryDirectory(prefix='snapir-inventory-')
         cache = WorkspaceAnalysis(Path(profile.output_root) / '.workspace-analysis' / (stable_id(profile.source_workspace_id, str(Path(profile.source_root).resolve())) + '.sqlite'))
-        storage = InventoryRecords(Path(scratch.name) / 'records.sqlite', cache)
+        storage = InventoryRecords(Path(scratch.name) / 'records.sqlite', cache, selection=config)
         logger.info('Inventory resource baseline: %s', memory_usage())
-        with component_inventory_progress(sum(len(paths) for paths in source_index.classes.values())):
+        with component_inventory_progress(sum(len(paths) for paths in source_index.classes.values()), log_directory=directory / 'logs') as progress:
+            storage.progress = progress
             logger.info('Fingerprinting workspace inputs before inventory analysis.')
-            cache.observe_workspace(profile.source_root)
+            progress.stage('Fingerprinting workspace inputs')
+            cache.observe_workspace(profile.source_root, progress=progress)
             inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index, storage)
             logger.info('Publishing a complete workspace analysis revision.')
-            revision = cache.publish(profile.source_root, source_index)
+            progress.stage('Verifying complete workspace snapshot')
+            revision = cache.publish(profile.source_root, source_index, progress=progress)
+            progress.stage('Saving selected detail and compact global counts')
             persist_component_inventory(conn, run_id, inventory, revision)
+            progress.advance(detail='Run database snapshot committed')
         logger.info('Workspace analysis revision %s; syntax cache hits=%s, misses=%s; memory=%s', revision, cache.hits, cache.misses, memory_usage())
         from tools.component_inventory_tools.conversion_scope import persist_conversion_scope
         scope = persist_conversion_scope(conn, config)

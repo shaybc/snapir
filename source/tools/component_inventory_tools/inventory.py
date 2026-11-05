@@ -22,6 +22,9 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
     workspace = Path(workspace_root).resolve()
     workspace_id = workspace_id or workspace.as_uri()
     index = source_index or discover_java_sources(str(workspace))
+    progress = storage.progress if storage is not None else None
+    if progress:
+        progress.stage('Reading channel mappings and XML definitions')
     if storage is not None:
         from models.stored_component_inventory import StoredComponentInventory
         inventory = StoredComponentInventory(workspace_id=workspace_id, diagnostics=list(index.issues))
@@ -36,6 +39,8 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
     inventory.diagnostics.extend(issues)
     implementation_by_path = {}
     resolved_roots = {project: [Path(root).resolve() for root in roots] for project, roots in index.source_roots.items()}
+    if progress:
+        progress.stage('Indexing Java implementation identities', sum(map(len, index.classes.values())))
     for fqcn, paths in index.classes.items():
         for value in paths:
             path = Path(value).resolve()
@@ -43,29 +48,47 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
             roots = [root for root in resolved_roots.get(project, []) if path.is_relative_to(root)]
             if not roots:
                 inventory.diagnostics.append("Source root is unavailable for " + value)
+                if progress:
+                    progress.advance(detail='Unresolved source root: ' + str(path))
                 continue
             implementation = identify_java_source(workspace, workspace_id, max(roots, key=lambda root: len(root.parts)), path, fqcn, indexed_roots=True)
             implementation_by_path[str(path)] = implementation
             inventory.implementations.append(implementation)
+            if progress:
+                progress.advance(detail=str(path))
     uses = {}
     configured = {}
     if storage is not None:
         uses = storage.mapping('uses', ConfiguredComponentUse)
         configured = storage.mapping('definitions', ConfiguredComponentDefinition)
 
+    class_results, origin_projects, class_paths = {}, {}, {}
+
     def resolve_class(fqcn, origin):
         if not fqcn:
             return None, "Java implementation mapping is unavailable"
-        candidates = [str(Path(path).resolve()) for path in index.classes.get(fqcn, [])]
-        own_projects = {project for project, roots in index.source_roots.items()
-                        if any(origin.resolve().is_relative_to(Path(root).resolve()) for root in roots)}
+        key = (fqcn, str(origin))
+        if key in class_results:
+            return class_results[key]
+        if fqcn not in class_paths:
+            class_paths[fqcn] = [str(Path(path).resolve()) for path in index.classes.get(fqcn, [])]
+        candidates = class_paths[fqcn]
+        if str(origin) not in origin_projects:
+            resolved_origin = origin.resolve()
+            origin_projects[str(origin)] = {project for project, roots in resolved_roots.items()
+                                            if any(resolved_origin.is_relative_to(root) for root in roots)}
+        own_projects = origin_projects[str(origin)]
         owned = [path for path in candidates if index.class_projects.get(path) in own_projects]
         if owned:
             candidates = owned
         if len(candidates) != 1:
-            return None, ("Java source is missing: " if not candidates else "Java source is ambiguous: ") + fqcn
+            result = None, ("Java source is missing: " if not candidates else "Java source is ambiguous: ") + fqcn
+            class_results[key] = result
+            return result
         implementation = implementation_by_path.get(candidates[0])
-        return (implementation.implementation_id, None) if implementation else (None, "Java source root is unresolved: " + fqcn)
+        result = (implementation.implementation_id, None) if implementation else (None, "Java source root is unresolved: " + fqcn)
+        class_results[key] = result
+        return result
 
     def resolve_definition(kind, name, owner):
         if storage is not None:
@@ -163,6 +186,8 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
             elif definition["kind"] == "format":
                 add_use(operation, definition, node, caller)
 
+    if progress:
+        progress.stage('Indexing canonical XML component definitions', len(definitions))
     for definition in definitions:
         for node in definition["node"].iter():
             tag = tag_name(node)
@@ -183,8 +208,17 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
             if kind == "format" or (kind == "context" and not explicit and not mapping):
                 issue = None
             identify_configuration(definition, node, kind, implementation_id, issue)
-    for operation in (value for value in definitions if value["kind"] == "operation"):
+        if progress:
+            progress.advance(detail=str(definition['path']))
+    if progress:
+        progress.stage('Collecting workspace operation references', definitions.operation_count() if storage is not None else sum(value['kind'] == 'operation' for value in definitions))
+    operations = definitions.operations() if storage is not None else (value for value in definitions if value['kind'] == 'operation')
+    for operation in operations:
+        if progress:
+            progress.current((operation['channel'] or '') + '/' + operation['logical_id'])
         visit(operation, operation, "operation", set())
+        if progress:
+            progress.advance(detail=(operation['channel'] or '') + '/' + operation['logical_id'])
     if storage is not None:
         from tools.state_store_tools.inventory_records import RecordSequence
         inventory.uses = RecordSequence(uses)

@@ -26,24 +26,49 @@ from cli.composer_map_configuration import collect_composer_map_configuration
 from cli.gate_configuration import collect_gate_configuration
 
 
-def prompt_text(title: str, default: str = "") -> str:
+def prompt_text(title: str, default: str = "", *, heading=None, allow_back=False) -> str:
     """Collect text with a displayed default, converting cancellation to wizard cancellation."""
     from prompt_toolkit import prompt
     from prompt_toolkit.key_binding import KeyBindings
 
     bindings = KeyBindings()
+    cleared = False
+
+    if heading:
+        @bindings.add('c-u', eager=True)
+        def clear_value(event):
+            nonlocal cleared
+            cleared = True
+            event.current_buffer.text = ''
+
+    if allow_back:
+        @bindings.add('c-b', eager=True)
+        def back(event):
+            from cli.configuration_inputs import WizardBack
+            event.app.exit(exception=WizardBack())
 
     @bindings.add("escape", eager=True)
     def cancel(event):
         event.app.exit(exception=SelectionCancelled())
 
     try:
-        value = prompt(f"{title}{f' [{default}]' if default else ''}: ", key_bindings=bindings).strip()
-    except (KeyboardInterrupt, EOFError) as exc:
+        if heading:
+            from cli.configuration_review import safe_value
+            message = (heading + '\nINPUT REQUIRED\n\n' + title + '\nDefault:\n  ' + safe_value(default) +
+                       '\n\nEnter: keep default or accept answer   Ctrl+U: clear saved value\n' +
+                       ('Back: Ctrl+B (discard unfinished section edits)   ' if allow_back else '') +
+                       'Cancel: Esc\nValue > ')
+        else:
+            message = f"{title}{f' [{default}]' if default else ''}: "
+        value = prompt(message, key_bindings=bindings).strip()
+    except EOFError as exc:
+        raise SelectionCancelled(input_closed=True) from exc
+    except KeyboardInterrupt as exc:
         raise SelectionCancelled from exc
     finally:
-        clear_screen()
-    return value or default
+        if not heading:
+            clear_screen()
+    return value if cleared else value or default
 
 
 def configuration_path(configs: Path, name: str) -> Path:
@@ -59,10 +84,10 @@ def configuration_path(configs: Path, name: str) -> Path:
     return destination
 
 
-def collect_path(configs: Path, field: str, default: str) -> str:
+def collect_path(configs: Path, field: str, default: str, *, prompt=None) -> str:
     """Prompt for a config-relative path and validate source/mapper inputs."""
     while True:
-        value = prompt_text(field, default)
+        value = (prompt or prompt_text)(field, default)
         resolved = (configs / value).resolve()
         if field == "source_root" and not resolved.is_dir():
             print(f"source_root must identify an existing directory: {resolved}")
@@ -93,49 +118,8 @@ def save_configuration(destination: Path, data: dict, *, overwrite: bool) -> Non
             temporary.unlink(missing_ok=True)
 
 
-def create_configuration() -> Path:
-    """Collect and save a migration profile, requiring confirmation before replacing one."""
-    configs = project_root() / "configs"
-    while True:
-        name = prompt_text("Config name (for example bank_demo)")
-        try:
-            destination = configuration_path(configs, name)
-            break
-        except ValueError as exc:
-            print(exc)
-    overwrite = destination.exists()
-    if overwrite and select_option(f"{destination.name} already exists. Replace it?", [
-        ("cancel", "Cancel"), ("replace", "Replace existing config"),
-    ]) != "replace":
-        raise SelectionCancelled
-    source_root = collect_path(configs, "source_root", Path(os.path.relpath((configs.parent / constants.COMPOSER_ROOT).resolve(), configs)).as_posix())
-    map_settings = collect_composer_map_configuration(configs, prompt_text, select_option)
-    if not map_settings:
-        map_settings["mapper_jar"] = collect_path(configs, "mapper_jar", Path(os.path.relpath((configs.parent / constants.COMPOSER_MAPPER_JAR).resolve(), configs)).as_posix())
-    output_root = collect_path(configs, "output_root", Path(os.path.relpath((configs.parent / constants.OUTPUT_ROOT).resolve(), configs)).as_posix())
-    channel_directories = discover_channel_directories((configs / source_root).resolve())
-    channels = select_multiple("Select channels", [(name, name) for name in channel_directories], select_all=True)
-    operations = discover_operations(channel_directories, channels)
-    included = select_multiple("Select operations", [(name, name) for name in operations], select_all=True, filterable=True)
-    supported_languages = get_args(get_args(PipelineConfiguration.model_fields["target_languages"].annotation)[0])
-    languages = select_multiple("Select target languages", [(name, name.title()) for name in supported_languages], select_all=True)
-    if not channels or not included or not languages:
-        raise ValueError("Select at least one channel, operation, and target language")
-    java_version, java_home = collect_java_configuration(configs, prompt_text)
-    external_settings = collect_external_dependencies(prompt_text)
-    strategy = prompt_text("conversion_strategy (legacy_components or behavior_units)", "legacy_components")
-    while strategy not in {"legacy_components", "behavior_units"}:
-        print("Choose legacy_components or behavior_units")
-        strategy = prompt_text("conversion_strategy (legacy_components or behavior_units)", "legacy_components")
-    data = dict(source_root=source_root, output_root=output_root,
-                channels=channels, include_operations=included, target_languages=languages,
-                java_version=java_version, java_home=java_home, conversion_strategy=strategy)
-    data.update(map_settings)
-    data.update(external_settings)
-    data.update(collect_gate_configuration(prompt_text))
-    data.update(collect_model_configuration(prompt_text))
-    data["java_scan_inactivity_timeout_seconds"] = collect_java_scan_timeout(prompt_text)
-    data.update(collect_test_deployment_settings(prompt_text))
-    save_configuration(destination, data, overwrite=overwrite)
-    print(f"Configuration saved: {destination}")
-    return destination
+def create_configuration() -> Path | None:
+    """Edit and review a draft; cancellation returns to the menu without saving."""
+    import sys
+    from cli.configuration_flow import run_configuration_wizard
+    return run_configuration_wizard(project_root() / "configs", sys.modules[__name__])

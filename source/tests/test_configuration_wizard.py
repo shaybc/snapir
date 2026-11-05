@@ -39,17 +39,24 @@ def project(tmp_path, monkeypatch):
 
 
 def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
-    monkeypatch.setattr(wizard, "select_option", lambda title, options: options[0][0])
+    def select(title, options, **kwargs):
+        if title == "Review configuration":
+            return "save"
+        if title == "Discard unsaved configuration?":
+            return "discard"
+        return options[0][0]
+    monkeypatch.setattr(wizard, "select_option", select)
+    monkeypatch.setattr("cli.main.confirm_migration_start", lambda *_: "start")
     from models.test_deployment_settings import TestDeploymentSettings as DeploymentSettings
     monkeypatch.setattr(wizard, "collect_test_deployment_settings", lambda prompt:
                         dict(test_deployment=DeploymentSettings().model_dump(mode="json")))
     prompts = []
-    def text(title, default=""):
+    def text(title, default="", **kwargs):
         prompts.append((title, default))
         return default or name
     monkeypatch.setattr(wizard, "prompt_text", text)
     def multiple(title, options, **kwargs):
-        assert kwargs == ({"select_all": True, "filterable": True} if title == "Select operations" else {"select_all": True})
+        assert kwargs["select_all"] is True
         if title == cancel_at:
             raise interactive.SelectionCancelled
         if title == "Select channels":
@@ -57,7 +64,7 @@ def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
             return ["WEB"]
         if title == "Select operations":
             assert options == [("WebOperation", "WebOperation")]
-            assert kwargs == {"select_all": True, "filterable": True}
+            assert kwargs["filterable"] is True
             return ["WebOperation"]
         assert options == [("java", "Java")]
         return ["java"]
@@ -118,7 +125,7 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
 def test_new_config_saves_automatic_gate_control(project, monkeypatch, answers):
     collect_defaults(monkeypatch)
     choices = iter(answers)
-    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="", **kwargs:
                         next(choices) if title == "Gate control (human or automatic)" else default or "automatic_gates")
     destination = wizard.create_configuration()
     loaded = load_configuration(destination)
@@ -134,7 +141,7 @@ def test_new_config_saves_custom_model_settings(project, monkeypatch):
         "model_base_url": "http://localhost:4000/v1",
         "model_api_key_environment (environment variable name, not the API key)": "LOCAL_MODEL_KEY",
     }
-    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="", **kwargs:
                         answers.get(title, default or "custom_model"))
     destination = wizard.create_configuration()
     loaded = load_configuration(destination)
@@ -146,7 +153,7 @@ def test_new_config_saves_custom_model_settings(project, monkeypatch):
 
 def test_new_config_saves_custom_java_scan_timeout(project, monkeypatch):
     collect_defaults(monkeypatch)
-    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="", **kwargs:
         "1800" if title.startswith("Java scan inactivity timeout") else default or "scan_timeout")
     destination = wizard.create_configuration()
     assert yaml.safe_load(destination.read_text())["java_scan_inactivity_timeout_seconds"] == 1800
@@ -160,8 +167,9 @@ def test_new_config_reuses_external_map_without_mapper_prompt(project, monkeypat
     vault = project / "mapped"
     (vault / "analysis").mkdir(parents=True)
     (vault / "analysis/channel-operation-registry.md").write_text("WEB\n")
-    monkeypatch.setattr(wizard, "select_option", lambda *_: "existing")
-    def text(title, default=""):
+    monkeypatch.setattr(wizard, "select_option", lambda title, options, **kwargs:
+                        "existing" if title == "Composer map" else "save" if title == "Review configuration" else options[0][0])
+    def text(title, default="", **kwargs):
         assert title != "mapper_jar"
         if title == "Existing Composer map folder":
             return "../mapped"
@@ -183,7 +191,7 @@ def test_new_config_prompts_for_deployment_addresses_and_saves_overrides(project
         "Service hostname or route-path pattern": "{service_name}",
         "External service port (auto or number)": "8443"}
     prompts = []
-    def text(title, default=""):
+    def text(title, default="", **kwargs):
         prompts.append((title, default))
         return answers.get(title, default)
     monkeypatch.setattr(wizard, "prompt_text", text)
@@ -201,13 +209,12 @@ def test_cancelling_deployment_prompts_saves_no_partial_configuration(project, m
     from cli.test_deployment_settings import collect_test_deployment_settings
     collect_defaults(monkeypatch)
     monkeypatch.setattr(wizard, "collect_test_deployment_settings", collect_test_deployment_settings)
-    def text(title, default=""):
+    def text(title, default="", **kwargs):
         if title == "Test service base URL":
             raise interactive.SelectionCancelled
         return "cancelled" if title.startswith("Config name") else default
     monkeypatch.setattr(wizard, "prompt_text", text)
-    with pytest.raises(interactive.SelectionCancelled):
-        wizard.create_configuration()
+    assert wizard.create_configuration() is None
     assert not (project / "configs").exists()
 
 
@@ -225,8 +232,8 @@ def test_java_selection_retries_version_and_mismatched_jdk(project, monkeypatch,
 
 def test_custom_paths_are_preserved_and_config_relative(project, monkeypatch):
     collect_defaults(monkeypatch)
-    values = iter(["custom", "../bank-demo/composer/Workspace", "../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar", "../other-output", "25", str(project / "jdk-25"), "[]", "legacy_components"])
-    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="": next(values, default))
+    values = iter(["custom", "../bank-demo/composer/Workspace", "../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar", "../other-output", "25", str(project / "jdk-25"), "900", "[]", "legacy_components"])
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="", **kwargs: next(values, default))
     destination = wizard.create_configuration()
     assert load_configuration(destination).output_root == str((project / "other-output").resolve())
     assert yaml.safe_load(destination.read_text())["output_root"] == "../other-output"
@@ -237,8 +244,8 @@ def test_absolute_input_paths_are_preserved(project, monkeypatch):
     source = str(project / "bank-demo/composer/Workspace")
     jar = str(project / "source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar")
     output = str(project / "absolute-output")
-    values = iter(["absolute", source, jar, output, "25", str(project / "jdk-25"), "[]", "legacy_components"])
-    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="": next(values, default))
+    values = iter(["absolute", source, jar, output, "25", str(project / "jdk-25"), "900", "[]", "legacy_components"])
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="", **kwargs: next(values, default))
     destination = wizard.create_configuration()
     data = yaml.safe_load(destination.read_text())
     assert (data["source_root"], data["mapper_jar"], data["output_root"]) == (source, jar, output)
@@ -263,8 +270,7 @@ def test_invalid_paths_reprompt(project, monkeypatch, capsys):
 @pytest.mark.parametrize("cancel_at", ["Select channels", "Select operations", "Select target languages"])
 def test_cancellation_creates_no_partial_config(project, monkeypatch, cancel_at):
     collect_defaults(monkeypatch, cancel_at=cancel_at)
-    with pytest.raises(interactive.SelectionCancelled):
-        wizard.create_configuration()
+    assert wizard.create_configuration() is None
     assert not (project / "configs").exists()
 
 
@@ -274,19 +280,27 @@ def test_existing_config_requires_explicit_replacement(project, monkeypatch, rep
     destination = project / "configs" / "new_config.yaml"
     destination.parent.mkdir()
     destination.write_text("existing content")
-    def confirm(title, options):
+    attempted = False
+    def confirm(title, options, **kwargs):
+        nonlocal attempted
+        if title == "Review configuration":
+            return "cancel" if attempted and not replace else "save"
+        if title == "Discard unsaved configuration?":
+            return "discard"
+        if title == "Section complete":
+            return "next"
         if title == "Composer map":
             return "create"
         assert "already exists" in title
-        assert options[0] == ("cancel", "Cancel")
+        assert options[0] == ("cancel", "Back to review")
+        attempted = True
         return "replace" if replace else "cancel"
     monkeypatch.setattr(wizard, "select_option", confirm)
     if replace:
         assert wizard.create_configuration() == destination
         assert load_configuration(destination).channels == ["WEB"]
     else:
-        with pytest.raises(interactive.SelectionCancelled):
-            wizard.create_configuration()
+        assert wizard.create_configuration() is None
         assert destination.read_text() == "existing content"
 
 
@@ -302,11 +316,12 @@ def test_new_file_save_refuses_racing_existing_name(project):
     assert list(destination.parent.iterdir()) == [destination]
 
 
-def test_empty_selection_does_not_save(project, monkeypatch):
+def test_closed_selection_input_does_not_save(project, monkeypatch):
     collect_defaults(monkeypatch)
-    monkeypatch.setattr(wizard, "select_multiple", lambda *_args, **_kwargs: [])
-    with pytest.raises(ValueError, match="Select at least one"):
-        wizard.create_configuration()
+    def empty_then_cancel(*args, **kwargs):
+        raise interactive.SelectionCancelled(input_closed=True)
+    monkeypatch.setattr(wizard, "select_multiple", empty_then_cancel)
+    assert wizard.create_configuration() is None
     assert not (project / "configs").exists()
 
 
@@ -360,6 +375,7 @@ def test_created_config_is_discovered_on_subsequent_start(project, monkeypatch):
 
 
 def test_return_to_menu_preserves_supplied_arguments(project, monkeypatch):
+    monkeypatch.setattr("cli.main.confirm_migration_start", lambda *_: "start")
     monkeypatch.setattr(interactive, "is_interactive", lambda: True)
     selections = iter(["create_config", "start", "exit"])
     monkeypatch.setattr(interactive, "select_option", lambda title, options: next(selections))

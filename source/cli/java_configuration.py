@@ -1,5 +1,7 @@
 """Collect a matching Java target and installed JDK for a migration configuration."""
 
+from runtime.model_execution.error_details import sanitize_diagnostic
+
 from typing import get_args
 
 import constants
@@ -45,4 +47,4 @@ def collect_java_configuration(configs, prompt_text):
             home = resolve_java_home(version, (configs / value).resolve())
             return version, home
         except (ValueError, OSError) as exc:
-            print(exc)
+            print(sanitize_diagnostic(str(exc)))

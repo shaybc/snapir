@@ -11,12 +11,14 @@ from xml.etree import ElementTree
 class InventoryRecords:
     """Own one run's scratch inventory; each read materializes only one record."""
 
-    def __init__(self, path, cache=None):
+    def __init__(self, path, cache=None, selection=None):
         self.conn = sqlite3.connect(path)
         self.conn.execute('PRAGMA cache_size=-8192')
         self.conn.execute('CREATE TABLE IF NOT EXISTS records (collection TEXT, identity TEXT, data TEXT, PRIMARY KEY(collection,identity))')
         self.conn.execute('CREATE TABLE IF NOT EXISTS content (hash TEXT PRIMARY KEY, text TEXT)')
         self.cache = cache
+        self.selection = selection
+        self.progress = None
 
     def mapping(self, name, model):
         """Return a disk-backed identity mapping for validated model records."""
@@ -119,6 +121,17 @@ class DefinitionCatalog:
 
     def __iter__(self):
         return self._read(self.conn.execute('SELECT data,xml FROM xml_definitions ORDER BY ordinal'))
+
+    def __len__(self):
+        return self.conn.execute('SELECT count(*) FROM xml_definitions').fetchone()[0]
+
+    def operations(self):
+        """Read operation bodies without reloading every format/context/step definition."""
+        return self._read(self.conn.execute("SELECT data,xml FROM xml_definitions WHERE kind='operation' ORDER BY ordinal"))
+
+    def operation_count(self):
+        """Count roots using the metadata index, without hydrating XML."""
+        return self.conn.execute("SELECT count(*) FROM xml_definitions WHERE kind='operation'").fetchone()[0]
 
     def find(self, kind, name):
         """Load only matching definitions when following configured references."""

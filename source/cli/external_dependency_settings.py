@@ -1,5 +1,7 @@
 """Collect optional external library declarations during configuration creation."""
 
+from runtime.model_execution.error_details import sanitize_diagnostic
+
 import json
 from models.external_dependency import ExternalDependencyRule
 
@@ -14,4 +16,4 @@ def collect_external_dependencies(prompt_text):
             rules = [ExternalDependencyRule.model_validate(item).model_dump(mode="json") for item in raw]
             return dict(external_dependencies=rules)
         except (ValueError, TypeError) as exc:
-            print(exc)
+            print(sanitize_diagnostic(str(exc)))

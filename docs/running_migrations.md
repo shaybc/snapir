@@ -1,5 +1,42 @@
 # Running migration intake
 
+## Creating and reviewing a configuration
+
+Both `run.cmd` and `run-verbose.cmd` use the same section-based configuration
+wizard. Each screen identifies the configuration and current section; long default
+paths appear separately from the `Value >` input marker. **INPUT REQUIRED** means
+the CLI is waiting for you. **WORKING** identifies actual discovery or saving.
+
+Press Enter to retain a text default or accept a typed replacement. Ctrl+U clears
+the saved field value; required fields still have to pass their normal validation.
+Use Ctrl+B on text/checkbox screens or the Back menu action to revisit the previous
+section. Back discards unfinished edits in the current section; previously committed
+answers are restored. On checkbox screens, Space toggles choices and Enter on Next
+accepts them. The section's Next action commits its answers to the in-memory draft.
+Esc/Ctrl+C offers Continue editing or Discard configuration; closed input exits
+without saving. No draft file is written.
+
+The final Review screen initially focuses **Edit a section**, so an extra Enter
+cannot save accidentally. Use Page Up/Down to scroll settings. Large operation
+selections show a count and preview; **View all selected operations** opens a
+filterable read-only list. Edit a section jumps directly to its saved answers and
+returns to Review. Changing the source requires a fresh scope review; unavailable
+channel/operation choices are removed. Unchanged discovery results are reused
+within the draft. Credentials are redacted; the model key remains an environment
+variable name, never a stored secret value.
+
+Only **Save configuration** validates and writes the YAML. Replacing an existing
+file requires a separate confirmation of its destination. Cancelling leaves
+existing configurations unchanged. Choosing **Create a new map** records a future
+action; it does not run the mapper during configuration creation. Saving also
+does not start mapping, workspace intake or migration.
+
+Choose **Start a new migration** separately. Interactive starts show the selected
+configuration, source, map mode and operation scope before processing. Choose
+**Start migration**, **Back to configuration selection**, or **Cancel**. Back is
+initially focused. Explicit commands supplying `start --config ...` retain their
+automation behavior and do not add a confirmation prompt.
+
 For optional standalone and microservice fixture JDBC demonstrations, see
 [Fixture database demonstrations](fixture-database-demo.md). Demo preparation does
 not resume a stopped conversion or alter native operation logic.
@@ -212,6 +249,39 @@ Only Gate 1 is wired in this increment. Decisions are tied to the report content
 changed reports require new decisions. Rejections remain effective until replaced
 by an explicit approval. Run profiles are snapshotted at start for reproducibility.
 # Service generation and build validation
+
+## Segmented inventory and diagnosing long intake
+
+Selection is resolved before Java-use evidence expansion. Detailed operation-times-
+reference-site records are created only for selected operations and required
+callees. Exact global sharing counts for their reachable components are stored as
+two compact relations: configured root/operation multiplicities and root/target
+reference multiplicities. The planner joins these factors when it needs consumer
+counts. It does not persist the Cartesian expansion for unrelated operations.
+Direct configured-use metadata and the global Java source graph remain available;
+a cold global syntax pass is still required to establish exact sharing counts.
+
+Global roots that cannot reach a selected target are skipped during propagation.
+Graphs up to 100,000 distinct class-to-class links use bounded compact adjacency
+with exact reference-site weights to avoid a SQL statement per traversal step;
+larger graphs retain the disk-backed traversal. Repeated sites do not force a
+small class graph into the slower traversal path.
+Existing cycle semantics and integer reference multiplicities are preserved.
+Requests outside a run's detailed operation scope fail explicitly rather than
+silently planning with incomplete dependency evidence. Older detailed inventories
+remain readable.
+
+Repeated class/project ownership lookups are cached for the immutable workspace
+snapshot. The operation-reference pass reads operation bodies only, rather than
+rehydrating every format, context and step a second time.
+
+During inventory, console progress names the active phase and completed work.
+`logs/intake.log` records stage messages, `logs/intake-progress.json` records the
+latest phase/count/last-work evidence, and after 120 seconds without completed
+work `logs/intake-stacks.log` captures Python thread stacks for diagnosis. These
+snapshots do not kill a valid long-running scan or reset the scanner inactivity
+timer. The workspace Java-file total is labeled as an index total, not a completed
+count or the requested conversion scope.
 
 ## Large workspaces and selected conversion scope
 

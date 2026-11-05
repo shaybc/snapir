@@ -4,6 +4,12 @@ import json
 
 
 INVENTORY_SCHEMA = [
+    "CREATE TABLE IF NOT EXISTS java_usage_roots (run_id TEXT,root TEXT,operation_key TEXT,operation_id TEXT,channel TEXT,weight TEXT)",
+    "CREATE INDEX IF NOT EXISTS java_usage_root_ids ON java_usage_roots(run_id,root)",
+    "CREATE TABLE IF NOT EXISTS java_usage_targets (run_id TEXT,root TEXT,target TEXT,count TEXT,PRIMARY KEY(run_id,root,target))",
+    "CREATE INDEX IF NOT EXISTS java_usage_target_ids ON java_usage_targets(run_id,target)",
+    "CREATE TABLE IF NOT EXISTS java_usage_scope (run_id TEXT,target TEXT,PRIMARY KEY(run_id,target))",
+    "CREATE TABLE IF NOT EXISTS java_usage_operations (run_id TEXT,consumer TEXT,PRIMARY KEY(run_id,consumer))",
     """CREATE TABLE IF NOT EXISTS java_dependency_edges (run_id TEXT, dependency_id TEXT,
         caller TEXT, target TEXT, record_json TEXT, PRIMARY KEY(run_id,dependency_id))""",
     "CREATE INDEX IF NOT EXISTS java_edge_callers ON java_dependency_edges(run_id,caller)",
@@ -41,6 +47,8 @@ INVENTORY_SCHEMA = [
 
 def get_conversion_inventory(conn, run_id, operation_id, channel):
     """Read an operation's configured uses and the run's saved Java dependency graph."""
+    from tools.state_store_tools.java_usage import check_detailed_scope
+    check_detailed_scope(conn, run_id, {channel + '/' + operation_id})
     uses = [json.loads(row[0]) for row in conn.execute(
         "SELECT record_json FROM configured_component_uses WHERE run_id=? AND operation_id=? AND channel=?",
         (run_id, operation_id, channel))]
@@ -66,6 +74,8 @@ def persist_component_inventory(conn, run_id, inventory, revision=None):
         conn.execute("DELETE FROM source_implementations WHERE run_id=?", (run_id,))
         conn.execute("DELETE FROM java_dependency_edges WHERE run_id=?", (run_id,))
         conn.execute("DELETE FROM java_dependency_issues WHERE run_id=?", (run_id,))
+        for table in ('java_usage_roots', 'java_usage_targets', 'java_usage_scope', 'java_usage_operations'):
+            conn.execute('DELETE FROM ' + table + ' WHERE run_id=?', (run_id,))
         for implementation in inventory.implementations:
             conn.execute("INSERT INTO source_implementations VALUES (?, ?, ?, ?, ?)",
                          (run_id, implementation.implementation_id, inventory.workspace_id,
@@ -83,8 +93,19 @@ def persist_component_inventory(conn, run_id, inventory, revision=None):
         conn.execute("INSERT OR REPLACE INTO component_inventory_reports VALUES (?, ?, ?, ?)",
                      (run_id, inventory.workspace_id, '[]', inventory.analysis_scope))
         graph = inventory.java_dependencies
+        factors = getattr(graph, 'usage_factors', None)
         conn.execute("INSERT OR REPLACE INTO java_dependency_reports VALUES (?, ?)",
-                     (run_id, json.dumps(dict(dependencies=[], issues=[], uses=[], storage='rows-v1', analysis_scope=graph.analysis_scope))))
+                     (run_id, json.dumps(dict(dependencies=[], issues=[], uses=[], storage='rows-v1',
+                         usage_storage='factors-v1' if factors is not None else 'detailed', analysis_scope=graph.analysis_scope))))
+        if factors is not None:
+            conn.executemany('INSERT INTO java_usage_roots VALUES (?,?,?,?,?,?)',
+                ((run_id, *row) for row in factors.conn.execute('SELECT root,operation_key,operation_id,channel,weight FROM usage_roots')))
+            conn.executemany('INSERT INTO java_usage_targets VALUES (?,?,?,?)',
+                ((run_id, *row) for row in factors.conn.execute('SELECT root,target,count FROM usage_counts')))
+            conn.executemany('INSERT INTO java_usage_scope VALUES (?,?)',
+                ((run_id, row[0]) for row in factors.conn.execute('SELECT target FROM usage_targets')))
+            conn.executemany('INSERT INTO java_usage_operations VALUES (?,?)',
+                ((run_id, row[0]) for row in factors.conn.execute('SELECT consumer FROM requested_operations')))
         for edge in graph.dependencies:
             conn.execute('INSERT INTO java_dependency_edges VALUES (?,?,?,?,?)',
                 (run_id, edge.dependency_id, edge.caller_implementation_id, edge.target_implementation_id, edge.model_dump_json()))
@@ -104,13 +125,18 @@ def iter_implementation_usage(conn, run_id, *, selected_only=False):
     """Return exact reference counts and distinct original operation/channel consumers."""
     clause = " AND implementation_id IN (SELECT identity FROM conversion_scope WHERE run_id=? AND kind='implementation')" if selected_only else ''
     parameters = (run_id, run_id) if selected_only else (run_id,)
+    from tools.state_store_tools.java_usage import factorized_usage, iter_global_java_usage, consumer_query
+    if factorized_usage(conn, run_id) and not selected_only:
+        # Unanalyzed targets must not be represented as having zero global consumers.
+        clause = ' AND implementation_id IN (SELECT target FROM java_usage_scope WHERE run_id=?)'
+        parameters = (run_id, run_id)
+    indirect_consumers = consumer_query(conn, run_id)
     for row in conn.execute("SELECT implementation_id,record_json FROM source_implementations WHERE run_id=?" + clause + " ORDER BY implementation_id", parameters):
         identity = row[0]
         direct_count = conn.execute('SELECT count(*) FROM configured_component_uses WHERE run_id=? AND implementation_id=?', (run_id, identity)).fetchone()[0]
-        indirect_count = sum(json.loads(use[0]).get('reference_count', 1) for use in conn.execute(
-            'SELECT record_json FROM java_dependency_uses WHERE run_id=? AND implementation_id=?', (run_id, identity)))
+        indirect_count = sum(use.reference_count for use in iter_global_java_usage(conn, run_id, implementation_id=identity))
         query = '''SELECT operation_key,operation_id,channel FROM configured_component_uses WHERE run_id=? AND implementation_id=?
-            UNION SELECT operation_key,operation_id,channel FROM java_dependency_uses WHERE run_id=? AND implementation_id=?'''
+            UNION ''' + indirect_consumers
         parameters = (run_id, identity, run_id, identity)
         operation_count, channel_count = conn.execute('SELECT count(DISTINCT operation_key),count(DISTINCT NULLIF(channel,\'\')) FROM (' + query + ')', parameters).fetchone()
         consumers = (dict(operation_key=key, operation_id=name, channel=channel) for key, name, channel in

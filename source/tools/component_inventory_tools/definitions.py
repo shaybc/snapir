@@ -16,6 +16,8 @@ def discover_definitions(workspace, storage=None):
     diagnostics = []
     kinds = {"CCDSEServerOperation": "operation", "fmtDef": "format", "context": "context", "opStep": "opStep"}
     for path in sorted(workspace.rglob("*.xml")):
+        if storage is not None and storage.progress:
+            storage.progress.advance(detail=str(path))
         if not path.resolve().is_relative_to(workspace):
             diagnostics.append("XML source outside workspace: " + str(path))
             continue

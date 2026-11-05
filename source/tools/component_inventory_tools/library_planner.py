@@ -14,6 +14,8 @@ def prepare_library_plan(conn, config, profile, migration_plan):
     if not conn.execute("SELECT 1 FROM component_inventory_reports WHERE run_id=?", (config.run_id,)).fetchone():
         return None
     selected = {packet.channel + "/" + packet.operation_id for batch in migration_plan.batches for packet in batch.task_packets}
+    from tools.state_store_tools.java_usage import check_detailed_scope
+    check_detailed_scope(conn, config.run_id, selected)
     candidates = set()
     for row in conn.execute('SELECT component_kind,implementation_id,channel,operation_id,json_extract(record_json,\'$.definition_id\') FROM configured_component_uses WHERE run_id=?', (config.run_id,)):
         if (row[2] or '') + '/' + row[3] in selected:
@@ -68,11 +70,8 @@ def prepare_library_plan(conn, config, profile, migration_plan):
             reference_counts[key] = reference_counts.get(key, 0) + 1
     roots = {key.removeprefix('implementation:') for key in candidates if key.startswith('implementation:')}
     graph = get_java_dependency_graph(conn, config.run_id, include_uses=False, roots=roots)
-    from models.java_source_dependencies import JavaDependencyUse
-    for row in conn.execute("SELECT implementation_id,record_json FROM java_dependency_uses WHERE run_id=? AND 'implementation:'||implementation_id IN (SELECT component_key FROM library_plan_candidates)", (config.run_id,)):
-        if 'implementation:' + row[0] not in candidates:
-            continue
-        use = JavaDependencyUse.model_validate_json(row[1])
+    from tools.state_store_tools.java_usage import iter_global_java_usage
+    for use in iter_global_java_usage(conn, config.run_id, candidates=True):
         consumer = (use.channel or "") + "/" + use.operation_id
         operation_origins.setdefault(consumer, set()).add(use.operation_key)
         key = "implementation:" + use.implementation_id
