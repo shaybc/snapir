@@ -71,7 +71,7 @@ def generate_gate_summary(
     run_id: str,
     operation_ids: list[str],
 ) -> str:
-    """Generate a Gate 4 trace-comparison summary for selected operations."""
+    """Generate a Gate 5 trace-comparison summary for selected operations."""
     placeholders = ",".join("?" for _ in operation_ids)
     rows = conn.execute(
         f"""
@@ -89,7 +89,7 @@ def generate_gate_summary(
     }
     return "\n".join(
         [
-            "=== Human Gate 4 ===",
+            "=== Human Gate 5 ===",
             f"Operations fully matched: {len(fully_matched)}",
             f"Operations with routing_mismatch: {len(by_failure['routing_mismatch'])} {by_failure['routing_mismatch']}",
             f"Operations with conversion_gap: {len(by_failure['conversion_gap'])} {by_failure['conversion_gap']}",

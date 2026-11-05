@@ -137,6 +137,9 @@ def _assembly(states, extra, snapshots, attempts, tasks, phase):
 
 def active_subsections(conn, directory, status, phase):
     """Return only the active stage tree; completed marks require saved evidence."""
+    if phase.startswith('gate_4_'):
+        return [('approval','Approve microservice creation (Gate 4)',
+                 'attention' if status in {'blocked','stopped','failed'} else 'current',[])]
     stage = workflow_stage(phase)
     states, extra = {}, {}
     snapshots = _rows(conn, "behavior_snapshots", directory.name)
@@ -227,7 +230,7 @@ def active_subsections(conn, directory, status, phase):
         done("delivery.deployment", any(row.get("artifact_kind") == "deployment_manifest" and row.get("status") == "converted" for row in _rows(conn, "generated_artifacts", directory.name)))
         done("delivery.docs", bool(delivery.get("operations")))
         done("report", run_report_path(directory, "final_report.md").is_file())
-    gate = {"migration_planning": 1, "component_review": 2, "operation_assembly_and_review": 3, "final_validation": 4}.get(stage)
+    gate = {"migration_planning": 1, "component_review": 2, "operation_assembly_and_review": 3, "final_validation": 5}.get(stage)
     if gate and (phase.startswith("gate_") or phase in {"migration_approved", "dry_run_complete"}):
         key = "review.approval" if gate == 3 else "approval"
         states[key] = "completed" if phase in {"migration_approved", "dry_run_complete"} else "attention" if status in {"blocked", "stopped", "failed"} else "current"
@@ -250,7 +253,7 @@ def active_subsections(conn, directory, status, phase):
 
 def subsection_lines(nodes, depth=1):
     """Render the same four markers with indentation for nested subtasks."""
-    markers = {"completed": "[V]", "current": "→", "pending": "[ ]", "attention": "!"}
+    markers = {"completed": "[V]", "current": "ג†’", "pending": "[ ]", "attention": "!"}
     for number, (_, title, state, children) in enumerate(nodes, 1):
         yield "    " * depth + f"{markers[state]} {number}. {title}"
         yield from subsection_lines(children, depth + 1)

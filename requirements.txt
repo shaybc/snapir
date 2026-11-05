@@ -2,6 +2,7 @@
 PyYAML>=6.0.3,<7
 pydantic>=2.12,<3
 Jinja2>=3.1,<4
+jsonschema>=4.18,<5
 python-dotenv>=1.0,<2
 prompt-toolkit>=3.0.52,<4
 mistune>=3.1,<4

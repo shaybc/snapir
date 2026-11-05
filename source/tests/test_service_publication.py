@@ -32,8 +32,10 @@ def publication_evidence(setup):
     from runtime.gate_one_reports import read_gate_one_reports
     with operation_gate_scope('INTERNET/C'):
         record_decision(conn, config.run_id, 1, read_gate_one_reports(directory), 'approved')
-        for number in (2,3,4):
+        for number in (2,3,4,5):
             report = 'Validated operation report ' + str(number)
+            if number==4:report='=== Human Gate 4: Create microservices ===\n'+report
+            if number==5:report='=== Human Gate 5 ===\n'+report
             write_run_report(directory, f'gate_{number}_report.txt', report)
             record_decision(conn, config.run_id, number, report, 'approved')
     conn.execute('CREATE TABLE service_generation_checkpoints(run_id TEXT,operation_id TEXT,channel TEXT,validation_json TEXT)')
@@ -59,7 +61,7 @@ def test_publication_has_full_api_and_stable_revision(setup):
     assert result['completion']['gates_approved'] is True
 
 
-@pytest.mark.parametrize('failure', ['package', 'tests', 'gate', 'artifact', 'unfinished'])
+@pytest.mark.parametrize('failure', ['package', 'tests', 'gate', 'final_gate', 'artifact', 'unfinished'])
 def test_incomplete_service_cannot_prepare_publication(setup, failure):
     conn, config, profile, directory, output = publication_evidence(setup)
     if failure in {'package','tests'}:
@@ -74,7 +76,10 @@ def test_incomplete_service_cannot_prepare_publication(setup, failure):
         update_run_status(conn, config.run_id, 'paused', 'service_generation_pending')
     else:
         with operation_gate_scope('INTERNET/C'):
-            record_decision(conn, config.run_id, 4, 'Validated operation report 4', 'rejected')
+            number=5 if failure=='final_gate' else 4
+            from runtime.workspace_paths import run_report_path
+            report=run_report_path(directory,f'gate_{number}_report.txt').read_text(encoding='utf-8')
+            record_decision(conn, config.run_id, number, report, 'rejected')
     with operation_gate_scope('INTERNET/C'), pytest.raises(ValueError):
         prepare_publication(conn, config, profile, 'INTERNET/C', directory)
 
@@ -93,6 +98,16 @@ def test_pinned_contract_call_uses_saved_wire_types_without_callee_source(setup,
     calls[0]['service_contract']['path'] = '/invented'
     with pytest.raises(ValueError, match='binding changed'):
         verify_pinned_call(conn, config.run_id, calls[0])
+
+
+@pytest.mark.parametrize('number,obsolete',[(4,'=== Human Gate 4 ==='),(5,'=== Human Gate 5: Create microservices ===')])
+def test_old_gate_purpose_is_rejected_even_when_its_report_was_approved(setup,number,obsolete):
+    conn,config,profile,directory,_=publication_evidence(setup)
+    with operation_gate_scope('INTERNET/C'):
+        write_run_report(directory,f'gate_{number}_report.txt',obsolete)
+        record_decision(conn,config.run_id,number,obsolete,'approved')
+        with pytest.raises(ValueError,match='obsolete gate purpose'):
+            prepare_publication(conn,config,profile,'INTERNET/C',directory)
 
 
 def test_missing_published_binding_blocks_caller(setup):

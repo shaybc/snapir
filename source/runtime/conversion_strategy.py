@@ -2,10 +2,10 @@
 
 
 def resume_behavior_strategy(conn, config, profile, directory):
-    """Continue option two through the existing seven stages and four gates."""
+    """Continue option two through the existing seven stages and five gates."""
     from tools.state_store_tools.runs import get_run
     run = get_run(conn, config.run_id)
-    if run["current_phase"] in {"gate_4_pending", "gate_4_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
+    if run["current_phase"] in {"gate_5_pending", "gate_5_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
         from models.migration_models import MigrationPlan
         from runtime.finalization import run_finalization
         row = conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1", (config.run_id,)).fetchone()

@@ -8,7 +8,7 @@ from runtime.workspace_paths import run_database_path, run_report_path
 
 
 GATE_PHASES = {f"gate_{number}_{state}": number
-               for number in range(1, 5) for state in ("pending", "rejected")}
+               for number in range(1, 6) for state in ("pending", "rejected")}
 GATE_PHASES.update({f"conversion_plan_{state}": "plan" for state in ("pending", "rejected")})
 
 

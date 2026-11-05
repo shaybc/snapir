@@ -68,7 +68,7 @@ def test_saved_automatic_policy(setup, policy):
     prepare_intake_plan(conn, config, profile, directory, operations)
     row = conn.execute('SELECT policy,decision FROM runtime_gate_decisions WHERE gate_number=0').fetchone()
     assert tuple(row) == (policy, 'approved')
-    assert profile.gate_policies.keys() == {'1','2','3','4'}
+    assert profile.gate_policies.keys() == {'1','2','3','4','5'}
 
 
 def test_dependency_order_cannot_be_overridden_by_pilot(setup):

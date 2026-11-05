@@ -28,7 +28,7 @@ def test_finalization_completes_operation_without_completing_run(tmp_path):
     conn, config, profile, plan, _ = setup_final(tmp_path, True)
     from tools.workspace_intake_tools.run_factory import persist_run_config
     persist_run_config(conn, config)
-    profile.gate_policies['4'] = 'automatic'
+    profile.gate_policies['5'] = 'automatic'
     initialize_progress(conn, config.run_id, ['INTERNET/Op', 'INTERNET/Next'])
     phase = run_finalization(conn, config, profile, plan, tmp_path, complete_run=False)
     assert phase == 'operation_workflow_completed'

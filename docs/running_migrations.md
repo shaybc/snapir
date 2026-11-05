@@ -1,5 +1,9 @@
 # Running migration intake
 
+For optional standalone and microservice fixture JDBC demonstrations, see
+[Fixture database demonstrations](fixture-database-demo.md). Demo preparation does
+not resume a stopped conversion or alter native operation logic.
+
 ## Option two conversion
 
 Use `conversion_strategy: behavior_units` for complete-format and configured-step
@@ -247,15 +251,19 @@ Selected-channel mapper discovery now follows declared `dse.ini` channel imports
 
 Bank Demo's selected operation now resolves its shared error format and formatter/decorator tags. It still requires explicit replacement decisions for unavailable `com.ibm.dse.base.CCOperationStep` and `com.ibm.dse.base.Context` APIs. These remain blocked; no fake framework mapping was added.
 
-## Final deliverables and Gate 4
+## Microservice creation and Gate 4
+
+Operation assembly prepares an editable `values.yaml` in the native operation root before Gate 3, without an approval gate for creating that file. Blank JDBC URL and driver settings are filled only from the operation's unambiguous Composer pool configuration; credentials remain Secret references. Missing or unsafe settings are reported in `operation_values_results.json`. Gate 4 reviews that file and the accepted operation before Spring Boot wrapper or Helm template creation. Approval is followed by Resume. Helm uses this same root file through `--values`; no separate microservice-deployment definition is generated. Gate 5 reviews the built and validated result.
+
+## Final deliverables and Gate 5
 
 To exercise the missing runtime tests now, set `runtime_validation_mode: dummy` in the YAML profile before starting a run. The executable dummy provider calls XML, behavioral and trace test methods that always return true, emits the same passed-status fields consumed by finalization, and writes a structured report under `runtime_test_reports/<channel>/<operation>/report.json`. Reports and logs explicitly state that no requests or real comparisons occurred. The default is `disabled`; previously dummy results cannot satisfy normal-mode approval.
 
-The pipeline calls a neutral `RuntimeTestExecutor`; provider selection is confined to that executor. Finalization consumes the ordinary passing contract without provider-specific branches. Accepted Gate 4 ends at `migration_approved`, with `production_ready: true` when its configured checks pass. This field is the computed configured-executor outcome, not independent proof of real runtime equivalence: inspect `validation_notices` and the test reports, which explicitly disclose dummy execution. Changing the configured provider invalidates saved service-validation evidence. Real Maven compilation, Maven tests, packaging, dependency guards and gate policies remain unchanged. A future real provider can implement the same boundary.
+The pipeline calls a neutral `RuntimeTestExecutor`; provider selection is confined to that executor. Finalization consumes the ordinary passing contract without provider-specific branches. Accepted Gate 5 ends at `migration_approved`, with `production_ready: true` when its configured checks pass. This field is the computed configured-executor outcome, not independent proof of real runtime equivalence: inspect `validation_notices` and the test reports, which explicitly disclose dummy execution. Changing the configured provider invalidates saved service-validation evidence. Real Maven compilation, Maven tests, packaging, dependency guards and gate policies remain unchanged. A future real provider can implement the same boundary.
 
-After successful service builds, runtime finalization renders the existing deployment templates, writes per-operation README files, and produces `delivery_manifest.json`, `final_report.md`, and `gate_4_report.txt`. It does not publish images or deploy to a cluster. Configure `deployment_template_dir` and `deployment_values`, keyed by `CHANNEL/OperationId`, with an explicit `image_name` and any renderer-supported port, environment or health-path values. The template directory is resolved relative to the profile.
+After successful service builds, runtime finalization renders the existing deployment templates, writes per-operation README files, and produces `delivery_manifest.json`, `final_report.md`, and `gate_5_report.txt`. It does not publish images or deploy to a cluster. Configure `deployment_template_dir` and `deployment_values`, keyed by `CHANNEL/OperationId`, with an explicit `image_name` and any renderer-supported port, environment or health-path values. The template directory is resolved relative to the profile.
 
-Gate 4 requires current Gate 3 approval, unchanged generated project inputs, successful compilation/tests/packaging/IBM guards, and passed XML compatibility, behavioral equivalence and legacy trace comparison. Each behavioral category must have supporting files listed under `evidence_paths` in its persisted validation result; files must exist within the run workspace. Runtime evidence collection is not implemented yet, so ordinary build-only runs correctly stop at `finalization_blocked`, with reports explaining the missing evidence. Automatic and skip policies cannot bypass failed checks.
+Gate 5 requires current Gate 3 approval, unchanged generated project inputs, successful compilation/tests/packaging/IBM guards, and passed XML compatibility, behavioral equivalence and legacy trace comparison. Each behavioral category must have supporting files listed under `evidence_paths` in its persisted validation result; files must exist within the run workspace. Runtime evidence collection is not implemented yet, so ordinary build-only runs correctly stop at `finalization_blocked`, with reports explaining the missing evidence. Automatic and skip policies cannot bypass failed checks.
 
 Use the existing approve/reject command with gate 4 when status is `gate_4_pending`. Resume rechecks deliverables and binds approval to their content fingerprints. Approval ends at `migration_approved`; it is not a deployment action. Changed deliverables require fresh approval.
 
@@ -265,4 +273,4 @@ After accepted Gate 3, resume stages each final service under the run's `service
 
 Runtime persists generation attempts and input/output fingerprints. Unchanged successful projects can be reused; changed projects require regeneration, and failed attempts remain bounded across resume. Validation runs managed compilation, Maven tests and packaging with transitive dependency checks and the IBM source guard. No test reports means tests are unavailable, not passed.
 
-Successful builds stop at `validation_evidence_pending`. XML compatibility, legacy traces and behavioral equivalence are explicitly unavailable until runtime evidence is supplied; this is not a completed migration. Runtime endpoint validation, final reporting and Gate 4 remain separate work. Structured correction routing is available, but runtime evidence producers still need integration. Mock generation requires explicit fixtures. Live model and enterprise repository execution has not been verified.
+Successful builds stop at `validation_evidence_pending`. XML compatibility, legacy traces and behavioral equivalence are explicitly unavailable until runtime evidence is supplied; this is not a completed migration. Runtime endpoint validation, final reporting and Gate 5 remain separate work. Structured correction routing is available, but runtime evidence producers still need integration. Mock generation requires explicit fixtures. Live model and enterprise repository execution has not been verified.

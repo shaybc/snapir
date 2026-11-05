@@ -101,7 +101,8 @@ def test_numbered_folders_preserve_links_and_matching_approval(tmp_path):
     ("mapper", "Intake and legacy analysis"), ("gate_1_pending", "Migration planning"),
     ("closures_blocked", "Dependency closure and component conversion"),
     ("gate_2_pending", "Component review"), ("gate_3_pending", "Operation assembly and review"),
-    ("service_generation", "Service generation and validation"), ("gate_4_pending", "Final validation"),
+    ("service_generation", "Service generation and validation"), ("gate_5_pending", "Final validation"),
+    ("gate_4_pending", "Service generation and validation"), ("gate_4_rejected", "Service generation and validation"),
 ])
 def test_checkpoint_labels_follow_readme_stages(phase, label):
     assert workflow_stage_label(phase) == label

@@ -37,6 +37,8 @@ def resume_pipeline(output_root: str, run_id: str):
         if run is None:
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
+        from runtime.gate_numbering import check_gate_numbering
+        check_gate_numbering(conn,run_id,directory,run['current_phase'] or '')
         logging.getLogger(__name__).info("Resuming saved checkpoint: %s (%s).", run["current_phase"], run["status"])
         from tools.conversion_tools.scoped_workflow.preparation import is_scoped_run
         if is_scoped_run(conn, run_id):
@@ -52,7 +54,7 @@ def resume_pipeline(output_root: str, run_id: str):
                 return directory
             from runtime.conversion_strategy import resume_behavior_strategy
             return resume_behavior_strategy(conn, config, profile, directory)
-        if run["current_phase"] in {"gate_4_pending", "gate_4_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
+        if run["current_phase"] in {"gate_5_pending", "gate_5_rejected", "finalization_blocked", "migration_approved", "dry_run_complete"}:
             row = conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1", (run_id,)).fetchone()
             if row is None:
                 raise ValueError("Finalization requires a persisted migration plan")
@@ -63,6 +65,7 @@ def resume_pipeline(output_root: str, run_id: str):
                                      "gate_2_rejected", "assembly_pending", "operation_assembly", "assembly_blocked",
                                      "operation_review_pending", "operation_review", "operation_revision", "operation_review_blocked",
                                      "gate_3_pending", "gate_3_rejected", "service_generation_pending", "service_generation",
+                                     "gate_4_pending", "gate_4_rejected", "gate_4_blocked",
                                      "service_generation_blocked", "validation_evidence_pending",
                                      "component_correction_pending", "assembly_correction_pending"}:
             row = conn.execute("SELECT plan_json FROM migration_plans WHERE run_id=? ORDER BY updated_at DESC LIMIT 1",

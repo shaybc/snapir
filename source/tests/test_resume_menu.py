@@ -43,6 +43,13 @@ def test_resumable_filter_preserves_status_choices(project):
     assert "failed" in options[0][1] and "planning_failed" in options[0][1]
 
 
+@pytest.mark.parametrize('phase',['gate_4_pending','gate_4_rejected','gate_4_blocked'])
+def test_microservice_gate_is_available_to_resume(project,phase):
+    directory=saved_run(project/'work/migration_runs',phase=phase)
+    options=discover_status_runs(project,resumable_only=True)
+    assert [path for path,_ in options]==[str(directory)]
+
+
 def test_resume_uses_selected_saved_run_and_shows_updated_checkpoint(project, monkeypatch, capsys):
     configs = project / "configs"
     configs.mkdir()

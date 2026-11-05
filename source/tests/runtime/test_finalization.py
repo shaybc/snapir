@@ -34,7 +34,7 @@ def finalize(tmp_path, setup):
 
 def test_missing_behavior_evidence_blocks_even_automatic_gate(tmp_path):
     setup = setup_final(tmp_path)
-    setup[2].gate_policies["4"] = "automatic"
+    setup[2].gate_policies["5"] = "automatic"
     assert finalize(tmp_path, setup) == "finalization_blocked"
     inventory = json.loads(run_report_path(tmp_path, "delivery_manifest.json").read_text())
     assert not inventory["production_ready"]
@@ -45,16 +45,16 @@ def test_missing_behavior_evidence_blocks_even_automatic_gate(tmp_path):
 
 def test_human_gate4_requires_current_report_approval(tmp_path):
     setup = setup_final(tmp_path, True)
-    assert finalize(tmp_path, setup) == "gate_4_pending"
-    record_decision(setup[0], setup[1].run_id, 4, run_report_path(tmp_path, "gate_4_report.txt").read_text(), "approved")
+    assert finalize(tmp_path, setup) == "gate_5_pending"
+    record_decision(setup[0], setup[1].run_id, 5, run_report_path(tmp_path, "gate_5_report.txt").read_text(), "approved")
     assert finalize(tmp_path, setup) == "migration_approved"
     setup[2].deployment_values["INTERNET/Op"]["image_name"] = "registry.example/service:2.0.0"
-    assert finalize(tmp_path, setup) == "gate_4_pending"
+    assert finalize(tmp_path, setup) == "gate_5_pending"
 
 
 def test_changed_project_invalidates_final_approval(tmp_path):
     setup = setup_final(tmp_path, True)
-    setup[2].gate_policies["4"] = "automatic"
+    setup[2].gate_policies["5"] = "automatic"
     assert finalize(tmp_path, setup) == "migration_approved"
     (tmp_path / "services/INTERNET/Op/src/main/resources/application.properties").write_text("changed")
     assert finalize(tmp_path, setup) == "finalization_blocked"
@@ -69,15 +69,15 @@ def test_missing_deployment_configuration_is_explicit(tmp_path):
 
 def test_gate4_rejection_survives_resume(tmp_path):
     setup = setup_final(tmp_path, True)
-    assert finalize(tmp_path, setup) == "gate_4_pending"
-    record_decision(setup[0], setup[1].run_id, 4, run_report_path(tmp_path, "gate_4_report.txt").read_text(), "rejected")
-    assert finalize(tmp_path, setup) == "gate_4_rejected"
+    assert finalize(tmp_path, setup) == "gate_5_pending"
+    record_decision(setup[0], setup[1].run_id, 5, run_report_path(tmp_path, "gate_5_report.txt").read_text(), "rejected")
+    assert finalize(tmp_path, setup) == "gate_5_rejected"
 
 
 def test_configured_executor_runs_and_gate4_uses_normal_completion(tmp_path):
     setup = setup_final(tmp_path)
     setup[2].runtime_validation_mode = "dummy"
-    setup[2].gate_policies["4"] = "automatic"
+    setup[2].gate_policies["5"] = "automatic"
     assert run(tmp_path, setup) == "validation_evidence_pending"
     report = json.loads((tmp_path / "reports/6_service_generation_and_validation/runtime_test_reports/INTERNET/Op/report.json").read_text())
     assert all(report["checks"].values())
@@ -86,7 +86,7 @@ def test_configured_executor_runs_and_gate4_uses_normal_completion(tmp_path):
     inventory = json.loads(run_report_path(tmp_path, "delivery_manifest.json").read_text())
     assert inventory["production_ready"]
     assert any("Dummy runtime tests" in notice for notice in inventory["validation_notices"])
-    assert "Real endpoint tests are not implemented" in run_report_path(tmp_path, "gate_4_report.txt").read_text()
+    assert "Real endpoint tests are not implemented" in run_report_path(tmp_path, "gate_5_report.txt").read_text()
 
 
 def test_disabled_mode_cannot_accept_previously_dummy_results(tmp_path):
@@ -94,5 +94,5 @@ def test_disabled_mode_cannot_accept_previously_dummy_results(tmp_path):
     setup[2].runtime_validation_mode = "dummy"
     assert run(tmp_path, setup) == "validation_evidence_pending"
     setup[2].runtime_validation_mode = "disabled"
-    setup[2].gate_policies["4"] = "automatic"
+    setup[2].gate_policies["5"] = "automatic"
     assert finalize(tmp_path, setup) == "finalization_blocked"

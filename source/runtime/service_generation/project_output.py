@@ -7,28 +7,53 @@ from agents.java_service_generation.agent import parse_generated_project_output,
 WRAPPER_OUTPUT_VERSION = "managed-pom-rejection-v1"
 
 
-def configure_executable_build(context):
+def configure_executable_build(context, *, external_driver=None):
     """Add the pinned Spring Boot packaging plugin without accepting model build scripts."""
     from constants import SPRING_BOOT_VERSION
     from xml.etree import ElementTree
     from tools.maven_dependency_tools.pom_manager import project_lock
     path = Path(context.pom_path)
     with project_lock(path):
-        root = ElementTree.parse(path).getroot()
+        root = ElementTree.parse(path,parser=ElementTree.XMLParser(target=ElementTree.TreeBuilder(insert_comments=True))).getroot()
         namespace = root.tag.partition("}")[0] + "}" if "}" in root.tag else ""
+        if namespace:ElementTree.register_namespace('',namespace[1:-1])
         build = root.find(namespace + "build")
         if build is None:
             build = ElementTree.SubElement(root, namespace + "build")
         plugins = build.find(namespace + "plugins")
         if plugins is None:
             plugins = ElementTree.SubElement(build, namespace + "plugins")
-        plugin = ElementTree.SubElement(plugins, namespace + "plugin")
+        plugin = next((node for node in plugins.findall(namespace+'plugin')
+            if node.findtext(namespace+'groupId')=='org.springframework.boot' and
+            node.findtext(namespace+'artifactId')=='spring-boot-maven-plugin'),None)
+        if plugin is None:plugin=ElementTree.SubElement(plugins, namespace + "plugin")
         for name, text in (("groupId", "org.springframework.boot"),
                            ("artifactId", "spring-boot-maven-plugin"), ("version", SPRING_BOOT_VERSION)):
-            ElementTree.SubElement(plugin, namespace + name).text = text
-        execution = ElementTree.SubElement(ElementTree.SubElement(plugin, namespace + "executions"), namespace + "execution")
-        goals = ElementTree.SubElement(execution, namespace + "goals")
-        ElementTree.SubElement(goals, namespace + "goal").text = "repackage"
+            child=plugin.find(namespace+name)
+            if child is None:child=ElementTree.SubElement(plugin,namespace+name)
+            if name=='version' and child.text and child.text!=text:
+                raise ValueError('Managed Spring Boot packaging version conflicts with the shared dependency policy')
+            child.text=text
+        configuration=plugin.find(namespace+'configuration')
+        if configuration is None:configuration=ElementTree.SubElement(plugin,namespace+'configuration')
+        layout=configuration.find(namespace+'layout')
+        if layout is None:layout=ElementTree.SubElement(configuration,namespace+'layout')
+        layout.text='ZIP'
+        if external_driver is not None:
+            from runtime.service_deployment.driver_artifacts import driver_coordinates
+            coordinates=driver_coordinates(external_driver)
+            excludes=configuration.find(namespace+'excludes')
+            if excludes is None:excludes=ElementTree.SubElement(configuration,namespace+'excludes')
+            if not any(node.findtext(namespace+'groupId')==coordinates['groupId'] and
+                       node.findtext(namespace+'artifactId')==coordinates['artifactId'] for node in excludes):
+                exclude=ElementTree.SubElement(excludes,namespace+'exclude')
+                for name in ('groupId','artifactId'):ElementTree.SubElement(exclude,namespace+name).text=coordinates[name]
+        if not any(goal.text=='repackage' for goal in plugin.findall('.//'+namespace+'goal')):
+            executions=plugin.find(namespace+'executions')
+            if executions is None:executions=ElementTree.SubElement(plugin,namespace+'executions')
+            execution=ElementTree.SubElement(executions,namespace+'execution')
+            goals=ElementTree.SubElement(execution,namespace+'goals')
+            ElementTree.SubElement(goals,namespace+'goal').text='repackage'
         path.write_bytes(ElementTree.tostring(root, encoding="utf-8", xml_declaration=True))
 
 

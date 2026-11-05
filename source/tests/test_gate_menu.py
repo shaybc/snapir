@@ -19,7 +19,7 @@ def saved_run(root, run_id="existing", phase="gate_2_pending", *, report=True):
         conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
         conn.execute("INSERT INTO runs VALUES (?, 'paused', ?)", (run_id, phase))
     if report:
-        for gate in range(1, 5):
+        for gate in range(1, 6):
             write_run_report(directory, f"gate_{gate}_report.txt", f"Gate {gate} evidence")
     return directory
 
@@ -42,9 +42,10 @@ def project(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("command, decision", [("approve", "approved"), ("reject", "rejected")])
-@pytest.mark.parametrize("phase", ["gate_2_pending", "gate_2_rejected"])
+@pytest.mark.parametrize("phase", ["gate_2_pending", "gate_2_rejected", "gate_4_pending", "gate_4_rejected", "gate_5_pending", "gate_5_rejected"])
 def test_gate_inferred_recorded_and_result_visible_before_menu(project, monkeypatch, capsys, command, decision, phase):
     directory = saved_run(project / "work/migration_runs", phase=phase)
+    gate = int(phase.split('_')[1])
     choices = iter([command, str(directory), "exit"])
     events = []
     def select(title, options):
@@ -52,15 +53,15 @@ def test_gate_inferred_recorded_and_result_visible_before_menu(project, monkeypa
         selected = next(choices)
         if selected == "exit":
             output = capsys.readouterr().out
-            assert f"Gate 2 {decision} for run: existing" in output
+            assert f"Gate {gate} {decision} for run: existing" in output
             assert "Decision recorded. Resume the run to continue." in output
             assert events == []
         return selected
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.clear_screen", lambda: events.append("clear"))
     assert main([]) == 0
-    digest = hashlib.sha256(b"Gate 2 evidence").hexdigest()
-    assert decisions(directory) == [(2, digest, decision, "human")]
+    digest = hashlib.sha256(f"Gate {gate} evidence".encode()).hexdigest()
+    assert decisions(directory) == [(gate, digest, decision, "human")]
 
 
 @pytest.mark.parametrize("command", ["approve", "reject"])
@@ -135,12 +136,14 @@ def test_cancelled_gate_selection_preserves_decisions(project, monkeypatch):
 
 
 @pytest.mark.parametrize("command", ["approve", "reject"])
-def test_explicit_gate_scripts_preserve_success_exit(tmp_path, monkeypatch, command):
-    directory = saved_run(tmp_path)
+@pytest.mark.parametrize("gate", [2, 4, 5])
+def test_explicit_gate_scripts_preserve_success_exit(tmp_path, monkeypatch, command, gate):
+    directory = saved_run(tmp_path, phase=f'gate_{gate}_pending')
     monkeypatch.setattr(interactive, "is_interactive", lambda: False)
     monkeypatch.setattr(interactive, "select_option", lambda *_: pytest.fail("Unexpected menu"))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
-    assert main([command, "--config", "original.yaml", "--run-id", "existing", "--gate", "2"]) == 0
+    assert main([command, "--config", "original.yaml", "--run-id", "existing", "--gate", str(gate)]) == 0
+    assert decisions(directory)[0][0] == gate
     assert decisions(directory)[0][2] == ("approved" if command == "approve" else "rejected")
 
 

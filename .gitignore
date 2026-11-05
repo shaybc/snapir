@@ -2,3 +2,8 @@
 /outputs/
 /work/
 /configs/
+
+# Locally built converter fixture JDBC tools (maintained sources stay tracked).
+/source/jdbc-fixture-java/**/target/
+/source/resources/fixture-jdbc/releases/
+/source/resources/fixture-jdbc/installations/

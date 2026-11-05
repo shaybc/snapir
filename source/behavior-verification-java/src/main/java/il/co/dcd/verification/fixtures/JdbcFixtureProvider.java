@@ -4,6 +4,7 @@ import java.lang.reflect.*;
 import java.sql.*;
 import java.util.*;
 import il.co.dcd.verification.harness.BoundaryRuntime;
+import il.co.dcd.fixtures.replay.Replay;
 
 /** A bounded JDBC capability, backed only by explicit SQL/parameter/result fixtures. */
 public final class JdbcFixtureProvider implements InvocationHandler {
@@ -66,7 +67,7 @@ public final class JdbcFixtureProvider implements InvocationHandler {
                 List<Object> ordered = new ArrayList<>(parameters.values());
                 event("call", ordered);
                 for (Map<String, Object> query : (List<Map<String, Object>>) specification.get("queries")) {
-                    if (!sql.equals(query.get("sql")) || !same(ordered, (List<?>)query.get("parameters"))) continue;
+                    if (!sql.equals(query.get("sql")) || !Replay.same(ordered, (List<?>)query.get("parameters"))) continue;
                     Map<String, Map<String, Object>> outputs = (Map<String, Map<String, Object>>) query.getOrDefault("out_parameters", Map.of());
                     if (outputs.size() != outputTypes.size() || outputTypes.entrySet().stream().anyMatch(entry ->
                             !outputs.containsKey(entry.getKey().toString()) ||
@@ -99,7 +100,7 @@ public final class JdbcFixtureProvider implements InvocationHandler {
                 }
                 event("query", ordered);
                 for (Map<String, Object> query : (List<Map<String, Object>>) specification.get("queries")) {
-                    if (!sql.equals(query.get("sql")) || !same(ordered, (List<?>)query.get("parameters"))) continue;
+                    if (!sql.equals(query.get("sql")) || !Replay.same(ordered, (List<?>)query.get("parameters"))) continue;
                     if (query.get("exception") instanceof Map<?, ?> failure) throw new SQLException(String.valueOf(failure.get("message")));
                     return proxy(ResultSet.class, new JdbcFixtureProvider("result", query, events, sql, resource));
                 }
@@ -114,14 +115,7 @@ public final class JdbcFixtureProvider implements InvocationHandler {
                 int column = values[0] instanceof Number n ? n.intValue()-1 : columns.indexOf(values[0]);
                 if (row < 0 || row >= rows.size() || column < 0 || column >= columns.size()) throw new BoundaryRuntime.Incomplete("Fixture result cursor/column unavailable");
                 Object value = rows.get(row).get(column); wasNull = value == null;
-                try { return switch (name) {
-                    case "getString" -> value == null ? null : String.valueOf(value);
-                    case "getInt" -> value == null ? 0 : new java.math.BigDecimal(value.toString()).intValueExact();
-                    case "getLong" -> value == null ? 0L : new java.math.BigDecimal(value.toString()).longValueExact();
-                    case "getBoolean" -> value == null ? false : (Boolean) value;
-                    case "getBigDecimal" -> value == null ? null : new java.math.BigDecimal(value.toString());
-                    default -> value;
-                }; } catch (ClassCastException | IllegalArgumentException | ArithmeticException unsupportedValue) {
+                try { return Replay.column(value, name); } catch (ClassCastException | IllegalArgumentException | ArithmeticException unsupportedValue) {
                     throw new BoundaryRuntime.Incomplete("Unsupported fixture JDBC column value for " + name);
                 }
             }
@@ -130,14 +124,5 @@ public final class JdbcFixtureProvider implements InvocationHandler {
     }
     private void event(String operation, List<?> arguments) {
         Map<String, Object> event = new LinkedHashMap<>(); event.put("operation", operation); event.put("sql", sql); event.put("arguments", arguments); event.put("resource",resource); event.put("resource_kind",kind); events.add(event);
-    }
-    private static boolean same(List<?> left,List<?> right) {
-        if (left.size()!=right.size()) return false;
-        for(int i=0;i<left.size();i++) {
-            Object a=left.get(i),b=right.get(i);
-            if(a instanceof Number && b instanceof Number) { if(new java.math.BigDecimal(a.toString()).compareTo(new java.math.BigDecimal(b.toString()))!=0)return false; }
-            else if(!Objects.equals(a,b)) return false;
-        }
-        return true;
     }
 }

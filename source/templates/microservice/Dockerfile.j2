@@ -1,0 +1,8 @@
+FROM [[ base_image ]]
+WORKDIR /app
+COPY target/[[ jar_name ]] /app/application.jar
+{% if external_driver %}COPY jdbc/jdbc-driver.jar /opt/jdbc/jdbc-driver.jar
+{% endif %}
+USER 10001
+EXPOSE [[ port ]]
+ENTRYPOINT ["java", "-Dloader.path=/opt/jdbc/", "-cp", "/app/application.jar", "org.springframework.boot.loader.launch.PropertiesLauncher"]

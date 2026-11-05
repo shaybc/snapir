@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config")
     parser.add_argument("--run-id")
     parser.add_argument('--connection-answers', help='JSON list of last-resort service/driver decisions for Resume')
-    parser.add_argument("--gate", type=lambda value: 'plan' if value == 'plan' else int(value), choices=[1, 2, 3, 4, 'plan'])
+    parser.add_argument("--gate", type=lambda value: 'plan' if value == 'plan' else int(value), choices=[1, 2, 3, 4, 5, 'plan'])
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Enable detailed file diagnostics; keep console progress concise.")
     args = parser.parse_args(argv)

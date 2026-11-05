@@ -1,0 +1,4 @@
+The chart does not create a database or credentials.
+Each pod owns its selected named JDBC pool. Supply the referenced Secret and JDBC driver.
+Check deployment-readiness.json before installing. An unpublished image is not deployable.
+Use kubectl port-forward service/{{ include "native-operation.name" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}

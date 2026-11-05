@@ -16,10 +16,11 @@ def encoded(value):
 
 def publish(directory, identity, context, bank, junit, comparisons, *, definition_checks=()):
     """Atomically publish a new complete revision; never overwrite an old revision."""
-    documents={'fixtures.json':bank.model_dump(mode='json'),'junit-scenarios.json':junit.model_dump(mode='json'),
+    # Fixture-only operation demos define no JUnit suite; normal JUnit validation remains mandatory at its own stage.
+    documents={'fixtures.json':bank.model_dump(mode='json'),'junit-scenarios.json':junit.model_dump(mode='json') if junit is not None else dict(scenarios=[],unresolved=[]),
                'comparison-scenarios.json':comparisons.model_dump(mode='json'),
                'validation.json':dict(definition_checks=list(definition_checks),execution_status='not_run',
-                   unresolved=dict(fixtures=bank.unresolved,junit=[*junit.unresolved,*[m for s in junit.scenarios for m in s.unresolved]],
+                   unresolved=dict(fixtures=bank.unresolved,junit=[*junit.unresolved,*[m for s in junit.scenarios for m in s.unresolved]] if junit is not None else [],
                        comparison=[*comparisons.unresolved,*[m for s in comparisons.scenarios for m in s.unresolved]]))}
     hashes={name:hashlib.sha256(encoded(value)).hexdigest() for name,value in documents.items()}
     context_hash=digest(context);revision=digest(dict(context=context_hash,files=hashes))

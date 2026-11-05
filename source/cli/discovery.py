@@ -17,6 +17,7 @@ RESUMABLE_PHASES = {
     "assembly_pending", "operation_assembly", "assembly_blocked", "operation_review_pending",
     "operation_review", "operation_revision", "operation_review_blocked", "gate_3_pending",
     "gate_3_rejected", "service_generation_pending", "service_generation",
+    "gate_5_pending", "gate_5_rejected", "gate_4_blocked",
     "service_generation_blocked", "validation_evidence_pending", "component_correction_pending",
     "assembly_correction_pending", "gate_4_pending", "gate_4_rejected", "finalization_blocked",
     "migration_approved", "dry_run_complete",

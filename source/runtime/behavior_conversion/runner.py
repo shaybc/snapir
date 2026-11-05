@@ -492,6 +492,10 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             record['scoped_operation_identity'] = closure['operation_identity']
             record_operation(conn, config, profile, consumer, record)
         save(conn, config.run_id, "operation", consumer, fingerprint, record)
+        from runtime.operation_assembly.values import prepare_operation_values
+        prepare_operation_values(conn,config,directory,record,profile=profile,model_call=model_call,
+            original_evidence=dict(sources=payload.get('operation_sources',[]),
+                configuration=dict(operation_xml=payload.get('configuration_xml',''))))
         from tools.state_store_tools.operation_calls import load_graph
         graph = load_graph(conn, config.run_id)
         if graph and any(call['callee'] == consumer or call['caller'] == consumer for call in graph['calls']):

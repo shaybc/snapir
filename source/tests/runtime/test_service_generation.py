@@ -29,6 +29,7 @@ class Verifier:
 
 def ready(tmp_path):
     setup, gate, assemble = setup_review(tmp_path, "automatic")
+    setup[2].microservice.enabled = False  # This fixture exercises the legacy wrapper path.
     from constants import COMMON_LIB_GROUP_ID, COMMON_LIB_ARTIFACT_ID
     from models.maven_dependency import MavenDependency
     from tools.maven_dependency_tools.pom_manager import merge_dependencies

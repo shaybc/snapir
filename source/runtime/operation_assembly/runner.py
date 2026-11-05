@@ -76,6 +76,11 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                                                 library_id=component["task_input"].get("managed_library_id"))
                                            for component in supporting],
                                approved_ibm_classes=profile.allowed_ibm_classes)
+                from runtime.operation_assembly.values import prepare_operation_values
+                def prepare_values():
+                    return prepare_operation_values(conn,config,directory,dict(project=str(project),
+                        channel=packet.channel,operation_id=packet.operation_id),profile=profile,model_call=model_call,
+                        original_evidence=dict(configuration=dict(operation_xml=xml),sources=[]))
                 if prior and prior.get("output_json") and prior["output_json"].get("equivalence_feedback"):
                     payload["equivalence_feedback"] = prior["output_json"]["equivalence_feedback"]
                 digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -84,6 +89,7 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                 if cached and cached["input_hash"] == digest and prior and prior["status"] == "completed":
                     path = Path(cached["service_path"])
                     if path.is_file() and _hash(path) == cached["service_hash"] and _hash(Path(build_context.pom_path)) == cached["pom_hash"]:
+                        prepare_values()
                         outcomes.append(dict(item, status="assembled", service_path=str(path), reused=True))
                         continue
                 if prior and prior["status"] == "blocked" and attempts >= config.max_agent_task_retries:
@@ -126,6 +132,7 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                     service_path=excluded.service_path, service_hash=excluded.service_hash, pom_hash=excluded.pom_hash""",
                     (config.run_id, packet.operation_id, packet.channel, digest, str(path), _hash(path), _hash(Path(build_context.pom_path))))
                 conn.commit()
+                prepare_values()
                 outcomes.append(dict(item, status="assembled", service_path=str(path), reused=False))
             except Exception as exc:
                 attempts += 1

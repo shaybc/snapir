@@ -125,7 +125,7 @@ def generate_final_report(conn: sqlite3.Connection, run_id: str, output_path: st
 
 
 def build_human_gate4_report(conn: sqlite3.Connection, run_id: str, output_path: str) -> str:
-    """Build the final Human Gate 4 approval prompt."""
+    """Build the final Human Gate 5 prompt; retain the legacy function name for callers."""
     artifacts = _generated_artifacts(conn, run_id)
     total_operations = len({row["operation_id"] for row in artifacts})
     validated = len({row["operation_id"] for row in artifacts if row["status"] == "validated"})
@@ -134,7 +134,7 @@ def build_human_gate4_report(conn: sqlite3.Connection, run_id: str, output_path:
     routing_mismatches = len({row["operation_id"] for row in _trace_rows(conn, run_id) if row["failure_class"] == "routing_mismatch"})
     return "\n".join(
         [
-            "=== Human Gate 4 ===",
+            "=== Human Gate 5 ===",
             "Migration complete.",
             "",
             f"Operations validated: {validated}/{total_operations}",

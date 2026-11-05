@@ -1,0 +1,9 @@
+# Local build products and portable distributions.
+/target/
+**/target/
+/*.PKG/
+
+# Runtime settings and execution diagnostics.
+/runtime-config.json
+/standalone/.demo-runtime/
+*.log

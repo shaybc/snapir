@@ -11,7 +11,7 @@ from tools.state_store_tools.operation_calls import get_contract
 
 
 def prepare_publication(conn, config, profile, key, directory):
-    """Require finished workflow, packaging/tests/reviews and Gate 4 before registration."""
+    """Require finished workflow, packaging/tests/reviews and Gate 5 before registration."""
     channel, operation = key.split('/', 1)
     row = conn.execute('SELECT current_phase FROM runs WHERE run_id=?', (config.run_id,)).fetchone()
     if row is None or row[0] != 'operation_workflow_completed':
@@ -36,14 +36,18 @@ def prepare_publication(conn, config, profile, key, directory):
     if any(validation.get(name) is not True for name in ('build_passed', 'package_passed', 'ibm_guard_passed')) or any(
         validation.get(name) != 'passed' for name in ('test_status', 'xml_compatibility', 'behavioral_equivalence', 'legacy_trace_comparison')):
         raise ValueError('Service packaging and operation tests must pass before publication')
-    report4 = run_report_path(directory, 'gate_4_report.txt').read_text(encoding='utf-8')
+    report4 = run_report_path(directory, 'gate_5_report.txt').read_text(encoding='utf-8')
+    if not report4.startswith('=== Human Gate 5 ==='):
+        raise ValueError('Final Gate 5 report uses an obsolete gate purpose')
     from runtime.gate_one_reports import read_gate_one_reports
-    for number in (1, 2, 3):
+    for number in ((1, 2, 3, 4) if profile.microservice.enabled else (1, 2, 3)):
         report = read_gate_one_reports(directory) if number == 1 else run_report_path(directory, f'gate_{number}_report.txt').read_text(encoding='utf-8')
+        if number==4 and not report.startswith('=== Human Gate 4: Create microservices ==='):
+            raise ValueError('Creation Gate 4 report uses an obsolete gate purpose')
         if evaluate_gate(conn, config.run_id, number, report, 'human', True) != 'approved':
             raise ValueError('Every operation gate must be approved before publication')
-    if evaluate_gate(conn, config.run_id, 4, report4, 'human', True) != 'approved':
-        raise ValueError('Operation Gate 4 approval is required')
+    if evaluate_gate(conn, config.run_id, 5, report4, 'human', True) != 'approved':
+        raise ValueError('Operation Gate 5 approval is required')
     native = get_contract(conn, config.run_id, key)
     formats = native['formats']
     if any(role not in formats or formats[role].get('unresolved') for role in ('csRequestFormat','csReplyFormat','csErrorReplyFormat')):

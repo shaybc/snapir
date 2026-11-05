@@ -32,17 +32,19 @@ REPORT_STAGES = {
     "service_definitions.json": "intake_and_legacy_analysis",
     "service_connection_questions.json": "dependency_closure_and_component_conversion",
     **{name: "operation_assembly_and_review" for name in ("assembly_results.json", "gate_3_report.txt")},
+    "operation_values_results.json": "operation_assembly_and_review",
     "service_validation_results.json": "service_generation_and_validation",
-    **{name: "final_validation" for name in ("delivery_manifest.json", "final_report.md", "gate_4_report.txt")},
+    "gate_4_report.txt": "service_generation_and_validation",
+    **{name: "final_validation" for name in ("delivery_manifest.json", "final_report.md", "gate_5_report.txt")},
 }
 
 
 def workflow_stage(phase):
     """Map detailed persisted checkpoints to their containing workflow stage."""
     phase = phase or ""
-    if phase.startswith(("gate_4", "finalization")) or phase in {"migration_approved", "dry_run_complete"}:
+    if phase.startswith(("gate_5", "finalization")) or phase in {"migration_approved", "dry_run_complete"}:
         return "final_validation"
-    if phase.startswith("service_generation") or phase == "validation_evidence_pending":
+    if phase.startswith(("service_generation", "gate_4")) or phase == "validation_evidence_pending":
         return "service_generation_and_validation"
     if phase.startswith(("operation_", "assembly_", "gate_3")):
         return "operation_assembly_and_review"

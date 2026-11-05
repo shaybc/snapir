@@ -1,4 +1,4 @@
-"""Render deployment deliverables and bind Gate 4 to complete validation evidence."""
+"""Render deployment deliverables and bind Gate 5 to complete validation evidence."""
 
 from runtime.workspace_paths import run_report_path, write_run_report
 import hashlib
@@ -17,7 +17,7 @@ from tools.state_store_tools.runs import update_run_status
 
 
 def run_finalization(conn, config, profile, plan, directory, *, complete_run=True):
-    """Write manifest/docs inventories and require evidence-complete approval at Gate 4."""
+    """Write manifest/docs inventories and require evidence-complete approval at Gate 5."""
     directory = Path(directory)
     evidence = collect_operation_evidence(conn, config, profile, plan)
     blockers = []
@@ -26,6 +26,13 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
     report3 = run_report_path(directory, "gate_3_report.txt").read_text(encoding="utf-8")
     if evaluate_gate(conn, config.run_id, 3, report3, "human", True) != "approved":
         blockers.append("Current Gate 3 is not approved")
+    if profile.microservice.enabled:
+        try:
+            report4=run_report_path(directory,'gate_4_report.txt').read_text(encoding='utf-8')
+            if not report4.startswith('=== Human Gate 4: Create microservices ===') or evaluate_gate(conn,config.run_id,4,report4,'human',True)!='approved':
+                blockers.append('Current microservice creation Gate 4 is not approved')
+        except OSError:
+            blockers.append('Microservice creation Gate 4 approval evidence is missing')
     for item in evidence:
         key = (config.run_id, item["operation_id"], item["channel"])
         label = item["channel"] + "/" + item["operation_id"]
@@ -38,6 +45,10 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
         try:
             row = conn.execute("SELECT * FROM service_generation_checkpoints WHERE run_id=? AND operation_id=? AND channel=?", key).fetchone()
             expected = hashlib.sha256((item["fingerprint"] + report3 + generation_settings_identity(profile)).encode()).hexdigest()
+            if profile.microservice.enabled:
+                from runtime.service_generation.deployment_configuration import load_deployment
+                fingerprint=hashlib.sha256((item['fingerprint']+load_deployment(item).model_dump_json()).encode()).hexdigest()
+                expected=hashlib.sha256((fingerprint+report3+generation_settings_identity(profile)).encode()).hexdigest()
             if row is None or row["input_hash"] != expected or not row["project_hash"] or _project_hash(project) != row["project_hash"]:
                 raise ValueError("Generated project evidence is missing or stale")
             validation = json.loads(row["validation_json"])
@@ -61,22 +72,35 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
                         issues.append(name + " evidence file is unavailable or outside the run")
                     else:
                         evidence_files.append(path)
-            values = profile.deployment_values.get(label)
-            if not profile.deployment_template_dir or not values or not values.get("image_name"):
+            if profile.microservice.enabled:
+                packaging=validation.get('microservice',{})
+                if not packaging.get('packaging_passed'): raise ValueError('Helm packaging checks have not passed')
+                manifest_root=output/'deployment'
+                import shutil
+                shutil.copytree(project/'helm',manifest_root/'helm',dirs_exist_ok=True)
+                shutil.copyfile(project/'Dockerfile',manifest_root/'Dockerfile')
+                shutil.copyfile(project/'deployment-readiness.json',manifest_root/'deployment-readiness.json')
+                values = None
+            else:
+                values = profile.deployment_values.get(label)
+            if profile.microservice.enabled:
+                pass  # Helm artifacts were generated and validated by the canonical service stage.
+            elif not profile.deployment_template_dir or not values or not values.get("image_name"):
                 raise ValueError("Deployment templates and explicit image configuration are required")
-            values = {"container_port": profile.deployment_defaults.container_port,
+            if not profile.microservice.enabled:
+                values = {"container_port": profile.deployment_defaults.container_port,
                       "health_paths": {"liveness": profile.deployment_defaults.liveness_path,
                                        "readiness": profile.deployment_defaults.readiness_path}, "env_vars": profile.deployment_env_vars, **values}
-            spec = build_deployment_spec(item["operation_id"], values, template_dir=profile.deployment_template_dir,
+                spec = build_deployment_spec(item["operation_id"], values, template_dir=profile.deployment_template_dir,
                                          platform=profile.deployment_platform, environment=profile.deployment_environment)
-            manifest = render_manifest(profile.deployment_template_dir, spec, defaults=profile.deployment_defaults)
-            manifest_root = output / "deployment"
-            manifest_root.mkdir(exist_ok=True)
-            for filename, content in manifest.files.items():
-                path = manifest_root / filename
-                if Path(filename).name != filename or ":" in filename:
-                    raise ValueError("Unsafe deployment template filename")
-                path.write_text(content, encoding="utf-8")
+                manifest = render_manifest(profile.deployment_template_dir, spec, defaults=profile.deployment_defaults)
+                manifest_root = output / "deployment"
+                manifest_root.mkdir(exist_ok=True)
+                for filename, content in manifest.files.items():
+                    path = manifest_root / filename
+                    if Path(filename).name != filename or ":" in filename:
+                        raise ValueError("Unsafe deployment template filename")
+                    path.write_text(content, encoding="utf-8")
             upsert_generated_artifact(conn, artifact_id="final-manifest-" + hashlib.sha256(":".join(key).encode()).hexdigest(),
                 run_id=config.run_id, operation_id=item["operation_id"], channel=item["channel"], target_language="java",
                 artifact_kind="deployment_manifest", generated_path=str(manifest_root), status="converted",
@@ -91,7 +115,7 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
                 behavior_equiv_passed=validation.get("behavioral_equivalence") == "passed"),
             shared_components=[], generated_files=[str(path.relative_to(directory)) for path in sorted(project.rglob("*")) if path.is_file()])
         document = document.replace(f"{item['operation_id']} was migrated for channel {item['channel']}.",
-                                    f"Generated candidate for channel {item['channel']}; production readiness requires Gate 4.")
+                                    f"Generated candidate for channel {item['channel']}; production readiness requires Gate 5.")
         document += "\n## Evidence and blockers\n" + json.dumps(dict(validation=validation, blockers=issues), indent=2) + "\n"
         (output / "README.md").write_text(document, encoding="utf-8")
         blockers.extend(label + ": " + issue for issue in issues)
@@ -110,10 +134,10 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
     final_report = "# Migration deliverable review\n\nNo cluster deployment or image publication was performed.\n\n" + json.dumps(inventory, sort_keys=True, indent=2)
     write_run_report(directory, "final_report.md", final_report)
     review_notice = "Configured-executor readiness review; inspect validation notices. Approval does not deploy anything.\n"
-    report = "=== Human Gate 4 ===\n" + review_notice + final_report
-    write_run_report(directory, "gate_4_report.txt", report)
-    decision = evaluate_gate(conn, config.run_id, 4, report, profile.gate_policies.get("4", "human"), bool(evidence) and not blockers)
-    phase = "migration_approved" if decision == "approved" else "finalization_blocked" if decision == "blocked" else "gate_4_" + decision
+    report = "=== Human Gate 5 ===\n" + review_notice + final_report
+    write_run_report(directory, "gate_5_report.txt", report)
+    decision = evaluate_gate(conn, config.run_id, 5, report, profile.gate_policies.get("5", "human"), bool(evidence) and not blockers)
+    phase = "migration_approved" if decision == "approved" else "finalization_blocked" if decision == "blocked" else "gate_5_" + decision
     if decision == 'approved' and not complete_run:
         phase = 'operation_workflow_completed'
         from tools.state_store_tools.operation_progress import save_progress

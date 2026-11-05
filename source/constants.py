@@ -95,7 +95,7 @@ DEPLOYMENT_TEMPLATE_DIR = None
 DEPLOYMENT_VALUES = {}
 RUNTIME_VALIDATION_MODE = "disabled"
 ECLIPSE_CLASSPATH_VARIABLES = {}
-GATE_POLICIES = {str(number): "human" for number in range(1, 5)}
+GATE_POLICIES = {str(number): "human" for number in range(1, 6)}
 
 # Implemented capabilities, distinct from the default selection.
 SUPPORTED_TARGET_LANGUAGES = ("java",)

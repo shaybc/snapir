@@ -49,6 +49,11 @@ def generation_settings_identity(profile):
     if profile.service_maven_dependencies:
         identity += json.dumps({key: [pin.model_dump(mode="json") for pin in pins]
                                 for key, pins in profile.service_maven_dependencies.items()}, sort_keys=True)
+    if profile.microservice.enabled:
+        from runtime.service_generation.shared_runtime import runtime_fingerprint
+        from runtime.service_generation.packaging_policy import packaging_fingerprint
+        from runtime.service_generation.wrapper_contract import VERSION
+        identity += runtime_fingerprint() + packaging_fingerprint() + VERSION + profile.microservice.model_dump_json()
     return identity
 
 
@@ -70,12 +75,25 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
     correction_phase = None
     retry_generation = False
     operation_evidence = collect_operation_evidence(conn, config, profile, plan)
+    runtime_dependency = runtime_proof = None
+    if profile.microservice.enabled:
+        from runtime.service_generation.gate import require_microservice_approval
+        gate_phase=require_microservice_approval(conn,config,profile,directory,operation_evidence,
+            approved_report=report,settings_identity=generation_settings_identity(profile))
+        if gate_phase!='approved':return gate_phase
+        from runtime.service_generation.shared_runtime import install_runtime
+        runtime_dependency, runtime_proof = install_runtime(profile, directory)
     if profile.conversion_strategy == 'behavior_units':
         from runtime.behavior_conversion.operation_calls import order_closures
         operation_evidence = order_closures(conn, config, operation_evidence)
     for item in operation_evidence:
         key = (config.run_id, item["operation_id"], item["channel"])
         dependency_pins = operation_dependency_pins(profile, item["channel"], item["operation_id"])
+        deployment = None
+        if profile.microservice.enabled and not item['issues']:
+            from runtime.service_generation.deployment_configuration import load_deployment
+            deployment = load_deployment(item)
+            item = dict(item, fingerprint=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest())
         project = Path(directory) / "services" / item["channel"] / item["operation_id"]
         task_id = "service-" + hashlib.sha256(":".join(key).encode()).hexdigest()
         identity = hashlib.sha256((item["fingerprint"] + report + generation_settings_identity(profile)).encode()).hexdigest()
@@ -116,6 +134,12 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                                java_version=str(profile.java_version), spring_boot_version=SPRING_BOOT_VERSION,
                                pom=(project / "pom.xml").read_text(encoding="utf-8"),
                                validation_feedback=cached if row and row["input_hash"] == identity else {})
+                if deployment is not None:
+                    from runtime.service_generation.wrapper_contract import attach_wrapper_contract
+                    from runtime.service_generation.microservice_output import managed_resources
+                    attach_wrapper_contract(payload,deployment)
+                    payload['converter_owned_resources']=managed_resources(deployment)
+                    payload['shared_runtime_dependency']=runtime_dependency.model_dump(mode='json')
                 if dependency_pins:
                     payload["pinned_dependencies"] = [pin.model_dump(mode="json") for pin in dependency_pins]
                 if item['payload'].get('service_connections'):
@@ -157,6 +181,11 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                         _, encoded = encode_request(payload, instruction, profile.behavior_context_chars)
                     else:
                         encoded = json.dumps(payload)
+                    if deployment is not None:
+                        from runtime.service_generation.wrapper_contract import INSTRUCTION as MICRO_SERVICE_INSTRUCTION
+                        from runtime.behavior_conversion.request_context import encode_request
+                        instruction += '\n' + MICRO_SERVICE_INSTRUCTION + '\nDo not return converter_owned_resources; they are installed by the converter.'
+                        _, encoded = encode_request(payload,instruction,profile.behavior_context_chars)
                     response = AdkExecutor(profile).execute(instruction, encoded)
                     if profile.conversion_strategy == "behavior_units":
                         from runtime.service_generation.response import parse_service_response
@@ -165,7 +194,13 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                         output = json.loads(response)
                 else:
                     output = generator(payload)
+                if deployment is not None:
+                    from runtime.service_generation.microservice_output import merge_managed_resources, validate_initialization
+                    output=merge_managed_resources(output,payload['converter_owned_resources'])
+                    validate_initialization(output['files'],deployment)
                 proposals = [MavenDependency.model_validate(value) for value in output["dependencies"]]
+                if runtime_dependency is not None:
+                    proposals=apply_dependency_pins(proposals,[runtime_dependency])
                 if dependency_pins:
                     proposals = apply_dependency_pins(proposals, dependency_pins)
                     output["dependencies"] = [proposal.model_dump(mode="json") for proposal in proposals]
@@ -184,13 +219,21 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                         validate_client_configuration(wrappers, payload.get('operation_calls', []))
                 else:
                     wrappers = validate_wrapper_output(output["files"], protected, item["operation_id"], context)
-                configure_executable_build(context)
+                external_driver=None
+                if deployment is not None:
+                    from runtime.service_generation.external_jdbc import prepare_external_driver
+                    external_driver=prepare_external_driver(context,deployment,item['project'])
+                configure_executable_build(context,external_driver=external_driver)
                 for name, content in {**protected, **wrappers}.items():
                     target = project / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_text(content, encoding="utf-8")
                 for name in protected:
                     shutil.copyfile(Path(item["project"]) / name, project / name)
+                if deployment is not None:
+                    for relative in ('src/test/java','src/test/resources'):
+                        original=Path(item['project'])/relative
+                        if original.exists(): shutil.copytree(original,project/relative,dirs_exist_ok=True)
                 result = validator(project, context)
                 if profile.conversion_strategy == "behavior_units":
                     from runtime.service_generation.operation_wiring import validate_wiring_execution
@@ -210,6 +253,14 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 conn.execute("UPDATE service_generation_checkpoints SET validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                              (json.dumps(result), *key))
             passed = result.get("build_passed") and result.get("package_passed") and result.get("ibm_guard_passed") and result.get("test_status") == "passed"
+            if passed and deployment is not None:
+                from runtime.service_generation.microservice_output import package_microservice
+                result['microservice']=package_microservice(project,deployment,profile.microservice,
+                    values_path=Path(item['project'])/'values.yaml')
+                result['shared_runtime']=runtime_proof
+                passed=bool(result['microservice']['packaging_passed'])
+                conn.execute("UPDATE service_generation_checkpoints SET validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
+                             (json.dumps(result),*key))
             if passed and item['payload'].get('native_http_contract'):
                 from tools.state_store_tools.operation_calls import set_contract_status
                 set_contract_status(conn, config.run_id, item['channel'] + '/' + item['operation_id'], 'validated')
@@ -226,7 +277,9 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         if not passed:
             conn.execute("UPDATE service_generation_checkpoints SET validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                          (json.dumps(result), *key))
-            if profile.conversion_strategy == "behavior_units":
+            if result.get('microservice',{}).get('packaging_passed') is False:
+                route = 'deployment_configuration'
+            elif profile.conversion_strategy == "behavior_units":
                 from runtime.behavior_conversion.corrections import route_native_correction
                 route = route_native_correction(conn, config, item, result) if not item["issues"] else "human"
             else:
@@ -246,6 +299,11 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                              passed=bool(passed), validation=result))
         conn.commit()
     fresh = collect_operation_evidence(conn, config, profile, plan)
+    if profile.microservice.enabled:
+        for item in fresh:
+            if not item['issues']:
+                deployment=load_deployment(item)
+                item['fingerprint']=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest()
     expected = [(value["operation_id"], value["channel"],
                  hashlib.sha256((value["fingerprint"] + report + generation_settings_identity(profile)).encode()).hexdigest()) for value in fresh]
     recorded = conn.execute("SELECT operation_id,channel,input_hash FROM service_generation_checkpoints WHERE run_id=?",

@@ -92,10 +92,10 @@ Continuation requires `state/` and the mapper inputs in `vault/`; intake inspect
 | Dependency closure and component conversion | `3_dependency_closure_and_component_conversion/` | `dependency_closure.json` records required components and blockers; `managed_conversion_results.json` records conversion results. |
 | Component review | `4_component_review/` | `gate_2_report.txt` reviews converted components. |
 | Operation assembly and review | `5_operation_assembly_and_review/` | `assembly_results.json` and `gate_3_report.txt` review assembled operations. |
-| Service generation and validation | `6_service_generation_and_validation/` | `service_validation_results.json` and `runtime_test_reports/` hold validation evidence. |
-| Final validation | `7_final_validation/` | `delivery_manifest.json`, `final_report.md`, and `gate_4_report.txt` review the final deliverables. |
+| Service generation and validation | `6_service_generation_and_validation/` | `gate_4_report.txt` approves microservice creation using the operation root `values.yaml` before wrapper/Helm generation; `service_validation_results.json` and `runtime_test_reports/` hold validation evidence. |
+| Final validation | `7_final_validation/` | `delivery_manifest.json`, `final_report.md`, and `gate_5_report.txt` review the final deliverables. |
 
-The run root contains `state/`, `vault/`, `generated/`, `logs/` and `reports/`. Console progress and status display the same workflow-stage names alongside the detailed checkpoint. There are seven workflow stages and four approval gates.
+The run root contains `state/`, `vault/`, `generated/`, `logs/` and `reports/`. Console progress and status display the same workflow-stage names alongside the detailed checkpoint. There are seven workflow stages and five approval gates. Operation assembly creates root `values.yaml` before Gate 3, without a gate for creating that file, and fills blank JDBC URL/driver settings from an unambiguous operation-linked Composer pool while retaining Secret references for credentials. Microservice generation is enabled by default and waits for Gate 4 approval after Gate 3; Gate 5 remains the final deliverable review.
 
 ## Reading the shared-library plan
 
@@ -176,8 +176,8 @@ The workflow can be understood as seven conceptual groups:
 3. **Dependency closure and component conversion:** resolve operation dependencies and convert the required components.
 4. **Component review and approval gate 2:** review converted components, address findings, and obtain component approval.
 5. **Operation assembly and review / approval gate 3:** assemble operation implementations, review them, address findings, and obtain operation approval.
-6. **Service generation and validation:** generate service projects, build and validate them, and collect validation evidence.
-7. **Final validation and approval gate 4:** check final deliverables and validation evidence, then obtain final migration approval.
+6. **Service generation and validation / approval gate 4:** approve microservice creation, then generate Spring Boot service projects and Helm charts, build and validate them, and collect validation evidence. An explicit `microservice.enabled: false` retains the legacy path without Gate 4.
+7. **Final validation and approval gate 5:** check final deliverables and validation evidence, then obtain final migration approval.
 
 These groups are a conceptual overview, not an exact fixed database phase enumeration. Each group can involve waiting, blocking, failure, or correction checkpoints as applicable. The database stores `current_phase` as a string, with more specific checkpoints such as `gate_1_pending`, `closures_blocked`, `component_revision`, and `assembly_correction_pending`.
 

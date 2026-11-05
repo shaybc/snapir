@@ -23,10 +23,19 @@ def state(directory, attempts=(), snapshots=()):
                          (directory.name, category, identity, status, json.dumps(data)))
 
 
+def test_gate_five_shows_creation_approval_without_claiming_generation(tmp_path,capsys):
+    directory=make_run(tmp_path,'gate_4_pending')
+    display_workflow_progress(directory)
+    output=capsys.readouterr().out
+    assert 'Approve microservice creation (Gate 4)' in output
+    assert 'Gate 4 awaiting review' in output
+    assert 'Generate service' not in output
+
+
 @pytest.mark.parametrize("phase,title", [
     ("mapper", "Run mapper"), ("planning", "Create plan"), ("conversion_pending", "Convert units"),
     ("gate_2_pending", "Approve components"), ("assembly_pending", "Plan tests"),
-    ("service_generation", "Generate service"), ("gate_4_pending", "Approve migration"),
+    ("service_generation", "Generate service"), ("gate_5_pending", "Approve migration"),
 ])
 def test_every_stage_expands_only_its_own_subsections(tmp_path, capsys, phase, title):
     directory = make_run(tmp_path, phase)
@@ -37,7 +46,7 @@ def test_every_stage_expands_only_its_own_subsections(tmp_path, capsys, phase, t
     # Other stage subsection titles must not leak into the active stage tree.
     unique = {"mapper": "Run mapper", "planning": "Create plan", "conversion_pending": "Convert units",
               "gate_2_pending": "Approve components", "assembly_pending": "Plan tests",
-              "service_generation": "Generate service", "gate_4_pending": "Approve migration"}
+              "service_generation": "Generate service", "gate_5_pending": "Approve migration"}
     for other, text in unique.items():
         if other != phase:
             assert text not in output

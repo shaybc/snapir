@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "native-operation.name" . }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  operation-initialization.json: {{ .Values.operation.initialization | toJson | quote }}
+  application.yaml: |
+    server:
+      port: {{ .Values.service.port }}
+      shutdown: graceful
+    spring:
+      lifecycle:
+        timeout-per-shutdown-phase: 30s
+    native-operation:
+      http:
+        path: {{ .Values.http.path | quote }}
+    native-runtime:
+      operation:
+        identity: {{ .Values.operation.identity | quote }}
+        database: {{ .Values.operation.database | default "" | quote }}
+      initialization-file: file:/etc/native-runtime/operation-initialization.json
+      databases:
+      {{- if .Values.operation.database }}
+        {{ .Values.operation.database | quote }}:
+          {{- $database := required "Selected named database is missing" (index .Values.databases .Values.operation.database) }}
+          {{- $pool := $database.pool | default dict }}
+          jdbc-url: {{ $database.jdbcUrl | quote }}
+          driver-class: {{ $database.driverClass | quote }}
+          username: "${NATIVE_DATABASE_USERNAME}"
+          password: "${NATIVE_DATABASE_PASSWORD}"
+          minimum-idle: {{ $pool.minimumIdle | default 0 }}
+          maximum-pool-size: {{ $pool.maximumPoolSize | default 10 }}
+          connection-timeout-ms: {{ $pool.connectionTimeoutMs | default 30000 }}
+          max-lifetime-ms: {{ $pool.maxLifetimeMs | default 1800000 }}
+      {{- end }}

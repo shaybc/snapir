@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "native-operation.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "native-operation.name" . }}
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        {{- if and .Values.demoInfrastructure .Values.demoInfrastructure.enabled }}
+        fsGroup: 10001
+        {{- end }}
+      containers:
+        - name: application
+          image: {{ if .Values.image.digest }}{{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}{{ else }}{{ printf "%s:unpublished" (.Values.image.repository | default .Chart.Name) | quote }}{{ end }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: SPRING_CONFIG_ADDITIONAL_LOCATION
+              value: "file:/etc/native-runtime/application.yaml"
+          {{- if .Values.operation.database }}
+          {{- $database := index .Values.databases .Values.operation.database }}
+            - name: NATIVE_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $database.credentialsSecret.name | quote }}
+                  key: {{ $database.credentialsSecret.usernameKey | default "username" | quote }}
+            - name: NATIVE_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $database.credentialsSecret.name | quote }}
+                  key: {{ $database.credentialsSecret.passwordKey | default "password" | quote }}
+          {{- end }}
+          volumeMounts:
+            - name: configuration
+              mountPath: /etc/native-runtime
+              readOnly: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+        {{- if and .Values.demoInfrastructure .Values.demoInfrastructure.enabled }}
+        - name: fixture-server
+          image: {{ if .Values.demoInfrastructure.digest }}{{ printf "%s@%s" .Values.demoInfrastructure.repository .Values.demoInfrastructure.digest | quote }}{{ else }}{{ printf "%s:unpublished" (.Values.demoInfrastructure.repository | default "fixture-server") | quote }}{{ end }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - start
+            - --host
+            - "0.0.0.0"
+            - --port
+            - {{ .Values.demoInfrastructure.port | toString | quote }}
+            - --catalogue
+            - {{ .Values.demoInfrastructure.catalogueInContainer | quote }}
+            - --expected-hash
+            - {{ .Values.demoInfrastructure.catalogueHash | quote }}
+            - --state-dir
+            - /state
+            {{- range .Values.demoInfrastructure.fixtureRoots }}
+            - --fixture-root
+            - {{ . | quote }}
+            {{- end }}
+            {{- range $original, $mounted := .Values.demoInfrastructure.assetRootMap }}
+            - --asset-root-map
+            - {{ printf "%s=%s" $original $mounted | quote }}
+            {{- end }}
+          ports:
+            - name: fixtures
+              containerPort: {{ .Values.demoInfrastructure.port }}
+          securityContext:
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: fixture-data
+              mountPath: {{ .Values.demoInfrastructure.fixtureMount | quote }}
+              readOnly: true
+            - name: fixture-state
+              mountPath: /state
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /v1/health, port: fixtures}
+            periodSeconds: 3
+          livenessProbe:
+            httpGet: {path: /v1/health, port: fixtures}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+        {{- end }}
+      volumes:
+        - name: configuration
+          configMap:
+            name: {{ include "native-operation.name" . }}-config
+        {{- if and .Values.demoInfrastructure .Values.demoInfrastructure.enabled }}
+        - name: fixture-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.demoInfrastructure.fixtureClaim | quote }}
+            readOnly: true
+        - name: fixture-state
+          emptyDir: {}
+        {{- end }}

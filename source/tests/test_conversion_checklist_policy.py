@@ -158,7 +158,7 @@ def test_service_finalization_does_not_request_or_claim_runtime_equivalence(tmp_
     assert validation['behavioral_equivalence']=='not_assessed' and 'runtime_tests_simulated' not in validation
     settings.deployment_template_dir=str(Path(__file__).resolve().parents[1]/'templates/deployment')
     settings.deployment_values={'INTERNET/Op':dict(image_name='registry.example/service:1.0.0')}
-    assert run_finalization(conn,config,settings,plan,tmp_path)=='gate_4_pending'
+    assert run_finalization(conn,config,settings,plan,tmp_path)=='gate_5_pending'
     delivery=json.loads(run_report_path(tmp_path,'delivery_manifest.json').read_text(encoding='utf-8'))
     assert delivery['conversion_ready'] and not delivery['production_ready']
     assert delivery['behavioral_equivalence']=='not_assessed' and not delivery['blockers']

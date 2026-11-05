@@ -73,6 +73,8 @@ def checkpoint_guidance(directory, status, phase):
         return ["Dependency check found unresolved dependencies"], "Open the dependency closure report and resolve its blocking issues."
     if phase.startswith("gate_"):
         gate = phase.split("_")[1]
+        if phase == 'gate_4_blocked':
+            return ['Microservice creation inputs are blocked', 'Report: '+str(run_report_path(directory,'gate_4_report.txt'))], 'Resolve the Gate 4 input issues, then resume. No microservice has been created by this attempt.'
         decision = _gate_decision(directory, gate)
         if decision == "approved":
             return [f"Gate {gate} approved"], "Resume this run to continue."

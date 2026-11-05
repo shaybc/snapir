@@ -35,7 +35,7 @@ def test_false_empty_zero_null_and_partial_gate_overrides():
     assert profile.include_operations == []
     assert profile.exclude_operations is None
     assert profile.model_base_url == ""
-    assert profile.gate_policies == {"1": "human", "2": "skip", "3": "human", "4": "human"}
+    assert profile.gate_policies == {"1": "human", "2": "skip", "3": "human", "4": "human", "5": "human"}
 
 
 def test_nested_defaults_are_independent(monkeypatch):
@@ -52,7 +52,7 @@ def test_nested_defaults_are_independent(monkeypatch):
 
 
 @pytest.mark.parametrize("values", [{"target_languages": ["nodejs"]}, {"unknown": True},
-                                    {"model_api_key": "forbidden"}, {"gate_policies": {"5": "skip"}}])
+                                    {"model_api_key": "forbidden"}, {"gate_policies": {"6": "skip"}}])
 def test_unsupported_fields_and_capabilities(values):
     with pytest.raises(ValidationError):
         PipelineConfiguration(**values)
