@@ -13,6 +13,17 @@ def validate_vault_structure(vault_root: str) -> list[str]:
     return validate_vault_input(vault_root, [])[0]
 
 
+def validate_existing_composer_map(vault_root: str, target_channels: list[str]) -> None:
+    """Reject unavailable maps or missing selected channels without modifying input."""
+    if not Path(vault_root).is_dir():
+        raise ValueError("existing_composer_map must identify an existing map directory")
+    missing, channels = validate_vault_input(vault_root, target_channels)
+    if missing:
+        raise ValueError("Existing Composer map is missing required paths: " + "; ".join(missing))
+    if channels:
+        raise ValueError("Existing Composer map is missing selected channels: " + ", ".join(channels))
+
+
 def validate_vault_input(vault_root: str, target_channels: list[str]) -> tuple[list[str], list[str]]:
     """Validate notes once and check requested execution channels without a legacy registry."""
     root = Path(vault_root)

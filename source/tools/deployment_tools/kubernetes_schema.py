@@ -3,18 +3,19 @@ import hashlib
 import json
 from pathlib import Path
 import re
-from urllib.request import urlopen
 from jsonschema import Draft4Validator, RefResolver
 
 
 def validate_kubernetes(documents, directory, version='1.34.0'):
-    """Download/cache only the official versioned schema; a missing schema is a validation failure."""
+    """Use cached or bundled official schemas without network access; missing schemas fail validation."""
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):raise ValueError('Invalid Kubernetes schema version')
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
     path=directory/('kubernetes-'+version+'.json')
     source='https://raw.githubusercontent.com/kubernetes/kubernetes/v'+version+'/api/openapi-spec/swagger.json'
     if not path.exists():
-        with urlopen(source,timeout=60) as response:raw=response.read()
+        bundled=Path(__file__).parent/'schemas'/('kubernetes-'+version+'.json')
+        if not bundled.is_file():raise ValueError('Kubernetes schema is not bundled or cached: '+version)
+        raw=bundled.read_bytes()
         parsed=json.loads(raw)
         if 'definitions' not in parsed:raise ValueError('Kubernetes schema has no definitions')
         path.write_bytes(raw)

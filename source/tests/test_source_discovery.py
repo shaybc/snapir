@@ -74,3 +74,40 @@ def test_project_reference_resolves_other_project(tmp_path):
     (shared / ".project").write_text("<projectDescription><name>Shared</name></projectDescription>")
     index = discover_java_sources(str(tmp_path))
     assert resolve_indexed_source(index, "com.bank.Example", "owner") == source
+
+
+@pytest.mark.parametrize("content", [
+    "", " \t\n", "\ufeff \n",
+    "// package com.bank;\n// public class Unused {}",
+    "/* package com.bank;\n public class Unused {} */",
+    "/** Retired source. */\n // Nothing remains\n /* End */",
+])
+@pytest.mark.parametrize("relative", ["Unused.java", "com/bank/Unused.java"])
+def test_empty_and_comment_only_sources_are_not_indexed(tmp_path, content, relative):
+    root = tmp_path / "project/src"
+    source = java_file(root)
+    unused = root / relative
+    unused.parent.mkdir(parents=True, exist_ok=True)
+    unused.write_text(content, encoding="utf-8")
+    index = discover_java_sources(str(tmp_path))
+    assert index.classes == {"com.bank.Example": [source]}
+    assert index.class_projects == {source: "project"}
+    assert index.issues == []
+
+
+def test_real_source_without_package_still_reports_mismatched_root(tmp_path):
+    path = tmp_path / "project/src/com/bank/Unused.java"
+    path.parent.mkdir(parents=True)
+    path.write_text("// No package declaration\npublic class Unused {}", encoding="utf-8")
+    index = discover_java_sources(str(tmp_path))
+    assert index.classes == {}
+    assert index.issues == [f"Package does not match source root: {path}"]
+
+
+def test_default_package_source_is_still_indexed(tmp_path):
+    path = tmp_path / "project/src/Example.java"
+    path.parent.mkdir(parents=True)
+    path.write_text("// Default package\npublic class Example {}", encoding="utf-8")
+    index = discover_java_sources(str(tmp_path))
+    assert index.classes == {"Example": [str(path.resolve())]}
+    assert index.issues == []

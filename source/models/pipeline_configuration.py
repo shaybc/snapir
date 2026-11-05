@@ -54,6 +54,7 @@ class PipelineConfiguration(BaseModel):
     shared_library_min_usage: int = Field(default=constants.SHARED_LIBRARY_MIN_USAGE, ge=1)
     broad_library_usage_threshold: int = Field(default=constants.BROAD_LIBRARY_USAGE_THRESHOLD, ge=1)
     mapper_jar: str = constants.COMPOSER_MAPPER_JAR
+    existing_composer_map: str | None = Field(default=None, min_length=1)
     mapper_vault_layout: Literal["legacy", "scoped"] = constants.COMPOSER_MAPPER_VAULT_LAYOUT
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME

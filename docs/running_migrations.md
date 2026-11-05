@@ -213,6 +213,49 @@ changed reports require new decisions. Rejections remain effective until replace
 by an explicit approval. Run profiles are snapshotted at start for reproducibility.
 # Service generation and build validation
 
+## Reusing an existing Composer map
+
+In **Create a new config**, choose **Create a new map** (the default) to keep
+generating `<run>/vault`, or **Use an existing map folder** to import a completed
+Composer Mapper output directly. Reuse mode skips the Mapper JAR prompt and
+execution; it does not copy or modify the external map. The source workspace is
+still required for Java discovery and component inventory.
+
+The saved YAML contains `existing_composer_map: "D:/ComposerMaps/MyWorkspace"`.
+Relative map paths resolve against the YAML file's directory. The folder must be
+a supported legacy/scoped/shared vault and contain the selected channels. Its
+resolved location is persisted with the run for continuation; keep the map
+available and unchanged while the migration is in progress. Leave the setting
+absent or null to preserve new-map generation. No `<run>/vault` or mapper log is
+created in reuse mode.
+
+## Operation without public website access
+
+`run.cmd` and `run-verbose.cmd` default `LITELLM_LOCAL_MODEL_COST_MAP=True`,
+which makes LiteLLM use its bundled model pricing metadata. An explicitly set
+environment value takes precedence. When launching Python directly, set this
+variable before starting the process (PowerShell):
+
+```powershell
+$env:LITELLM_LOCAL_MODEL_COST_MAP = "True"
+```
+
+Kubernetes validation uses the official Kubernetes v1.34.0 OpenAPI schema bundled
+at `source/tools/deployment_tools/schemas/kubernetes-1.34.0.json`. Its upstream
+provenance URL and SHA-256 remain in the validation report. The schema is copied
+to the existing validation cache on first use; validation never downloads it.
+Other versions require a matching bundled or pre-populated cached schema.
+
+The converter measures model requests in characters and UTF-8 bytes; it does not
+call a tokenizer directly. LiteLLM may use tokenizers internally to estimate
+usage/cost when the endpoint does not return token counts. Depending on the model
+and installed LiteLLM version, tokenizer assets may need to be cached before
+moving to a restricted network; the pricing setting does not disable tokenizers.
+
+Configure pip and Maven to use accessible package repositories, the model profile
+to use the on-premises AI endpoint, container images to use the internal registry,
+and deployment/test settings to use reachable OpenShift, services and databases.
+
 ## Closure integration smoke test
 
 ### Source identity and configured-use inventory

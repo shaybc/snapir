@@ -39,6 +39,7 @@ def project(tmp_path, monkeypatch):
 
 
 def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
+    monkeypatch.setattr(wizard, "select_option", lambda title, options: options[0][0])
     from models.test_deployment_settings import TestDeploymentSettings as DeploymentSettings
     monkeypatch.setattr(wizard, "collect_test_deployment_settings", lambda prompt:
                         dict(test_deployment=DeploymentSettings().model_dump(mode="json")))
@@ -48,7 +49,7 @@ def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
         return default or name
     monkeypatch.setattr(wizard, "prompt_text", text)
     def multiple(title, options, **kwargs):
-        assert kwargs == {"select_all": True}
+        assert kwargs == ({"select_all": True, "filterable": True} if title == "Select operations" else {"select_all": True})
         if title == cancel_at:
             raise interactive.SelectionCancelled
         if title == "Select channels":
@@ -56,7 +57,7 @@ def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
             return ["WEB"]
         if title == "Select operations":
             assert options == [("WebOperation", "WebOperation")]
-            assert kwargs == {"select_all": True}
+            assert kwargs == {"select_all": True, "filterable": True}
             return ["WebOperation"]
         assert options == [("java", "Java")]
         return ["java"]
@@ -98,13 +99,53 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "include_operations": ["WebOperation"], "target_languages": ["java"],
         "java_version": 25, "java_home": str(project / "jdk-25"),
         "external_dependencies": [], "conversion_strategy": "legacy_components",
+        "model_provider": "litellm", "model_name": "openai/your-model-name",
+        "model_base_url": "https://your-endpoint.example/v1",
+        "model_api_key_environment": "SNAPIR_LLM_API_KEY",
         "test_deployment": wizard.PipelineConfiguration().test_deployment.model_dump(mode="json"),
     }
     loaded = load_configuration(destination)
     assert loaded.source_root == str((project / "bank-demo/composer/Workspace").resolve())
     assert loaded.output_root == str((project / "work/migration_runs").resolve())
-    assert len(prompts) == 8
+    assert len(prompts) == 12
     assert list(destination.parent.iterdir()) == [destination]
+
+
+def test_new_config_saves_custom_model_settings(project, monkeypatch):
+    collect_defaults(monkeypatch)
+    answers = {
+        "model_provider (gemini, litellm, or mock)": "litellm",
+        "model_name": "openai/local-model",
+        "model_base_url": "http://localhost:4000/v1",
+        "model_api_key_environment (environment variable name, not the API key)": "LOCAL_MODEL_KEY",
+    }
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+                        answers.get(title, default or "custom_model"))
+    destination = wizard.create_configuration()
+    loaded = load_configuration(destination)
+    assert loaded.model_provider == "litellm"
+    assert loaded.model_name == "openai/local-model"
+    assert loaded.model_base_url == "http://localhost:4000/v1"
+    assert loaded.model_api_key_environment == "LOCAL_MODEL_KEY"
+
+
+def test_new_config_reuses_external_map_without_mapper_prompt(project, monkeypatch):
+    collect_defaults(monkeypatch)
+    vault = project / "mapped"
+    (vault / "analysis").mkdir(parents=True)
+    (vault / "analysis/channel-operation-registry.md").write_text("WEB\n")
+    monkeypatch.setattr(wizard, "select_option", lambda *_: "existing")
+    def text(title, default=""):
+        assert title != "mapper_jar"
+        if title == "Existing Composer map folder":
+            return "../mapped"
+        return default or "reuse_config"
+    monkeypatch.setattr(wizard, "prompt_text", text)
+    destination = wizard.create_configuration()
+    data = yaml.safe_load(destination.read_text())
+    assert data["existing_composer_map"] == "../mapped"
+    assert "mapper_jar" not in data
+    assert load_configuration(destination).existing_composer_map == str(vault.resolve())
 
 
 def test_new_config_prompts_for_deployment_addresses_and_saves_overrides(project, monkeypatch):
@@ -159,7 +200,7 @@ def test_java_selection_retries_version_and_mismatched_jdk(project, monkeypatch,
 def test_custom_paths_are_preserved_and_config_relative(project, monkeypatch):
     collect_defaults(monkeypatch)
     values = iter(["custom", "../bank-demo/composer/Workspace", "../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar", "../other-output", "25", str(project / "jdk-25"), "[]", "legacy_components"])
-    monkeypatch.setattr(wizard, "prompt_text", lambda *_: next(values))
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="": next(values, default))
     destination = wizard.create_configuration()
     assert load_configuration(destination).output_root == str((project / "other-output").resolve())
     assert yaml.safe_load(destination.read_text())["output_root"] == "../other-output"
@@ -171,7 +212,7 @@ def test_absolute_input_paths_are_preserved(project, monkeypatch):
     jar = str(project / "source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar")
     output = str(project / "absolute-output")
     values = iter(["absolute", source, jar, output, "25", str(project / "jdk-25"), "[]", "legacy_components"])
-    monkeypatch.setattr(wizard, "prompt_text", lambda *_: next(values))
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="": next(values, default))
     destination = wizard.create_configuration()
     data = yaml.safe_load(destination.read_text())
     assert (data["source_root"], data["mapper_jar"], data["output_root"]) == (source, jar, output)
@@ -208,6 +249,8 @@ def test_existing_config_requires_explicit_replacement(project, monkeypatch, rep
     destination.parent.mkdir()
     destination.write_text("existing content")
     def confirm(title, options):
+        if title == "Composer map":
+            return "create"
         assert "already exists" in title
         assert options[0] == ("cancel", "Cancel")
         return "replace" if replace else "cancel"
@@ -316,8 +359,9 @@ def test_multiselect_space_select_all_and_done(monkeypatch, keys, expected):
     from prompt_toolkit.output import DummyOutput
     with create_pipe_input() as pipe:
         def application(**kwargs):
-            fragments = kwargs["layout"].container.content.text()
-            assert [text.strip() for _, text in fragments[:3]] == ["Done", "[ ] Select all", "────────────────────────"]
+            header = kwargs["layout"].container.children[:3]
+            assert [window.content.text()[0][1].strip() if callable(window.content.text)
+                    else window.content.text.strip() for window in header] == ["Done", "[ ] Select all", "────────────────────────"]
             return Application(**kwargs, input=pipe, output=DummyOutput())
         monkeypatch.setattr("prompt_toolkit.application.Application", application)
         pipe.send_text(keys)
@@ -336,6 +380,171 @@ def test_empty_done_stays_open_until_selection_and_cancellation(monkeypatch):
         pipe.send_text("\x03")
         with pytest.raises(interactive.SelectionCancelled):
             multiselect.select_multiple("Choose", [("java", "Java")], select_all=True)
+
+
+@pytest.mark.parametrize("keys, expected", [
+    # Selections survive changing filters, including selections hidden by the current filter.
+    ("\x1b[B\x1b[B\x1b[B BETA\x1b[B\x1b[B \x1b[H\r", ["alpha", "beta"]),
+    # Select all is global even when the filter has no matches.
+    ("missing\x1b[B \x1b[H\r", ["alpha", "beta", "payment"]),
+    ("\x1b[B\x1b[B\x1b[B missing\x1b[B\x1b[H\r", ["alpha"]),
+    # Spaces and Home/End edit the filter, rather than toggling or navigating the menu.
+    ("ment\x1b[HPay \x1b[F\x1b[B\x1b[B \x1b[H\r", ["payment"]),
+    ("bta\x1b[D\x1b[De\x1b[F\x1b[B\x1b[B \x1b[H\r", ["beta"]),
+    # Backspace updates matches; clearing the filter restores all operations.
+    ("betax\x7f\x1b[B\x1b[B \x1b[A\x1b[A\x15\x1b[B\x1b[B\x1b[A \x1b[H\r", ["alpha", "beta"]),
+    # Global select all can also clear hidden selections, then select one matching item.
+    ("\x1b[B\x1b[B beta\x1b[B \x1b[B \x1b[H\r", ["beta"]),
+])
+def test_operation_filter_preserves_selection_and_keyboard_editing(monkeypatch, keys, expected):
+    import asyncio
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+    with create_pipe_input() as pipe:
+        def application(**kwargs):
+            app = Application(**kwargs, input=pipe, output=DummyOutput())
+            def timeout():
+                app.exit(exception=AssertionError("Picker did not reach Done"))
+            app.pre_run_callables.append(lambda: asyncio.get_running_loop().call_later(3, timeout))
+            return app
+        monkeypatch.setattr("prompt_toolkit.application.Application", application)
+        pipe.send_text(keys)
+        assert multiselect.select_multiple(
+            "Operations", [("alpha", "Alpha"), ("beta", "Beta"), ("payment", "Pay ment")],
+            select_all=True, filterable=True) == expected
+
+
+@pytest.mark.parametrize("filterable", [False, True])
+def test_long_multiselect_scrolls_with_fixed_header_and_resizes(monkeypatch, filterable):
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.data_structures import Size
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    class SmallTerminal(DummyOutput):
+        rows = 12
+
+        def get_size(self):
+            return Size(rows=self.rows, columns=80)
+
+    output = SmallTerminal()
+    snapshots = []
+    down = "\x1b[B"
+    commands = [down * (83 if filterable else 82), "\x1b[6~", "\x1b[5~", "\x1b[F", "", " \x1b[H", "\r"]
+    failures = []
+    with create_pipe_input() as pipe:
+        def rendered(app):
+            if app.is_done:
+                return
+            try:
+                windows = app.layout.container.children
+                operations = windows[-2]
+                info = operations.render_info
+                cursor_row = operations.content.get_cursor_position().y
+                # Inspect actual rendered rows, rather than only the selection result.
+                assert cursor_row in info.displayed_lines
+                for window in windows[:-2]:
+                    assert window in app.layout.visible_windows
+                    assert window.render_info.displayed_lines == [0]
+                    assert window.vertical_scroll == 0
+                snapshots.append((cursor_row, operations.vertical_scroll, info.window_height))
+                if len(snapshots) == 5:
+                    output.rows = 9
+                    app.invalidate()
+                command = commands[len(snapshots) - 1]
+                if command:
+                    pipe.send_text(command)
+            except BaseException as exc:
+                failures.append(exc)
+                app.exit(result=[])
+
+        monkeypatch.setattr("prompt_toolkit.application.Application", lambda **kwargs:
+                            Application(**kwargs, input=pipe, output=output, after_render=rendered))
+        result = multiselect.select_multiple(
+            "Operations", [(str(index), f"Operation {index}") for index in range(1200)],
+            select_all=True, filterable=filterable)
+    if failures:
+        raise failures[0]
+    assert result == ["1199"]
+    assert snapshots[1][0] == 80
+    assert snapshots[1][1] > 0
+    assert snapshots[2][0] > snapshots[1][0]
+    assert snapshots[3][0] == 80
+    assert snapshots[4][0] == snapshots[5][0] == 1199
+    assert snapshots[5][2] < snapshots[4][2]
+
+
+@pytest.mark.parametrize("key", ["\x03", "\x1b"])
+def test_filter_cancellation_does_not_return_selection(monkeypatch, key):
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+    with create_pipe_input() as pipe:
+        monkeypatch.setattr("prompt_toolkit.application.Application", lambda **kwargs:
+                            Application(**kwargs, input=pipe, output=DummyOutput()))
+        pipe.send_text("missing" + key)
+        with pytest.raises(interactive.SelectionCancelled):
+            multiselect.select_multiple("Operations", [("one", "One")], select_all=True, filterable=True)
+
+
+def test_filter_renders_counts_and_no_matches_without_losing_selections(monkeypatch):
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    stages = []
+    failures = []
+    with create_pipe_input() as pipe:
+        def rendered(app):
+            if app.is_done:
+                return
+            try:
+                windows = app.layout.container.children
+                operations = windows[-2].content.text()
+                status = windows[-1].content.text()
+                if not stages:
+                    pipe.send_text("\x1b[B\x1b[B\x1b[B BETA")
+                elif len(stages) == 1:
+                    assert [text.strip() for _, text in operations] == ["[ ] Beta"]
+                    assert status == "1 matches of 3 · 1 selected"
+                    pipe.send_text("\x1b[B\x1b[B missing")
+                elif len(stages) == 2:
+                    assert operations == [("", "    No matching operations")]
+                    assert status == "0 matches of 3 · 2 selected"
+                    assert windows[1].content.buffer.text == "BETAmissing"
+                    pipe.send_text("\x1b[A\r")
+                else:
+                    raise AssertionError("Unexpected extra picker render")
+                stages.append(status)
+            except BaseException as exc:
+                failures.append(exc)
+                app.exit(result=[])
+
+        monkeypatch.setattr("prompt_toolkit.application.Application", lambda **kwargs:
+                            Application(**kwargs, input=pipe, output=DummyOutput(), after_render=rendered))
+        result = multiselect.select_multiple(
+            "Operations", [("alpha", "Alpha"), ("beta", "Beta"), ("gamma", "Gamma")],
+            select_all=True, filterable=True)
+    if failures:
+        raise failures[0]
+    assert result == ["alpha", "beta"]
+    assert len(stages) == 3
+
+
+@pytest.mark.parametrize("filterable", [False, True])
+@pytest.mark.parametrize("select_all", [False, True])
+def test_multiselect_wraps_back_to_first_option(monkeypatch, filterable, select_all):
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+    with create_pipe_input() as pipe:
+        monkeypatch.setattr("prompt_toolkit.application.Application", lambda **kwargs:
+                            Application(**kwargs, input=pipe, output=DummyOutput()))
+        header_count = 1 + int(filterable) + int(select_all)
+        pipe.send_text("\x1b[F" + "\x1b[B" * (header_count + 1) + " \x1b[H\r")
+        assert multiselect.select_multiple("Choose", [("one", "One"), ("two", "Two")],
+                                           select_all=select_all, filterable=filterable) == ["one"]
 
 
 def test_text_prompt_enter_accepts_displayed_default(monkeypatch):

@@ -20,6 +20,7 @@ from tools.source_discovery_tools import discover_java_sources
 from tools.source_discovery_tools.classpath import discover_java_classpath
 from runtime.model_execution.readiness import intake_model_warning
 from runtime.java_toolchain import java_scope, java_environment, run_java
+from runtime.intake_progress import component_inventory_progress
 
 
 def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
@@ -36,7 +37,10 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
     from runtime.workflow_stages import REPORT_FOLDERS
     for stage in REPORT_FOLDERS.values():
         (directory / "reports" / stage).mkdir()
-    vault = directory / "vault"
+    vault = Path(profile.existing_composer_map).resolve() if profile.existing_composer_map else directory / "vault"
+    if profile.existing_composer_map:
+        from tools.workspace_intake_tools.vault_validator import validate_existing_composer_map
+        validate_existing_composer_map(str(vault), profile.channels)
     database = run_database_path(directory)
     settings = {key: deepcopy(getattr(constants, key)) for key in dir(constants) if key.isupper()}
     settings.update(
@@ -76,8 +80,9 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         from tools.component_inventory_tools import build_component_inventory
         from tools.state_store_tools.component_inventory import persist_component_inventory, get_implementation_usage, get_configured_component_usage
         logger.info("Building component inventory.")
-        inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index)
-        persist_component_inventory(conn, run_id, inventory)
+        with component_inventory_progress(sum(len(paths) for paths in source_index.classes.values())):
+            inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index)
+            persist_component_inventory(conn, run_id, inventory)
         if profile.conversion_strategy == 'behavior_units':
             from tools.component_inventory_tools.service_inventory import service_inventory
             connections = service_inventory(profile.source_root, profile.channels)
@@ -89,16 +94,19 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         run_report_path(directory, "java_source_dependencies.json").write_text(inventory.java_dependencies.model_dump_json(indent=2), encoding="utf-8")
         run_report_path(directory, "component_usage.json").write_text(json.dumps(get_implementation_usage(conn, run_id), indent=2), encoding="utf-8")
         run_report_path(directory, "configured_component_usage.json").write_text(json.dumps(get_configured_component_usage(conn, run_id), indent=2), encoding="utf-8")
-        from tools.workspace_intake_tools.mapper_generation import mapper_command
-        command = mapper_command(settings, markdown=True, filter_channel=profile.conversion_strategy != 'behavior_units',
-                                 validate_output=profile.mapper_vault_layout == 'scoped')
-        update_run_status(conn, run_id, "in_progress", "mapper")
-        logger.info("Running Composer mapper; output is saved in logs/mapper.log.")
-        result = run_java(command, capture_output=True, text=True, check=False,
-                                env=java_environment(constants.MAPPER_JAVA_VERSION))
-        run_mapper_log_path(directory).write_text(result.stdout + result.stderr, encoding="utf-8")
-        if result.returncode:
-            raise RuntimeError("Composer mapper failed; see logs/mapper.log")
+        if profile.existing_composer_map:
+            logger.info("Using existing Composer map: %s; skipping Mapper generation.", vault)
+        else:
+            from tools.workspace_intake_tools.mapper_generation import mapper_command
+            command = mapper_command(settings, markdown=True, filter_channel=profile.conversion_strategy != 'behavior_units',
+                                     validate_output=profile.mapper_vault_layout == 'scoped')
+            update_run_status(conn, run_id, "in_progress", "mapper")
+            logger.info("Running Composer mapper; output is saved in logs/mapper.log.")
+            result = run_java(command, capture_output=True, text=True, check=False,
+                                    env=java_environment(constants.MAPPER_JAVA_VERSION))
+            run_mapper_log_path(directory).write_text(result.stdout + result.stderr, encoding="utf-8")
+            if result.returncode:
+                raise RuntimeError("Composer mapper failed; see logs/mapper.log")
         logger.info("Importing and analyzing the legacy vault.")
         analysis = run_legacy_composer_analysis(conn, config)
         if analysis["paused"]:

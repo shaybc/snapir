@@ -109,6 +109,8 @@ def _index_classes(index, workspace, project, root):
             index.issues.append(f"Cannot read Java source {path}: {exc}")
             continue
         source = re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.S)
+        if not source.strip():
+            continue
         match = re.search(r"\bpackage\s+([\w.]+)\s*;", source)
         package = match.group(1) if match else ""
         expected = Path(*package.split(".")) / path.name if package else Path(path.name)

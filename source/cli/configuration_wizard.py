@@ -21,6 +21,8 @@ from runtime.configuration import load_configuration
 from cli.java_configuration import collect_java_configuration
 from cli.external_dependency_settings import collect_external_dependencies
 from cli.test_deployment_settings import collect_test_deployment_settings
+from cli.model_configuration import collect_model_configuration
+from cli.composer_map_configuration import collect_composer_map_configuration
 
 
 def prompt_text(title: str, default: str = "") -> str:
@@ -106,12 +108,14 @@ def create_configuration() -> Path:
     ]) != "replace":
         raise SelectionCancelled
     source_root = collect_path(configs, "source_root", Path(os.path.relpath((configs.parent / constants.COMPOSER_ROOT).resolve(), configs)).as_posix())
-    mapper_jar = collect_path(configs, "mapper_jar", Path(os.path.relpath((configs.parent / constants.COMPOSER_MAPPER_JAR).resolve(), configs)).as_posix())
+    map_settings = collect_composer_map_configuration(configs, prompt_text, select_option)
+    if not map_settings:
+        map_settings["mapper_jar"] = collect_path(configs, "mapper_jar", Path(os.path.relpath((configs.parent / constants.COMPOSER_MAPPER_JAR).resolve(), configs)).as_posix())
     output_root = collect_path(configs, "output_root", Path(os.path.relpath((configs.parent / constants.OUTPUT_ROOT).resolve(), configs)).as_posix())
     channel_directories = discover_channel_directories((configs / source_root).resolve())
     channels = select_multiple("Select channels", [(name, name) for name in channel_directories], select_all=True)
     operations = discover_operations(channel_directories, channels)
-    included = select_multiple("Select operations", [(name, name) for name in operations], select_all=True)
+    included = select_multiple("Select operations", [(name, name) for name in operations], select_all=True, filterable=True)
     supported_languages = get_args(get_args(PipelineConfiguration.model_fields["target_languages"].annotation)[0])
     languages = select_multiple("Select target languages", [(name, name.title()) for name in supported_languages], select_all=True)
     if not channels or not included or not languages:
@@ -122,10 +126,12 @@ def create_configuration() -> Path:
     while strategy not in {"legacy_components", "behavior_units"}:
         print("Choose legacy_components or behavior_units")
         strategy = prompt_text("conversion_strategy (legacy_components or behavior_units)", "legacy_components")
-    data = dict(source_root=source_root, mapper_jar=mapper_jar, output_root=output_root,
+    data = dict(source_root=source_root, output_root=output_root,
                 channels=channels, include_operations=included, target_languages=languages,
                 java_version=java_version, java_home=java_home, conversion_strategy=strategy)
+    data.update(map_settings)
     data.update(external_settings)
+    data.update(collect_model_configuration(prompt_text))
     data.update(collect_test_deployment_settings(prompt_text))
     save_configuration(destination, data, overwrite=overwrite)
     print(f"Configuration saved: {destination}")

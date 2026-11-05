@@ -1,6 +1,8 @@
 @echo off
 rem Ensure project dependencies are available before launching the Snapir CLI.
 setlocal
+rem Use bundled LiteLLM pricing metadata unless explicitly overridden.
+if not defined LITELLM_LOCAL_MODEL_COST_MAP set "LITELLM_LOCAL_MODEL_COST_MAP=True"
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 
