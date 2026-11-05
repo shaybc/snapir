@@ -31,7 +31,7 @@ def test_reuse_resolves_map_without_mapper_jar(tmp_path, absolute):
     assert PipelineConfiguration.model_validate_json(profile.model_dump_json()).existing_composer_map == str(vault.resolve())
 
 
-@pytest.mark.parametrize("kind", ["missing", "file", "empty", "channel"])
+@pytest.mark.parametrize("kind", ["missing", "file", "empty"])
 def test_reuse_rejects_invalid_maps(tmp_path, kind):
     vault = tmp_path / "mapped"
     if kind == "file":
@@ -44,6 +44,23 @@ def test_reuse_rejects_invalid_maps(tmp_path, kind):
     profile_path.write_text(yaml.safe_dump(dict(source_root=".", channels=["OTHER"], existing_composer_map="mapped")))
     with pytest.raises(ValueError, match="existing map directory|missing required paths|missing selected channels"):
         load_configuration(profile_path)
+
+
+def test_configuration_paths_never_fully_validate_maps(tmp_path, monkeypatch):
+    vault = tmp_path / "mapped"
+    vault.mkdir()
+    # Deliberately incomplete: its contents are checked only at import.
+    (vault / "vault-manifest.json").write_text('{"entities": [')
+    def forbidden(*args, **kwargs):
+        pytest.fail("Full validation occurred before import")
+    monkeypatch.setattr("tools.composer_mapper_tools.vault_manifest.read_vault_manifest", forbidden)
+    monkeypatch.setattr("tools.composer_mapper_tools.manifest_json_stream.iter_manifest_fields", forbidden)
+    answers = iter(["mapped"])
+    settings = collect_composer_map_configuration(tmp_path, lambda *_: next(answers), lambda *_: "existing")
+    from cli.configuration_wizard import save_configuration
+    destination = tmp_path / "profile.yaml"
+    save_configuration(destination, dict(source_root=".", channels=["MISSING"], **settings), overwrite=False)
+    assert load_configuration(destination).existing_composer_map == str(vault.resolve())
 
 
 def test_default_generation_still_requires_mapper_jar(tmp_path):
@@ -81,6 +98,8 @@ def test_pipeline_map_choice_and_persisted_location(tmp_path, monkeypatch, reuse
     from tools.state_store_tools.db import get_connection
     from tools.state_store_tools.runs import get_run
     vault = existing_map(tmp_path / "mapped")
+    monkeypatch.setattr("tools.composer_mapper_tools.vault_manifest.read_vault_manifest",
+                        lambda *args, **kwargs: pytest.fail("Startup must not fully validate the map"))
     before = {p.relative_to(vault): p.read_bytes() for p in vault.rglob("*") if p.is_file()}
     dummy = SimpleNamespace(issues=[], classes={}, model_dump_json=lambda **_: "{}")
     inventory = SimpleNamespace(java_dependencies=dummy, model_dump_json=lambda **_: "{}")

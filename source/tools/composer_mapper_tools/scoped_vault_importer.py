@@ -77,9 +77,9 @@ def import_scoped_vault(conn, root, manifest, config, summary):
             continue
         upsert_operation(conn, operation_id=operation, channel=channel, run_id=config.run_id,
                          xml_file_path=str(metadata.get('source_file', '')))
-    graph = discover_operation_calls(root)
+    graph = discover_operation_calls(root, validated_manifest=manifest)
     save_graph(conn, config.run_id, graph)
-    plan_contracts(conn, config.run_id, graph, root)
+    plan_contracts(conn, config.run_id, graph, root, validated_manifest=manifest)
     summary.unresolved_references.extend(issue['operation'] + ': ' + issue['detail'] for issue in graph['issues'])
     return summary
 

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
+_UNREAD_MANIFEST = object()
+
 
 def initialize(conn):
     """Add operation-call state without changing existing tables."""
@@ -27,7 +29,7 @@ def load_graph(conn, run_id):
     return json.loads(row[0]) if row else None
 
 
-def plan_contracts(conn, run_id, graph, vault):
+def plan_contracts(conn, run_id, graph, vault, *, validated_manifest=_UNREAD_MANIFEST):
     """Define stable XML HTTP contracts from mapped formats, retaining validation only for identical facts."""
     initialize(conn)
     root = Path(vault)
@@ -37,7 +39,7 @@ def plan_contracts(conn, run_id, graph, vault):
         text = path.read_text(encoding='utf-8-sig')
         format_notes.setdefault(parse_frontmatter(text).get('entity_id'), []).append(text)
     from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
-    manifest = read_vault_manifest(root)
+    manifest = read_vault_manifest(root) if validated_manifest is _UNREAD_MANIFEST else validated_manifest
     scoped_formats = {}
     if manifest is not None:
         for entry in manifest['entities']:

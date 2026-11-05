@@ -241,6 +241,12 @@ execution; it does not copy or modify the external map. The source workspace is
 still required for Java discovery and component inventory.
 
 The saved YAML contains `existing_composer_map: "D:/ComposerMaps/MyWorkspace"`.
+Config creation, saving, loading, and intake startup check only that this folder
+and its manifest or legacy registry exist. They do not scan note contents.
+The map is fully validated once at the import boundary, with counting, progress,
+and time estimates; selected channels are checked there. Import helpers reuse
+that validated manifest. Targeted integrity checks still detect evidence changes
+during import. Validation results are not cached across separate imports.
 Relative map paths resolve against the YAML file's directory. The folder must be
 a supported legacy/scoped/shared vault and contain the selected channels. Its
 resolved location is persisted with the run for continuation; keep the map

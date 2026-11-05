@@ -14,6 +14,29 @@ def validate_vault_structure(vault_root: str) -> list[str]:
     return validate_vault_input(vault_root, [])[0]
 
 
+def check_existing_composer_map(vault_root: str) -> None:
+    """Check entry-point availability without enumerating or hashing map notes."""
+    root = Path(vault_root)
+    if not root.is_dir():
+        raise ValueError("existing_composer_map must identify an existing map directory")
+    if not (root / 'vault-manifest.json').is_file() and not (root / 'analysis/channel-operation-registry.md').is_file():
+        raise ValueError("Existing Composer map is missing required paths: vault-manifest.json or analysis/channel-operation-registry.md")
+
+
+def check_map_channels(vault_root, target_channels, manifest):
+    """Check selected channels using already validated manifest data or the legacy registry."""
+    if manifest is not None:
+        contexts = manifest.get('operation_contexts', manifest['entities'])
+        available = {entry['channel'] for entry in contexts if entry.get('operation_id')}
+    else:
+        from tools.workspace_intake_tools.channel_validator import _extract_channels
+        registry = Path(vault_root) / 'analysis/channel-operation-registry.md'
+        available = _extract_channels(registry.read_text()) if registry.is_file() else set()
+    missing = [channel for channel in target_channels if channel not in available]
+    if missing:
+        raise ValueError("Existing Composer map is missing selected channels (execution evidence): " + ", ".join(missing))
+
+
 def validate_existing_composer_map(vault_root: str, target_channels: list[str]) -> None:
     """Reject unavailable maps or missing selected channels without modifying input."""
     if not Path(vault_root).is_dir():

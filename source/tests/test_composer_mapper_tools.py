@@ -200,3 +200,22 @@ def test_import_vault_with_exclude_operations_removes_operation(tmp_path):
 
     rows = conn.execute("SELECT operation_id FROM operations ORDER BY operation_id").fetchall()
     assert [row["operation_id"] for row in rows] == ["OpB"]
+
+
+def test_legacy_import_does_not_revalidate_for_call_discovery_or_contracts(tmp_path, monkeypatch):
+    from tools.composer_mapper_tools import vault_manifest
+    from tools.operation_call_tools import discovery
+    original = vault_manifest.read_vault_manifest
+    calls = []
+    def read(*args, **kwargs):
+        calls.append(args[0])
+        return original(*args, **kwargs)
+    monkeypatch.setattr(vault_manifest, 'read_vault_manifest', read)
+    monkeypatch.setattr(discovery, 'read_vault_manifest', read)
+    conn = memory_conn()
+    vault = make_vault(tmp_path)
+    try:
+        import_vault(conn, str(vault), run_config(tmp_path))
+        assert len(calls) == 1
+    finally:
+        conn.close()

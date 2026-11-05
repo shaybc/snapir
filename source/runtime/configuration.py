@@ -29,8 +29,8 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
         raise ValueError("source_root must identify an existing directory")
     if config.existing_composer_map is not None:
         config.existing_composer_map = str((profile_path.parent / config.existing_composer_map).resolve())
-        from tools.workspace_intake_tools.vault_validator import validate_existing_composer_map
-        validate_existing_composer_map(config.existing_composer_map, config.channels)
+        from tools.workspace_intake_tools.vault_validator import check_existing_composer_map
+        check_existing_composer_map(config.existing_composer_map)
     elif not Path(config.mapper_jar).is_file():
         raise ValueError("mapper_jar must identify an existing file")
     if config.conversion_strategy == "behavior_units" or config.service_registry_path:

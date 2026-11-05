@@ -39,8 +39,8 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         (directory / "reports" / stage).mkdir()
     vault = Path(profile.existing_composer_map).resolve() if profile.existing_composer_map else directory / "vault"
     if profile.existing_composer_map:
-        from tools.workspace_intake_tools.vault_validator import validate_existing_composer_map
-        validate_existing_composer_map(str(vault), profile.channels)
+        from tools.workspace_intake_tools.vault_validator import check_existing_composer_map
+        check_existing_composer_map(str(vault))
     database = run_database_path(directory)
     settings = {key: deepcopy(getattr(constants, key)) for key in dir(constants) if key.isupper()}
     settings.update(

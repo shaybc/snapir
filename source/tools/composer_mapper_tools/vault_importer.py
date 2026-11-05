@@ -42,11 +42,19 @@ def import_vault(
     root = Path(vault_root)
     from tools.composer_mapper_tools.vault_manifest import read_vault_manifest
     from tools.composer_mapper_tools.scoped_vault_importer import import_scoped_vault, require_qualified_conversion
-    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest, validation_progress
+    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
+    from runtime.composer_map_progress import composer_map_validation_progress
+    from tools.workspace_intake_tools.vault_validator import check_map_channels
     manifest_path = root / 'vault-manifest.json'
     validated_hash = file_digest(manifest_path) if manifest_path.is_file() else None
-    manifest = read_vault_manifest(root, allow_shared=True,
-                                   progress=validation_progress(progress) if validated_hash else progress)
+    with composer_map_validation_progress(root) as report:
+        def validation_report(message):
+            report(message)
+            if progress:
+                progress(message)
+        manifest = read_vault_manifest(root, allow_shared=True, progress=validation_report)
+        if run_config.run_mode.value != 'full_inventory':
+            check_map_channels(root, run_config.target_channels, manifest)
     if manifest is not None:
         if file_digest(manifest_path) != validated_hash:
             raise ValueError('Scoped manifest changed during validation')
@@ -134,9 +142,9 @@ def import_vault(
     _populate_operations_table(conn, run_config)
     from tools.operation_call_tools.discovery import discover_operation_calls
     from tools.state_store_tools.operation_calls import save_graph, plan_contracts
-    graph = discover_operation_calls(vault_root)
+    graph = discover_operation_calls(vault_root, validated_manifest=manifest)
     save_graph(conn, run_config.run_id, graph)
-    plan_contracts(conn, run_config.run_id, graph, vault_root)
+    plan_contracts(conn, run_config.run_id, graph, vault_root, validated_manifest=manifest)
     summary.unresolved_references.extend(issue['operation'] + ': ' + issue['detail'] for issue in graph['issues'])
     return summary
 

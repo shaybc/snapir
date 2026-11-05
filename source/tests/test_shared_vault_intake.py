@@ -69,6 +69,55 @@ def connection():
     return conn
 
 
+@pytest.mark.parametrize('schema', [2, 3])
+def test_import_validates_map_once_and_checks_channels(tmp_path, monkeypatch, schema):
+    from tools.composer_mapper_tools import vault_manifest
+    from tools.operation_call_tools import discovery
+    vault, manifest = fixture_vault(tmp_path)
+    config = configuration()
+    if schema == 2:
+        manifest['vault_schema_version'] = 2
+        manifest.pop('operation_contexts')
+        (vault / 'vault-manifest.json').write_text(json.dumps(manifest))
+        config.target_channels = ['XML']
+    original = vault_manifest.read_vault_manifest
+    calls = []
+    def read(*args, **kwargs):
+        calls.append(args[0])
+        return original(*args, **kwargs)
+    monkeypatch.setattr(vault_manifest, 'read_vault_manifest', read)
+    monkeypatch.setattr(discovery, 'read_vault_manifest', read)
+    before = {p.relative_to(vault): p.read_bytes() for p in vault.rglob('*') if p.is_file()}
+    conn = connection()
+    try:
+        import_vault(conn, str(vault), config)
+        assert len(calls) == 1
+        assert {p.relative_to(vault): p.read_bytes() for p in vault.rglob('*') if p.is_file()} == before
+    finally:
+        conn.close()
+
+
+def test_import_rejects_missing_channels_after_single_validation(tmp_path, monkeypatch):
+    from tools.composer_mapper_tools import vault_manifest
+    vault, _ = fixture_vault(tmp_path)
+    original = vault_manifest.read_vault_manifest
+    calls = []
+    def read(*args, **kwargs):
+        calls.append(args[0])
+        return original(*args, **kwargs)
+    monkeypatch.setattr(vault_manifest, 'read_vault_manifest', read)
+    config = configuration()
+    config.target_channels = ['MISSING']
+    conn = connection()
+    try:
+        with pytest.raises(ValueError, match='missing selected channels'):
+            import_vault(conn, str(vault), config)
+        assert len(calls) == 1
+        assert not conn.execute("SELECT 1 FROM sqlite_master WHERE name='scoped_vault_runs'").fetchone()
+    finally:
+        conn.close()
+
+
 def test_context_override_order_and_literal_paths(tmp_path):
     vault, manifest = fixture_vault(tmp_path)
     conn = connection()
@@ -192,7 +241,9 @@ def test_schema_two_import_and_gate_remain_supported(tmp_path):
     manifest.pop('operation_contexts')
     (vault / 'vault-manifest.json').write_text(json.dumps(manifest))
     conn = connection()
-    summary = import_vault(conn, str(vault), configuration())
+    config = configuration()
+    config.target_channels = ['XML']
+    summary = import_vault(conn, str(vault), config)
     assert summary.operations == 1
     assert conn.execute('SELECT schema_version FROM scoped_vault_runs').fetchone()[0] == 2
     from tools.composer_mapper_tools.scoped_vault_importer import require_qualified_conversion

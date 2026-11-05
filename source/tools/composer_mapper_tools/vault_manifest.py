@@ -122,10 +122,10 @@ def read_vault_manifest(vault, *, retain_inventory=True, progress=None, allow_sh
     return manifest
 
 
-def operation_note_paths(vault, manifest=None):
+def operation_note_paths(vault, manifest=None, *, manifest_validated=False):
     """Enumerate effective operation notes from a scoped manifest or legacy folders."""
     root = Path(vault).resolve()
-    manifest = read_vault_manifest(root) if manifest is None else manifest
+    manifest = read_vault_manifest(root) if manifest is None and not manifest_validated else manifest
     if manifest is not None:
         return [root / entry['note'] for entry in manifest['entities']
                 if entry['kind'] == 'operation' and entry.get('operation_id')]

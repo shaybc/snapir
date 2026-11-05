@@ -12,6 +12,7 @@ from tools.composer_mapper_tools.channel_registry_parser import parse_channel_op
 from tools.composer_mapper_tools.vault_manifest import operation_note_paths, read_vault_manifest
 
 COMPLEX_CLASS = "com.ibm.il.dse.cc.cut.CCComplexOpStep"
+_UNREAD_MANIFEST = object()
 
 
 def _links(section):
@@ -45,13 +46,14 @@ def _missing_target_detail(channel, name, operations):
             + '; cross-channel targets require explicit resolution')
 
 
-def discover_operation_calls(vault, *, progress=None):
+def discover_operation_calls(vault, *, progress=None, validated_manifest=_UNREAD_MANIFEST):
     """Read a vault without mutation; return channel-qualified operations, calls and issues."""
     root = Path(vault).resolve()
-    manifest = read_vault_manifest(root, retain_inventory=False, progress=progress, allow_shared=True)
+    manifest = (read_vault_manifest(root, retain_inventory=False, progress=progress, allow_shared=True)
+                if validated_manifest is _UNREAD_MANIFEST else validated_manifest)
     if manifest is not None and manifest.get('vault_schema_version') == 3:
         return _discover_context_calls(root, manifest, progress)
-    note_paths = operation_note_paths(root, manifest)
+    note_paths = operation_note_paths(root, manifest, manifest_validated=True)
     registry = parse_channel_operation_registry(str(root / 'analysis/channel-operation-registry.md'))
     operations, calls, issues = {}, [], []
     if manifest is not None:

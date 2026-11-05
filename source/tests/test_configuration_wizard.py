@@ -141,6 +141,8 @@ def test_new_config_saves_custom_java_scan_timeout(project, monkeypatch):
 
 def test_new_config_reuses_external_map_without_mapper_prompt(project, monkeypatch):
     collect_defaults(monkeypatch)
+    monkeypatch.setattr("tools.composer_mapper_tools.vault_manifest.read_vault_manifest",
+                        lambda *args, **kwargs: pytest.fail("Config creation must not fully validate map notes"))
     vault = project / "mapped"
     (vault / "analysis").mkdir(parents=True)
     (vault / "analysis/channel-operation-registry.md").write_text("WEB\n")
