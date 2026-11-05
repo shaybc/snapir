@@ -213,6 +213,25 @@ changed reports require new decisions. Rejections remain effective until replace
 by an explicit approval. Run profiles are snapshotted at start for reproducibility.
 # Service generation and build validation
 
+## Java dependency scanner progress and inactivity timeout
+
+New-config creation prompts for `java_scan_inactivity_timeout_seconds`, default
+`900` (15 minutes). Enter accepts the default; a positive whole number overrides
+it. Existing profiles also use 900 unless they explicitly configure this field.
+The setting is saved with the run and applies to Java dependency scanning during
+intake and continuation.
+
+This is an inactivity limit, not a total scan duration. Scanner stdout/stderr
+activity or changes to its result file reset the timer, so a progressing scan of
+22,000 or more files can run longer than 15 minutes. The scanner reports actual
+parsed/scanned file counts at least every 100 files, or after five seconds when
+a file finishes. The general inventory heartbeat does not reset this timer.
+A single file with no observable progress can still hit the inactivity limit.
+
+Inactivity errors identify the configured idle period; executable/access errors
+identify failure to launch or access the JDK scanner. Nonzero Java exit codes
+retain the scanner's stderr diagnostics.
+
 ## Reusing an existing Composer map
 
 In **Create a new config**, choose **Create a new map** (the default) to keep

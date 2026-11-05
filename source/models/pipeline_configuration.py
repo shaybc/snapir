@@ -58,6 +58,7 @@ class PipelineConfiguration(BaseModel):
     mapper_vault_layout: Literal["legacy", "scoped"] = constants.COMPOSER_MAPPER_VAULT_LAYOUT
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME
+    java_scan_inactivity_timeout_seconds: int = Field(default=constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS, gt=0)
     output_root: str = constants.OUTPUT_ROOT
     channels: list[str] = Field(default_factory=lambda: deepcopy(constants.TARGET_CHANNELS), min_length=1)
     include_operations: list[str] | None = Field(default_factory=lambda: deepcopy(constants.INCLUDE_OPERATIONS))

@@ -98,6 +98,7 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "output_root": "../work/migration_runs", "channels": ["WEB"],
         "include_operations": ["WebOperation"], "target_languages": ["java"],
         "java_version": 25, "java_home": str(project / "jdk-25"),
+        "java_scan_inactivity_timeout_seconds": 900,
         "external_dependencies": [], "conversion_strategy": "legacy_components",
         "model_provider": "litellm", "model_name": "openai/your-model-name",
         "model_base_url": "https://your-endpoint.example/v1",
@@ -107,7 +108,7 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
     loaded = load_configuration(destination)
     assert loaded.source_root == str((project / "bank-demo/composer/Workspace").resolve())
     assert loaded.output_root == str((project / "work/migration_runs").resolve())
-    assert len(prompts) == 12
+    assert len(prompts) == 13
     assert list(destination.parent.iterdir()) == [destination]
 
 
@@ -127,6 +128,15 @@ def test_new_config_saves_custom_model_settings(project, monkeypatch):
     assert loaded.model_name == "openai/local-model"
     assert loaded.model_base_url == "http://localhost:4000/v1"
     assert loaded.model_api_key_environment == "LOCAL_MODEL_KEY"
+
+
+def test_new_config_saves_custom_java_scan_timeout(project, monkeypatch):
+    collect_defaults(monkeypatch)
+    monkeypatch.setattr(wizard, "prompt_text", lambda title, default="":
+        "1800" if title.startswith("Java scan inactivity timeout") else default or "scan_timeout")
+    destination = wizard.create_configuration()
+    assert yaml.safe_load(destination.read_text())["java_scan_inactivity_timeout_seconds"] == 1800
+    assert load_configuration(destination).java_scan_inactivity_timeout_seconds == 1800
 
 
 def test_new_config_reuses_external_map_without_mapper_prompt(project, monkeypatch):

@@ -7,6 +7,20 @@ from models.pipeline_configuration import PipelineConfiguration
 from runtime.java_toolchain import resolve_java_home
 
 
+def collect_java_scan_timeout(prompt_text):
+    """Collect a positive scanner inactivity limit in seconds; Enter accepts the default."""
+    while True:
+        value = prompt_text("Java scan inactivity timeout in seconds (progress resets the timer)",
+                            str(constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS))
+        try:
+            seconds = int(value)
+            if seconds <= 0:
+                raise ValueError()
+            return seconds
+        except ValueError:
+            print("Enter a positive whole number of seconds")
+
+
 def collect_java_configuration(configs, prompt_text):
     """Accept displayed defaults and retry invalid versions or JDK folders."""
     supported = get_args(PipelineConfiguration.model_fields["java_version"].annotation)

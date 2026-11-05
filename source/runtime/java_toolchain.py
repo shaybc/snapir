@@ -10,6 +10,13 @@ from contextvars import ContextVar
 import constants
 
 _selected = ContextVar("migration_java_toolchain", default=None)
+_scan_inactivity_timeout = ContextVar("java_scan_inactivity_timeout", default=None)
+
+
+def java_scan_inactivity_timeout():
+    """Return the run's scanner inactivity limit, or the standalone default."""
+    selected = _scan_inactivity_timeout.get()
+    return selected if selected is not None else constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS
 
 
 def jdk_version(home):
@@ -79,9 +86,12 @@ def java_scope(profile):
     import logging
     logging.getLogger(__name__).info("Selected Java %s JDK: %s", profile.java_version, profile.java_home)
     token = _selected.set((profile.java_version, profile.java_home))
+    scan_token = _scan_inactivity_timeout.set(getattr(profile, "java_scan_inactivity_timeout_seconds",
+                                                     constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS))
     try:
         yield
     finally:
+        _scan_inactivity_timeout.reset(scan_token)
         _selected.reset(token)
 
 
@@ -94,4 +104,8 @@ def run_java(command, **kwargs):
         if command[0] in {"java", "javac"}:
             suffix = ".exe" if os.name == "nt" else ""
             command = [str(Path(environment["JAVA_HOME"]) / "bin" / (command[0] + suffix)), *command[1:]]
+    inactivity = kwargs.pop("inactivity_timeout_seconds", None)
+    if inactivity is not None:
+        from runtime.java_process_activity import run_with_activity_timeout
+        return run_with_activity_timeout(command, inactivity_timeout_seconds=inactivity, **kwargs)
     return subprocess.run(command, **kwargs)

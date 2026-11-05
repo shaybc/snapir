@@ -18,7 +18,7 @@ from cli.multiselect import select_multiple
 from cli.terminal_display import clear_screen
 from models.pipeline_configuration import PipelineConfiguration
 from runtime.configuration import load_configuration
-from cli.java_configuration import collect_java_configuration
+from cli.java_configuration import collect_java_configuration, collect_java_scan_timeout
 from cli.external_dependency_settings import collect_external_dependencies
 from cli.test_deployment_settings import collect_test_deployment_settings
 from cli.model_configuration import collect_model_configuration
@@ -132,6 +132,7 @@ def create_configuration() -> Path:
     data.update(map_settings)
     data.update(external_settings)
     data.update(collect_model_configuration(prompt_text))
+    data["java_scan_inactivity_timeout_seconds"] = collect_java_scan_timeout(prompt_text)
     data.update(collect_test_deployment_settings(prompt_text))
     save_configuration(destination, data, overwrite=overwrite)
     print(f"Configuration saved: {destination}")

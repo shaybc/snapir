@@ -22,6 +22,7 @@ public class SourceReferenceScanner {
         }
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) throw new IllegalStateException("Java source analysis requires a JDK");
+        System.out.println("Starting syntax analysis of " + files.size() + " Java files.");
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         try (StandardJavaFileManager manager = compiler.getStandardFileManager(diagnostics, null, java.nio.charset.StandardCharsets.UTF_8);
              OutputStream stream = Files.newOutputStream(Paths.get(args[1]))) {
@@ -42,10 +43,26 @@ public class SourceReferenceScanner {
             }
             JavacTask task = (JavacTask) compiler.getTask(null, manager, diagnostics,
                     Arrays.asList("-proc:none", "-encoding", "UTF-8"), null, evidence);
+            task.addTaskListener(new TaskListener() {
+                private int parsed = 0;
+                private long lastReport = System.nanoTime();
+                @Override public void started(TaskEvent event) {}
+                @Override public void finished(TaskEvent event) {
+                    if (event.getKind() != TaskEvent.Kind.PARSE) return;
+                    parsed++;
+                    long now = System.nanoTime();
+                    if (parsed == 1 || parsed % 100 == 0 || now - lastReport >= 5_000_000_000L || parsed == files.size()) {
+                        System.out.println("Parsed " + parsed + "/" + files.size() + " Java files.");
+                        lastReport = now;
+                    }
+                }
+            });
             XMLStreamWriter output = XMLOutputFactory.newFactory().createXMLStreamWriter(stream, "UTF-8");
             output.writeStartDocument();
             output.writeStartElement("analysis");
             Trees trees = Trees.instance(task);
+            int scanned = 0;
+            long lastReport = System.nanoTime();
             for (CompilationUnitTree unit : task.parse()) {
                 output.writeStartElement("source");
                 output.writeAttribute("path", Paths.get(unit.getSourceFile().toUri()).toString());
@@ -57,6 +74,13 @@ public class SourceReferenceScanner {
                 }
                 new References(unit, trees, output).scan(unit, null);
                 output.writeEndElement();
+                scanned++;
+                long now = System.nanoTime();
+                if (scanned == 1 || scanned % 100 == 0 || now - lastReport >= 5_000_000_000L || scanned == files.size()) {
+                    output.flush();
+                    System.out.println("Scanned references in " + scanned + "/" + files.size() + " Java files.");
+                    lastReport = now;
+                }
             }
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
                 if (diagnostic.getKind() != Diagnostic.Kind.ERROR) continue;
@@ -67,6 +91,7 @@ public class SourceReferenceScanner {
             output.writeEndElement();
             output.writeEndDocument();
             output.close();
+            System.out.println("Java source dependency analysis completed.");
         }
     }
 
