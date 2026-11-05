@@ -1,5 +1,13 @@
 # Standalone operation
 
+New operations use sibling `standalone/` and `microservice/` projects in one repository.
+Run the native batches from the repository's standalone project. Run packaging from
+its repository root to copy both projects and localize the demo assets. The microservice
+is created only after Gate 4 and includes `application`, `integration-runtime` and
+`test-support` Maven modules; `mvn clean verify` builds them together without the converter.
+Its editable Helm values live inside its chart. Converter records remain outside the repository.
+
+
 Double-click `package-standalone-operation.bat` to copy this operation project into
 `<ProjectFolderName>.PKG`. Move or rename an existing package before packaging again.
 The copy retains the original POM, sources, tests, project files, and the exact same

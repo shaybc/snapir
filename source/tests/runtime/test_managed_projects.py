@@ -85,4 +85,4 @@ def test_ready_closure_dispatches_to_operation_pom(monkeypatch, tmp_path, needs_
         assert calls[-1]["previous_model_response"]
     if needs_correction is True:
         assert "vendor.Base" in calls[-1]["replacement_correction_feedback"]
-    assert (tmp_path / "generated/INTERNET/Op/src/main/java/com/company/generated/Step.java").is_file()
+    assert (tmp_path / "generated/INTERNET/Op/standalone/src/main/java/com/company/generated/Step.java").is_file()

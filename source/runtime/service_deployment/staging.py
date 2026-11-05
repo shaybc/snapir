@@ -2,15 +2,16 @@
 import hashlib
 import shutil
 from pathlib import Path
+from runtime.operation_layout import application_project, service_artifacts
 
 
 def stage_deployment(project, spec, *, values_path=None, overlays=()):
     """Copy the validated JAR and render the exact configuration used by deployment actions."""
     project=Path(project).resolve()
     identity=hashlib.sha256(spec.model_dump_json().encode()).hexdigest()
-    staged=project/'deployment-work'/identity
+    staged=service_artifacts(project)/'deployment-work'/identity
     target=staged/'target';target.mkdir(parents=True,exist_ok=True)
-    jars=list((project/'target').glob('*.jar'))
+    jars=list((application_project(project)/'target').glob('*.jar'))
     if len(jars)!=1:raise ValueError('Expected one validated executable service JAR')
     shutil.copyfile(jars[0],target/jars[0].name)
     from tools.deployment_tools.helm_renderer import render_helm

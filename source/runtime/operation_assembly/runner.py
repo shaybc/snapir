@@ -4,6 +4,7 @@ from runtime.workspace_paths import run_report_path, write_run_report
 import hashlib
 import json
 from pathlib import Path
+from runtime.operation_layout import standalone_project
 
 from agents.operation_assembly.service_skeleton_generator.agent import write_and_compile_service_skeleton
 from agents.operation_assembly.step_implementation_inserter.agent import run_step_implementation_inserter
@@ -55,7 +56,7 @@ def run_operation_assembly(conn, config, profile, plan, directory, *, gate_check
                 closure = get_operation_closure(conn, packet.operation_id, packet.channel, config.run_id)
                 if closure is None or closure["status"] != "READY":
                     raise ValueError("Operation closure is not READY")
-                project = Path(config.output_root) / packet.channel / packet.operation_id
+                project = standalone_project(config.output_root, packet.channel, packet.operation_id)
                 build_context = context_factory(profile, project, packet.operation_id)
                 original_xml = Path(closure["closure_json"].get("source_xml_path", ""))
                 if not original_xml.is_absolute():

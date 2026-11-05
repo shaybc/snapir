@@ -31,8 +31,27 @@ def command(args,**kwargs):
     return result
 
 
-def test_package_retains_identical_maven_project_for_production_and_demo(tmp_path):
+@pytest.mark.parametrize('sibling_layout',[False,True])
+def test_package_retains_identical_maven_project_for_production_and_demo(tmp_path,sibling_layout):
     root,project,assets=operation(tmp_path/'original location')
+    repository=project
+    if sibling_layout:
+        holding=project.with_name('temporary-native');project.rename(holding);project.mkdir()
+        holding.rename(project/'standalone');project=project/'standalone'
+        assets=next((project/'src/test/resources/shared-test-assets').rglob('manifest.json')).parent
+        write_standalone_runner(project,root,SimpleNamespace(service_api=SimpleNamespace(type_name='Example')))
+        binding=project/'standalone/operation.json';data=json.loads(binding.read_text())
+        data['runtime_config']=os.path.relpath(root/'runtime-config.json',binding.parent).replace('\\','/')
+        binding.write_text(json.dumps(data))
+        service=repository/'microservice'
+        for name in ['application','integration-runtime','test-support']:
+            source=service/name/'src/main/resources/images/kept.txt';source.parent.mkdir(parents=True)
+            source.write_text('source resource preserved')
+            (service/name/'pom.xml').write_text('<project/>')
+            cache=service/name/'target/ignored.class';cache.parent.mkdir();cache.touch()
+        (service/'pom.xml').write_text('<project/>')
+        chart=service/'helm/example';chart.mkdir(parents=True)
+        shutil.copyfile(project/'values.yaml',chart/'values.yaml')
     main=project/'src/main/java/Example.java';main.parent.mkdir(parents=True)
     main.write_text('''public class Example {
  public String execute(String xml,java.sql.Connection connection) throws Exception {
@@ -72,11 +91,19 @@ def test_package_retains_identical_maven_project_for_production_and_demo(tmp_pat
     overlay.write_text(yaml.safe_dump(overlay_values,sort_keys=False))
     protected={path:file_hash(path) for path in [pom,main,config,project/'standalone/operation.json',project/'values.yaml',overlay,*assets.iterdir()]}
     environment=os.environ.copy();environment['MAVEN_ARGS']='--offline'
-    build=command(['cmd','/d','/c','call',str(project/'package-standalone-operation.bat')],cwd=tmp_path,env=environment)
+    build=command(['cmd','/d','/c','call',str(repository/'package-standalone-operation.bat')],cwd=tmp_path,env=environment)
     assert 'test-password' not in build.stdout+build.stderr
-    package=project/'Example.PKG';assert package.is_dir()
+    package=repository/'Example.PKG'
+    package_repository=package
+    if sibling_layout:
+        for name in ['application','integration-runtime','test-support']:
+            assert (package/'microservice'/name/'src/main/resources/images/kept.txt').is_file()
+            assert not (package/'microservice'/name/'target').exists()
+        assert (package/'microservice/helm/example/values.yaml').is_file()
+        assert (package/'package-standalone-operation.bat').is_file()
+        package=package/'standalone';assert package.is_dir()
     assert all(file_hash(path)==value for path,value in protected.items())
-    for name in ['pom.xml','.gitignore','values.yaml','package-standalone-operation.bat','run-operation.bat','run-operation-demo.bat',
+    for name in ['pom.xml','.gitignore','values.yaml','run-operation.bat','run-operation-demo.bat',
                  'standalone/StandaloneLaunch.java','standalone/packaging/PackageMicroserviceValues.java']:
         assert (package/name).is_file()
     assert (package/'pom.xml').read_bytes()==pom.read_bytes()
@@ -89,16 +116,18 @@ def test_package_retains_identical_maven_project_for_production_and_demo(tmp_pat
     assert len(list((package/'lib').glob('*.jar')))==1
     assert (package/'README.md').read_bytes()==(project/'README.md').read_bytes()
     assert (package/'.mvn/maven.config').read_bytes()==(project/'.mvn/maven.config').read_bytes()
-    for name in ['run-operation.bat','run-operation-demo.bat','package-standalone-operation.bat']:
+    for name in ['run-operation.bat','run-operation-demo.bat']:
         assert (package/name).read_bytes()==(project/name).read_bytes()
+    assert (package_repository/'package-standalone-operation.bat').read_bytes()==(repository/'package-standalone-operation.bat').read_bytes()
     assert (package/'standalone/test-support/behavior-verification/pom.xml').is_file()
     assert (package/'standalone/test-support/behavior-verification/src/main/java/il/co/dcd/verification/fixtures/FixtureStore.java').is_file()
     snapshot={path:file_hash(path) for path in package.rglob('*') if path.is_file()}
-    duplicate=subprocess.run(['cmd','/d','/c','call',str(project/'package-standalone-operation.bat')],cwd=tmp_path,
+    duplicate=subprocess.run(['cmd','/d','/c','call',str(repository/'package-standalone-operation.bat')],cwd=tmp_path,
         capture_output=True,text=True,timeout=45)
     assert duplicate.returncode!=0 and all(file_hash(path)==value for path,value in snapshot.items())
     relocated=tmp_path/'another machine with spaces'/'Example.PKG';relocated.parent.mkdir()
-    shutil.copytree(package,relocated)
+    shutil.copytree(package_repository,relocated)
+    if sibling_layout:relocated=relocated/'standalone'
     # Make every original path unavailable; build exclusively from the copied project.
     root.rename(root.with_name('unavailable-original-tree'))
     env=environment;assert shutil.which('mvn',path=env['PATH']) is not None
@@ -200,3 +229,20 @@ public class ValuesProbe { public static void main(String[] args) throws Excepti
     assert (output/'lib/external driver.jar').read_bytes()==vendor.read_bytes()
     path.write_text('image: {}\nimage: {}\n')
     assert subprocess.run(args,capture_output=True,timeout=30).returncode!=0
+
+
+def test_repository_copy_preserves_user_assets_and_module_source_resources(tmp_path):
+    source=tmp_path/'operation';output=tmp_path/'copy';source.mkdir();output.mkdir()
+    kept=['images/logo.txt','microservice/application/src/main/resources/target/business.txt',
+        'microservice/integration-runtime/src/main/resources/images/diagram.txt']
+    for name in kept+['target/stale.class','microservice/application/target/stale.class']:
+        path=source/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(name)
+    templates=Path('source/templates/native_operations/standalone').resolve()
+    repo=Path.home()/'.m2/repository/com/fasterxml/jackson/core'
+    cp=os.pathsep.join(str(repo/name/'2.18.2'/(name+'-2.18.2.jar')) for name in ['jackson-databind','jackson-core','jackson-annotations'])
+    probe=tmp_path/'CopyProbe.java';probe.write_text('import java.nio.file.*; public class CopyProbe { public static void main(String[] args) throws Exception { PackageProjectFiles.stage(Path.of(args[0]),Path.of(args[1])); } }')
+    classes=tmp_path/'classes'
+    command(['javac','-cp',cp,'-d',str(classes),str(probe),str(templates/'DemoBinding.java'),str(templates/'packaging/PackageFiles.java'),str(templates/'packaging/PackageProjectFiles.java')])
+    command(['java','-cp',str(classes)+os.pathsep+cp,'CopyProbe',str(source),str(output)])
+    for name in kept:assert (output/name).read_bytes()==(source/name).read_bytes()
+    assert not (output/'target').exists() and not (output/'microservice/application/target').exists()

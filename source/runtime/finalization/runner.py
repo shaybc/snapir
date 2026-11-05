@@ -4,6 +4,7 @@ from runtime.workspace_paths import run_report_path, write_run_report
 import hashlib
 import json
 from pathlib import Path
+from runtime.operation_layout import service_root, service_record
 
 from constants import JAVA_VERSION, SPRING_BOOT_VERSION
 from agents.documentation_report.agent import generate_operation_doc
@@ -36,7 +37,7 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
     for item in evidence:
         key = (config.run_id, item["operation_id"], item["channel"])
         label = item["channel"] + "/" + item["operation_id"]
-        project = directory / "services" / item["channel"] / item["operation_id"]
+        project = service_root(directory, item)
         output = directory / "deliverables" / item["channel"] / item["operation_id"]
         output.mkdir(parents=True, exist_ok=True)
         issues = list(item["issues"])
@@ -79,7 +80,7 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
                 import shutil
                 shutil.copytree(project/'helm',manifest_root/'helm',dirs_exist_ok=True)
                 shutil.copyfile(project/'Dockerfile',manifest_root/'Dockerfile')
-                shutil.copyfile(project/'deployment-readiness.json',manifest_root/'deployment-readiness.json')
+                shutil.copyfile(service_record(project,'deployment-readiness.json'),manifest_root/'deployment-readiness.json')
                 values = None
             else:
                 values = profile.deployment_values.get(label)

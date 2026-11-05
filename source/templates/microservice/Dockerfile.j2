@@ -1,6 +1,6 @@
 FROM [[ base_image ]]
 WORKDIR /app
-COPY target/[[ jar_name ]] /app/application.jar
+COPY [[ jar_source ]] /app/application.jar
 {% if external_driver %}COPY jdbc/jdbc-driver.jar /opt/jdbc/jdbc-driver.jar
 {% endif %}
 USER 10001

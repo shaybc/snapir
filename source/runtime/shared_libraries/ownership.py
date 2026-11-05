@@ -15,7 +15,8 @@ def component_project(config, data, channel):
             raise ValueError("Invalid managed library identity")
         return Path(config.output_root) / "common-lib" if library == "common-lib" else Path(config.output_root) / "libraries" / library
     owner = data.get("managed_project_operation")
-    return Path(config.output_root) / channel / owner if owner else Path(config.output_root) / "common-lib"
+    from runtime.operation_layout import standalone_project
+    return standalone_project(config.output_root, channel, owner) if owner else Path(config.output_root) / "common-lib"
 
 
 def task_binding(conn, config, closure, kind, logical_id, source_file=None):

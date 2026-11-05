@@ -2,6 +2,7 @@
 import json
 import hashlib
 from pathlib import Path
+from runtime.operation_layout import application_project, service_artifacts, service_record
 from jinja2 import Environment, StrictUndefined
 from runtime.fixture_jdbc_tools.releases import digest, file_hash, verify_directory
 from runtime.service_deployment.driver_artifacts import selected_driver, audit_application
@@ -13,7 +14,7 @@ LAUNCHER=['java','-Dloader.path=/opt/jdbc/','-cp','/app/application.jar',
 def stage_image_variant(project, spec, *, variant='production', definition_root=None):
     """Publish one content-addressed context; no image build, driver download or JAR rewrite."""
     project=Path(project);definition_root=Path(definition_root or project)
-    jars=list((project/'target').glob('*.jar'))
+    jars=list((application_project(project)/'target').glob('*.jar'))
     if len(jars)!=1:raise ValueError('Expected one validated application JAR for image variants')
     jar=jars[0];driver=None
     from zipfile import ZipFile
@@ -52,9 +53,9 @@ def stage_image_variant(project, spec, *, variant='production', definition_root=
         docker_template_sha256=file_hash(template))
     if variant=='demo':
         identity.update(bundle_id=demo.bundleId,manifest_hash=demo.manifestHash,catalogue_hash=demo.catalogueHash)
-    root=project/'images'/variant/digest(identity)
+    root=service_artifacts(project)/'images'/variant/digest(identity)
     docker=Environment(undefined=StrictUndefined,variable_start_string='[[',variable_end_string=']]').from_string(
-        template.read_text(encoding='utf-8')).render(base_image=identity['base_image'],jar_name='application.jar',
+        template.read_text(encoding='utf-8')).render(base_image=identity['base_image'],jar_name='application.jar',jar_source='target/application.jar',
             port=spec.http.port,external_driver=bool(driver))+'\n'
     files={'target/application.jar':jar.read_bytes(),'Dockerfile':docker.encode(),
            '.dockerignore':b'*\n!Dockerfile\n!target/\n!target/application.jar\n!jdbc/\n!jdbc/jdbc-driver.jar\n'}
@@ -78,7 +79,7 @@ def stage_server_image(project,spec,definition_root):
     server=Path(definition_root)/demo.toolRoot/'server/fixture-server.jar'
     identity=dict(bundle_id=demo.bundleId,server_sha256=release.files['server/fixture-server.jar'].sha256,
                   base_image=spec.deployment.image.baseImage)
-    root=Path(project)/'images/fixture-server'/digest(identity)
+    root=service_artifacts(project)/'images/fixture-server'/digest(identity)
     root.mkdir(parents=True,exist_ok=True)
     docker='FROM '+identity['base_image']+'\nWORKDIR /server\nCOPY fixture-server.jar /server/fixture-server.jar\nUSER 10001\nENTRYPOINT ["java","-jar","/server/fixture-server.jar"]\n'
     for name,data in {'fixture-server.jar':server.read_bytes(),'Dockerfile':docker.encode(),
@@ -106,5 +107,5 @@ def prepare_image_variants(project,spec,values_path,*,overlays=()):
             if result['production'].get('application_sha256')!=result['demo']['application_sha256']:
                 raise ValueError('Production/demo application JAR identities differ')
         except (ValueError,OSError) as error:result['demo']=dict(status='unavailable',reason=str(error))
-    (Path(project)/'image-variants.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    service_record(project,'image-variants.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     return result

@@ -3,6 +3,7 @@
 from runtime.workspace_paths import run_report_path, write_run_report
 import json
 from pathlib import Path
+from runtime.operation_layout import artifact_name, standalone_project
 import hashlib
 
 from agents.source_conversion.native_java_reviewer.agent import build_human_gate2_report
@@ -36,7 +37,7 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
             from constants import COMMON_LIB_ARTIFACT_ID
             import tempfile
             import shutil
-            context = create_build_context(profile, Path(project), COMMON_LIB_ARTIFACT_ID if Path(project).name == "common-lib" else Path(project).name)
+            context = create_build_context(profile, Path(project), COMMON_LIB_ARTIFACT_ID if Path(project).name == "common-lib" else artifact_name(project))
             # Assembly-owned files must not prevent retrying a failed assembly.
             # Gate 2 builds exactly its reviewed components, using the same POM.
             with tempfile.TemporaryDirectory(prefix="snapir-component-build-") as temporary:
@@ -128,7 +129,7 @@ def run_component_review_gate(conn, config, profile, plan, directory, *, model_r
     for assembly in assembly_rows:
         if assembly["artifact_path"]:
             path = Path(assembly["artifact_path"]).resolve()
-            owned_root = (Path(config.output_root) / assembly["channel"] / assembly["scope_id"] / "src/main/java").resolve()
+            owned_root = (standalone_project(config.output_root, assembly["channel"], assembly["scope_id"]) / "src/main/java").resolve()
             if path.is_relative_to(owned_root):
                 reviewed_paths.add(str(path))
     projects = {item["project"] for item in evidence} | {str((Path(config.output_root) / "common-lib").resolve())}

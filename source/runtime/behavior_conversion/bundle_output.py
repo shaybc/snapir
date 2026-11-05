@@ -6,6 +6,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path, PurePosixPath
+from runtime.operation_layout import artifact_name
 from runtime.java_public_type import converted_java_identity, _code
 from tools.validation_tools.ibm_dependency_guard_tool import scan_source
 from constants import FORBIDDEN_DEPENDENCIES
@@ -132,7 +133,7 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
                     raise ValueError("Unsafe previously owned source path")
                 if target.is_file():
                     target.unlink()
-            context = context_factory(profile, staged, project.name)
+            context = context_factory(profile, staged, artifact_name(project))
             from runtime.test_assets.preparation import current as current_assets
             assets=current_assets() if require_tests else None
             if assets:

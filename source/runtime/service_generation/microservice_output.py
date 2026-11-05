@@ -1,6 +1,7 @@
 """Attach maintained runtime/configuration and validate the generated wrapper package."""
 import json
 from pathlib import Path
+from runtime.operation_layout import application_project, service_artifacts, service_record
 
 
 def managed_resources(spec):
@@ -49,13 +50,21 @@ def package_microservice(project, spec, settings, *, values_path=None):
     from tools.deployment_tools.helm_validation import validate_helm
     result=dict(helm_passed=False,image_built=False,image_published=False,deployed=False)
     try:
+        artifacts=service_artifacts(project);artifacts.mkdir(parents=True,exist_ok=True)
+        if application_project(project)!=Path(project):
+            from runtime.service_generation.project_values import stage_values
+            spec,values_path=stage_values(project,values_path)
+            audit=application_project(project)/'dependency_audit.jsonl'
+            if audit.exists():
+                import shutil
+                shutil.move(str(audit),str(artifacts/'dependency_audit.jsonl'))
         chart, readiness=render_helm(project,spec,values_path=values_path)
         if spec.operation.database and spec.databases[spec.operation.database].driverClass:
             from runtime.service_deployment.jdbc_driver import driver_available
             if not driver_available(project,spec,definition_root=Path(values_path).parent if values_path else project):
                 readiness['deployment_ready']=False
                 readiness['unresolved'].append('databases.'+spec.operation.database+'.driver runtime dependency')
-                (Path(project)/'deployment-readiness.json').write_text(json.dumps(readiness,indent=2)+'\n',encoding='utf-8')
+                service_record(project,'deployment-readiness.json').write_text(json.dumps(readiness,indent=2)+'\n',encoding='utf-8')
         result.update(readiness,chart=str(chart))
         result.update(validate_helm(chart,spec,settings.helm_executable,getattr(settings,'kubernetes_version','1.34.0'),values_path=values_path))
         from runtime.service_deployment.image_variants import prepare_image_variants

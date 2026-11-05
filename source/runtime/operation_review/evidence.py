@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from runtime.operation_layout import standalone_project
 
 from agents.operation_assembly.service_skeleton_generator.agent import load_service_skeleton_plans
 from runtime.component_review.evidence import collect_component_evidence
@@ -23,7 +24,7 @@ def collect_operation_evidence(conn, config, profile, plan):
             identity = f"{config.run_id}:{packet.channel}:{packet.operation_id}"
             assembly_task_id = "assembly-" + hashlib.sha256(identity.encode()).hexdigest()
             item = dict(operation_id=packet.operation_id, channel=packet.channel, assembly_task_id=assembly_task_id,
-                        issues=[], service_path=None, project=str((Path(config.output_root) / packet.channel / packet.operation_id).resolve()))
+                        issues=[], service_path=None, project=str(standalone_project(config.output_root, packet.channel, packet.operation_id).resolve()))
             try:
                 snapshot = conn.execute("SELECT * FROM operation_assembly_snapshots WHERE run_id=? AND operation_id=? AND channel=?",
                                         (config.run_id, packet.operation_id, packet.channel)).fetchone()

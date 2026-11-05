@@ -35,7 +35,8 @@ def record_result(binding, conn, config, profile, category, identity, fingerprin
     """Persist only after existing schema/compiler/test validators have accepted output."""
     execution, key, unit = binding
     files = []
-    project = Path(config.output_root) / key
+    from runtime.operation_layout import standalone_project
+    project = standalone_project(config.output_root, *key.split("/", 1))
     # Bind this task's returned native sources. Later units may add files to the
     # same project; they must not make an earlier task's result falsely stale.
     files.extend(project / item['path'] for item in output.get('files', []))

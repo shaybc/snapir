@@ -3,6 +3,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+from runtime.operation_layout import application_project, service_record
 from runtime.service_deployment.receipt import verify_package
 from runtime.service_generation.deployment_configuration import deployment_readiness
 
@@ -18,9 +19,9 @@ def execute_deployment(project, spec, *, build=False, publish=False, deploy=Fals
         return completed.stdout
     image=spec.deployment.image
     variant='demo' if spec.demoInfrastructure is not None else 'production'
-    image_receipt=project/('image-build-demo.json' if variant=='demo' else 'image-build.json')
+    image_receipt=service_record(project,('image-build-demo.json' if variant=='demo' else 'image-build.json'))
     def image_inputs():
-        jars=list((project/'target').glob('*.jar'))
+        jars=list((application_project(project)/'target').glob('*.jar'))
         if len(jars)!=1:raise ValueError('Expected one validated executable service JAR')
         result=dict(repository=image.repository,base_image=image.baseImage,variant=variant,
             jar_hash=hashlib.sha256(jars[0].read_bytes()).hexdigest(),driver=None)
@@ -94,5 +95,5 @@ def execute_deployment(project, spec, *, build=False, publish=False, deploy=Fals
              '--wait','--timeout','5m'],360)
         run([kubectl,'rollout','status','deployment/'+chart.name,'--namespace',spec.deployment.namespace,'--timeout=300s'],330)
         result['deployed']=True
-    (project/'deployment-result.json').write_text(json.dumps(result,indent=2)+'\n')
+    service_record(project,'deployment-result.json').write_text(json.dumps(result,indent=2)+'\n')
     return result

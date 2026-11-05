@@ -1,6 +1,7 @@
 """Check the selected deployment driver in the actual packaged Spring Boot runtime."""
 from io import BytesIO
 from pathlib import Path
+from runtime.operation_layout import application_project
 from zipfile import ZipFile
 
 
@@ -12,11 +13,11 @@ def driver_available(project, spec, *, definition_root=None):
     from runtime.service_deployment.driver_artifacts import selected_driver,audit_application
     external=selected_driver(project,spec,definition_root)
     if external:
-        jars=list((Path(project)/'target').glob('*.jar'))
+        jars=list((application_project(project)/'target').glob('*.jar'))
         if len(jars)!=1:raise ValueError('Expected one validated executable service JAR')
         audit_application(jars[0],external,production=True)
         return True
-    jars=list((Path(project)/'target').glob('*.jar'))
+    jars=list((application_project(project)/'target').glob('*.jar'))
     if len(jars)!=1:raise ValueError('Expected one validated executable service JAR')
     name=driver.replace('.','/')+'.class'
     with ZipFile(jars[0]) as application:

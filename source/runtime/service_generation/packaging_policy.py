@@ -10,6 +10,7 @@ def packaging_fingerprint():
     paths=[*source.joinpath('templates/microservice').rglob('*'),*source.joinpath('templates/helm').rglob('*'),
         source/'runtime/service_generation/project_output.py',source/'runtime/service_generation/external_jdbc.py',
         source/'runtime/service_deployment/driver_artifacts.py',source/'runtime/service_deployment/image_variants.py',
-        source/'runtime/service_generation/values_overlays.py',source/'models/jdbc_image_variant.py']
+        source/'runtime/service_generation/values_overlays.py',source/'models/jdbc_image_variant.py',source/'runtime/operation_layout.py',
+        source/'runtime/service_generation/maven_reactor.py',source/'runtime/service_generation/project_values.py']
     identity={p.relative_to(source).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file()}
     return hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()

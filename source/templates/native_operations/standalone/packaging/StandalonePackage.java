@@ -19,24 +19,33 @@ public final class StandalonePackage {
         Files.createDirectories(project.resolve("target"));
         Path output=Files.createTempDirectory(project.resolve("target"),"project-stage-").toRealPath();
         if(!output.startsWith(project.resolve("target")))throw new IllegalArgumentException("Package staging escaped target");
-        Map<String,String> originals=sourceHashes(project);
-        ObjectNode binding=(ObjectNode)DemoBinding.JSON.readTree(project.resolve("standalone/operation.json").toFile());
+        Path nativeProject=Files.isRegularFile(project.resolve("standalone/pom.xml")) ? project.resolve("standalone") : project;
+        Path nativeOutput=nativeProject.equals(project) ? output : output.resolve("standalone");
+        Map<String,String> originals=sourceHashes(nativeProject);
+        ObjectNode binding=(ObjectNode)DemoBinding.JSON.readTree(nativeProject.resolve("standalone/operation.json").toFile());
         if(!binding.path("demo").isObject())throw new IllegalArgumentException("Prepare a complete demo before packaging its assets");
         PackageProjectFiles.stage(project,output);
         // Copy the selected settings without parsing or printing credentials.
-        Path configuration=project.resolve("standalone").resolve(binding.path("runtime_config").asText()).normalize();
-        PackageFiles.copy(configuration,output.resolve("runtime-config.json"));
+        Path configuration=nativeProject.resolve("standalone").resolve(binding.path("runtime_config").asText()).normalize();
+        PackageFiles.copy(configuration,nativeOutput.resolve("runtime-config.json"));
         binding.put("runtime_config","../runtime-config.json");
-        ObjectNode demo=PackageDemoAssets.stage(project,output,binding);
-        PackageMicroserviceValues.stage(project,output,binding);
+        ObjectNode demo=PackageDemoAssets.stage(nativeProject,nativeOutput,binding);
+        PackageMicroserviceValues.stage(nativeProject,nativeOutput,binding);
+        Path service=project.resolve("microservice/helm");
+        if(Files.isDirectory(service))try(var charts=Files.list(service)) {
+            for(Path chart:charts.filter(Files::isDirectory).toList())if(Files.isRegularFile(chart.resolve("values.yaml"))) {
+                Path destinationChart=output.resolve(project.relativize(chart));
+                PackageMicroserviceValues.stage(chart,destinationChart,binding,nativeOutput.resolve("standalone"),nativeProject);
+            }
+        }
         ObjectNode files=demo.putObject("operation_files");
         for(var entry:originals.entrySet())files.put(entry.getKey(),entry.getValue());
-        DemoBinding.JSON.writerWithDefaultPrettyPrinter().writeValue(output.resolve("standalone/operation.json").toFile(),binding);
-        new DemoBinding(output.resolve("standalone/operation.json"),true);
-        if(!originals.equals(sourceHashes(project)) || !originals.equals(sourceHashes(output)))
+        DemoBinding.JSON.writerWithDefaultPrettyPrinter().writeValue(nativeOutput.resolve("standalone/operation.json").toFile(),binding);
+        new DemoBinding(nativeOutput.resolve("standalone/operation.json"),true);
+        if(!originals.equals(sourceHashes(nativeProject)) || !originals.equals(sourceHashes(nativeOutput)))
             throw new IllegalArgumentException("Operation POM or sources changed during packaging");
         for(String name:new String[]{"run-operation.bat","run-operation-demo.bat","package-standalone-operation.bat"})
-            if(!DemoBinding.hash(project.resolve(name)).equals(DemoBinding.hash(output.resolve(name))))
+            if(!DemoBinding.hash((name.equals("package-standalone-operation.bat") ? project : nativeProject).resolve(name)).equals(DemoBinding.hash((name.equals("package-standalone-operation.bat") ? output : nativeOutput).resolve(name))))
                 throw new IllegalArgumentException("Project launcher changed during packaging");
         Files.move(output,destination);
         System.out.println("Operation project package created: "+destination);

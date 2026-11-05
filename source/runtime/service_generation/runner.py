@@ -5,6 +5,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
+from runtime.operation_layout import service_root
 
 from models.maven_dependency import MavenDependency
 from constants import JAVA_VERSION, SPRING_BOOT_VERSION
@@ -25,6 +26,13 @@ from runtime.service_generation.dependency_pins import operation_dependency_pins
 
 def _project_hash(project):
     """Fingerprint build inputs without transient Maven output or audit files."""
+    project = Path(project)
+    if project.name == 'application' and (project.parent/'integration-runtime/pom.xml').is_file():
+        from runtime.service_generation.maven_reactor import reactor_hash
+        return reactor_hash(project.parent)
+    if (project/'application/pom.xml').is_file():
+        from runtime.service_generation.maven_reactor import reactor_hash
+        return reactor_hash(project)
     files = [Path(project) / "pom.xml", *sorted((Path(project) / "src").rglob("*"))]
     return hashlib.sha256(json.dumps([(str(path.relative_to(project)), hashlib.sha256(path.read_bytes()).hexdigest())
         for path in files if path.is_file()], sort_keys=True).encode()).hexdigest()
@@ -94,7 +102,9 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
             from runtime.service_generation.deployment_configuration import load_deployment
             deployment = load_deployment(item)
             item = dict(item, fingerprint=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest())
-        project = Path(directory) / "services" / item["channel"] / item["operation_id"]
+        root = service_root(directory, item)
+        reactor = Path(item['project']).name == 'standalone' and profile.microservice.enabled
+        project = root/'application' if reactor else root
         task_id = "service-" + hashlib.sha256(":".join(key).encode()).hexdigest()
         identity = hashlib.sha256((item["fingerprint"] + report + generation_settings_identity(profile)).encode()).hexdigest()
         row = conn.execute("SELECT * FROM service_generation_checkpoints WHERE run_id=? AND operation_id=? AND channel=?", key).fetchone()
@@ -120,10 +130,14 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                              for path in (Path(item["project"]) / "src/main/java").rglob("*.java")}
                 # Only this runtime-owned final workspace is reset; reviewed projects remain intact.
                 if project.exists():
-                    if not project.resolve().is_relative_to((Path(directory) / "services").resolve()) or project.is_symlink():
+                    expected_root = Path(config.output_root)/item['channel']/item['operation_id']/'microservice' if Path(item['project']).name == 'standalone' else Path(directory)/'services'/item['channel']/item['operation_id']
+                    if root.resolve() != expected_root.resolve() or project.is_symlink() or root.is_symlink():
                         raise ValueError("Unsafe final project path")
                     shutil.rmtree(project)
                 project.mkdir(parents=True)
+                if reactor:
+                    from runtime.service_generation.maven_reactor import prepare_reactor
+                    prepare_reactor(root, profile)
                 shutil.copyfile(Path(item["project"]) / "pom.xml", project / "pom.xml")
                 artifact = item['operation_id']
                 if item.get('payload', {}).get('scoped_operation_identity'):
@@ -238,6 +252,11 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 if profile.conversion_strategy == "behavior_units":
                     from runtime.service_generation.operation_wiring import validate_wiring_execution
                     validate_wiring_execution(project, wrappers, item["payload"].get("contract"), result)
+                if reactor and result.get('package_passed') and result.get('test_status') == 'passed':
+                    from runtime.service_generation.maven_reactor import verify_reactor
+                    result['reactor_validation'] = verify_reactor(root, context)
+                    if not result['reactor_validation']['passed']:
+                        result.update(package_passed=False, failure_class='build_failure')
                 result["generation_output"] = output
                 conn.execute("UPDATE service_generation_checkpoints SET project_hash=?, validation_json=? WHERE run_id=? AND operation_id=? AND channel=?",
                              (_project_hash(project), json.dumps(result), *key))
@@ -255,7 +274,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
             passed = result.get("build_passed") and result.get("package_passed") and result.get("ibm_guard_passed") and result.get("test_status") == "passed"
             if passed and deployment is not None:
                 from runtime.service_generation.microservice_output import package_microservice
-                result['microservice']=package_microservice(project,deployment,profile.microservice,
+                result['microservice']=package_microservice(root,deployment,profile.microservice,
                     values_path=Path(item['project'])/'values.yaml')
                 result['shared_runtime']=runtime_proof
                 passed=bool(result['microservice']['packaging_passed'])
@@ -265,7 +284,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                 from tools.state_store_tools.operation_calls import set_contract_status
                 set_contract_status(conn, config.run_id, item['channel'] + '/' + item['operation_id'], 'validated')
             upsert_generated_artifact(conn, artifact_id=task_id, run_id=config.run_id, operation_id=item["operation_id"],
-                channel=item["channel"], target_language="java", artifact_kind="service", generated_path=str(project),
+                channel=item["channel"], target_language="java", artifact_kind="service", generated_path=str(root),
                 status="converted" if passed else "blocked", blocking_reason=None if passed else "validation_incomplete",
                 attempt_number=attempts)
         except Exception as exc:
@@ -295,7 +314,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
             scope_type="operation", scope_id=item["operation_id"], channel=item["channel"], target_language="java",
             status="completed" if passed else "blocked", input_data=dict(fingerprint=identity), output_data=result,
             max_retries=config.max_agent_task_retries)
-        outcomes.append(dict(operation_id=item["operation_id"], channel=item["channel"], project=str(project),
+        outcomes.append(dict(operation_id=item["operation_id"], channel=item["channel"], project=str(root),
                              passed=bool(passed), validation=result))
         conn.commit()
     fresh = collect_operation_evidence(conn, config, profile, plan)

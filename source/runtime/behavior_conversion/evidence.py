@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from runtime.operation_layout import standalone_project
 from types import SimpleNamespace
 from runtime.behavior_conversion.bundle_output import verify_manifest
 from tools.state_store_tools.behavior_units import snapshot
@@ -15,7 +16,7 @@ def collect_native_operation_evidence(conn, config, profile, plan):
         for packet in batch.task_packets:
             identity = packet.channel + "/" + packet.operation_id
             item = dict(operation_id=packet.operation_id, channel=packet.channel, issues=[], fingerprint="unavailable",
-                        project=str(Path(config.output_root) / packet.channel / packet.operation_id))
+                        project=str(standalone_project(config.output_root, packet.channel, packet.operation_id)))
             try:
                 record = snapshot(conn, config.run_id, "operation", identity)
                 if record is None or record["status"] != "accepted":

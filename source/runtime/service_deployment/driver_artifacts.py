@@ -1,6 +1,7 @@
 """Verify external driver bytes, class ownership and vendor API compatibility."""
 from io import BytesIO
 from pathlib import Path
+from runtime.operation_layout import service_record
 from zipfile import ZipFile
 import re
 import struct
@@ -34,7 +35,7 @@ def selected_driver(project,spec,definition_root=None):
     artifact=spec.deployment.image.jdbcDriver
     directory=Path(definition_root or project)
     if artifact is None:
-        receipt=Path(project)/'external-jdbc/driver.json'
+        receipt=service_record(project,'external-jdbc/driver.json')
         if not receipt.exists():return None
         from models.jdbc_image_variant import JdbcDriverArtifact
         artifact=JdbcDriverArtifact.model_validate(json.loads(receipt.read_text(encoding='utf-8')))

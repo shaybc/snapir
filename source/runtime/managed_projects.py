@@ -5,6 +5,7 @@ import json
 import re
 import hashlib
 from pathlib import Path
+from runtime.operation_layout import standalone_project
 
 from constants import COMMON_LIB_ARTIFACT_ID, COMMON_LIB_GROUP_ID, JAVA_VERSION, JAVA_PACKAGE_BASE
 from runtime.model_execution.adk_executor import AdkExecutor
@@ -51,7 +52,7 @@ def run_managed_tasks(conn, config, profile, plan) -> dict[str, int]:
     for batch in plan.batches:
         for packet in batch.task_packets:
             identity = (packet.operation_id, packet.channel)
-            context = create_build_context(profile, Path(config.output_root) / packet.channel / packet.operation_id,
+            context = create_build_context(profile, standalone_project(config.output_root, packet.channel, packet.operation_id),
                                            packet.operation_id)
             contexts[identity] = context
             reconcile_pom_hash(conn, config.run_id, context.pom_path, packet.operation_id, packet.channel)

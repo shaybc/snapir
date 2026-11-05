@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 from pathlib import Path
+from runtime.operation_layout import service_record
 from zipfile import ZipFile
 from models.jdbc_image_variant import JdbcDriverArtifact
 from runtime.fixture_jdbc_tools.releases import file_hash
@@ -32,11 +33,13 @@ def prepare_external_driver(context,spec,definition_root):
                 if driver.replace('.','/')+'.class' in archive.namelist():candidates.append(Path(path))
         if len(candidates)!=1:raise ValueError('Configured JDBC driver needs one unambiguous managed runtime class owner')
         source=candidates[0]
+    if project.name=='application' and (project.parent/'pom.xml').exists():project=project.parent
     root=project/'external-jdbc'/file_hash(source)
     root.mkdir(parents=True,exist_ok=True)
     target=root/'jdbc-driver.jar'
     if target.exists() and file_hash(target)!=file_hash(source):raise ValueError('Staged production JDBC driver changed')
     if not target.exists():shutil.copyfile(source,target)
     artifact=JdbcDriverArtifact(path=target.relative_to(project).as_posix(),sha256=file_hash(target),driverClass=driver)
-    (project/'external-jdbc/driver.json').write_text(artifact.model_dump_json(indent=2)+'\n',encoding='utf-8')
+    receipt=service_record(project,'external-jdbc/driver.json');receipt.parent.mkdir(parents=True,exist_ok=True)
+    receipt.write_text(artifact.model_dump_json(indent=2)+'\n',encoding='utf-8')
     return target

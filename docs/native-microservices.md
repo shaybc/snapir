@@ -17,7 +17,7 @@ microservice generation/validation → Gate 5. An explicit `microservice.enabled
 retains the legacy service-generation path without Gate 4. Accepted operation
 Java, POM, source hashes and test fixtures remain unchanged.
 
-Operation assembly seeds `values.yaml` beside the native POM before Gate 3 review, without a separate approval gate. Gate 4 controls microservice creation; Gate 5 approves its final result. This is the single editable deployment configuration and is passed directly to Helm using `--values`; charts do not contain a second generated values file.
+Operation assembly seeds `values.yaml` beside the native POM before Gate 3 review, without a separate approval gate. Gate 4 controls microservice creation; Gate 5 approves its final result. This is the editable creation input passed to Gate 4. After approval, microservice creation stages its settings into the chart's `values.yaml`, with local file references adjusted for the service project. Existing edited chart values are not overwritten; changed creation inputs need fresh approval.
 Existing definitions and explicit user settings are preserved. Its initial database name comes from the
 optional standalone operation definition or `default`; the resulting service
 has no runtime dependency on standalone files. Credentials are Secret references,
@@ -47,9 +47,27 @@ and existing approved dependency policy. Converter checks remain enabled.
 
 ## Generated service artifacts
 
-`services/<channel>/<operation>` contains the copied immutable native sources,
-additional wrapper classes, all retained native JUnit/resources, a managed POM,
-an executable JAR, Dockerfile, Helm chart, and package/validation receipts.
+Every new operation is a repository under `generated/<channel>/<operation>/`.
+Its `standalone/` folder contains the native Maven project and its existing run
+batches and standalone helper files. Its sibling `microservice/` is created only
+after Gate 4 approval. The microservice root POM builds `integration-runtime/`,
+`test-support/`, and `application/` together using `mvn clean verify`. Both private
+Maven source projects include their tests, so a different machine needs no
+converter-installed private artifacts. The application retains all native sources,
+tests and resources plus the Spring Boot wrappers.
+
+The microservice root contains the Dockerfile and `helm/<chart>/values.yaml` and
+`demo-values.yaml`. Build the production image from that root after Maven packaging;
+the executable JAR is under `application/target/`. Public dependencies still require
+Maven repository access. Production credentials remain Secret references.
+
+The operation-root `package-standalone-operation.bat` copies both source projects
+and localizes the standalone/demo assets. It excludes build output and converter
+working files. Converter receipts, image contexts and schema caches live outside
+the operation repository under `generated/.converter-operations/<channel>/<operation>/microservice/`.
+Existing legacy flat checkpoints remain readable; explicit byte-verified migration
+preserves source files and conversion-attempt history. GetClientLinksOp uses this
+sibling layout.
 Initialization bindings describe external configuration inputs only, not internal
 native call order. Unsupported configured keys must be reported and rejected.
 
@@ -84,17 +102,17 @@ remains unresolved; deployment cannot.
 Use the optional CLI only when deployment actions are intended:
 
 ```text
-python source/deploy_microservice.py --project <service-folder> --values <operation-root>/values.yaml --build-image
-python source/deploy_microservice.py --project <service-folder> --values <operation-root>/values.yaml --publish-image
-python source/deploy_microservice.py --project <service-folder> --values <operation-root>/values.yaml --deploy
+python source/deploy_microservice.py --project <service-folder> --values <service-folder>/helm/<chart>/values.yaml --build-image
+python source/deploy_microservice.py --project <service-folder> --values <service-folder>/helm/<chart>/values.yaml --publish-image
+python source/deploy_microservice.py --project <service-folder> --values <service-folder>/helm/<chart>/values.yaml --deploy
 ```
 
 Publication returns the registry digest for the candidate tag. Supply that digest
 in deployment configuration before installation. Deployment validates the package
 receipt, settings, referenced credential keys and rendered chart, then waits for
 the Helm release and Kubernetes rollout. It does not create a database or schema.
-No action flags means no external build, publication, or cluster action. The deployment CLI passes the namespace from root values to Helm. Manual Helm commands must specify `--namespace` as well as `--values <operation-root>/values.yaml`.
-Environment-specific Docker/Helm files are staged in `deployment-work` using the
+No action flags means no external build, publication, or cluster action. The deployment CLI passes the namespace from root values to Helm. Manual Helm commands must specify `--namespace` as well as `--values <service-folder>/helm/<chart>/values.yaml`.
+Environment-specific Docker/Helm files are staged in converter-owned `deployment-work` using the
 current deployment definition and the validated JAR. The original validated
 service package is not overwritten by deployment configuration changes.
 Image publication verifies the recorded JAR/base-image inputs and local Docker

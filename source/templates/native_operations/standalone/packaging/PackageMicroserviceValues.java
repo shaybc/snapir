@@ -8,6 +8,12 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 /** Preserve editable Helm values while relocating only local driver and fixture references. */
 final class PackageMicroserviceValues {
     static void stage(Path project,Path output,ObjectNode binding) throws Exception {
+        stage(project,output,binding,output.resolve("standalone"));
+    }
+    static void stage(Path project,Path output,ObjectNode binding,Path standalone) throws Exception {
+        stage(project,output,binding,standalone,project);
+    }
+    static void stage(Path project,Path output,ObjectNode binding,Path standalone,Path bindingProject) throws Exception {
         Path production=project.resolve("values.yaml");
         Map<String,Object> values=read(production);
         Map<String,Object> image=section(values,"image");
@@ -26,7 +32,7 @@ final class PackageMicroserviceValues {
         if(!Files.isRegularFile(overlay))return;
         Map<String,Object> demoValues=read(overlay);
         JsonNode demo=binding.path("demo");
-        Path standalone=output.resolve("standalone");
+
         Path tool=standalone.resolve(demo.path("tool_root").asText()).normalize();
         Map<String,Object> demoDriver=section(section(demoValues,"image"),"jdbcDriver");
         demoDriver.put("path",PackageFiles.relative(output,tool.resolve(demo.path("driver_jar").asText())));
@@ -37,9 +43,9 @@ final class PackageMicroserviceValues {
         infrastructure.put("catalogueHash",demo.path("catalogue_hash").asText());
         // Container mount paths remain user settings; only their catalogue-reference keys move.
         Map<String,Object> mounts=section(infrastructure,"assetRootMap");
-        if(!mounts.isEmpty()) {
-            JsonNode originalBinding=DemoBinding.JSON.readTree(project.resolve("standalone/operation.json").toFile());
-            Path originalCatalogue=project.resolve("standalone").resolve(originalBinding.path("demo").path("fixture_catalogue").asText()).normalize();
+        if(!mounts.isEmpty() && Files.isRegularFile(bindingProject.resolve("standalone/operation.json"))) {
+            JsonNode originalBinding=DemoBinding.JSON.readTree(bindingProject.resolve("standalone/operation.json").toFile());
+            Path originalCatalogue=bindingProject.resolve("standalone").resolve(originalBinding.path("demo").path("fixture_catalogue").asText()).normalize();
             JsonNode original=DemoBinding.JSON.readTree(originalCatalogue.toFile());
             Map<String,Object> relocated=new LinkedHashMap<>();
             for(JsonNode scenario:original.path("scenarios"))for(JsonNode resource:scenario.path("resources"))for(JsonNode reference:resource.path("fixtures")) {

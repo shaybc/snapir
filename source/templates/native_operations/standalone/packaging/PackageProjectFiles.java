@@ -21,6 +21,7 @@ final class PackageProjectFiles {
     static void copy(Path source,Path target) throws Exception {
         if(Files.isSymbolicLink(source))throw new IllegalArgumentException("Project contains an external link");
         if(!Files.isDirectory(source)) {PackageFiles.copy(source,target);return;}
+        if(source.getFileName().toString().equals("src")) {PackageFiles.tree(source,target);return;}
         Files.createDirectories(target);
         try(var files=Files.newDirectoryStream(source)) {
             for(Path path:files)if(!excluded(path.getFileName().toString()))copy(path,target.resolve(path.getFileName()));

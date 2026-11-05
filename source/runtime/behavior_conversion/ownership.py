@@ -1,6 +1,7 @@
 """Bind configured bundles to native projects and stable managed library versions."""
 
 from pathlib import Path
+from runtime.operation_layout import artifact_name
 from models.maven_dependency import MavenDependency
 from constants import COMMON_LIB_GROUP_ID
 from tools.component_inventory_tools.identity import stable_id
@@ -12,7 +13,8 @@ def project_for(config, unit, assignments):
     if library:
         return Path(config.output_root) / "behavior-libraries" / library
     channel, operation = unit.consumers[0].split("/", 1)
-    return Path(config.output_root) / channel / operation
+    from runtime.operation_layout import standalone_project
+    return standalone_project(config.output_root, channel, operation)
 
 
 def consumer_artifact(accepted, consumer):
@@ -22,7 +24,7 @@ def consumer_artifact(accepted, consumer):
 
 def library_dependency(config, project):
     """Use the project's run-local identity; ordinary external versions remain explicit."""
-    return MavenDependency(group_id=COMMON_LIB_GROUP_ID, artifact_id=project.name,
+    return MavenDependency(group_id=COMMON_LIB_GROUP_ID, artifact_id=artifact_name(project),
         version="1.0.0-" + stable_id(config.run_id)[:12], scope="compile", reason="Accepted native behavior library for this run",
         required_classes=[])
 
@@ -30,9 +32,9 @@ def library_dependency(config, project):
 def create_native_context(config, profile, project, factory, *, artifact_id=None):
     """Initialize run-qualified library coordinates without changing Maven settings."""
     from tools.maven_dependency_tools.pom_manager import initialize_managed_pom
-    initialize_managed_pom(str(Path(project) / "pom.xml"), COMMON_LIB_GROUP_ID, artifact_id or Path(project).name,
+    initialize_managed_pom(str(Path(project) / "pom.xml"), COMMON_LIB_GROUP_ID, artifact_id or artifact_name(project),
                            version="1.0.0-" + stable_id(config.run_id)[:12], java_version=profile.java_version)
-    context = factory(profile, Path(project), artifact_id or Path(project).name)
+    context = factory(profile, Path(project), artifact_id or artifact_name(project))
     configure_native_tests(context.pom_path)
     return context
 

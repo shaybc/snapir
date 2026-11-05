@@ -41,7 +41,8 @@ def generate_service(conn, config, profile, closure, contract, accepted_units, v
     """Generate business workflow; deterministic generation remains a future option."""
     identity = closure["channel"] + "/" + closure["operation_id"]
     from runtime.behavior_conversion.dependency_context import known_dependencies
-    project = Path(config.output_root) / closure["channel"] / closure["operation_id"]
+    from runtime.operation_layout import standalone_project
+    project = standalone_project(config.output_root, closure["channel"], closure["operation_id"])
     request = service_request(profile, closure, contract, accepted_units)
     request["known_dependencies"] = known_dependencies([project], [],profile)
     from runtime.behavior_conversion.testing_contract import attach_testing_contract

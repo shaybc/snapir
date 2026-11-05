@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+from runtime.operation_layout import service_root, standalone_project
 from models.converted_service_contract import ConvertedServiceContract
 from runtime.human_gates import evaluate_gate
 from runtime.workspace_paths import run_report_path
@@ -63,7 +64,7 @@ def prepare_publication(conn, config, profile, key, directory):
     if values.get('base_url'):
         address['base_url'] = values['base_url']
     return ConvertedServiceContract(application_id=application_id, channel=channel, operation_id=operation,
-        api_revision=revision, service_id=key, artifact_reference=str(Path(directory) / 'services' / channel / operation),
+        api_revision=revision, service_id=key, artifact_reference=str(service_root(directory,dict(project=standalone_project(config.output_root,channel,operation),channel=channel,operation_id=operation))),
         method=native['method'], path=native['path'], media_types=[native['media_type']],
         request_contract=formats['csRequestFormat'], response_contract=formats['csReplyFormat'],
         error_contract=formats['csErrorReplyFormat'], api_definition=definition,

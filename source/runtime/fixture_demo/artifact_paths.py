@@ -12,6 +12,8 @@ ARTIFACT_NAMES = (
 def demo_workspace(project):
     """Return generated/.converter-demo/channel/operation without creating files."""
     project = Path(project).resolve()
+    from runtime.operation_layout import operation_repository
+    project = operation_repository(project)
     generated = project.parent.parent
     directory = (generated / '.converter-demo' / project.parent.name / project.name).resolve()
     if not directory.is_relative_to(generated) or directory.is_relative_to(project):

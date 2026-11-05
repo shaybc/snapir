@@ -57,7 +57,7 @@ def resume_scoped_pipeline(conn, config, profile, directory, *, plan=None, model
     component_provider = None
     from runtime.scoped_native.project_names import native_artifact_id
     native_factory = lambda settings, project, artifact: create_native_context(config, settings, project, factory,
-        artifact_id=native_artifact_id(Path(project).name))
+        artifact_id=native_artifact_id(artifact))
     started = perf_counter()
     try:
         if profile.scoped_native_mode == 'component_first_v1':

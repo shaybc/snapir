@@ -3,6 +3,7 @@
 import json
 import hashlib
 from pathlib import Path
+from runtime.operation_layout import standalone_project, artifact_name
 from models.migration_models import MigrationPlan
 from models.native_unit_bundle import NativeUnitBundle
 from runtime.human_gates import evaluate_gate
@@ -60,7 +61,7 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
                 raise ValueError("Accepted manifest does not match the requested native bundle")
             verify_manifest(project, data["files"])
             if verification is not None:
-                verification.complete(project, factory(profile, project, Path(project).name), bundle,
+                verification.complete(project, factory(profile, project, artifact_name(project)), bundle,
                                      build_validation=data['validation'])
             return
         owned = json.loads(previous["data_json"])["files"] if previous else {}
@@ -90,7 +91,7 @@ def _bundle_validator(conn, config, profile, project, identity, apis, requiremen
 
 def _install(project, factory, profile):
     """Publish a verified native dependency before compiling its consumers."""
-    context = factory(profile, project, Path(project).name)
+    context = factory(profile, project, artifact_name(project))
     result = context.verifier.compile_project(project, context.allowed_ibm_artifacts, goal="install")
     if result.returncode:
         raise ValueError("Native library installation failed: " + (result.stdout or "") + "\n" + (result.stderr or ""))
@@ -373,7 +374,7 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         from runtime.behavior_conversion.runtime_config import ensure_runtime_config
         ensure_runtime_config(config.output_root)
         consumer = closure["channel"] + "/" + closure["operation_id"]
-        project = Path(config.output_root) / closure["channel"] / closure["operation_id"]
+        project = standalone_project(config.output_root, closure["channel"], closure["operation_id"])
         sources = {key: consumer_artifact(accepted[value], consumer) for key, value in bindings[consumer].items()}
         if component_provider is not None:
             from runtime.behavior_conversion.verification_state import require_unit_receipts

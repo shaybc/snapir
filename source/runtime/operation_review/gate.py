@@ -4,6 +4,7 @@ from runtime.workspace_paths import run_report_path, write_run_report
 import hashlib
 import json
 from pathlib import Path
+from runtime.operation_layout import artifact_name
 
 from agents.operation_assembly.operation_equivalence_reviewer.agent import build_human_gate3_report
 from models.conversion_models import EquivalenceReviewResult
@@ -25,7 +26,7 @@ def run_operation_review_gate(conn, config, profile, plan, directory, *, model_r
         return "component_gate_not_accepted"
     if project_builder is None:
         def project_builder(project):
-            context = create_build_context(profile, Path(project), Path(project).name)
+            context = create_build_context(profile, Path(project), artifact_name(project))
             return context.verifier.compile_project(project, context.allowed_ibm_artifacts).returncode == 0
     if assembly_runner is None:
         from runtime.operation_assembly import run_operation_assembly
