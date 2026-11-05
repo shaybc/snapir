@@ -42,10 +42,13 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
     last_activity = monotonic()
     last_file_state = None
     closed = set()
+    peak_memory = 0
     try:
         for reader in readers:
             reader.start()
         while len(closed) < 2 or process.poll() is None:
+            from runtime.resource_usage import memory_usage
+            peak_memory = max(peak_memory, memory_usage(process.pid).get('python_peak_rss_bytes', 0))
             try:
                 name, chunk, observed = events.get(timeout=min(0.2, inactivity_timeout_seconds))
             except Empty:
@@ -87,6 +90,7 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                 reader.join()
         process.stdout.close()
         process.stderr.close()
+        logger.info('Java scanner maximum observed resident memory: %s bytes.', peak_memory)
     outputs = {name: b"".join(chunks) for name, chunks in buffers.items()}
     if text:
         outputs = {name: value.decode(locale.getpreferredencoding(False), errors="replace")

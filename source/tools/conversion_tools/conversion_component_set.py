@@ -58,6 +58,10 @@ def resolve_conversion_components(conn, closure, workspace, source_index, extern
     pending = []
     from tools.component_inventory_tools.xml_documents import read_xml, walk_nodes
     xml_nodes = {}
+    required_selectors = {}
+    for use in uses:
+        source_path = (Path(workspace) / use['definition_path']).resolve()
+        required_selectors.setdefault(source_path, set()).add(use['definition_selector'])
     for use in uses:
         node = None
         try:
@@ -71,7 +75,8 @@ def resolve_conversion_components(conn, closure, workspace, source_index, extern
         try:
             path = (Path(workspace) / use["definition_path"]).resolve()
             if path not in xml_nodes:
-                xml_nodes[path] = {selector: ElementTree.tostring(node, encoding="unicode") for node, selector in walk_nodes(read_xml(path))}
+                xml_nodes[path] = {selector: ElementTree.tostring(node, encoding="unicode")
+                                   for node, selector in walk_nodes(read_xml(path)) if selector in required_selectors[path]}
             current = xml_nodes[path].get(use["definition_selector"])
             if current is None or hashlib.sha256(current.encode()).hexdigest() != use["configuration_hash"]:
                 issue(name, origin + ": XML changed since intake; refresh intake before conversion")

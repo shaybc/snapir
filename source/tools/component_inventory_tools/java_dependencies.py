@@ -1,19 +1,25 @@
 """Propagate original operation consumers through statically resolved Java sources."""
 
 from pathlib import Path
+from xml.etree import ElementTree
 
 from models.java_source_dependencies import JavaSourceDependencyGraph, JavaSourceDependency, JavaDependencyIssue, JavaDependencyUse
 from tools.component_inventory_tools.identity import stable_id
-from tools.java_analysis_tools.source_dependencies.parser import parse_source_references
+from tools.java_analysis_tools.source_dependencies.parser import iter_source_references
 from tools.java_analysis_tools.source_dependencies.resolution import resolve_reference
 from tools.component_inventory_tools.dependency_order import dependency_first_order
 
 
-def build_java_dependency_graph(workspace, source_index, implementations, configured_uses):
+def build_java_dependency_graph(workspace, source_index, implementations, configured_uses, storage=None):
     """Resolve source-reference sites, then traverse each XML use without counting paths twice."""
+    if storage is not None:
+        from tools.component_inventory_tools.stored_java_dependencies import build_stored_java_dependencies
+        return build_stored_java_dependencies(workspace, source_index, implementations, configured_uses, storage)
     workspace = Path(workspace).resolve()
     by_path = {str((workspace / implementation.source_path).resolve()): implementation for implementation in implementations}
-    analysis = parse_source_references(by_path)
+    analysis = ElementTree.Element('analysis')
+    for document in iter_source_references(by_path):
+        analysis.append(document)
     graph = JavaSourceDependencyGraph()
     edges = {}
     for document in analysis.findall("source"):

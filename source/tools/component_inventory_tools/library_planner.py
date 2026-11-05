@@ -14,20 +14,43 @@ def prepare_library_plan(conn, config, profile, migration_plan):
     if not conn.execute("SELECT 1 FROM component_inventory_reports WHERE run_id=?", (config.run_id,)).fetchone():
         return None
     selected = {packet.channel + "/" + packet.operation_id for batch in migration_plan.batches for packet in batch.task_packets}
+    candidates = set()
+    for row in conn.execute('SELECT component_kind,implementation_id,channel,operation_id,json_extract(record_json,\'$.definition_id\') FROM configured_component_uses WHERE run_id=?', (config.run_id,)):
+        if (row[2] or '') + '/' + row[3] in selected:
+            if row[0] in {'format', 'context'}:
+                candidates.add('definition:' + row[4])
+            if row[1]:
+                candidates.add('implementation:' + row[1])
+    for row in conn.execute('SELECT implementation_id,channel,operation_id FROM java_dependency_uses WHERE run_id=?', (config.run_id,)):
+        if (row[1] or '') + '/' + row[2] in selected:
+            candidates.add('implementation:' + row[0])
+    conn.execute('CREATE TEMP TABLE IF NOT EXISTS library_plan_candidates (component_key TEXT PRIMARY KEY)')
+    conn.execute('CREATE TEMP TABLE IF NOT EXISTS library_plan_operations (consumer TEXT PRIMARY KEY)')
+    conn.execute('DELETE FROM library_plan_candidates')
+    conn.execute('DELETE FROM library_plan_operations')
+    conn.executemany('INSERT INTO library_plan_candidates VALUES (?)', ((key,) for key in candidates))
+    conn.executemany('INSERT INTO library_plan_operations VALUES (?)', ((key,) for key in selected))
     consumers = {}
     reference_counts = {}
     operation_origins = {}
     hashes = {}
     definition_implementations = {}
     selected_source_roots = set()
-    for row in conn.execute("SELECT record_json FROM source_implementations WHERE run_id=?", (config.run_id,)):
+    for row in conn.execute("SELECT record_json FROM source_implementations WHERE run_id=? AND 'implementation:'||implementation_id IN (SELECT component_key FROM library_plan_candidates)", (config.run_id,)):
         record = json.loads(row[0])
+        if 'implementation:' + record['implementation_id'] not in candidates:
+            continue
         hashes["implementation:" + record["implementation_id"]] = record["source_hash"]
-    for row in conn.execute("SELECT record_json FROM configured_component_definitions WHERE run_id=?", (config.run_id,)):
+    for row in conn.execute("SELECT record_json FROM configured_component_definitions WHERE run_id=? AND 'definition:'||definition_id IN (SELECT component_key FROM library_plan_candidates)", (config.run_id,)):
         record = json.loads(row[0])
+        if 'definition:' + record['definition_id'] not in candidates:
+            continue
         hashes["definition:" + record["definition_id"]] = record["configuration_hash"]
         definition_implementations["definition:" + record["definition_id"]] = record["implementation_id"]
-    for row in conn.execute("SELECT record_json FROM configured_component_uses WHERE run_id=?", (config.run_id,)):
+    for row in conn.execute("""SELECT record_json FROM configured_component_uses WHERE run_id=? AND (
+        'implementation:'||implementation_id IN (SELECT component_key FROM library_plan_candidates) OR
+        'definition:'||json_extract(record_json,'$.definition_id') IN (SELECT component_key FROM library_plan_candidates) OR
+        COALESCE(channel,'')||'/'||operation_id IN (SELECT consumer FROM library_plan_operations))""", (config.run_id,)):
         use = json.loads(row[0])
         consumer = (use["channel"] or "") + "/" + use["operation_id"]
         if consumer in selected and use["implementation_id"]:
@@ -39,10 +62,17 @@ def prepare_library_plan(conn, config, profile, migration_plan):
         if use["component_kind"] in {"operation", "opStep", "formatter", "decorator", "context"} and use["implementation_id"]:
             keys.append("implementation:" + use["implementation_id"])
         for key in keys:
+            if key not in candidates:
+                continue
             consumers.setdefault(key, set()).add(consumer)
             reference_counts[key] = reference_counts.get(key, 0) + 1
-    graph = get_java_dependency_graph(conn, config.run_id)
-    for use in graph.uses:
+    roots = {key.removeprefix('implementation:') for key in candidates if key.startswith('implementation:')}
+    graph = get_java_dependency_graph(conn, config.run_id, include_uses=False, roots=roots)
+    from models.java_source_dependencies import JavaDependencyUse
+    for row in conn.execute("SELECT implementation_id,record_json FROM java_dependency_uses WHERE run_id=? AND 'implementation:'||implementation_id IN (SELECT component_key FROM library_plan_candidates)", (config.run_id,)):
+        if 'implementation:' + row[0] not in candidates:
+            continue
+        use = JavaDependencyUse.model_validate_json(row[1])
         consumer = (use.channel or "") + "/" + use.operation_id
         operation_origins.setdefault(consumer, set()).add(use.operation_key)
         key = "implementation:" + use.implementation_id

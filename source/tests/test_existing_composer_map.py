@@ -102,7 +102,7 @@ def test_pipeline_map_choice_and_persisted_location(tmp_path, monkeypatch, reuse
                         lambda *args, **kwargs: pytest.fail("Startup must not fully validate the map"))
     before = {p.relative_to(vault): p.read_bytes() for p in vault.rglob("*") if p.is_file()}
     dummy = SimpleNamespace(issues=[], classes={}, model_dump_json=lambda **_: "{}")
-    inventory = SimpleNamespace(java_dependencies=dummy, model_dump_json=lambda **_: "{}")
+    inventory = SimpleNamespace(workspace_id='test', diagnostics=[], java_dependencies=dummy, model_dump_json=lambda **_: "{}")
     monkeypatch.setattr(runner, "java_scope", lambda _: nullcontext())
     monkeypatch.setattr(runner, "discover_java_sources", lambda *_: dummy)
     monkeypatch.setattr(runner, "discover_java_classpath", lambda *_: dummy)

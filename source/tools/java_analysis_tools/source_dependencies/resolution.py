@@ -3,8 +3,10 @@
 from pathlib import Path
 import re
 
+_UNRESOLVED_OWNER = object()
 
-def resolve_reference(reference, document, source_index, source_path):
+
+def resolve_reference(reference, document, source_index, source_path, *, owner_project=_UNRESOLVED_OWNER):
     """Return eligible source paths and an ambiguity note, or no source dependency.
 
     Imports establish names, not usage. Binary/JDK types stay outside this graph.
@@ -50,7 +52,8 @@ def resolve_reference(reference, document, source_index, source_path):
                 candidates.update(source_index.classes[current])
                 break
             current = current.rsplit(".", 1)[0] if "." in current else ""
-    owner = source_index.class_projects.get(str(Path(source_path).resolve()))
+    owner = (source_index.class_projects.get(str(Path(source_path).resolve()))
+             if owner_project is _UNRESOLVED_OWNER else owner_project)
     own = {path for path in candidates if source_index.class_projects.get(path) == owner}
     if own:
         candidates = own

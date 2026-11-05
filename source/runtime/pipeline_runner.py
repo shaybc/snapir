@@ -21,6 +21,7 @@ from tools.source_discovery_tools.classpath import discover_java_classpath
 from runtime.model_execution.readiness import intake_model_warning
 from runtime.java_toolchain import java_scope, java_environment, run_java
 from runtime.intake_progress import component_inventory_progress
+from runtime.inventory_reports import write_json_report
 
 
 def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
@@ -71,18 +72,35 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         run_profile_path(directory).write_text(profile.model_dump_json(indent=2), encoding="utf-8")
         logger.info("Discovering Java sources and classpath.")
         source_index = discover_java_sources(profile.source_root)
-        run_report_path(directory, "java_source_index.json").write_text(source_index.model_dump_json(indent=2), encoding="utf-8")
+        write_json_report(run_report_path(directory, "java_source_index.json"), source_index)
         if source_index.issues:
             raise ValueError("Java source discovery reported issues; inspect reports/1_intake_and_legacy_analysis/java_source_index.json")
         classpath = discover_java_classpath(profile.source_root, profile.classpath_jars,
                                            profile.eclipse_classpath_variables)
-        run_report_path(directory, "java_classpath_index.json").write_text(classpath.model_dump_json(indent=2), encoding="utf-8")
+        write_json_report(run_report_path(directory, "java_classpath_index.json"), classpath)
         from tools.component_inventory_tools import build_component_inventory
         from tools.state_store_tools.component_inventory import persist_component_inventory, get_implementation_usage, get_configured_component_usage
         logger.info("Building component inventory.")
+        from tools.state_store_tools.inventory_records import InventoryRecords
+        from tools.state_store_tools.workspace_analysis import WorkspaceAnalysis
+        from tools.component_inventory_tools.identity import stable_id
+        from runtime.resource_usage import memory_usage
+        import tempfile
+        scratch = tempfile.TemporaryDirectory(prefix='snapir-inventory-')
+        cache = WorkspaceAnalysis(Path(profile.output_root) / '.workspace-analysis' / (stable_id(profile.source_workspace_id, str(Path(profile.source_root).resolve())) + '.sqlite'))
+        storage = InventoryRecords(Path(scratch.name) / 'records.sqlite', cache)
+        logger.info('Inventory resource baseline: %s', memory_usage())
         with component_inventory_progress(sum(len(paths) for paths in source_index.classes.values())):
-            inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index)
-            persist_component_inventory(conn, run_id, inventory)
+            logger.info('Fingerprinting workspace inputs before inventory analysis.')
+            cache.observe_workspace(profile.source_root)
+            inventory = build_component_inventory(profile.source_root, profile.source_workspace_id, source_index, storage)
+            logger.info('Publishing a complete workspace analysis revision.')
+            revision = cache.publish(profile.source_root, source_index)
+            persist_component_inventory(conn, run_id, inventory, revision)
+        logger.info('Workspace analysis revision %s; syntax cache hits=%s, misses=%s; memory=%s', revision, cache.hits, cache.misses, memory_usage())
+        from tools.component_inventory_tools.conversion_scope import persist_conversion_scope
+        scope = persist_conversion_scope(conn, config)
+        write_json_report(run_report_path(directory, 'conversion_scope.json'), scope)
         if profile.conversion_strategy == 'behavior_units':
             from tools.component_inventory_tools.service_inventory import service_inventory
             connections = service_inventory(profile.source_root, profile.channels)
@@ -90,10 +108,21 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
             with conn:
                 conn.execute('INSERT OR REPLACE INTO service_definition_inventory VALUES (?,?)', (run_id, json.dumps(connections)))
             write_run_report(directory, 'service_definitions.json', json.dumps(connections, indent=2))
-        run_report_path(directory, "component_inventory.json").write_text(inventory.model_dump_json(indent=2), encoding="utf-8")
-        run_report_path(directory, "java_source_dependencies.json").write_text(inventory.java_dependencies.model_dump_json(indent=2), encoding="utf-8")
-        run_report_path(directory, "component_usage.json").write_text(json.dumps(get_implementation_usage(conn, run_id), indent=2), encoding="utf-8")
-        run_report_path(directory, "configured_component_usage.json").write_text(json.dumps(get_configured_component_usage(conn, run_id), indent=2), encoding="utf-8")
+        from tools.state_store_tools.component_inventory import iter_implementation_usage, iter_configured_component_usage
+        from runtime.selected_inventory_reports import selected_inventory
+        selected, graph_report = selected_inventory(conn, run_id, inventory)
+        logger.info('Writing inventory reports incrementally; selected scope: %s', scope)
+        write_json_report(run_report_path(directory, "component_inventory.json"), selected)
+        write_json_report(run_report_path(directory, "java_source_dependencies.json"), graph_report())
+        write_json_report(run_report_path(directory, "component_usage.json"), iter_implementation_usage(conn, run_id, selected_only=True))
+        write_json_report(run_report_path(directory, "configured_component_usage.json"), iter_configured_component_usage(conn, run_id, selected_only=True))
+        storage.close()
+        storage = None
+        cache.close()
+        cache = None
+        scratch.cleanup()
+        del inventory, selected
+        logger.info('Inventory reports completed; memory=%s', memory_usage())
         if profile.existing_composer_map:
             logger.info("Using existing Composer map: %s; skipping Mapper generation.", vault)
         else:
@@ -139,6 +168,12 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         update_run_status(conn, run_id, "failed", "intake_failed")
         raise
     finally:
+        if 'storage' in locals() and storage is not None:
+            storage.close()
+        if 'cache' in locals() and cache is not None:
+            cache.close()
+        if 'scratch' in locals():
+            scratch.cleanup()
         if "toolchain" in locals():
             toolchain.__exit__(None, None, None)
         conn.close()

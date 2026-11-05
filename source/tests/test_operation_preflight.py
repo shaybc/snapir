@@ -122,8 +122,8 @@ def test_intake_runner_stops_before_planning_and_keeps_full_inventory(tmp_path, 
     root = tmp_path / 'vault-fixture'
     root.mkdir()
     graph = discover_operation_calls(vault(root))
-    dummy = SimpleNamespace(issues=[], model_dump_json=lambda **kwargs: '{}')
-    inventory = SimpleNamespace(java_dependencies=dummy, model_dump_json=lambda **kwargs: '{}')
+    dummy = SimpleNamespace(issues=[], classes={}, model_dump_json=lambda **kwargs: '{}')
+    inventory = SimpleNamespace(workspace_id='test', diagnostics=[], java_dependencies=dummy, model_dump_json=lambda **kwargs: '{}')
     monkeypatch.setattr(runner, 'java_scope', lambda profile: nullcontext())
     monkeypatch.setattr(runner, 'intake_model_warning', lambda profile: None)
     monkeypatch.setattr(runner, 'discover_java_sources', lambda *args: dummy)

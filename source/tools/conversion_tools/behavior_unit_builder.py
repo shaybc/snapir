@@ -25,18 +25,16 @@ def build_behavior_units(conn, config, closure, profile=None):
     from tools.conversion_tools.behavior_evidence_freshness import verify_configuration_sources
     verify_configuration_sources(conn, config, closure["operation_id"], closure["channel"])
     implementations, uses, graph = get_conversion_inventory(conn, config.run_id, closure["operation_id"], closure["channel"])
-    definitions = {row[0]: json.loads(row[1]) for row in conn.execute(
-        "SELECT definition_id,record_json FROM configured_component_definitions WHERE run_id=?", (config.run_id,))}
+    from tools.conversion_tools.behavior_usage_catalog import DefinitionLookup, OperationUses, FormatUses, StepCandidates, OperationFormats
+    definitions = DefinitionLookup(conn, config.run_id)
     outgoing = {}
     for edge in graph.get("dependencies", []):
         outgoing.setdefault(edge["caller_implementation_id"], set()).add(edge["target_implementation_id"])
     checked = {str(Path(item["source_file"]).resolve()): item for item in closure["conversion_components"]
                if item["kind"] == "ibm_java"}
     consumer = closure["channel"] + "/" + closure["operation_id"]
-    workspace_uses = [json.loads(row[0]) for row in conn.execute(
-        "SELECT record_json FROM configured_component_uses WHERE run_id=?", (config.run_id,))]
-    operation_formats = {(json.loads(row[1]).get("channel"), row[0]): json.loads(row[1]).get("ref_formats", {})
-        for row in conn.execute("SELECT logical_id,metadata_json FROM source_artifacts WHERE run_id=? AND kind='operation'", (config.run_id,))}
+    workspace_uses = FormatUses(conn, config.run_id)
+    operation_formats = OperationFormats(conn, config.run_id)
 
     def step_configuration(xml):
         node = ET.fromstring(xml)
@@ -46,11 +44,8 @@ def build_behavior_units(conn, config, closure, profile=None):
         node.tail = None
         return ET.tostring(node, encoding="unicode")
 
-    operation_uses, step_candidates = {}, {}
-    for use in workspace_uses:
-        operation_uses.setdefault(use["operation_key"], []).append(use)
-        if use["component_kind"] == "opStep":
-            step_candidates.setdefault((use.get("implementation_id"), step_configuration(use["configuration_xml"])), []).append(use)
+    operation_uses = OperationUses(conn, config.run_id)
+    step_candidates = StepCandidates(conn, config.run_id, step_configuration)
 
     def step_dependencies(use):
         prefix = use["referenced_by"] + " -> " + use["definition_path"] + use["definition_selector"] + "/"

@@ -6,9 +6,13 @@ from tools.component_inventory_tools.channel_mappings import channel_for_path
 from tools.component_inventory_tools.xml_documents import read_xml, tag_name, walk_nodes
 
 
-def discover_definitions(workspace):
+def discover_definitions(workspace, storage=None):
     """Keep every original definition occurrence; never overwrite by logical name."""
-    definitions = []
+    if storage is not None:
+        from tools.state_store_tools.inventory_records import DefinitionCatalog
+        definitions = DefinitionCatalog(storage)
+    else:
+        definitions = []
     diagnostics = []
     kinds = {"CCDSEServerOperation": "operation", "fmtDef": "format", "context": "context", "opStep": "opStep"}
     for path in sorted(workspace.rglob("*.xml")):
@@ -20,6 +24,12 @@ def discover_definitions(workspace):
             continue
         try:
             root = read_xml(path)
+            if storage is not None and storage.cache is not None:
+                from tools.state_store_tools.workspace_analysis import content_hash
+                current = content_hash(path)
+                if str(path) in storage.cache.observed and storage.cache.observed[str(path)] != current:
+                    raise ValueError('XML source changed during workspace analysis: ' + str(path))
+                storage.cache.observed[str(path)] = current
         except (ValueError, OSError, ElementTree.ParseError) as exc:
             diagnostics.append(str(path.relative_to(workspace)) + ": " + str(exc))
             continue

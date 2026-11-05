@@ -27,6 +27,7 @@ def test_intake_and_continuation_share_state_without_inspection_reports(tmp_path
         "run_config.json", "component_inventory.json", "component_usage.json",
         "configured_component_usage.json", "java_source_index.json", "java_classpath_index.json",
         "java_source_dependencies.json",
+        "conversion_scope.json",
     }
     assert (directory / "logs" / "mapper.log").is_file()
     assert not list((directory / "generated").iterdir())

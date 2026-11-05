@@ -12,11 +12,11 @@ def stable_id(*values):
     return hashlib.sha256(json.dumps(values, ensure_ascii=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def identify_java_source(workspace, workspace_id, source_root, source_path, fqcn, method_signature=None):
-    """Identify a resolved definition, not a calling channel or configuration alias."""
-    workspace = Path(workspace).resolve()
-    path = Path(source_path).resolve()
-    root = Path(source_root).resolve()
+def identify_java_source(workspace, workspace_id, source_root, source_path, fqcn, method_signature=None, *, indexed_roots=False):
+    """Identify an original source; verified discovery roots can skip repeated root lookups."""
+    workspace = Path(workspace) if indexed_roots else Path(workspace).resolve()
+    path = Path(source_path) if indexed_roots else Path(source_path).resolve()
+    root = Path(source_root) if indexed_roots else Path(source_root).resolve()
     relative = path.relative_to(workspace).as_posix()
     relative_root = root.relative_to(workspace).as_posix()
     package, _, name = fqcn.rpartition(".")

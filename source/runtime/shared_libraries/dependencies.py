@@ -24,7 +24,7 @@ def dependency_binding(conn, config, source_key, external_dependencies=()):
         root = row[0] if row else None
     if not root:
         return {}
-    graph = get_java_dependency_graph(conn, config.run_id, include_uses=False)
+    graph = get_java_dependency_graph(conn, config.run_id, include_uses=False, roots=[root])
     outgoing = {}
     for edge in graph.dependencies:
         outgoing.setdefault(edge.caller_implementation_id, set()).add(edge.target_implementation_id)

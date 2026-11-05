@@ -65,9 +65,11 @@ def test_missing_key_precedes_event_loop_and_client_construction(monkeypatch):
 def test_intake_warning_does_not_block_offline_stages(tmp_path, monkeypatch, capsys):
     from runtime.pipeline_runner import run_pipeline
     import runtime.pipeline_runner as pipeline
-    empty = SimpleNamespace(issues=[], model_dump_json=lambda **_: "{}")
-    inventory = SimpleNamespace(java_dependencies=empty, model_dump_json=lambda **_: "{}")
-    monkeypatch.setattr(pipeline, "create_run_config", lambda *_: SimpleNamespace())
+    empty = SimpleNamespace(issues=[], classes={}, model_dump_json=lambda **_: "{}")
+    inventory = SimpleNamespace(workspace_id='test', diagnostics=[], java_dependencies=empty, model_dump_json=lambda **_: "{}")
+    monkeypatch.setattr(pipeline, "create_run_config", lambda settings, run_id: SimpleNamespace(run_id=run_id,
+        target_channels=settings['TARGET_CHANNELS'], include_operations=settings['INCLUDE_OPERATIONS'],
+        exclude_operations=settings['EXCLUDE_OPERATIONS']))
     monkeypatch.setattr(pipeline, "persist_run_config", lambda *_: None)
     monkeypatch.setattr(pipeline, "discover_java_sources", lambda *_: empty)
     monkeypatch.setattr(pipeline, "discover_java_classpath", lambda *_: empty)

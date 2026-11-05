@@ -15,7 +15,7 @@ REPORT_FOLDERS = {stage: f"{index}_{stage}" for index, stage in enumerate(STAGES
 REPORT_STAGES = {
     **{name: "intake_and_legacy_analysis" for name in (
         "run_config.json", "java_source_index.json", "java_classpath_index.json", "component_inventory.json",
-        "java_source_dependencies.json", "component_usage.json", "configured_component_usage.json")},
+        "java_source_dependencies.json", "component_usage.json", "configured_component_usage.json", "conversion_scope.json")},
     "conversion_plan.md": "intake_and_legacy_analysis",
     "conversion_plan.json": "intake_and_legacy_analysis",
     **{name: "migration_planning" for name in ("planning_inputs.json", "shared_library_plan.json", "gate_1_report.md", "gate_1_report.txt")},

@@ -13,7 +13,7 @@ from tools.source_discovery_tools import discover_java_sources
 from tools.component_inventory_tools.composer_values import reference_value
 
 
-def build_component_inventory(workspace_root, workspace_id=None, source_index=None):
+def build_component_inventory(workspace_root, workspace_id=None, source_index=None, storage=None):
     """Inventory all definitions and Java sources, retaining unresolved bindings explicitly.
 
     This first inventory slice does not infer arbitrary Java call graphs or method
@@ -22,25 +22,36 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
     workspace = Path(workspace_root).resolve()
     workspace_id = workspace_id or workspace.as_uri()
     index = source_index or discover_java_sources(str(workspace))
-    inventory = ComponentInventory(workspace_id=workspace_id, diagnostics=list(index.issues))
+    if storage is not None:
+        from models.stored_component_inventory import StoredComponentInventory
+        inventory = StoredComponentInventory(workspace_id=workspace_id, diagnostics=list(index.issues))
+        from tools.state_store_tools.inventory_records import DiagnosticRecords
+        inventory.diagnostics = DiagnosticRecords(storage)
+        inventory.diagnostics.extend(index.issues)
+    else:
+        inventory = ComponentInventory(workspace_id=workspace_id, diagnostics=list(index.issues))
     mappings, issues, scopes = load_channel_mappings(workspace)
     inventory.diagnostics.extend(issues)
-    definitions, issues = discover_definitions(workspace)
+    definitions, issues = discover_definitions(workspace, storage)
     inventory.diagnostics.extend(issues)
     implementation_by_path = {}
+    resolved_roots = {project: [Path(root).resolve() for root in roots] for project, roots in index.source_roots.items()}
     for fqcn, paths in index.classes.items():
         for value in paths:
             path = Path(value).resolve()
             project = index.class_projects.get(value)
-            roots = [Path(root).resolve() for root in index.source_roots.get(project, []) if path.is_relative_to(Path(root).resolve())]
+            roots = [root for root in resolved_roots.get(project, []) if path.is_relative_to(root)]
             if not roots:
                 inventory.diagnostics.append("Source root is unavailable for " + value)
                 continue
-            implementation = identify_java_source(workspace, workspace_id, max(roots, key=lambda root: len(root.parts)), path, fqcn)
+            implementation = identify_java_source(workspace, workspace_id, max(roots, key=lambda root: len(root.parts)), path, fqcn, indexed_roots=True)
             implementation_by_path[str(path)] = implementation
             inventory.implementations.append(implementation)
     uses = {}
     configured = {}
+    if storage is not None:
+        uses = storage.mapping('uses', ConfiguredComponentUse)
+        configured = storage.mapping('definitions', ConfiguredComponentDefinition)
 
     def resolve_class(fqcn, origin):
         if not fqcn:
@@ -57,6 +68,8 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         return (implementation.implementation_id, None) if implementation else (None, "Java source root is unresolved: " + fqcn)
 
     def resolve_definition(kind, name, owner):
+        if storage is not None:
+            return definitions.resolve(kind, name, owner, scopes)
         candidates = [value for value in definitions if value["kind"] == kind and value["logical_id"] == name]
         local = [value for value in candidates if value["path"] == owner["path"]]
         if local:
@@ -72,13 +85,16 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         path = definition["path"].relative_to(workspace).as_posix()
         selector = definition["selectors"][id(node)]
         identity = stable_id(workspace_id, path, selector)
+        existing = configured.get(identity)
+        if existing is not None:
+            return existing
         xml = ElementTree.tostring(node, encoding="unicode")
         record = ConfiguredComponentDefinition(definition_id=identity, component_kind=kind,
             channel=definition["channel"], source_path=path, selector=selector, logical_id=node.get("id"),
             configuration_hash=hashlib.sha256(xml.encode()).hexdigest(), configuration_xml=xml,
             implementation_id=implementation_id, resolution_issue=issue)
-        configured.setdefault(identity, record)
-        return configured[identity]
+        configured[identity] = record
+        return record
 
     def add_use(operation, definition, node, caller, kind=None, issue=None):
         tag = tag_name(node)
@@ -98,13 +114,13 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         kind = kind or ("opStep" if tag == "opStep" or group == "opSteps" else
                         "decorator" if mapping and ".decorator." in mapping["fqcn"].lower() else "formatter")
         configuration = identify_configuration(definition, node, kind, implementation_id, issue)
-        xml = ElementTree.tostring(node, encoding="unicode")
+        xml = configuration.configuration_xml
         selector = definition["selectors"].get(id(node), definition["selector"])
         path = definition["path"].relative_to(workspace).as_posix()
         operation_key = stable_id(workspace_id, operation["path"].relative_to(workspace).as_posix(), operation["selector"])
         use = ConfiguredComponentUse(use_id=stable_id(operation_key, path, selector, caller), definition_id=configuration.definition_id, operation_key=operation_key,
             operation_id=operation["logical_id"], channel=operation["channel"], component_kind=kind,
-            definition_path=path, definition_selector=selector, configuration_hash=hashlib.sha256(xml.encode()).hexdigest(),
+            definition_path=path, definition_selector=selector, configuration_hash=configuration.configuration_hash,
             configuration_xml=xml, implementation_id=implementation_id,
             mapping_source=mapping["source"] if mapping and not explicit else None, referenced_by=caller, resolution_issue=issue)
         uses[use.use_id] = use
@@ -167,12 +183,18 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
             if kind == "format" or (kind == "context" and not explicit and not mapping):
                 issue = None
             identify_configuration(definition, node, kind, implementation_id, issue)
-    for operation in [value for value in definitions if value["kind"] == "operation"]:
+    for operation in (value for value in definitions if value["kind"] == "operation"):
         visit(operation, operation, "operation", set())
-    inventory.uses = sorted(uses.values(), key=lambda use: use.use_id)
-    inventory.definitions = sorted(configured.values(), key=lambda definition: definition.definition_id)
+    if storage is not None:
+        from tools.state_store_tools.inventory_records import RecordSequence
+        inventory.uses = RecordSequence(uses)
+        inventory.definitions = RecordSequence(configured)
+    else:
+        inventory.uses = sorted(uses.values(), key=lambda use: use.use_id)
+        inventory.definitions = sorted(configured.values(), key=lambda definition: definition.definition_id)
     from tools.component_inventory_tools.java_dependencies import build_java_dependency_graph
-    inventory.java_dependencies = build_java_dependency_graph(workspace, index, inventory.implementations, inventory.uses)
+    inventory.java_dependencies = build_java_dependency_graph(workspace, index, inventory.implementations, inventory.uses, storage)
     inventory.diagnostics.extend(issue.message for issue in inventory.java_dependencies.issues)
-    inventory.diagnostics = sorted(set(inventory.diagnostics))
+    if storage is None:
+        inventory.diagnostics = sorted(set(inventory.diagnostics))
     return inventory

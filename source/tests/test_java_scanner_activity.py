@@ -61,6 +61,7 @@ def test_nonzero_exit_retains_diagnostics():
     (subprocess.TimeoutExpired("java", 900), "900 seconds without output or result-file activity"),
 ])
 def test_scanner_distinguishes_launch_and_inactivity_errors(tmp_path, monkeypatch, failure, message):
+    (tmp_path / "Example.java").write_text("public class Example {}")
     def fail(*args, **kwargs):
         assert "timeout" not in kwargs
         assert kwargs["inactivity_timeout_seconds"] == 900

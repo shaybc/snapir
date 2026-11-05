@@ -213,6 +213,50 @@ changed reports require new decisions. Rejections remain effective until replace
 by an explicit approval. Run profiles are snapshotted at start for reproducibility.
 # Service generation and build validation
 
+## Large workspaces and selected conversion scope
+
+Intake uses a temporary SQLite inventory spool, canonical XML content records,
+row-based dependency storage, and incremental JSON report writes. Reports keep
+their existing filenames and field schemas. Detailed report arrays contain the
+selected/required closure; their analysis-scope fields state this explicitly.
+Usage counts for reported components still include every workspace consumer.
+The complete global inventory remains in the run database;
+`conversion_scope.json` identifies selected operations, required called operations,
+reachable Java implementations, missing calls and explicitly excluded required
+operations. Existing operation-selection/preflight policies still decide which
+called operations may be scheduled; this report does not silently broaden them.
+
+Java syntax is parsed sequentially in batches of at most 250 files or 8 MiB of
+source input (a single larger file is processed alone). Python consumes source
+records incrementally. Exact global dependency-use counts are propagated with
+SQLite work queues and cached per-root path counts, retaining existing cycle
+handling and sharing thresholds. Conversion evidence reads fetch only the
+selected operation's reachable implementations. Library placement still uses
+workspace-wide consumers and reference multiplicities, including other channels.
+
+The first run must discover global dependencies to preserve those counts. Later
+runs reuse content-verified syntax from `<output_root>/.workspace-analysis/`.
+Source bytes and parser policy determine reuse. Reference resolution is repeated
+against the current project/class index, so added/deleted classes and changed
+visibility cannot reuse stale resolutions. XML/channel metadata is rediscovered.
+Complete workspace revisions include source/XML/project metadata fingerprints and
+are bound in each run database; changed inputs during analysis prevent publication.
+Interrupted work may reuse complete per-file syntax, never partial global counts.
+Older run databases retain their existing graph-reader compatibility.
+
+Console diagnostics record Python resident/peak memory, maximum observed Java
+scanner resident memory, batch/cache counts, and report-writing stages. Disk space
+still scales with global reference/use evidence; the compact class index and a
+single source/XML document can still grow with input size. The 22,000-record
+scaling test bounds Python allocations for spooling/reporting, not the complete
+memory requirement of an arbitrary 22,000-file enterprise repository.
+An additional stress fixture discovers 22,001 real source files with synthetic
+syntax results, verifies 220 global consumers across ten channels, and checks
+that a selected operation loads only its two reachable implementations. It caps
+traced Python allocations at 192 MiB; actual JDK parsing is verified separately
+on smaller fixtures. Neither limit is a whole-process guarantee for arbitrary
+source sizes or dependency closures.
+
 ## Java dependency scanner progress and inactivity timeout
 
 New-config creation prompts for `java_scan_inactivity_timeout_seconds`, default
