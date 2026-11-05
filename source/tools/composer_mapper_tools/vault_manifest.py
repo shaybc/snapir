@@ -109,6 +109,8 @@ def read_vault_manifest(vault, *, retain_inventory=True, progress=None, allow_sh
         raise ValueError('Incomplete scoped vault manifest')
     if not isinstance(manifest.get('entities'), list):
         raise ValueError('Missing scoped entity inventory')
+    if progress:
+        progress(f'Finalizing validation after checking {processed} notes; checking operation references and connections')
     for entry in operations:
         for reference in entry.get('references', {}).values():
             if reference.casefold() not in paths or not shared and paths[reference.casefold()] != entry['operation_identity']:
