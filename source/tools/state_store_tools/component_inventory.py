@@ -4,6 +4,10 @@ import json
 
 
 INVENTORY_SCHEMA = [
+    "CREATE TABLE IF NOT EXISTS java_direct_usage (run_id TEXT,target TEXT,operation_key TEXT,operation_id TEXT,channel TEXT,weight TEXT)",
+    "CREATE INDEX IF NOT EXISTS direct_usage_targets ON java_direct_usage(run_id,target)",
+    "CREATE TABLE IF NOT EXISTS configured_global_usage (run_id TEXT,definition TEXT,operation_key TEXT,operation_id TEXT,channel TEXT,weight TEXT)",
+    "CREATE INDEX IF NOT EXISTS configured_global_ids ON configured_global_usage(run_id,definition)",
     "CREATE TABLE IF NOT EXISTS java_usage_roots (run_id TEXT,root TEXT,operation_key TEXT,operation_id TEXT,channel TEXT,weight TEXT)",
     "CREATE INDEX IF NOT EXISTS java_usage_root_ids ON java_usage_roots(run_id,root)",
     "CREATE TABLE IF NOT EXISTS java_usage_targets (run_id TEXT,root TEXT,target TEXT,count TEXT,PRIMARY KEY(run_id,root,target))",
@@ -74,7 +78,7 @@ def persist_component_inventory(conn, run_id, inventory, revision=None):
         conn.execute("DELETE FROM source_implementations WHERE run_id=?", (run_id,))
         conn.execute("DELETE FROM java_dependency_edges WHERE run_id=?", (run_id,))
         conn.execute("DELETE FROM java_dependency_issues WHERE run_id=?", (run_id,))
-        for table in ('java_usage_roots', 'java_usage_targets', 'java_usage_scope', 'java_usage_operations'):
+        for table in ('java_usage_roots', 'java_usage_targets', 'java_usage_scope', 'java_usage_operations', 'java_direct_usage', 'configured_global_usage'):
             conn.execute('DELETE FROM ' + table + ' WHERE run_id=?', (run_id,))
         for implementation in inventory.implementations:
             conn.execute("INSERT INTO source_implementations VALUES (?, ?, ?, ?, ?)",
@@ -96,8 +100,14 @@ def persist_component_inventory(conn, run_id, inventory, revision=None):
         factors = getattr(graph, 'usage_factors', None)
         conn.execute("INSERT OR REPLACE INTO java_dependency_reports VALUES (?, ?)",
                      (run_id, json.dumps(dict(dependencies=[], issues=[], uses=[], storage='rows-v1',
-                         usage_storage='factors-v1' if factors is not None else 'detailed', analysis_scope=graph.analysis_scope))))
+                         usage_storage='factors-v1' if factors is not None else 'detailed',
+                         direct_storage='counts-v1' if getattr(factors, 'mapped_direct_counts', False) else 'detailed', analysis_scope=graph.analysis_scope))))
         if factors is not None:
+            if getattr(factors, 'mapped_direct_counts', False):
+                conn.executemany('INSERT INTO java_direct_usage VALUES (?,?,?,?,?,?)',
+                    ((run_id, *row) for row in factors.conn.execute("SELECT * FROM mapped_direct_counts WHERE target IN (SELECT identity FROM records WHERE collection='implementations')")))
+                conn.executemany('INSERT INTO configured_global_usage VALUES (?,?,?,?,?,?)',
+                    ((run_id, *row) for row in factors.conn.execute('SELECT * FROM mapped_definition_counts')))
             conn.executemany('INSERT INTO java_usage_roots VALUES (?,?,?,?,?,?)',
                 ((run_id, *row) for row in factors.conn.execute('SELECT root,operation_key,operation_id,channel,weight FROM usage_roots')))
             conn.executemany('INSERT INTO java_usage_targets VALUES (?,?,?,?)',
@@ -133,10 +143,11 @@ def iter_implementation_usage(conn, run_id, *, selected_only=False):
     indirect_consumers = consumer_query(conn, run_id)
     for row in conn.execute("SELECT implementation_id,record_json FROM source_implementations WHERE run_id=?" + clause + " ORDER BY implementation_id", parameters):
         identity = row[0]
-        direct_count = conn.execute('SELECT count(*) FROM configured_component_uses WHERE run_id=? AND implementation_id=?', (run_id, identity)).fetchone()[0]
+        from tools.state_store_tools.java_usage import mapped_direct_usage, direct_consumer_query
+        direct_count = (sum(int(value[0]) for value in conn.execute('SELECT weight FROM java_direct_usage WHERE run_id=? AND target=?', (run_id, identity)))
+            if mapped_direct_usage(conn, run_id) else conn.execute('SELECT count(*) FROM configured_component_uses WHERE run_id=? AND implementation_id=?', (run_id, identity)).fetchone()[0])
         indirect_count = sum(use.reference_count for use in iter_global_java_usage(conn, run_id, implementation_id=identity))
-        query = '''SELECT operation_key,operation_id,channel FROM configured_component_uses WHERE run_id=? AND implementation_id=?
-            UNION ''' + indirect_consumers
+        query = direct_consumer_query(conn, run_id) + ' UNION ' + indirect_consumers
         parameters = (run_id, identity, run_id, identity)
         operation_count, channel_count = conn.execute('SELECT count(DISTINCT operation_key),count(DISTINCT NULLIF(channel,\'\')) FROM (' + query + ')', parameters).fetchone()
         consumers = (dict(operation_key=key, operation_id=name, channel=channel) for key, name, channel in
@@ -173,6 +184,12 @@ def iter_configured_component_usage(conn, run_id, *, selected_only=False):
     """Count configured definitions separately, retaining unused definitions with zero uses."""
     clause = ' AND definition_id IN (SELECT identity FROM report_definitions)' if selected_only else ''
     for row in conn.execute("SELECT definition_id,record_json FROM configured_component_definitions WHERE run_id=?" + clause + " ORDER BY definition_id", (run_id,)):
+        from tools.state_store_tools.java_usage import mapped_direct_usage
+        if mapped_direct_usage(conn, run_id):
+            counts = conn.execute('SELECT count(DISTINCT operation_key),count(DISTINCT NULLIF(channel,\'\')) FROM configured_global_usage WHERE run_id=? AND definition=?', (run_id,row[0])).fetchone()
+            total = sum(int(value[0]) for value in conn.execute('SELECT weight FROM configured_global_usage WHERE run_id=? AND definition=?', (run_id,row[0])))
+            yield dict(definition=json.loads(row[1]),reference_count=total,operation_count=counts[0],channel_count=counts[1])
+            continue
         counts = conn.execute('''SELECT count(*),count(DISTINCT operation_key),count(DISTINCT NULLIF(channel,''))
             FROM configured_component_uses WHERE run_id=? AND json_extract(record_json,'$.definition_id')=?''', (run_id, row[0])).fetchone()
         yield dict(definition=json.loads(row[1]), reference_count=counts[0], operation_count=counts[1], channel_count=counts[2])

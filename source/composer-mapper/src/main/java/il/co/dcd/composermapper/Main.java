@@ -19,6 +19,19 @@ public class Main {
         boolean markdownLinks = a.flag("md", false);
         String  channel       = a.optional("channel");   // null if not provided
 
+        if(a.optional("analysis-format")!=null&&!java.util.Set.of("legacy","indexed-v1").contains(a.optional("analysis-format")))throw new IllegalArgumentException("--analysis-format must be legacy or indexed-v1");
+        if ("indexed-v1".equals(a.optional("analysis-format"))) {
+            if (!"scoped".equals(a.optional("vault-layout"))) throw new IllegalArgumentException("Indexed analysis requires --vault-layout scoped");
+            try (var analysis = new il.co.dcd.composermapper.storage.AnalysisSession(root,vault,a.optional("workspace-id"),il.co.dcd.composermapper.storage.AnalysisSettings.from(a))) {
+                String previous=a.optional("reuse-analysis"),recovery=a.optional("resume-analysis");
+                if(previous!=null&&recovery!=null)throw new IllegalArgumentException("Choose --reuse-analysis or --resume-analysis");
+                analysis.prepare(previous!=null?Path.of(previous):recovery!=null?Path.of(recovery):null,recovery!=null);
+                var indexedFiles = new FileDiscoveryService().discover(root,channel);
+                new ScopedVaultGenerationService().generate(root,vault,indexedFiles,channel,a.optional("workspace-id"),markdownLinks,new ProcessingReport(),started);
+            } catch (Exception error) { throw new IllegalStateException("Indexed map generation failed",error); }
+            return;
+        }
+
         FileDiscoveryService discovery = new FileDiscoveryService();
         if ("scoped".equals(a.optional("vault-layout")))
             System.out.println(MapperProgress.stamp("Discovering source files: " + root));

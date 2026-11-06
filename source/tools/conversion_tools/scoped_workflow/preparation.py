@@ -27,7 +27,7 @@ def is_scoped_run(conn, run_id):
     """Detect schema three without creating tables or reinterpreting older runs."""
     table = conn.execute("SELECT 1 FROM sqlite_master WHERE name='scoped_vault_runs'").fetchone()
     row = conn.execute('SELECT schema_version FROM scoped_vault_runs WHERE run_id=?', (run_id,)).fetchone() if table else None
-    return bool(row and row[0] == 3)
+    return bool(row and row[0] in (3,4))
 
 
 def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_index=None):

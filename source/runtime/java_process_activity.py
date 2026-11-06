@@ -5,16 +5,16 @@ import locale
 import logging
 import os
 from pathlib import Path
-from queue import Empty, Queue
+from queue import Empty, Full, Queue
 import subprocess
-from threading import Thread
+from threading import Event, Thread
 from time import monotonic
 
 from runtime.model_execution.error_details import sanitize_diagnostic
 
 
 def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_path=None,
-                              capture_output=True, text=True, check=False, **kwargs):
+                              capture_output=True, text=True, check=False, output_log=None, on_output=None, **kwargs):
     """Stream captured output and stop a child only after no observable progress.
 
     Output bytes and result-file size/mtime changes reset the timer. Console
@@ -23,19 +23,33 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
     if inactivity_timeout_seconds <= 0:
         raise ValueError("Scanner inactivity timeout must be positive")
     logger = logging.getLogger(__name__)
-    events = Queue()
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
+    events = Queue(maxsize=64)
+    stopped = Event()
+    output = Path(output_log).open('wb') if output_log is not None else None
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
+    except BaseException:
+        if output is not None:
+            output.close()
+        raise
     buffers = {"stdout": [], "stderr": []}
     decoders = {name: codecs.getincrementaldecoder(locale.getpreferredencoding(False))(errors="replace")
                 for name in buffers}
     pending = {name: "" for name in buffers}
 
     def read_output(name, pipe):
+        def emit(chunk):
+            while not stopped.is_set():
+                try:
+                    events.put((name, chunk, monotonic()), timeout=0.2)
+                    return
+                except Full:
+                    continue
         try:
             while chunk := os.read(pipe.fileno(), 65536):
-                events.put((name, chunk, monotonic()))
+                emit(chunk)
         finally:
-            events.put((name, None, monotonic()))
+            emit(None)
 
     readers = [Thread(target=read_output, args=(name, getattr(process, name)), daemon=True,
                       name="java-scanner-" + name) for name in buffers]
@@ -59,16 +73,25 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                     closed.add(name)
                     decoded = decoders[name].decode(b"", final=True)
                 else:
-                    buffers[name].append(chunk)
+                    if capture_output:
+                        buffers[name].append(chunk)
+                    if output is not None:
+                        output.write(chunk)
+                        output.flush()
                     last_activity = max(last_activity, observed)
                     decoded = decoders[name].decode(chunk)
                 pending[name] += decoded
                 while "\n" in pending[name]:
                     line, pending[name] = pending[name].split("\n", 1)
                     logger.info("Java dependency scanner: %s", sanitize_diagnostic(line.rstrip("\r")))
+                    if on_output is not None:
+                        on_output(line.rstrip('\r'))
                 if name in closed and pending[name]:
                     logger.info("Java dependency scanner: %s", sanitize_diagnostic(pending[name]))
                     pending[name] = ""
+                if len(pending[name]) > 16384:
+                    logger.info('Java dependency scanner: %s', sanitize_diagnostic(pending[name][:16384]))
+                    pending[name] = pending[name][16384:]
             if activity_path is not None:
                 try:
                     stat = Path(activity_path).stat()
@@ -82,6 +105,7 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                 raise subprocess.TimeoutExpired(command, inactivity_timeout_seconds)
         returncode = process.wait()
     finally:
+        stopped.set()
         if process.poll() is None:
             process.kill()
         process.wait()
@@ -90,6 +114,8 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                 reader.join()
         process.stdout.close()
         process.stderr.close()
+        if output is not None:
+            output.close()
         logger.info('Java scanner maximum observed resident memory: %s bytes.', peak_memory)
     outputs = {name: b"".join(chunks) for name, chunks in buffers.items()}
     if text:

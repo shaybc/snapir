@@ -16,8 +16,9 @@ def mapper_classes(tmp_path_factory):
         pytest.skip("Mapper integration requires a JDK")
     root = Path(__file__).resolve().parents[1]
     classes = tmp_path_factory.mktemp("mapper-classes")
-    sources = sorted((root / "composer-mapper/src/main/java").rglob("*.java"))
-    result = subprocess.run(["javac", "--release", JAVA_VERSION, "-encoding", "UTF-8", "-d", str(classes),
+    from tests.mapper_compilation import mapper_sources, mapper_dependencies
+    sources = mapper_sources(root)
+    result = subprocess.run(["javac", "--release", JAVA_VERSION, "-encoding", "UTF-8", "-cp", mapper_dependencies(root), "-d", str(classes),
                              *map(str, sources)], capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     return classes

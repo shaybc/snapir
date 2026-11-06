@@ -70,6 +70,10 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
         create_all_tables(conn)
         persist_run_config(conn, config, directory)
         run_profile_path(directory).write_text(profile.model_dump_json(indent=2), encoding="utf-8")
+        from tools.composer_mapper_tools.indexed_analysis import is_indexed_map
+        if profile.mapper_analysis_format == 'indexed-v1' or is_indexed_map(vault):
+            from runtime.indexed_intake import run_indexed_intake
+            return run_indexed_intake(profile, config, conn, directory, settings, vault)
         logger.info("Discovering Java sources and classpath.")
         source_index = discover_java_sources(profile.source_root)
         write_json_report(run_report_path(directory, "java_source_index.json"), source_index)

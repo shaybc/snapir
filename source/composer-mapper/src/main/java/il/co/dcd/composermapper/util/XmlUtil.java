@@ -2,7 +2,7 @@ package il.co.dcd.composermapper.util;
 import org.w3c.dom.*; import org.xml.sax.InputSource; import javax.xml.XMLConstants; import javax.xml.parsers.DocumentBuilderFactory; import java.io.StringReader; import java.nio.file.Path; import java.util.*;
 public final class XmlUtil {
   private XmlUtil(){}
-  public static Document parse(Path path){ try{ var f=DocumentBuilderFactory.newInstance(); f.setNamespaceAware(false); f.setIgnoringComments(true); f.setIgnoringElementContentWhitespace(true); f.setXIncludeAware(false); f.setExpandEntityReferences(false); disableExternalEntities(f); var b=f.newDocumentBuilder(); b.setEntityResolver((publicId,systemId)->new InputSource(new StringReader(""))); var d=b.parse(path.toFile()); d.getDocumentElement().normalize(); return d; }catch(Exception e){
+  public static Document parse(Path path){ var analysis=il.co.dcd.composermapper.storage.AnalysisSession.current(); if(analysis!=null)return analysis.document(path); try{ var f=DocumentBuilderFactory.newInstance(); f.setNamespaceAware(false); f.setIgnoringComments(true); f.setIgnoringElementContentWhitespace(true); f.setXIncludeAware(false); f.setExpandEntityReferences(false); disableExternalEntities(f); var b=f.newDocumentBuilder(); b.setEntityResolver((publicId,systemId)->new InputSource(new StringReader(""))); var d=b.parse(path.toFile()); d.getDocumentElement().normalize(); return d; }catch(Exception e){
     String location=path.toAbsolutePath().normalize().toString();
     if(e instanceof org.xml.sax.SAXParseException parseError)
       location+=":"+parseError.getLineNumber()+":"+parseError.getColumnNumber();
@@ -21,5 +21,5 @@ public final class XmlUtil {
     }
     return null;
   }
-  public static List<Element> childElements(Element p){ List<Element> r=new ArrayList<>(); for(int i=0;i<p.getChildNodes().getLength();i++){ Node n=p.getChildNodes().item(i); if(n.getNodeType()==Node.ELEMENT_NODE) r.add((Element)n);} return r; }
+  public static List<Element> childElements(Element p){ if(il.co.dcd.composermapper.storage.AnalysisSession.current()!=null)return il.co.dcd.composermapper.storage.SqlXmlViews.elements(p); List<Element> r=new ArrayList<>(); for(int i=0;i<p.getChildNodes().getLength();i++){ Node n=p.getChildNodes().item(i); if(n.getNodeType()==Node.ELEMENT_NODE) r.add((Element)n);} return r; }
 }

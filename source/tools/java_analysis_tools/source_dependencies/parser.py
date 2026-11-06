@@ -6,6 +6,7 @@ import tempfile
 import logging
 from pathlib import Path
 from xml.etree import ElementTree
+from tools.java_analysis_tools.source_dependencies.analysis_runtime import analyzer_command
 
 
 def _parse_batch(paths, *, strip_bom=False):
@@ -19,10 +20,9 @@ def _parse_batch(paths, *, strip_bom=False):
         for path in paths:
             ElementTree.SubElement(manifest, "source", path=path)
         ElementTree.ElementTree(manifest).write(root / "sources.xml", encoding="utf-8", xml_declaration=True)
-        scanner = Path(__file__).with_name("SourceReferenceScanner.java")
         inactivity = java_scan_inactivity_timeout()
         try:
-            result = run_java(["java", str(scanner), str(root / "sources.xml"), str(root / "references.xml"), *(['--strip-bom'] if strip_bom else [])],
+            result = run_java([*analyzer_command(), str(root / "sources.xml"), str(root / "references.xml"), *(['--strip-bom'] if strip_bom else [])],
                                     capture_output=True, text=True, inactivity_timeout_seconds=inactivity,
                                     activity_path=root / "references.xml", check=False)
         except subprocess.TimeoutExpired as exc:
@@ -40,6 +40,11 @@ def _parse_batch(paths, *, strip_bom=False):
 
 def iter_source_references(paths, *, strip_bom=False, cache=None, batch_files=250, batch_bytes=8 * 1024 * 1024):
     """Parse bounded batches, reusing byte-identical syntax while resolving globally elsewhere."""
+    from tools.composer_mapper_tools.mapped_scope import current_mapped, source_syntax
+    mapped = current_mapped()
+    if mapped is not None:
+        yield from source_syntax(mapped, paths)
+        return
     from tools.state_store_tools.workspace_analysis import content_hash
     logger = logging.getLogger(__name__)
     paths = sorted(set(str(Path(path).resolve()) for path in paths))

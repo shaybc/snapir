@@ -8,13 +8,17 @@ set "mapperRoot=C:\workspace\composer\workspace"
 set "mapperVault=C:\workspace\composer-map"
 set /p "mapperRoot=Composer root [%mapperRoot%]: "
 set /p "mapperVault=Output vault [%mapperVault%]: "
+set "mapperAnalysis=legacy"
+set "mapperWorkspace=full-composer"
+set /p "mapperAnalysis=Analysis format: legacy or indexed-v1 [%mapperAnalysis%]: "
+set /p "mapperWorkspace=Stable workspace ID [%mapperWorkspace%]: "
 
 echo Building Composer Mapper...
-call mvn -q package
+call mvn -q -f ..\pom.xml package
 if errorlevel 1 goto buildFailed
 
 echo Generating Composer map...
-java -jar "target\composer-mapper-1.1.1-jar-with-dependencies.jar" --root "%mapperRoot%" --vault "%mapperVault%" --vault-layout scoped --workspace-id "full-composer" --md true
+java -Xmx768m -jar "target\composer-mapper-1.1.1-jar-with-dependencies.jar" --root "%mapperRoot%" --vault "%mapperVault%" --vault-layout scoped --workspace-id "%mapperWorkspace%" --md true --analysis-format "%mapperAnalysis%"
 set "mapperExitCode=%errorlevel%"
 goto finish
 

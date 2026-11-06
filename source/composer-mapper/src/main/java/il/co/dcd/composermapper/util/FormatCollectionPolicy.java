@@ -38,7 +38,7 @@ public final class FormatCollectionPolicy {
                 if (keepDecorators) selected.add(child);
             } else {
                 String key = key(child);
-                keepDecorators = key == null || latest.get(key) == child;
+                keepDecorators = key == null || java.util.Objects.equals(latest.get(key), child);
                 if (keepDecorators) selected.add(child);
             }
         }

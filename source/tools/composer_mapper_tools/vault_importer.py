@@ -58,6 +58,17 @@ def import_vault(
     if manifest is not None:
         if file_digest(manifest_path) != validated_hash:
             raise ValueError('Scoped manifest changed during validation')
+        if manifest['vault_schema_version'] == 4:
+            from tools.component_inventory_tools.mapped_inventory import MappedInventory
+            from tools.composer_mapper_tools.mapped_scope import mapped_scope
+            from tools.composer_mapper_tools.indexed_vault_importer import import_indexed_vault
+            try:
+                manifest.verify_sources(run_config.source_root, progress)
+                mapped = MappedInventory(manifest, run_config.source_root, run_config)
+                with mapped_scope(mapped):
+                    return import_indexed_vault(conn, manifest, mapped, run_config, summary, progress=progress)
+            finally:
+                manifest.close()
         if manifest['vault_schema_version'] == 3:
             from tools.composer_mapper_tools.shared_vault_importer import import_shared_vault
             return import_shared_vault(conn, root, manifest, run_config, summary,

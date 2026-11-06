@@ -37,6 +37,8 @@ def prepare_library_plan(conn, config, profile, migration_plan):
     operation_origins = {}
     hashes = {}
     definition_implementations = {}
+    from tools.state_store_tools.java_usage import mapped_direct_usage, iter_global_direct_usage
+    mapped_counts = mapped_direct_usage(conn, config.run_id)
     selected_source_roots = set()
     for row in conn.execute("SELECT record_json FROM source_implementations WHERE run_id=? AND 'implementation:'||implementation_id IN (SELECT component_key FROM library_plan_candidates)", (config.run_id,)):
         record = json.loads(row[0])
@@ -66,8 +68,15 @@ def prepare_library_plan(conn, config, profile, migration_plan):
         for key in keys:
             if key not in candidates:
                 continue
+            if mapped_counts:
+                continue
             consumers.setdefault(key, set()).add(consumer)
             reference_counts[key] = reference_counts.get(key, 0) + 1
+    for key, origin, name, channel, count in iter_global_direct_usage(conn, config.run_id):
+        consumer = (channel or '') + '/' + name
+        operation_origins.setdefault(consumer, set()).add(origin)
+        consumers.setdefault(key, set()).add(consumer)
+        reference_counts[key] = reference_counts.get(key, 0) + count
     roots = {key.removeprefix('implementation:') for key in candidates if key.startswith('implementation:')}
     graph = get_java_dependency_graph(conn, config.run_id, include_uses=False, roots=roots)
     from tools.state_store_tools.java_usage import iter_global_java_usage

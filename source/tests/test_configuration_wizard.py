@@ -291,6 +291,8 @@ def test_existing_config_requires_explicit_replacement(project, monkeypatch, rep
             return "next"
         if title == "Composer map":
             return "create"
+        if title == "New map analysis":
+            return "legacy"
         assert "already exists" in title
         assert options[0] == ("cancel", "Back to review")
         attempted = True

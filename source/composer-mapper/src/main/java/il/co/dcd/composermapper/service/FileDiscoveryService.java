@@ -24,6 +24,8 @@ public class FileDiscoveryService {
      *                its declared imports in parent-before-child order
      */
     public List<DiscoveredFile> discover(Path root, String channel) {
+        var analysis=il.co.dcd.composermapper.storage.AnalysisSession.current();
+        if(analysis!=null)return analysis.discoveredFiles(channel);
         List<DiscoveredFile> out = new ArrayList<>();
         try (var s = Files.walk(root)) {
             s.filter(Files::isRegularFile).forEach(p -> {

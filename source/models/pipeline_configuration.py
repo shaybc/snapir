@@ -16,6 +16,7 @@ from models.executable_verification_settings import ExecutableVerificationSettin
 from models.format_comparison_settings import FormatComparisonSettings
 from models.test_preparation_settings import TestPreparationSettings
 from models.microservice_settings import MicroserviceSettings
+from models.mapper_analysis_settings import MapperAnalysisSettings
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -56,6 +57,9 @@ class PipelineConfiguration(BaseModel):
     mapper_jar: str = constants.COMPOSER_MAPPER_JAR
     existing_composer_map: str | None = Field(default=None, min_length=1)
     mapper_vault_layout: Literal["legacy", "scoped"] = constants.COMPOSER_MAPPER_VAULT_LAYOUT
+    mapper_analysis_format: Literal["legacy", "indexed-v1"] = "legacy"
+    mapper_analysis_reuse: str | None = None
+    mapper_analysis: MapperAnalysisSettings = Field(default_factory=MapperAnalysisSettings)
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME
     java_scan_inactivity_timeout_seconds: int = Field(default=constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS, gt=0)
@@ -123,6 +127,8 @@ class PipelineConfiguration(BaseModel):
     @model_validator(mode="after")
     def validate_scoped_workspace(self):
         """Require stable identity before a scoped run can generate evidence."""
+        if self.mapper_analysis_format == 'indexed-v1' and self.mapper_vault_layout != 'scoped':
+            raise ValueError('Indexed Mapper analysis requires mapper_vault_layout: scoped')
         if self.mapper_vault_layout == "scoped" and not (self.source_workspace_id or "").strip():
             raise ValueError("Scoped Mapper generation requires an explicit nonblank source_workspace_id")
         return self

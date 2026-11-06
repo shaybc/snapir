@@ -14,6 +14,10 @@ def discover_java_sources(workspace_root: str) -> JavaSourceIndex:
     returned index is fresh on each call; persisted indexes are diagnostic snapshots.
     """
     workspace = Path(workspace_root).resolve()
+    from tools.composer_mapper_tools.mapped_scope import current_mapped
+    mapped = current_mapped(workspace)
+    if mapped is not None:
+        return mapped.index
     if not workspace.is_dir():
         raise ValueError("Java workspace must be an existing directory")
     index = JavaSourceIndex(workspace_root=str(workspace))

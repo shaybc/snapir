@@ -12,6 +12,12 @@ public class JavaClassIndexer {
     private static final Pattern CLASS_PATTERN = Pattern.compile("(?m)^\\s*(?:public\\s+)?(?:abstract\\s+|final\\s+)?(?:class|interface|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b");
 
     public void index(Path javaFile, Indexes indexes) {
+        var analysis = il.co.dcd.composermapper.storage.AnalysisSession.current();
+        if (analysis != null) {
+            var name = analysis.javaClassName(javaFile);
+            if (name != null) indexes.classToSource().put(name, javaFile);
+            return;
+        }
         try {
             String content = JavaSourceReader.read(javaFile);
             String pkg = matchFirst(PACKAGE_PATTERN, content);

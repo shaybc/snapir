@@ -12,8 +12,9 @@ class InventoryRecords:
     """Own one run's scratch inventory; each read materializes only one record."""
 
     def __init__(self, path, cache=None, selection=None):
-        self.conn = sqlite3.connect(path)
+        self.conn = sqlite3.connect(path, uri=True)
         self.conn.execute('PRAGMA cache_size=-8192')
+        self.conn.execute('PRAGMA temp_store=FILE')
         self.conn.execute('CREATE TABLE IF NOT EXISTS records (collection TEXT, identity TEXT, data TEXT, PRIMARY KEY(collection,identity))')
         self.conn.execute('CREATE TABLE IF NOT EXISTS content (hash TEXT PRIMARY KEY, text TEXT)')
         self.cache = cache

@@ -4,6 +4,9 @@
 /configs/
 /huge-bank-demo/
 
+# Locally built shared Java analysis artifacts.
+/source/java-analysis-core/target/
+
 # Locally built converter fixture JDBC tools (maintained sources stay tracked).
 /source/jdbc-fixture-java/**/target/
 /source/resources/fixture-jdbc/releases/

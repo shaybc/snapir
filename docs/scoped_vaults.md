@@ -1,5 +1,10 @@
 # Scoped Composer Mapper vaults
 
+Schema 4 adds an opt-in SQLite analysis store with reusable Java AST/XML facts,
+selected dependency loading and disk-backed exports. See the
+[indexed analysis guide](composer_analysis_store.md). Schema-2/3 behavior and
+scoped conversion acceptance gates remain unchanged.
+
 Scoped output is an opt-in implementation of the vault hierarchy migration. It preserves source definition occurrences and writes canonical source notes with versioned consuming-channel connections. The legacy layout remains the default.
 
 ## Current compatibility

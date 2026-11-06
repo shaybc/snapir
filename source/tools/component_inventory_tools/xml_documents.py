@@ -5,6 +5,10 @@ from xml.etree import ElementTree
 
 def read_xml(path):
     """Parse supplied XML bytes, honoring encoding without permitting entity declarations."""
+    from tools.composer_mapper_tools.mapped_scope import current_mapped, source_xml
+    mapped = current_mapped()
+    if mapped is not None and path.resolve().is_relative_to(mapped.workspace):
+        return source_xml(mapped, path)
     data = path.read_bytes()
     probe = data.replace(b"\x00", b"").upper()
     if b"<!DOCTYPE" in probe or b"<!ENTITY" in probe:

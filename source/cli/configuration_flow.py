@@ -29,9 +29,11 @@ def collect_section(draft, inputs, configs, api):
                     _default_path(configs, api.constants.COMPOSER_ROOT), prompt=inputs.text))
     if section == 1:
         result = api.collect_composer_map_configuration(configs, inputs.text, inputs.menu)
-        if not result:
+        if not result.get('existing_composer_map'):
             result['mapper_jar'] = api.collect_path(configs, 'mapper_jar',
                 _default_path(configs, api.constants.COMPOSER_MAPPER_JAR), prompt=inputs.text)
+            if result.get('mapper_analysis_format')=='indexed-v1':
+                result['source_workspace_id']=inputs.text('Workspace ID (keep the same value across checkouts)',values['_name'])
         return result
     if section == 2:
         return dict(output_root=api.collect_path(configs, 'output_root',
@@ -90,7 +92,7 @@ def _commit(draft, inputs, result):
 
 def _error_section(error):
     text = str(error)
-    for index, keys in ((0, ('source_root', 'Config name')), (1, ('mapper_jar', 'existing_composer_map')),
+    for index, keys in ((0, ('source_root', 'Config name')), (1, ('mapper_', 'existing_composer_map','source_workspace_id')),
                         (2, ('output_root',)), (3, ('channels', 'include_operations', 'target_languages')),
                         (4, ('java_',)), (5, ('external_dependencies', 'conversion_strategy')),
                         (6, ('gate_', 'plan_approval_policy')), (7, ('model_',)), (8, ('test_deployment',))):

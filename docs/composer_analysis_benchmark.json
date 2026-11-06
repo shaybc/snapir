@@ -1,0 +1,51 @@
+{
+  "java_files": 22000,
+  "operations": 1000,
+  "mapper_heap": "256m",
+  "map_reused": false,
+  "mapping_seconds": 574.7462367999979,
+  "selected_intake_seconds": 17.928906599991024,
+  "selected_java_files": 3,
+  "python_traced_peak_bytes": 1156509,
+  "database_bytes": 225464320,
+  "mapper_elapsed_from_log_seconds": 574,
+  "producer_jdk": "26.0.1+8-34",
+  "mapper_observed_peak_rss_bytes": 223776768,
+  "first_run_total_test_seconds": 879.41,
+  "warm_full_note_validation_seconds": 81.6753,
+  "note": "Global run preceded write-time receipt optimization; selected intake is inventory/count timing, not total migration or Python RSS.",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "huge_bank_demo": {
+    "new_map_and_intake": {
+      "elapsed_seconds": 280.02686359999643,
+      "phase": "scoped_inventory_ready",
+      "selected_implementations": 22,
+      "contexts": [
+        [
+          "INTERNET",
+          "GetClientLinksOpHuge00001",
+          0
+        ],
+        [
+          "INTERNET",
+          "GetClientOverviewOpHuge00001",
+          1
+        ],
+        [
+          "INTERNET",
+          "ValidateClientLinksOpHuge00001",
+          0
+        ]
+      ]
+    },
+    "existing_map_intake": {
+      "elapsed_seconds": 15.294693899995764,
+      "phase": "scoped_inventory_ready",
+      "selected_implementations": 22,
+      "operation_contexts": 3,
+      "mapper_rerun": false
+    },
+    "java_version": 25,
+    "model_provider": "mock"
+  }
+}

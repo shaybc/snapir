@@ -17,7 +17,7 @@ def safe_value(value):
 def summary_lines(data, *, directory=None):
     """Summarize every explicitly selected setting with bounded list previews."""
     lines = []
-    paths = {'source_root', 'output_root', 'mapper_jar', 'existing_composer_map', 'java_home'}
+    paths = {'source_root', 'output_root', 'mapper_jar', 'existing_composer_map', 'java_home','mapper_analysis_reuse'}
     for name, value in data.items():
         if name.startswith('_'):
             continue

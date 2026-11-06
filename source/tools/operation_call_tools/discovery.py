@@ -51,6 +51,13 @@ def discover_operation_calls(vault, *, progress=None, validated_manifest=_UNREAD
     root = Path(vault).resolve()
     manifest = (read_vault_manifest(root, retain_inventory=False, progress=progress, allow_shared=True)
                 if validated_manifest is _UNREAD_MANIFEST else validated_manifest)
+    if manifest is not None and manifest.get('vault_schema_version') == 4:
+        from tools.composer_mapper_tools.indexed_operation_calls import discover_indexed_calls
+        try:
+            return discover_indexed_calls(root,manifest,progress)
+        finally:
+            if validated_manifest is _UNREAD_MANIFEST:
+                manifest.close()
     if manifest is not None and manifest.get('vault_schema_version') == 3:
         return _discover_context_calls(root, manifest, progress)
     note_paths = operation_note_paths(root, manifest, manifest_validated=True)

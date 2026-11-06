@@ -27,6 +27,8 @@ class WorkspaceAnalysis:
         source = Path(__file__).parents[1] / 'java_analysis_tools/source_dependencies'
         self.version = hashlib.sha256(b''.join((source / name).read_bytes() for name in
             ('SourceReferenceScanner.java', 'parser.py', 'resolution.py'))).hexdigest()
+        from tools.java_analysis_tools.source_dependencies.analysis_runtime import analyzer_fingerprint
+        self.version = hashlib.sha256((self.version + analyzer_fingerprint()).encode()).hexdigest()
         from runtime.java_toolchain import java_version, java_environment
         environment = java_environment()
         executable = shutil.which('java', path=environment.get('PATH') if environment else None)

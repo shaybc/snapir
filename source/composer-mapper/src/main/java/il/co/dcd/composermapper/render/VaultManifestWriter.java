@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.*;
 
 /** Publish the complete scoped inventory only after all generated notes are available. */
-public final class VaultManifestWriter {
+public class VaultManifestWriter {
     private final String workspace;
     private int schemaVersion = 2;
     private List<Map<String, Object>> operationContexts = List.of();

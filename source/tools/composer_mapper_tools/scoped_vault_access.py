@@ -14,7 +14,7 @@ class ScopedVaultAccess:
         self.conn, self.run_id = conn, run_id
         table = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='scoped_vault_runs'").fetchone()
         run = conn.execute('SELECT schema_version FROM scoped_vault_runs WHERE run_id=?', (run_id,)).fetchone() if table else None
-        if not run or run[0] != 3:
+        if not run or run[0] not in (3,4):
             raise ValueError('Qualified access requires a ready schema-three inventory import')
 
     def operation(self, channel, operation_id):

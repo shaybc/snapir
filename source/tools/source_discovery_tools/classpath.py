@@ -23,7 +23,9 @@ def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
         if visible_source_roots is not None and not any(Path(root).resolve().is_relative_to(metadata.parent.resolve()) for root in visible_source_roots):
             continue
         try:
-            entries = ElementTree.parse(metadata).getroot().findall("classpathentry")
+            from tools.composer_mapper_tools.mapped_scope import current_mapped, source_xml
+            mapped = current_mapped(workspace)
+            entries = (source_xml(mapped, metadata) if mapped is not None else ElementTree.parse(metadata).getroot()).findall("classpathentry")
         except (ElementTree.ParseError, OSError) as exc:
             index.issues.append(f"Invalid classpath {metadata}: {exc}")
             continue

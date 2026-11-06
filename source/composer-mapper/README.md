@@ -19,6 +19,13 @@ Output:
 
 ## Scoped vaults and repeated operation-step IDs
 
+For reusable AST/XML facts and selected-only converter Java intake, choose the
+opt-in `--analysis-format indexed-v1` with a scoped vault. Build the shared analyzer
+and mapper together using `mvn -f source/pom.xml package` from the repository root.
+The standalone fat JAR still needs only JDK 25 at runtime. See the
+[indexed analysis guide](../../docs/composer_analysis_store.md) for configuration,
+resource limits, offline builds, map reuse/recovery and compatibility.
+
 Use `--vault-layout scoped --workspace-id "your-workspace-name"` for the channel/operation hierarchy and manifest. Legacy layout remains the default. Scoped output requires an empty or new destination outside the source tree. See the [scoped vault guide](../../docs/scoped_vaults.md).
 
 Every non-XML channel has XML as its implicit base, without requiring an XML import in `dse.ini`. Include XML's configuration and sources in the input workspace, including when mapping a single channel. XML defaults are applied first, declared imports retain their order, and local definitions take precedence. Schema-three scoped output writes each source definition once, follows referenced inherited operations transitively, and records consuming-channel connections in `operation_contexts`. XML availability never expands every channel into the complete XML operation inventory. Local overrides and `onlyFor` apply to the connections. Both Excel generators support this layout; converter support remains gated. Regenerate a fresh vault to adopt it.
@@ -69,14 +76,13 @@ mvn -version
 From the project root:
 
 ```bash
-cd source/composer-mapper
-mvn clean package
+mvn -f source/pom.xml clean package
 ```
 
 This compiles the Java sources and creates the runnable jar:
 
 ```text
-target/composer-mapper-1.1.1-jar-with-dependencies.jar
+source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar
 ```
 
 ## Run tests
@@ -84,7 +90,7 @@ target/composer-mapper-1.1.1-jar-with-dependencies.jar
 From the project root:
 
 ```bash
-mvn test
+mvn -f source/pom.xml test
 ```
 
 The current project has no test sources yet, but this command still verifies that the project compiles successfully through Maven's test lifecycle.

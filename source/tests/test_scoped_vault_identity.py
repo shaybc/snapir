@@ -22,9 +22,10 @@ def read_vault_manifest(vault, **kwargs):
 @pytest.fixture(scope='module')
 def scoped_mapper(tmp_path_factory):
     classes = tmp_path_factory.mktemp('scoped-mapper-classes')
-    sources = Path(__file__).resolve().parents[1] / 'composer-mapper/src/main/java'
-    result = subprocess.run(['javac', '--release', '25', '-encoding', 'UTF-8', '-d', str(classes),
-                             *map(str, sources.rglob('*.java'))], capture_output=True, text=True, timeout=60)
+    from tests.mapper_compilation import mapper_sources, mapper_dependencies
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(['javac', '--release', '25', '-encoding', 'UTF-8', '-cp', mapper_dependencies(root), '-d', str(classes),
+                             *map(str, mapper_sources(root))], capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     return classes
 

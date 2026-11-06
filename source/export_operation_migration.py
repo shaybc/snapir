@@ -25,6 +25,12 @@ def main(argv=None):
         parser.error('--output must end in .xlsx')
     progress = ExportProgress()
     progress.phase('Validating Mapper vault and discovering operation calls')
+    from tools.composer_mapper_tools.indexed_analysis import is_indexed_map
+    if is_indexed_map(args.vault):
+        from tools.operation_call_tools.indexed_export import export_indexed_workbook
+        counts=export_indexed_workbook(args.vault,args.output,args.include_relationships,progress.update)
+        print(f"Created {args.output}: {counts['operations']} operations, {counts['calls']} call sites, {counts['issues']} issues. Elapsed={progress.elapsed()}",flush=True)
+        return 0
     graph = discover_operation_calls(args.vault, progress=progress.update)
     progress.phase('Calculating dependency waves')
     payload = dict(graph=graph, waves=operation_waves(graph), relationships=args.include_relationships)

@@ -34,6 +34,8 @@ public class JavaClassParser {
         Pattern.compile("(?i)(?:returns?\\s*)?(-?\\d+)\\s*(?:\\(([^)]+)\\)|[-:=]\\s*([^,;\\n\\r.]+))");
 
     public JavaClassDef parse(Path javaFile) {
+        var analysis = il.co.dcd.composermapper.storage.AnalysisSession.current();
+        if (analysis != null) return analysis.javaClass(javaFile);
         try {
             String content = JavaSourceReader.read(javaFile);
             String packageName = matchFirst(PACKAGE_PATTERN, content);

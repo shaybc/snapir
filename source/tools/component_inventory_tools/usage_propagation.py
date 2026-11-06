@@ -7,16 +7,16 @@ def prepare_root_counts(conn, root):
     conn.execute('CREATE TABLE IF NOT EXISTS root_edge_counts (root TEXT, edge TEXT, count TEXT, PRIMARY KEY(root,edge))')
     if conn.execute('SELECT 1 FROM root_count_ready WHERE root=?', (root,)).fetchone():
         return
-    conn.executescript('''
-        CREATE TEMP TABLE IF NOT EXISTS reachable (node TEXT PRIMARY KEY);
-        CREATE TEMP TABLE IF NOT EXISTS remaining_degree (node TEXT PRIMARY KEY, degree INTEGER);
-        CREATE TEMP TABLE IF NOT EXISTS traversal_order (ordinal INTEGER PRIMARY KEY, node TEXT);
-        CREATE TEMP TABLE IF NOT EXISTS path_counts (node TEXT PRIMARY KEY, count TEXT);
-        DELETE FROM reachable;
-        DELETE FROM remaining_degree;
-        DELETE FROM traversal_order;
-        DELETE FROM path_counts;
-    ''')
+    # executescript would commit the previous root on every call, causing thousands
+    # of unnecessary disk flushes when many consumers share a small helper closure.
+    for statement in (
+        'CREATE TEMP TABLE IF NOT EXISTS reachable (node TEXT PRIMARY KEY)',
+        'CREATE TEMP TABLE IF NOT EXISTS remaining_degree (node TEXT PRIMARY KEY, degree INTEGER)',
+        'CREATE TEMP TABLE IF NOT EXISTS traversal_order (ordinal INTEGER PRIMARY KEY, node TEXT)',
+        'CREATE TEMP TABLE IF NOT EXISTS path_counts (node TEXT PRIMARY KEY, count TEXT)',
+        'DELETE FROM reachable','DELETE FROM remaining_degree','DELETE FROM traversal_order','DELETE FROM path_counts',
+    ):
+        conn.execute(statement)
     conn.execute('''INSERT INTO reachable WITH RECURSIVE reach(node) AS (
         SELECT ? UNION SELECT e.target FROM graph_edges e JOIN reach r ON e.caller=r.node)
         SELECT node FROM reach''', (root,))
@@ -30,7 +30,8 @@ def prepare_root_counts(conn, root):
         node = ready[0]
         conn.execute('INSERT INTO traversal_order(node) VALUES (?)', (node,))
         conn.execute('DELETE FROM remaining_degree WHERE node=?', (node,))
-        conn.execute('UPDATE remaining_degree SET degree=degree-1 WHERE node IN (SELECT DISTINCT caller FROM graph_edges WHERE target=?)', (node,))
+        conn.execute('''UPDATE remaining_degree SET degree=degree-1 WHERE EXISTS
+            (SELECT 1 FROM graph_edges e WHERE e.target=? AND e.caller=remaining_degree.node)''', (node,))
     cyclic = conn.execute('SELECT 1 FROM remaining_degree LIMIT 1').fetchone() is not None
     if cyclic:
         conn.execute("INSERT INTO path_counts SELECT node,'1' FROM reachable")

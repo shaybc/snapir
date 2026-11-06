@@ -42,6 +42,9 @@ def read_vault_manifest(vault, *, retain_inventory=True, progress=None, allow_sh
     This reader uses only Python's standard library so standalone exporters can bundle it.
     """
     root = Path(vault).resolve()
+    from tools.composer_mapper_tools.indexed_analysis import is_indexed_map, IndexedAnalysis
+    if is_indexed_map(root):
+        return IndexedAnalysis(root, progress=progress)
     path = root / 'vault-manifest.json'
     if (root / 'vault-generation.json').exists():
         raise ValueError('Incomplete scoped vault generation: ' + str(root))

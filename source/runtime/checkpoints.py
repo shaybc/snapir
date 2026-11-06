@@ -37,6 +37,16 @@ def resume_pipeline(output_root: str, run_id: str):
         if run is None:
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
+        from tools.composer_mapper_tools.indexed_analysis import is_indexed_map, IndexedAnalysis
+        if is_indexed_map(config.vault_root):
+            from tools.component_inventory_tools.mapped_inventory import MappedInventory
+            from tools.composer_mapper_tools.mapped_scope import mapped_scope
+            from tools.state_store_tools.map_snapshot import pin_map,validation_receipt
+            mapped_analysis = IndexedAnalysis(config.vault_root,receipt=validation_receipt(profile.output_root,config.vault_root))
+            mapped_analysis.verify_sources(config.source_root)
+            pin_map(conn,config,mapped_analysis)
+            mapped_runtime = mapped_scope(MappedInventory(mapped_analysis,config.source_root,config))
+            mapped_runtime.__enter__()
         from runtime.gate_numbering import check_gate_numbering
         check_gate_numbering(conn,run_id,directory,run['current_phase'] or '')
         logging.getLogger(__name__).info("Resuming saved checkpoint: %s (%s).", run["current_phase"], run["status"])
@@ -171,6 +181,10 @@ def resume_pipeline(output_root: str, run_id: str):
                                 run_finalization(conn, config, profile, plan, directory)
         return directory
     finally:
+        if 'mapped_runtime' in locals():
+            mapped_runtime.__exit__(None,None,None)
+        if 'mapped_analysis' in locals():
+            mapped_analysis.close()
         if "toolchain" in locals():
             toolchain.__exit__(None, None, None)
         diagnostics.__exit__(None, None, None)

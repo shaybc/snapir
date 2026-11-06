@@ -11,6 +11,11 @@ from tools.conversion_tools.scoped_reuse.fingerprints import digest, revision
 
 def source_layout(source_root):
     """Snapshot registry bytes, XML membership, and Java project metadata at intake."""
+    from tools.composer_mapper_tools.mapped_scope import current_mapped
+    mapped = current_mapped(source_root)
+    if mapped is not None:
+        from tools.state_store_tools.map_snapshot import mapped_layout
+        return mapped_layout(mapped)
     root = Path(source_root).resolve() if source_root else None
     if root is None or not root.is_dir():
         return dict(status='unavailable')

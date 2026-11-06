@@ -52,3 +52,26 @@ def check_detailed_scope(conn, run_id, consumers):
     for consumer in consumers:
         if not conn.execute('SELECT 1 FROM java_usage_operations WHERE run_id=? AND consumer=?', (run_id, consumer)).fetchone():
             raise ValueError('Operation is outside this run\'s detailed inventory scope: ' + consumer + '; start a new run with this operation selected')
+
+
+def mapped_direct_usage(conn, run_id):
+    """Detect explicitly persisted global direct counts in indexed-map runs."""
+    row = conn.execute('SELECT graph_json FROM java_dependency_reports WHERE run_id=?', (run_id,)).fetchone()
+    return bool(row and json.loads(row[0]).get('direct_storage') == 'counts-v1')
+
+
+def direct_consumer_query(conn, run_id):
+    """Use original global consumers even when detailed configured uses are selected only."""
+    if mapped_direct_usage(conn, run_id):
+        return 'SELECT operation_key,operation_id,channel FROM java_direct_usage WHERE run_id=? AND target=?'
+    return 'SELECT operation_key,operation_id,channel FROM configured_component_uses WHERE run_id=? AND implementation_id=?'
+
+
+def iter_global_direct_usage(conn, run_id):
+    """Yield selected component summaries without hydrating unrelated operation uses."""
+    if not mapped_direct_usage(conn, run_id):
+        return
+    for kind, query in (('implementation', "SELECT target,operation_key,operation_id,channel,weight FROM java_direct_usage WHERE run_id=? AND 'implementation:'||target IN (SELECT component_key FROM library_plan_candidates)"),
+                        ('definition', "SELECT definition,operation_key,operation_id,channel,weight FROM configured_global_usage WHERE run_id=? AND 'definition:'||definition IN (SELECT component_key FROM library_plan_candidates)")):
+        for identity, key, name, channel, weight in conn.execute(query, (run_id,)):
+            yield kind + ':' + identity, key, name, channel, int(weight)

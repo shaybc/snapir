@@ -6,12 +6,14 @@ import il.co.dcd.composermapper.model.DiscoveredFile;
 import il.co.dcd.composermapper.model.SourceDefinitionIdentity;
 import il.co.dcd.composermapper.util.XmlUtil;
 import il.co.dcd.composermapper.util.FormatCollectionPolicy;
+import il.co.dcd.composermapper.util.ScopedVaultPaths;
 import java.nio.file.Path;
 import java.util.*;
 import org.w3c.dom.Element;
 
 /** Retain source occurrences and resolve only candidates eligible in a channel and operation. */
 public final class ScopedDefinitionCatalog {
+    private final il.co.dcd.composermapper.storage.AnalysisSession analysis = il.co.dcd.composermapper.storage.AnalysisSession.current();
     private final List<SourceDefinitionIdentity> definitions = new ArrayList<>();
     private final Map<String, Map<String, List<SourceDefinitionIdentity>>> names = new HashMap<>();
     private final Map<Owner, List<SourceDefinitionIdentity>> steps = new HashMap<>();
@@ -25,7 +27,7 @@ public final class ScopedDefinitionCatalog {
     public ScopedDefinitionCatalog(Path root, List<DiscoveredFile> files, ProcessingReport report,
                                    java.util.function.Consumer<String> progress) {
         int processed = 0;
-        for (var file : files.stream().sorted(Comparator.comparing(f -> f.path().toString())).toList()) {
+        for (var file : analysis == null ? files.stream().sorted(Comparator.comparing(f -> f.path().toString())).toList() : files) {
             processed++;
             if (processed == 1 || processed % 100 == 0 || processed == files.size())
                 progress.accept("Indexing source " + processed + "/" + files.size() + ": " + file.path());
@@ -39,9 +41,22 @@ public final class ScopedDefinitionCatalog {
             } else if (file.type() == DiscoveredFile.FileType.JAVA) {
                 Indexes index = Indexes.create();
                 new JavaClassIndexer().index(file.path(), index);
-                index.classToSource().forEach((name, path) -> definitions.add(new SourceDefinitionIdentity(
+                index.classToSource().forEach((name, path) -> add(new SourceDefinitionIdentity(
                     "java_class", name, file.channel(), path, relative(root, path), name, "", null)));
             }
+        }
+        if (analysis != null) {
+            for (var definition : definitions()) {
+                if (definition.kind().equals("format") && !FormatCollectionPolicy.effective(definition.element()))
+                    analysis.store.execute("DELETE FROM definitions WHERE kind=? AND file=? AND selector=?", definition.kind(), definition.file().toString(), definition.selector());
+            }
+            analysis.store.execute("CREATE TABLE step_positions(file TEXT,selector TEXT,owner TEXT,position INTEGER,group_key TEXT,occurrences INTEGER,PRIMARY KEY(file,selector))");
+            analysis.store.execute("CREATE INDEX step_group_keys ON step_positions(file,owner,group_key)");
+            analysis.store.execute("INSERT INTO step_positions SELECT file,selector,owner,row_number() OVER(PARTITION BY file,owner ORDER BY ordinal),'',0 FROM definitions WHERE kind='opStep'");
+            for(var step:stored("kind='opStep'"))analysis.store.execute("UPDATE step_positions SET group_key=? WHERE file=? AND selector=?",ScopedVaultPaths.stepGroupKey(step.name()),step.file().toString(),step.selector());
+            analysis.store.execute("WITH counts AS MATERIALIZED (SELECT file,owner,group_key,count(*) AS total FROM step_positions GROUP BY file,owner,group_key) UPDATE step_positions SET occurrences=(SELECT total FROM counts WHERE counts.file=step_positions.file AND counts.owner=step_positions.owner AND counts.group_key=step_positions.group_key)");
+            analysis.store.commit();
+            return;
         }
         discardOverriddenFormats();
         for (var definition : definitions) {
@@ -52,7 +67,24 @@ public final class ScopedDefinitionCatalog {
         }
     }
 
-    public List<SourceDefinitionIdentity> definitions() { return List.copyOf(definitions); }
+    public List<SourceDefinitionIdentity> definitions() { return analysis == null ? List.copyOf(definitions) : stored("1=1"); }
+
+    private void add(SourceDefinitionIdentity definition) {
+        if (analysis == null) { definitions.add(definition); return; }
+        analysis.store.execute("INSERT INTO definitions(kind,name,channel,file,relative_path,selector,owner,node) VALUES (?,?,?,?,?,?,?,?)",
+            definition.kind(), definition.name(), definition.channel(), definition.file().toString(), definition.relativePath(),
+            definition.selector(), definition.owner(), il.co.dcd.composermapper.storage.SqlXmlViews.identity(definition.element()));
+    }
+    private List<SourceDefinitionIdentity> stored(String condition, Object... arguments) {
+        return analysis.store.sequence("definitions", condition, arguments, "kind,name,channel,file,relative_path,selector,owner,node", row ->
+            new SourceDefinitionIdentity(row[0],row[1],row[2],Path.of(row[3]),row[4],row[5],row[6],
+                row[7] == null ? null : (Element)il.co.dcd.composermapper.storage.SqlXmlViews.node(analysis.store,row[7])));
+    }
+    public int stepPosition(SourceDefinitionIdentity operation,SourceDefinitionIdentity step){return analysis==null?steps(operation).indexOf(step)+1:Integer.parseInt(analysis.store.scalar("SELECT position FROM step_positions WHERE file=? AND selector=?",step.file().toString(),step.selector()));}
+    public boolean repeatedStep(SourceDefinitionIdentity operation,SourceDefinitionIdentity step){
+        if(analysis==null)return steps(operation).stream().filter(value->ScopedVaultPaths.stepGroupKey(value.name()).equals(ScopedVaultPaths.stepGroupKey(step.name()))).count()>1;
+        return Integer.parseInt(analysis.store.scalar("SELECT occurrences FROM step_positions WHERE file=? AND selector=?",step.file().toString(),step.selector()))>1;
+    }
 
     /** Omits formats replaced in a keyed scope, including their nested definitions. */
     private void discardOverriddenFormats() {
@@ -61,12 +93,13 @@ public final class ScopedDefinitionCatalog {
     }
 
     public List<SourceDefinitionIdentity> steps(SourceDefinitionIdentity operation) {
+        if (analysis != null) return stored("kind='opStep' AND file=? AND owner=?", operation.file().toString(), operation.selector());
         return List.copyOf(steps.getOrDefault(new Owner(operation.file(), operation.selector()), List.of()));
     }
 
     public List<SourceDefinitionIdentity> candidates(String kind, String name, List<String> channels,
                                                      SourceDefinitionIdentity operation) {
-        return names.getOrDefault(kind, Map.of()).getOrDefault(name, List.of()).stream()
+        return (analysis == null ? names.getOrDefault(kind, Map.of()).getOrDefault(name, List.of()) : stored("kind=? AND name=?",kind,name)).stream()
             .filter(d -> d.channel() == null || channels.contains(d.channel().toUpperCase(Locale.ROOT)))
             .filter(d -> d.owner().isEmpty() || operation != null && d.file().equals(operation.file())
                 && d.owner().equals(operation.selector())).toList();
@@ -99,14 +132,20 @@ public final class ScopedDefinitionCatalog {
         };
         String name = XmlUtil.attr(element, "id");
         if (kind != null && name != null && !name.isBlank()) {
-            definitions.add(new SourceDefinitionIdentity(kind, name, file.channel(), file.path(),
+            if (analysis != null) analysis.requireDefinitionBudget(element);
+            add(new SourceDefinitionIdentity(kind, name, file.channel(), file.path(),
                 relative(root, file.path()), selector, owner, element));
             if (kind.equals("operation")) owner = selector;
         }
         Map<String, Integer> counts = new HashMap<>();
         for (Element child : XmlUtil.childElements(element)) {
-            int position = counts.merge(child.getTagName(), 1, Integer::sum);
-            walk(root, file, child, selector + "/" + child.getTagName() + "[" + position + "]", owner);
+            if (analysis != null) {
+                String storedSelector=analysis.store.scalar("SELECT selector FROM xml_nodes WHERE id=?",il.co.dcd.composermapper.storage.SqlXmlViews.identity(child));
+                walk(root,file,child,storedSelector,owner);
+            } else {
+                int position = counts.merge(child.getTagName(), 1, Integer::sum);
+                walk(root, file, child, selector + "/" + child.getTagName() + "[" + position + "]", owner);
+            }
         }
     }
 

@@ -47,6 +47,8 @@ Create a new configuration through `run.cmd` or `run-verbose.cmd`:
 
 - Source workspace: `<repo>/huge-bank-demo/composer/Workspace`.
 - Use a distinct workspace identity, such as `huge-bank-demo`.
+- For reusable Java/XML analysis, select **Reusable AST index for large workspaces**
+  under **New map analysis**. See [indexed configuration and limits](composer_analysis_store.md).
 - Create a new Composer map for this workspace; the small seed's map does not
   describe the generated operations. An existing map must have been generated
   from this huge workspace.

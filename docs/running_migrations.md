@@ -1,5 +1,10 @@
 # Running migration intake
 
+For large workspaces, the configuration wizard offers **Reusable AST index for
+large workspaces** when creating a map. Mapping remains global; converter intake
+then loads the selected operation/dependency closure from persisted facts. See
+[indexed analysis configuration, progress and reuse](composer_analysis_store.md).
+
 ## Creating and reviewing a configuration
 
 Both `run.cmd` and `run-verbose.cmd` use the same section-based configuration

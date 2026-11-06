@@ -37,7 +37,9 @@ def observe_inputs(conn, config, profile, classpath):
             continue
         allowed.add(project)
         pending.extend(index.project_references.get(project, []))
-    structure = dict(roots={name: paths for name, paths in index.source_roots.items() if name in allowed},
+    from tools.composer_mapper_tools.mapped_scope import current_mapped
+    mapped = current_mapped(config.source_root)
+    structure = dict(analysis_hash=mapped.analysis['analysis_hash']) if mapped is not None else dict(roots={name: paths for name, paths in index.source_roots.items() if name in allowed},
         references={name: refs for name, refs in index.project_references.items() if name in allowed},
         classes={name: [path for path in paths if index.class_projects[path] in allowed]
                  for name, paths in index.classes.items() if any(index.class_projects[path] in allowed for path in paths)},

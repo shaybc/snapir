@@ -14,6 +14,9 @@ from tools.state_store_tools.inventory_records import RecordSequence
 def build_stored_java_dependencies(workspace, source_index, implementations, configured_uses, storage):
     """Keep global identities/counts exact while materializing only one reference/use at a time."""
     workspace = Path(workspace).resolve()
+    if getattr(storage, 'mapped_analysis', None) is not None:
+        from tools.component_inventory_tools.mapped_graph import build_mapped_graph
+        return build_mapped_graph(storage, implementations, configured_uses)
     by_path = {str((workspace / item.source_path).resolve()): item for item in implementations}
     edges = storage.mapping('dependencies', JavaSourceDependency)
     issues = storage.mapping('dependency_issues', JavaDependencyIssue)

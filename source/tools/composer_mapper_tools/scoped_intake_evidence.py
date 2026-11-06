@@ -60,4 +60,4 @@ def intake_evidence(root, manifest, config):
                 source_origin_status='unverified; conversion requires source revision and classpath proof',
                 target_channels=config.target_channels, run_mode=config.run_mode.value,
                 include_operations=config.include_operations, exclude_operations=config.exclude_operations,
-                channels=channels, diagnostics=manifest.get('diagnostics', []))
+                channels=channels, diagnostics=[] if manifest.get('vault_schema_version') == 4 else manifest.get('diagnostics', []))

@@ -15,6 +15,14 @@ def mapper_command(settings, *, markdown=False, filter_channel=True, validate_ou
                '--vault', settings['VAULT_ROOT']]
     if settings.get('COMPOSER_MAPPER_VAULT_LAYOUT', 'legacy') == 'scoped':
         command.extend(['--vault-layout', 'scoped', '--workspace-id', settings['SOURCE_WORKSPACE_ID'], '--md', 'true'])
+        if settings.get('COMPOSER_MAPPER_ANALYSIS_FORMAT') == 'indexed-v1':
+            budgets=settings.get('COMPOSER_MAPPER_ANALYSIS_SETTINGS') or {}
+            command.insert(1,'-Xmx'+str(budgets.get('heap_mib',768))+'m')
+            command.extend(['--analysis-format', 'indexed-v1'])
+            for key,option in (('batch_files','analysis-batch-files'),('batch_mib','analysis-batch-mib'),('java_file_mib','analysis-java-file-mib'),('sqlite_cache_mib','analysis-sqlite-cache-mib')):
+                if key in budgets:command.extend(['--'+option,str(budgets[key])])
+            if settings.get('COMPOSER_MAPPER_ANALYSIS_REUSE'):
+                command.extend(['--reuse-analysis', settings['COMPOSER_MAPPER_ANALYSIS_REUSE']])
     elif markdown:
         command.append('--md')
     channels = settings.get('TARGET_CHANNELS') or []

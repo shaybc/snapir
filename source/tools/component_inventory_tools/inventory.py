@@ -21,6 +21,7 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
     """
     workspace = Path(workspace_root).resolve()
     workspace_id = workspace_id or workspace.as_uri()
+    mapped = getattr(storage, 'mapped_analysis', None)
     index = source_index or discover_java_sources(str(workspace))
     progress = storage.progress if storage is not None else None
     if progress:
@@ -33,17 +34,25 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         inventory.diagnostics.extend(index.issues)
     else:
         inventory = ComponentInventory(workspace_id=workspace_id, diagnostics=list(index.issues))
-    mappings, issues, scopes = load_channel_mappings(workspace)
+    mappings, issues, scopes = mapped.mappings() if mapped is not None else load_channel_mappings(workspace)
     inventory.diagnostics.extend(issues)
-    definitions, issues = discover_definitions(workspace, storage)
+    definitions, issues = (mapped.definitions, []) if mapped is not None else discover_definitions(workspace, storage)
     inventory.diagnostics.extend(issues)
     implementation_by_path = {}
+    if mapped is not None:
+        from models.source_component_identity import SourceImplementationRecord
+        from tools.state_store_tools.inventory_records import RecordSequence
+        implementation_by_path = storage.mapping('implementation_paths', SourceImplementationRecord)
+        implementation_records = storage.mapping('implementations', SourceImplementationRecord)
+        inventory.implementations = RecordSequence(implementation_records)
     resolved_roots = {project: [Path(root).resolve() for root in roots] for project, roots in index.source_roots.items()}
     if progress:
         progress.stage('Indexing Java implementation identities', sum(map(len, index.classes.values())))
     for fqcn, paths in index.classes.items():
         for value in paths:
             path = Path(value).resolve()
+            if mapped is not None and not mapped.is_selected(path):
+                continue
             project = index.class_projects.get(value)
             roots = [root for root in resolved_roots.get(project, []) if path.is_relative_to(root)]
             if not roots:
@@ -51,9 +60,12 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
                 if progress:
                     progress.advance(detail='Unresolved source root: ' + str(path))
                 continue
-            implementation = identify_java_source(workspace, workspace_id, max(roots, key=lambda root: len(root.parts)), path, fqcn, indexed_roots=True)
+            implementation = mapped.implementation(path, fqcn, workspace_id) if mapped is not None else identify_java_source(workspace, workspace_id, max(roots, key=lambda root: len(root.parts)), path, fqcn, indexed_roots=True)
             implementation_by_path[str(path)] = implementation
-            inventory.implementations.append(implementation)
+            if mapped is not None:
+                implementation_records[implementation.implementation_id] = implementation
+            else:
+                inventory.implementations.append(implementation)
             if progress:
                 progress.advance(detail=str(path))
     uses = {}
@@ -63,6 +75,9 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         configured = storage.mapping('definitions', ConfiguredComponentDefinition)
 
     class_results, origin_projects, class_paths = {}, {}, {}
+    if mapped is not None:
+        from tools.component_inventory_tools.mapped_graph import BoundedCache
+        class_results, origin_projects, class_paths = BoundedCache(), BoundedCache(), BoundedCache()
 
     def resolve_class(fqcn, origin):
         if not fqcn:
@@ -159,7 +174,7 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
         root = definition["node"]
         if definition["kind"] in {"format", "context"}:
             add_use(operation, definition, root, caller, kind=definition["kind"])
-        for node in root.iter():
+        for node in (mapped.operation_nodes(operation,root) if mapped is not None else root.iter()):
             tag = tag_name(node)
             selector = definition["selectors"][id(node)]
             site = definition["path"].relative_to(workspace).as_posix() + selector

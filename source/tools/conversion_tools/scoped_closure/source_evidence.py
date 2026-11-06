@@ -32,6 +32,16 @@ class SourceEvidence:
         evidence = reference.evidence
         relative, expected = evidence['source_relative_path'], evidence['source_hash']
         self.used[relative] = expected
+        from tools.composer_mapper_tools.mapped_scope import current_mapped, source_xml
+        mapped = current_mapped(self.root)
+        if mapped is not None:
+            from tools.composer_mapper_tools.indexed_analysis import digest
+            if digest(self.path(relative)) != expected:
+                raise SourceEvidenceError('Source revision differs from intake: ' + relative)
+            node = source_xml(mapped, self.path(relative), evidence['source_selector'])
+            if node.get('id') != reference.entity_id:
+                raise SourceEvidenceError('Source definition identity differs: ' + evidence['source_selector'])
+            return node
         key = (relative, expected)
         if key not in self.documents:
             try:
