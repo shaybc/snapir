@@ -47,6 +47,11 @@ public final class StandaloneLaunch {
                 String url=binding.text("jdbc_url");
                 url += (url.contains("?") ? "&" : "?")+"execution="+execution;
                 ObjectNode config=DemoBinding.JSON.createObjectNode();
+                Path originalConfig=bindingProjectConfig(Path.of(args[0]));
+                if(Files.isRegularFile(originalConfig)) {
+                    var original=DemoBinding.JSON.readTree(originalConfig.toFile());
+                    if(original.has("service_urls"))config.set("service_urls",original.path("service_urls"));
+                }
                 ObjectNode db=config.putObject("databases").putObject(binding.text("database"));
                 db.put("jdbc_url",url);db.put("driver_class",binding.text("driver_class"));
                 db.put("user","");db.put("password","");
@@ -77,6 +82,10 @@ public final class StandaloneLaunch {
                 }
             }
         }
+    }
+    static Path bindingProjectConfig(Path binding) throws Exception {
+        var operation=DemoBinding.JSON.readTree(binding.toFile());
+        return binding.toAbsolutePath().getParent().resolve(operation.path("runtime_config").asText()).normalize();
     }
     static int invoke(List<String> args,Path driver,int timeoutMs) throws Exception {
         String cp=System.getProperty("java.class.path");

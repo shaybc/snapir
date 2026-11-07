@@ -9,13 +9,14 @@ from tools.state_store_tools.service_api_uses import list_service_uses
 def call_contract(use):
     """Expose saved request, reply, error and address details without reading callee source."""
     service = use.contract
-    payload = use.model_dump(mode='json')
+    payload = dict(api_revision=service.api_revision, application_id=service.application_id,
+                   method=service.method, path=service.path, request=service.request_contract,
+                   response=service.response_contract, error=service.error_contract)
     property_name = use.address.base_url_property or 'operations.' + hashlib.sha256(
         (service.channel + '/' + service.operation_id).encode()).hexdigest()[:12] + '.base-url'
     return dict(operation=service.channel + '/' + service.operation_id, method=service.method,
         path=service.path, media_type='application/xml', base_url_property=property_name,
-        configured_base_url=str(use.address.base_url) if use.address.base_url else None,
-        address=use.address.model_dump(mode='json'),
+        configured_base_url=None,
         formats=dict(csRequestFormat=service.request_contract, csReplyFormat=service.response_contract,
                      csErrorReplyFormat=service.error_contract),
         published_api=True, api_revision=service.api_revision, application_id=service.application_id,

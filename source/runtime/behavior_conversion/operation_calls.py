@@ -12,6 +12,9 @@ format contracts. Inject the target base URL using its base_url_property; never 
 host, fall back to Composer, inline the callee implementation or fabricate its response.
 In Spring wrappers bind each caller bean's host argument with @Value("${<base_url_property>}")
 using the actual saved property name, with no invented host default. Supply it to the client.
+For standalone constructor injection, annotate HTTP-client constructors with
+@java.beans.ConstructorProperties. Use the exact base_url_property for each URL argument;
+use the ordinary parameter names for other arguments. Do not introduce an arbitrary String default.
 Map the calling operation's values to the target request format, and merge the target reply
 back into the calling flow as the supplied configuration and source require. Preserve return
 codes, error XML, conditional routing and timeout behavior. If mappings or transaction semantics
@@ -35,7 +38,7 @@ def attach_operation_calls(conn, config, payload, calls=(), operation_key=None):
     return payload
 
 
-def validate_operation_clients(bundle, calls):
+def validate_operation_clients(bundle, calls, *, require_standalone_bindings=False):
     """Reject missing native transport or an unchanged Composer invocation before compilation."""
     if not calls:
         return
@@ -49,6 +52,11 @@ def validate_operation_clients(bundle, calls):
         raise ValueError('Operation client must execute its HTTP request')
     for call in calls:
         contract = call['service_contract']
+        if require_standalone_bindings:
+            from tools.validation_tools.java_comments import mask_java_comments
+            annotations = re.findall(r'@(?:java\.beans\.)?ConstructorProperties\s*\(([^)]*)\)', mask_java_comments(sources))
+            if not any(json.dumps(contract['base_url_property']) in annotation for annotation in annotations):
+                raise ValueError('Standalone HTTP client needs @ConstructorProperties binding for ' + contract['base_url_property'])
         # A slash-normalizing join may keep the path's leading slash in the join.
         joined_path = (r'\b(?P<base>[\w.]+)\s*\+\s*\(\s*(?P=base)\.endsWith\s*\(\s*"/"\s*\)'
             r'\s*\?\s*""\s*:\s*"/"\s*\)\s*\+\s*' + re.escape(json.dumps(contract['path'].lstrip('/'))))

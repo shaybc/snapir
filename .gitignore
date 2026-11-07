@@ -1,6 +1,7 @@
 # Generated vaults, reports, and migration run data.
 /outputs/
 /work/
+/shared/
 /configs/
 /huge-bank-demo/
 

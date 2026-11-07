@@ -50,7 +50,7 @@ def load_deployment(item, *, persist=True):
         name = service_name(item['channel'], item['operation_id'])
         result = MicroserviceDeployment.model_validate(dict(
             operation=dict(identity=identity, database=selected if jdbc else None, initialization={}),
-            http=dict(path='/api/' + identity),
+            http=dict(path=item['payload'].get('native_http_contract',{}).get('path','/api/' + identity),serviceName=name),
             databases={selected:dict(credentialsSecret=dict(name=name + '-database'))} if jdbc else {}))
         if persist:
             write_deployment(path,result)

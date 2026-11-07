@@ -78,11 +78,13 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             raise ValueError('Component has no parser-backed entry points: ' + node.label)
         entries[key] = sorted(methods)
     revision = input_revision(plan, group, component_target(profile))
+    from runtime.component_conversion.shared_identity import neutral_group, implementation_identity
+    package_revision = implementation_identity(plan, group, profile) if neutral_group(plan, group) else revision
     from tools.conversion_tools.scoped_reuse.fingerprints import digest
     requirements = {'entry-' + digest([key, method]): 'Exercise original entry point ' + method
                     for key, methods in entries.items() for method in methods}
     request = dict(group_id=group.group_id, input_revision=revision, kind='basic_component',
-        native_package=saved_package(profile,group.group_id,'com.company.generated.components.c' + revision[:16],
+        native_package=saved_package(profile,group.group_id,'com.company.generated.components.c' + package_revision[:16],
             {key:plan.components[key] for key in group.members}),
         components={key: plan.components[key].model_dump(mode='json') for key in group.members},
         source_entry_points=entries, sources=sources,

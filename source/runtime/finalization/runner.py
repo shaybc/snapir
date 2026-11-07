@@ -139,6 +139,9 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
     write_run_report(directory, "gate_5_report.txt", report)
     decision = evaluate_gate(conn, config.run_id, 5, report, profile.gate_policies.get("5", "human"), bool(evidence) and not blockers)
     phase = "migration_approved" if decision == "approved" else "finalization_blocked" if decision == "blocked" else "gate_5_" + decision
+    if decision == 'approved' and not blockers:
+        from runtime.operation_reuse.deliveries import preserve_deliveries
+        preserve_deliveries(profile, directory, evidence, inventory)
     if decision == 'approved' and not complete_run:
         phase = 'operation_workflow_completed'
         from tools.state_store_tools.operation_progress import save_progress

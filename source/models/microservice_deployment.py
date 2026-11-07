@@ -16,6 +16,7 @@ class HttpDeployment(BaseModel):
     model_config = ConfigDict(extra='forbid')
     path: str = Field(pattern=r'^/[^\s{}?#]*$')
     port: int = Field(default=8080, ge=1024, le=65535)
+    serviceName: str = Field(default='', pattern=r'^[a-z0-9-]*$')
 
 
 class ImageDeployment(BaseModel):
@@ -46,6 +47,7 @@ class MicroserviceDeployment(BaseModel):
     deployment: DeploymentSettings = Field(default_factory=DeploymentSettings)
     transactionPolicy: Literal['preserve-source'] = 'preserve-source'
     demoInfrastructure: FixtureServerDeployment | None = None
+    serviceUrls: dict[str, str] = Field(default_factory=dict)
 
     @field_validator('databases')
     @classmethod

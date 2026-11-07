@@ -1,3 +1,3 @@
 {{- define "native-operation.name" -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- (.Values.service.name | default .Release.Name) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

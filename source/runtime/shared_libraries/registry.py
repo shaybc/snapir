@@ -44,6 +44,8 @@ def register_approved_components(conn, config, profile, evidence):
             used_by_operations=data.get("consumer_operations", []), used_by_validated_operations=0))
         conn.execute("INSERT OR REPLACE INTO managed_component_registry VALUES (?, ?, ?, ?, ?)",
                      (component_id, key, digest, item["task_id"], json.dumps(record)))
+        from runtime.shared_libraries.shared_cache import publish_managed_component
+        publish_managed_component(profile, item)
     conn.commit()
 
 
@@ -55,7 +57,8 @@ def reusable_component(conn, config, profile, data, context):
     digest = conversion_hash(data, profile)
     decision = resolve_component_reuse(conn, "managed_native", key, digest, data["channel"], "java")
     if not decision.should_reuse:
-        return None
+        from runtime.shared_libraries.shared_cache import restore_managed_component
+        return restore_managed_component(conn, config, profile, data, context)
     row = conn.execute("SELECT record_json FROM managed_component_registry WHERE component_id=? AND input_hash=?",
                        (decision.component_id, digest)).fetchone()
     if not row:

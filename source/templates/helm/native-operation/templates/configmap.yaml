@@ -6,6 +6,9 @@ metadata:
 data:
   operation-initialization.json: {{ .Values.operation.initialization | toJson | quote }}
   application.yaml: |
+    {{- range $property, $url := .Values.serviceUrls }}
+    {{ $property | quote }}: {{ $url | quote }}
+    {{- end }}
     server:
       port: {{ .Values.service.port }}
       shutdown: graceful

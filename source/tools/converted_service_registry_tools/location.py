@@ -4,6 +4,7 @@ from pathlib import Path
 
 from runtime.project_paths import project_root
 from tools.component_inventory_tools.identity import stable_id
+from tools.shared_artifact_store.location import store_root
 
 
 def resolve_registry_settings(profile):
@@ -16,5 +17,5 @@ def resolve_registry_settings(profile):
     if not application_id.strip():
         raise ValueError("The service registry needs a non-empty source workspace identity")
     path = (Path(profile.service_registry_path).resolve() if profile.service_registry_path
-            else project_root() / "work" / "service_registry" / stable_id(application_id) / "services.db")
+            else store_root(profile) / "operations" / "registry.db")
     return application_id, path

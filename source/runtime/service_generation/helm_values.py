@@ -16,6 +16,10 @@ def deployment_values(spec):
         deployment=dict(namespace=d.namespace),transactionPolicy=spec.transactionPolicy)
     if spec.demoInfrastructure is not None:
         result['demoInfrastructure']=spec.demoInfrastructure.model_dump(mode='json')
+    if spec.http.serviceName:
+        result['service']['name'] = spec.http.serviceName
+    if spec.serviceUrls:
+        result['serviceUrls'] = spec.serviceUrls
     return result
 
 
@@ -26,9 +30,9 @@ def deployment_from_values(values):
         if any(not isinstance(key,str) for key in data):raise ValueError('Helm values keys must be strings')
         unknown=set(data)-set(allowed)
         if unknown:raise ValueError('Unsupported Helm values keys: '+', '.join(sorted(unknown)))
-    keys(values,('schemaVersion','replicaCount','image','service','http','operation','databases','resources','deployment','transactionPolicy','demoInfrastructure'))
+    keys(values,('schemaVersion','replicaCount','image','service','http','operation','databases','resources','deployment','transactionPolicy','demoInfrastructure','serviceUrls'))
     service=values.get('service',{});http=values.get('http',{});deployment=values.get('deployment',{})
-    keys(service,('port',));keys(http,('path',));keys(deployment,('namespace',))
+    keys(service,('port','name'));keys(http,('path',));keys(deployment,('namespace',))
     resources=values.get('resources',{});keys(resources,('requests','limits'))
     requests=resources.get('requests',{});limits=resources.get('limits',{})
     keys(requests,('cpu','memory'));keys(limits,('cpu','memory'))
@@ -37,7 +41,8 @@ def deployment_from_values(values):
     if operation.get('database')=='':operation['database']=None
     return MicroserviceDeployment.model_validate(dict(
         schemaVersion=values.get('schemaVersion','native-microservice-v1'),operation=operation,
-        http=dict(path=http.get('path'),port=service.get('port',8080)),databases=values.get('databases',{}),
+        http=dict(path=http.get('path'),port=service.get('port',8080),serviceName=service.get('name','')),databases=values.get('databases',{}),
+        serviceUrls=values.get('serviceUrls',{}),
         transactionPolicy=values.get('transactionPolicy','preserve-source'),
         demoInfrastructure=values.get('demoInfrastructure'),
         deployment=dict(namespace=deployment.get('namespace',''),replicas=values.get('replicaCount',1),

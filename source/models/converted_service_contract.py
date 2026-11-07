@@ -29,8 +29,9 @@ class ConvertedServiceContract(BaseModel):
     addresses: dict[str, ServiceAddress] = Field(min_length=1)
     completion: ServiceCompletionEvidence
     swagger_url: AnyHttpUrl | None = None
+    implementation_revision: str | None = None
     status: Literal["converted"] = "converted"
-    schema_version: Literal["v1"] = "v1"
+    schema_version: Literal["v1", "v2"] = "v1"
 
     @field_validator("path")
     @classmethod

@@ -41,7 +41,7 @@ def run_operations(conn, config, profile, directory, *, workflow=None, publicati
     snapshot = conn.execute('SELECT snapshot_json FROM intake_conversion_plans WHERE run_id=?', (config.run_id,)).fetchone()[0]
     initialize_progress(conn, config.run_id, context['order'], plan_hash=hashlib.sha256(snapshot.encode()).hexdigest())
     for contract in context['preflight']['reused_services'].values():
-        record_service_use(conn, config.run_id, contract, profile.deployment_environment)
+        record_service_use(conn, config.run_id, contract, profile.deployment_environment, profile=profile)
     if workflow is None:
         from runtime.behavior_conversion.runner import resume_behavior_pipeline
         workflow = resume_behavior_pipeline
@@ -78,7 +78,7 @@ def run_operations(conn, config, profile, directory, *, workflow=None, publicati
                         save_progress(conn, config.run_id, key, 'publication_pending', 'operation_publication_pending', publication)
                     verify_publication_artifacts(publication)
                     published = publish_service(registry, publication)
-                    record_service_use(conn, config.run_id, published, profile.deployment_environment)
+                    record_service_use(conn, config.run_id, published, profile.deployment_environment, profile=profile)
                     save_progress(conn, config.run_id, key, 'completed', 'operation_completed', publication)
                     print('Operation completed and published: ' + key)
             except Exception:

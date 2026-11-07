@@ -37,6 +37,7 @@ pipeline and representative Jackson behavior, but do not establish full
 bank-demo or production equivalence.
 
 Application packages, tests, templates, and the mapper live in `source/`.
+Approved cross-run conversion artifacts live in `shared/`; see [cross-run reuse](docs/cross_run_reuse.md) for configuration, portable dependencies, service URLs and recovery.
 Project data stays in root `configs/`, `bank-demo/`, `docs/`, and `work/`;
 `requirements.txt`, `.venv/`, and `run.cmd` also stay at the root.
 `run.cmd` works from any directory and launches Python with `source/` as its working directory.

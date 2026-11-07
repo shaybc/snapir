@@ -101,6 +101,8 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         if profile.microservice.enabled and not item['issues']:
             from runtime.service_generation.deployment_configuration import load_deployment
             deployment = load_deployment(item)
+            from runtime.operation_reuse.runtime_settings import configure_microservice_calls
+            deployment = configure_microservice_calls(conn, config, profile, deployment, Path(item['project']) / 'values.yaml')
             item = dict(item, fingerprint=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest())
         root = service_root(directory, item)
         reactor = Path(item['project']).name == 'standalone' and profile.microservice.enabled
@@ -139,6 +141,8 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
                     from runtime.service_generation.maven_reactor import prepare_reactor
                     prepare_reactor(root, profile)
                 shutil.copyfile(Path(item["project"]) / "pom.xml", project / "pom.xml")
+                from runtime.component_conversion.shared_dependencies import materialize_operation_dependencies
+                materialize_operation_dependencies(conn, config, profile, project)
                 artifact = item['operation_id']
                 if item.get('payload', {}).get('scoped_operation_identity'):
                     from runtime.scoped_native.project_names import native_artifact_id

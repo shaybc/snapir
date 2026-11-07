@@ -22,9 +22,11 @@ public final class StandalonePackage {
         Path nativeProject=Files.isRegularFile(project.resolve("standalone/pom.xml")) ? project.resolve("standalone") : project;
         Path nativeOutput=nativeProject.equals(project) ? output : output.resolve("standalone");
         Map<String,String> originals=sourceHashes(nativeProject);
+        PackageSharedDependencies.verify(project);
         ObjectNode binding=(ObjectNode)DemoBinding.JSON.readTree(nativeProject.resolve("standalone/operation.json").toFile());
         if(!binding.path("demo").isObject())throw new IllegalArgumentException("Prepare a complete demo before packaging its assets");
         PackageProjectFiles.stage(project,output);
+        PackageSharedDependencies.verify(output);
         // Copy the selected settings without parsing or printing credentials.
         Path configuration=nativeProject.resolve("standalone").resolve(binding.path("runtime_config").asText()).normalize();
         PackageFiles.copy(configuration,nativeOutput.resolve("runtime-config.json"));

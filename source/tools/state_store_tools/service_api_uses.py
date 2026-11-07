@@ -16,7 +16,7 @@ def initialize_service_uses(conn):
         PRIMARY KEY(run_id,application_id,channel,operation_id))""")
 
 
-def record_service_use(conn, run_id, contract, environment):
+def record_service_use(conn, run_id, contract, environment, *, profile=None):
     """Commit an immutable run binding to an API revision and its selected environment.
 
     The contract comes from shared-registry lookup. Repeated saves are idempotent;
@@ -25,10 +25,18 @@ def record_service_use(conn, run_id, contract, environment):
     if isinstance(contract, ConvertedServiceContract):
         contract = contract.model_dump(mode="json")
     contract = ConvertedServiceContract.model_validate(contract)
-    if environment not in contract.addresses:
+    if environment not in contract.addresses and (profile is None or environment not in profile.service_environments):
         raise ValueError("Published service has no address for environment: " + environment)
+    address = contract.addresses.get(environment)
+    if address is None:
+        import hashlib
+        from runtime.service_addresses import operation_address
+        previous = next(iter(contract.addresses.values()))
+        property_name = previous.base_url_property or 'operations.' + hashlib.sha256(
+            (contract.channel + '/' + contract.operation_id).encode()).hexdigest()[:12] + '.base-url'
+        address = operation_address(profile, contract.channel, contract.operation_id, property_name)
     use = ServiceApiUse(run_id=run_id, environment=environment, contract=contract,
-                        address=contract.addresses[environment])
+                        address=address)
     initialize_service_uses(conn)
     key = (use.run_id, contract.application_id, contract.channel, contract.operation_id)
     payload = json.dumps(use.model_dump(mode="json"), sort_keys=True)
@@ -36,6 +44,7 @@ def record_service_use(conn, run_id, contract, environment):
         conn.execute("INSERT OR IGNORE INTO service_api_uses VALUES (?,?,?,?,?)", (*key, payload))
         saved = conn.execute("""SELECT use_json FROM service_api_uses
             WHERE run_id=? AND application_id=? AND channel=? AND operation_id=?""", key).fetchone()[0]
+        saved = json.dumps(ServiceApiUse.model_validate_json(saved).model_dump(mode='json'), sort_keys=True)
         if saved != payload:
             raise ValueError("Run already uses another API contract/address; revise its approved plan explicitly")
     return ServiceApiUse.model_validate_json(saved)

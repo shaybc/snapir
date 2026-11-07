@@ -54,23 +54,30 @@ def prepare_publication(conn, config, profile, key, directory):
     if any(role not in formats or formats[role].get('unresolved') for role in ('csRequestFormat','csReplyFormat','csErrorReplyFormat')):
         raise ValueError('Complete request, reply and error API definitions are required')
     application_id, _ = resolve_registry_settings(profile)
-    definition = dict(format='native-xml-http', method=native['method'], path=native['path'],
+    project = standalone_project(config.output_root,channel,operation)
+    deployment_path = project / 'values.yaml'
+    deployment = None
+    if deployment_path.is_file():
+        from runtime.service_generation.deployment_configuration import read_deployment
+        deployment = read_deployment(deployment_path)
+    public_path = deployment.http.path if deployment else native['path']
+    definition = dict(format='native-xml-http', method=native['method'], path=public_path,
                       media_type=native['media_type'], formats=formats, error_policy=native['error_policy'],
                       artifact_evidence=dict(root=str(Path(directory).resolve()), files=item['files']))
-    revision = hashlib.sha256(json.dumps(dict(api=definition, files=item['files']), sort_keys=True).encode()).hexdigest()
-    values = profile.deployment_values.get(key, {})
-    address = dict(base_url_property=native['base_url_property'],
-                   port=values.get('container_port', profile.deployment_defaults.container_port))
-    if values.get('base_url'):
-        address['base_url'] = values['base_url']
-    return ConvertedServiceContract(application_id=application_id, channel=channel, operation_id=operation,
+    revision = hashlib.sha256(json.dumps({name:value for name,value in definition.items() if name!='artifact_evidence'}, sort_keys=True).encode()).hexdigest()
+    from runtime.service_addresses import published_operation_address
+    address = published_operation_address(profile, channel, operation, native['base_url_property'],
+                                         project, deployment=deployment)
+    contract = ConvertedServiceContract(application_id=application_id, channel=channel, operation_id=operation,
         api_revision=revision, service_id=key, artifact_reference=str(service_root(directory,dict(project=standalone_project(config.output_root,channel,operation),channel=channel,operation_id=operation))),
-        method=native['method'], path=native['path'], media_types=[native['media_type']],
+        method=native['method'], path=public_path, media_types=[native['media_type']],
         request_contract=formats['csRequestFormat'], response_contract=formats['csReplyFormat'],
         error_contract=formats['csErrorReplyFormat'], api_definition=definition,
-        addresses={profile.deployment_environment: address}, completion=dict(source_run_id=config.run_id,
+        schema_version='v2', addresses={profile.deployment_environment: address}, completion=dict(source_run_id=config.run_id,
             validation_report_reference=str(run_report_path(directory, 'final_report.md')), conversion_passed=True,
             package_passed=True, tests_passed=True, review_approved=True, gates_approved=True)).model_dump(mode='json')
+    from runtime.operation_reuse.publication import snapshot_service
+    return snapshot_service(profile, directory, standalone_project(config.output_root,channel,operation), contract)
 
 
 def verify_publication_artifacts(publication):

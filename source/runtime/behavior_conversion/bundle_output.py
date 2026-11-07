@@ -155,6 +155,8 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
                 apply_test_platform(context.pom_path, testing_contract, context.verifier, context.allowed_ibm_artifacts)
             merge_dependencies(context.pom_path, dependencies, context.verifier,
                                allowed_ibm_artifacts=context.allowed_ibm_artifacts, task_id="behavior-bundle")
+            from tools.shared_artifact_store.project_repository import attach_repository
+            attach_repository(context.pom_path, dependencies)
         result = build_candidate(staged, context, require_tests, required_tests)
         if result.issues:
             from runtime.behavior_conversion.compiler_feedback import compiler_correction, CompilerCorrectionError

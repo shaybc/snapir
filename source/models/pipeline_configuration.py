@@ -17,6 +17,7 @@ from models.format_comparison_settings import FormatComparisonSettings
 from models.test_preparation_settings import TestPreparationSettings
 from models.microservice_settings import MicroserviceSettings
 from models.mapper_analysis_settings import MapperAnalysisSettings
+from models.service_environment import ServiceEnvironment
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -49,6 +50,9 @@ class PipelineConfiguration(BaseModel):
     scoped_native_mode: Literal["prepare", "behavior_units_v1", "component_first_v1"] = "prepare"
     source_workspace_id: str | None = Field(default=constants.SOURCE_WORKSPACE_ID, min_length=1)
     service_registry_path: str | None = Field(default=None, min_length=1)
+    shared_store_root: str = Field(default=constants.SHARED_STORE_ROOT, min_length=1)
+    cross_run_component_reuse: bool = constants.CROSS_RUN_COMPONENT_REUSE
+    service_environments: dict[str, ServiceEnvironment] = Field(default_factory=dict)
     service_maven_dependencies: dict[str, list[MavenDependency]] = Field(default_factory=dict)
     dependency_policy_path: str | None = Field(default=None,min_length=1)
     plan_approval_policy: Literal["human", "automatic", "skip"] = "human"

@@ -50,7 +50,10 @@ def load_unit_artifacts(conn, config, profile, plan, unit_id):
         allowed_ibm_classes=sorted(profile.allowed_ibm_classes),
         partition_records=reports[root].get('format_partition_records', []))
     require_partition_records(conn, config, group.group_id, proof['partition_records'])
-    return dict(proof=proof, root_report=reports[root], reports=reports, contract=contracts[root], files=files,test_assets=assets)
+    from runtime.component_conversion.shared_dependencies import attach_shared_components
+    files, root_report, shared = attach_shared_components(conn, config, profile, plan, needed, files, reports[root])
+    proof['shared_components'] = shared
+    return dict(proof=proof, root_report=root_report, reports=reports, contract=contracts[root], files=files,test_assets=assets)
 
 
 def save_unit_component_receipt(conn, config, artifacts, candidate_hash):

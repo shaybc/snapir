@@ -16,6 +16,7 @@ import javax.sql.DataSource;
 public final class StandaloneOperationRunner {
     private Connection connection;
     private RuntimeDatabase database;
+    private JsonNode serviceUrls;
 
     public static void main(String[] args) {
         PrintStream response = System.out;
@@ -56,7 +57,9 @@ public final class StandaloneOperationRunner {
                 default: throw new IllegalArgumentException("Unknown option");
             }
         }
-        database = new RuntimeDatabase(mapper.readTree(config.toFile()), databaseName);
+        JsonNode runtime = mapper.readTree(config.toFile());
+        database = new RuntimeDatabase(runtime, databaseName);
+        serviceUrls = runtime.path("service_urls");
         String xml = args[1].equals("-")
                 ? new String(System.in.readAllBytes(), StandardCharsets.UTF_8)
                 : Files.readString(Path.of(args[1]), StandardCharsets.UTF_8);
@@ -107,8 +110,17 @@ public final class StandaloneOperationRunner {
                 throw new IllegalArgumentException("Constructor selection is ambiguous for " + type.getName());
             Constructor<?> constructor = constructors[0];
             Object[] arguments = new Object[constructor.getParameterCount()];
-            for (int i = 0; i < arguments.length; i++)
-                arguments[i] = construct(constructor.getParameterTypes()[i], constructing);
+            java.beans.ConstructorProperties properties = constructor.getAnnotation(java.beans.ConstructorProperties.class);
+            if (properties != null && properties.value().length != arguments.length)
+                throw new IllegalArgumentException("Constructor property binding count differs");
+            for (int i = 0; i < arguments.length; i++) {
+                String property = properties == null ? "" : properties.value()[i];
+                if (constructor.getParameterTypes()[i] == String.class && properties != null) {
+                    if (!serviceUrls.path(property).isTextual() || serviceUrls.path(property).asText().isBlank())
+                        throw new IllegalArgumentException("Missing operation service URL binding");
+                    arguments[i] = serviceUrls.path(property).asText();
+                } else arguments[i] = construct(constructor.getParameterTypes()[i], constructing);
+            }
             return constructor.newInstance(arguments);
         } finally { constructing.remove(type); }
     }

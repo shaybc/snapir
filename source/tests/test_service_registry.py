@@ -122,7 +122,9 @@ def test_configuration_shared_location(tmp_path, monkeypatch):
     del profile["service_registry_path"]
     profile["source_workspace_id"] = "other-bank"
     path.write_text(yaml.safe_dump(profile))
-    assert load_configuration(path).service_registry_path != first.service_registry_path
+    other = load_configuration(path)
+    assert other.service_registry_path == first.service_registry_path
+    assert other.source_workspace_id != first.source_workspace_id
     del profile["source_workspace_id"]
     path.write_text(yaml.safe_dump(profile))
     assert load_configuration(path).source_workspace_id == (tmp_path / "source").as_uri()

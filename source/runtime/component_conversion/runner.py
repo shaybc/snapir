@@ -31,6 +31,8 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     from runtime.behavior_conversion.verification_mode import facts_disabled
     boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile))
     units = {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}
+    from tools.state_store_tools.component_reuse import record_consumers
+    record_consumers(conn, config.run_id, plan, units, source_root=config.source_root)
     report = dict(capability='component-first-cf6' if include_formats else 'component-first-cf4' if include_steps else 'component-first-cf3', configured_units=len(plan.unit_roots), accepted_units=0,
         accepted_operations=0, behavioral_acceptance=False, groups={}, total_groups=len(plan.groups), format_chain_status='not_reached', component_validated=0, reused_components=0)
     if facts_disabled(profile):
@@ -169,6 +171,10 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
     if request['kind']=='format_composition':
         from models.native_format_component_bundle import NativeFormatComponentBundle
         schema=NativeFormatComponentBundle
-    generate(conn, config, profile, 'component_generation', group.group_id, instruction, request,
-             schema, validator=candidate, model_call=model_call, label='Basic native group: ' + ', '.join(plan.components[key].label for key in group.members))
-    return dict(status='component_validated', members=group.members, reused=False, validation_scope='build_and_tests')
+    def generate_candidate():
+        bundle, _ = generate(conn, config, profile, 'component_generation', group.group_id, instruction, request,
+                 schema, validator=candidate, model_call=model_call, label='Basic native group: ' + ', '.join(plan.components[key].label for key in group.members))
+        return bundle
+    from runtime.component_conversion.shared_reuse import convert_or_reuse
+    shared = convert_or_reuse(conn, config, profile, plan, group, request, candidate, generate_candidate)
+    return dict(status='component_validated', members=group.members, reused=shared, validation_scope='build_and_tests')

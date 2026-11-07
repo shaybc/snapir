@@ -297,7 +297,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             if unit.operation_calls:
                 from runtime.behavior_conversion.operation_calls import validate_operation_clients, verify_operation_contracts
                 verify_operation_contracts(conn, config, unit.operation_calls, profile)
-                validate_operation_clients(bundle, unit.operation_calls)
+                validate_operation_clients(bundle, unit.operation_calls,
+                    require_standalone_bindings=getattr(profile,'cross_run_component_reuse',False))
             if unit.service_connections:
                 from runtime.behavior_conversion.service_connection_freshness import verify_connection_sources
                 verify_connection_sources(config, profile, unit.service_connections)
@@ -472,6 +473,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
         contracts[consumer] = bundle.operation_contract
         from runtime.behavior_conversion.standalone_runner import write_standalone_runner
         write_standalone_runner(project, config.output_root, bundle.operation_contract)
+        from runtime.operation_reuse.runtime_settings import prepare_operation_reuse
+        prepare_operation_reuse(conn, config, profile, project)
         from runtime.behavior_conversion.standalone_sample import write_operation_sample
         write_operation_sample(conn, config, project, sources)
         api = bundle.operation_contract.service_api
