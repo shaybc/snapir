@@ -2,11 +2,13 @@
 
 
 def collect_model_configuration(prompt_text):
-    """Prompt with LiteLLM defaults, storing the credential variable name only."""
+    """Skip mock connection prompts; otherwise collect settings with LiteLLM defaults."""
     provider = prompt_text("model_provider (gemini, litellm, or mock)", "litellm")
     while provider not in {"gemini", "litellm", "mock"}:
         print("Choose gemini, litellm, or mock")
         provider = prompt_text("model_provider (gemini, litellm, or mock)", "litellm")
+    if provider == "mock":
+        return dict(model_provider=provider)
     return dict(
         model_provider=provider,
         model_name=prompt_text("model_name", "openai/your-model-name"),

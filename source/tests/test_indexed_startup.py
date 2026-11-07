@@ -23,6 +23,7 @@ def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_ma
         output_root=str(tmp_path/'runs'),java_version=25,java_home=resolve_java_home(25),model_provider='mock')
     def forbidden(*args,**kwargs):pytest.fail('Map-first runtime entered whole-workspace discovery or syntax parsing')
     monkeypatch.setattr(pipeline_runner,'discover_java_sources',forbidden)
+    monkeypatch.setattr('agents.legacy_composer_analysis.agent.import_vault',forbidden)
     monkeypatch.setattr('tools.java_analysis_tools.source_dependencies.parser._parse_batch',forbidden)
     monkeypatch.setattr('tools.component_inventory_tools.xml_documents.read_xml',forbidden)
     import tools.composer_mapper_tools.indexed_analysis as reader
@@ -32,7 +33,9 @@ def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_ma
         return original_digest(path)
     monkeypatch.setattr(reader,'digest',digest)
     caplog.set_level('INFO')
-    directory=pipeline_runner.run_pipeline(profile,'indexed')
+    directory=pipeline_runner.run_pipeline(profile,'indexed',tmp_path/'configs/bank.yaml')
+    identity=json.loads((directory/'state/run_identity.json').read_text())
+    assert identity['configuration_name']=='bank' and identity['run_id']=='indexed'
     if not existing:
         assert not any('/channels/B/operations/' in Path(path).as_posix() or 'Unrelated.md' in path for path in global_note_checks), 'Fresh map intake must check selected notes without globally rereading unused notes'
     assert (directory/'logs/intake.log').is_file()
@@ -42,6 +45,8 @@ def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_ma
     if not existing:assert (directory/'logs/mapper.log').stat().st_size>0
     report=json.loads(run_report_path(directory,'java_source_index.json').read_text())
     assert set(report['classes'])=={'pkg.Step','pkg.Helper','pkg.Leaf'}
+    assert report['workspace_root']==str(root.resolve())
+    assert report['class_projects']=={str(root/'src/pkg'/name):'.' for name in ('Step.java','Helper.java','Leaf.java')}
     assert run_report_path(directory,'java_classpath_index.json').is_file()
     conn=get_connection(str(run_database_path(directory)))
     try:
@@ -49,9 +54,16 @@ def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_ma
         assert conn.execute('SELECT count(*) FROM source_implementations WHERE run_id=?',('indexed',)).fetchone()[0]==3
         assert [tuple(row) for row in conn.execute('SELECT channel,operation_id FROM scoped_operation_contexts')]==[('A','Op')]
         assert conn.execute('SELECT count(*) FROM map_analysis_snapshot').fetchone()[0]==1
+        task=conn.execute("SELECT status,output_json FROM agent_tasks WHERE agent_name='LegacyComposerAnalysisAgent'").fetchone()
+        assert task['status']=='completed'
+        summary=json.loads(task['output_json'])['import_summary']
+        assert summary['operations']==1 and summary['channel_operations']==1 and summary['java_classes']==3
+        assert summary['errors']==[] and summary['unresolved_references']==[]
+        assert conn.execute("SELECT count(*) FROM agent_tasks WHERE agent_name='LegacyComposerAnalysisAgent'").fetchone()[0]==1
     finally:conn.close()
     assert list((Path(profile.output_root)/'.map-validation').glob('*.json'))
     assert resume_pipeline(profile.output_root,'indexed')==directory
+    assert json.loads((directory/'state/run_activity.json').read_text())['last_resumed_at']
     conn=get_connection(str(run_database_path(directory)))
     try:
         assert conn.execute('SELECT current_phase FROM runs WHERE run_id=?',('indexed',)).fetchone()[0]=='conversion_scoped_gated'

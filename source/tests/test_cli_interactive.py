@@ -15,16 +15,21 @@ from runtime.configuration import load_configuration
 def make_run(root, run_id="existing", phase="planning_inputs_ready"):
     state = root / run_id / "state"
     state.mkdir(parents=True)
+    from runtime.run_identity import write_run_identity
+    write_run_identity(state.parent, SimpleNamespace(channels=['INTERNET'], include_operations=['Overview'],
+                       conversion_strategy='behavior_units'), root.parent / 'configs/bank_demo.yaml')
     (state / "profile.json").write_text("{}")
     with sqlite3.connect(state / "migration.db") as conn:
-        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
-        conn.execute("INSERT INTO runs VALUES (?, 'paused', ?)", (run_id, phase))
+        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT, created_at TEXT DEFAULT '2026-11-07T10:00:00+00:00', updated_at TEXT DEFAULT '2026-11-07T10:00:00+00:00')")
+        conn.execute("INSERT INTO runs (run_id,status,current_phase) VALUES (?, 'paused', ?)", (run_id, phase))
     return state.parent
 
 
 @pytest.fixture
 def terminal(monkeypatch):
     monkeypatch.setattr(interactive, "is_interactive", lambda: True)
+    from cli.run_naming import suggested_run_name
+    monkeypatch.setattr('cli.main.choose_run_name', lambda configuration, root: suggested_run_name(configuration))
     monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: 'start')
 
 
@@ -58,25 +63,25 @@ def test_command_menu_dispatches_selection(tmp_path, monkeypatch, terminal, comm
         monkeypatch.setattr("cli.status_discovery.constants.OUTPUT_ROOT", ".")
     choices = iter([command, "configs/bank_demo.yaml", "exit"] if command == "start" else
                    [command, str(tmp_path / "existing"), "exit"])
-    def select(title, options):
+    def select(title, options, **kwargs):
         if title == "What would you like to do?":
             assert [value for value, _ in options] == ["create_config", "start", "resume", "status", "approve", "reject", "documentation", "exit"]
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     calls = []
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id: calls.append(("start", run_id)) or tmp_path)
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path: calls.append(("start", run_id)) or tmp_path)
     monkeypatch.setattr("cli.main.resume_pipeline", lambda root, run_id: calls.append(("resume", run_id)) or tmp_path)
     assert main([]) == 0
     assert calls[0][0] == command
-    assert calls[0][1] == "existing" if command == "resume" else calls[0][1].startswith("run-")
+    assert calls[0][1] == "existing" if command == "resume" else calls[0][1].startswith("bank_demo-")
 
 
 @pytest.mark.parametrize("command", ["start", "resume"])
 def test_explicit_command_preserved(tmp_path, monkeypatch, terminal, command):
     make_run(tmp_path)
     selections = iter(["configs/bank_demo.yaml", "existing"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(selections))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(selections))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     calls = []
     monkeypatch.setattr("cli.main.run_pipeline", lambda *args: calls.append("start") or tmp_path)
@@ -89,7 +94,7 @@ def test_explicit_start_never_prompts(tmp_path, monkeypatch, terminal):
     monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: pytest.fail('Explicit command must not ask for confirmation'))
     monkeypatch.setattr(interactive, "select_option", lambda *_: pytest.fail("Unexpected prompt"))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id: tmp_path if run_id == "supplied" else pytest.fail())
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path: tmp_path if run_id == "supplied" else pytest.fail())
     assert main(["start", "--config", "supplied.yaml", "--run-id", "supplied"]) == 0
 
 
@@ -136,7 +141,7 @@ def test_config_discovery_and_relative_output_root(tmp_path, monkeypatch, termin
     make_run(root)
     profile = load_configuration(config)
     args = SimpleNamespace(command="resume", run_id=None)
-    monkeypatch.setattr(interactive, "select_option", lambda title, options: options[0][0])
+    monkeypatch.setattr(interactive, "select_option", lambda title, options, **kwargs: options[0][0])
     interactive.complete_run_selection(args, profile)
     assert args.run_id == "existing"
 
@@ -144,7 +149,7 @@ def test_config_discovery_and_relative_output_root(tmp_path, monkeypatch, termin
 @pytest.mark.parametrize("command", ["status", "approve", "reject"])
 def test_inspection_and_gate_menus_only_offer_existing(tmp_path, monkeypatch, terminal, command):
     make_run(tmp_path)
-    def select(title, options):
+    def select(title, options, **kwargs):
         assert [value for value, _ in options] == ["existing"]
         return "existing"
     monkeypatch.setattr(interactive, "select_option", select)
@@ -210,7 +215,7 @@ def test_gate_still_required(monkeypatch, terminal):
 def test_later_cancellation_never_executes(tmp_path, monkeypatch, terminal, status_root, cancel_at):
     make_run(tmp_path)
     count = 0
-    def select(*args):
+    def select(*args, **kwargs):
         nonlocal count
         count += 1
         if count == cancel_at:
@@ -225,7 +230,7 @@ def test_later_cancellation_never_executes(tmp_path, monkeypatch, terminal, stat
 
 def test_supplied_configuration_is_preserved(tmp_path, monkeypatch, terminal):
     choices = iter(["start", "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     loaded = []
     monkeypatch.setattr("cli.main.load_configuration", lambda path:
                         loaded.append(path) or SimpleNamespace(output_root=str(tmp_path)))
@@ -237,7 +242,7 @@ def test_supplied_configuration_is_preserved(tmp_path, monkeypatch, terminal):
 def test_menu_start_reports_actual_run_before_menu_returns(tmp_path, monkeypatch, terminal, capsys):
     choices = iter(["start", "exit"])
     calls = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         command = next(choices)
         if command == "exit":
             output = capsys.readouterr().out
@@ -248,7 +253,7 @@ def test_menu_start_reports_actual_run_before_menu_returns(tmp_path, monkeypatch
         return command
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
-    def start(profile, run_id):
+    def start(profile, run_id, configuration_path):
         calls.append(run_id)
         return make_run(tmp_path, run_id, phase="paused_awaiting_operator")
     monkeypatch.setattr("cli.main.run_pipeline", start)
@@ -260,12 +265,12 @@ def test_menu_start_then_status_requires_fresh_run_selection(tmp_path, monkeypat
     make_run(tmp_path, "other", phase="other_checkpoint")
     choices = iter(["start", "status", str(tmp_path / "other"), "exit"])
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id:
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path:
                         make_run(tmp_path, run_id, phase="paused_awaiting_operator"))
     assert main(["--config", "supplied.yaml", "--run-id", "first"]) == 0
     assert menus == ["What would you like to do?", "What would you like to do?", "Select a run", "What would you like to do?"]
@@ -276,18 +281,18 @@ def test_menu_start_then_status_requires_fresh_run_selection(tmp_path, monkeypat
 
 def test_second_menu_start_generates_fresh_run_id(tmp_path, monkeypatch, terminal):
     choices = iter(["start", "start", "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     ids = []
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id: ids.append(run_id) or tmp_path / run_id)
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path: ids.append(run_id) or tmp_path / run_id)
     assert main(["--config", "supplied.yaml", "--run-id", "first"]) == 0
     assert ids[0] == "first"
-    assert ids[1].startswith("run-") and ids[1] != ids[0]
+    assert ids[1].startswith("supplied-") and ids[1] != ids[0]
 
 
 def test_menu_start_failure_does_not_report_success_or_loop(tmp_path, monkeypatch, terminal, capsys):
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         assert len(menus) == 1
         return "start"
@@ -307,7 +312,7 @@ def test_explicit_noninteractive_start_exits_without_prompt(tmp_path, monkeypatc
     monkeypatch.setattr(interactive, "select_option", lambda *_: pytest.fail("Unexpected prompt"))
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     calls = []
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id: calls.append(run_id) or tmp_path)
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path: calls.append(run_id) or tmp_path)
     assert main(["start", "--config", "supplied.yaml", "--run-id", "scripted"]) == 0
     assert calls == ["scripted"]
 
@@ -316,7 +321,7 @@ def test_menu_status_response_visible_before_returning_to_menu(tmp_path, monkeyp
     make_run(tmp_path)
     choices = iter(["status", str(tmp_path / "existing"), "exit"])
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         selection = next(choices)
         if selection == "exit":
@@ -336,7 +341,7 @@ def test_repeated_menu_status_selects_fresh_run(tmp_path, monkeypatch, terminal,
     make_run(tmp_path, "second", phase="other_checkpoint")
     choices = iter(["status", str(tmp_path / "first"), "status", str(tmp_path / "second"), "exit"])
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
@@ -362,7 +367,7 @@ def test_explicit_status_exits_without_menu(tmp_path, monkeypatch, capsys, tty):
 
 def test_status_failure_exits_without_success_or_extra_menu(tmp_path, monkeypatch, terminal, status_root, capsys):
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         assert len(menus) == 1
         return "status"

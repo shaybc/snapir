@@ -4,6 +4,7 @@ from pathlib import Path
 import sqlite3
 
 from runtime.workspace_paths import resolve_run_directory
+from cli.run_presentation import read_run_summary
 
 
 # Checkpoints currently accepted by resume_pipeline; discovery never executes it.
@@ -48,11 +49,10 @@ def discover_runs(output_root: str, *, resumable_only: bool = False) -> list[tup
         if not database.is_file() or not (directory / "state" / "profile.json").is_file():
             continue
         try:
-            with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
-                row = conn.execute("SELECT run_id, status, current_phase FROM runs WHERE run_id=?",
-                                   (directory.name,)).fetchone()
-            if row and (not resumable_only or row[2] in RESUMABLE_PHASES):
-                runs.append((row[0], f"{row[0]} — {row[1]} — {row[2] or 'No checkpoint'}"))
-        except sqlite3.Error:
+            summary = read_run_summary(directory.resolve())
+            if not resumable_only or summary['phase'] in RESUMABLE_PHASES:
+                runs.append(summary)
+        except (OSError, ValueError, KeyError, sqlite3.Error):
             continue
-    return runs
+    runs.sort(key=lambda item: (item['latest'], item['run_id']), reverse=True)
+    return [(item['run_id'], item['label']) for item in runs]

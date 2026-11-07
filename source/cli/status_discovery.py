@@ -9,6 +9,7 @@ import constants
 from cli.discovery import RESUMABLE_PHASES, discover_configurations
 from cli.gate_decisions import GATE_PHASES
 from runtime.workspace_paths import resolve_run_directory, run_database_path
+from cli.run_presentation import read_run_summary
 
 
 def discover_run_roots(project: Path) -> list[Path]:
@@ -44,14 +45,12 @@ def discover_status_runs(project: Path, *, resumable_only: bool = False,
                 database = run_database_path(directory)
                 if not database.is_file():
                     continue
-                with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as conn:
-                    row = conn.execute("SELECT run_id, status, current_phase FROM runs WHERE run_id=?",
-                                       (directory.name,)).fetchone()
-                if row and (not resumable_only or (row[2] in RESUMABLE_PHASES and
+                summary = read_run_summary(directory)
+                if (not resumable_only or (summary['phase'] in RESUMABLE_PHASES and
                                                   (directory / "state" / "profile.json").is_file())) and (
-                        not awaiting_gate_only or row[2] in GATE_PHASES):
-                    location = directory.relative_to(project.resolve()) if directory.is_relative_to(project.resolve()) else directory
-                    runs[str(directory)] = f"{row[0]} — {row[1]} — {row[2] or 'No checkpoint'} — {location}"
-            except (OSError, ValueError, sqlite3.Error):
+                        not awaiting_gate_only or summary['phase'] in GATE_PHASES):
+                    runs[str(directory)] = summary
+            except (OSError, ValueError, KeyError, sqlite3.Error):
                 continue
-    return sorted(runs.items())
+    return [(path, summary['label']) for path, summary in
+            sorted(runs.items(), key=lambda item: (item[1]['latest'], item[0]), reverse=True)]

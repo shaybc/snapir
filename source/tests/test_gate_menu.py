@@ -15,9 +15,12 @@ def saved_run(root, run_id="existing", phase="gate_2_pending", *, report=True):
     directory = root / run_id
     state = directory / "state"
     state.mkdir(parents=True)
+    from runtime.run_identity import write_run_identity
+    write_run_identity(state.parent, SimpleNamespace(channels=['INTERNET'], include_operations=['Overview'],
+                       conversion_strategy='behavior_units'), root.parent / 'configs/bank_demo.yaml')
     with sqlite3.connect(state / "migration.db") as conn:
-        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
-        conn.execute("INSERT INTO runs VALUES (?, 'paused', ?)", (run_id, phase))
+        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT, created_at TEXT DEFAULT '2026-11-07T10:00:00+00:00', updated_at TEXT DEFAULT '2026-11-07T10:00:00+00:00')")
+        conn.execute("INSERT INTO runs (run_id,status,current_phase) VALUES (?, 'paused', ?)", (run_id, phase))
     if report:
         for gate in range(1, 6):
             write_run_report(directory, f"gate_{gate}_report.txt", f"Gate {gate} evidence")
@@ -48,7 +51,7 @@ def test_gate_inferred_recorded_and_result_visible_before_menu(project, monkeypa
     gate = int(phase.split('_')[1])
     choices = iter([command, str(directory), "exit"])
     events = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         assert title != "Select a configuration"
         selected = next(choices)
         if selected == "exit":
@@ -70,7 +73,7 @@ def test_no_waiting_gate_reports_message_and_returns_without_mutation(project, m
     database = directory / "state/migration.db"
     before = database.read_bytes()
     choices = iter([command, "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     assert main([]) == 0
     assert "No gate awaiting a decision" in capsys.readouterr().out
     assert database.read_bytes() == before
@@ -82,7 +85,7 @@ def test_no_waiting_gate_reports_message_and_returns_without_mutation(project, m
 def test_gate_errors_return_to_menu_with_optional_trace(project, monkeypatch, capsys, verbose, failure):
     directory = saved_run(project / "work/migration_runs", report=failure != "report")
     choices = iter(["approve", str(directory), "exit"])
-    def select(title, options):
+    def select(title, options, **kwargs):
         selected = next(choices)
         if selected == str(directory) and failure == "database":
             (directory / "state/migration.db").write_text("corrupt")
@@ -103,7 +106,7 @@ def test_subsequent_gate_action_uses_fresh_run_and_gate(project, monkeypatch):
     first = saved_run(root, "first", "gate_1_pending")
     second = saved_run(root, "second", "gate_3_pending")
     choices = iter(["approve", str(first), "reject", str(second), "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     assert main(["--config", "retained.yaml", "--run-id", "ignored", "--gate", "1"]) == 0
     assert decisions(first)[0][0:3:2] == (1, "approved")
     assert decisions(second)[0][0:3:2] == (3, "rejected")
@@ -112,7 +115,7 @@ def test_subsequent_gate_action_uses_fresh_run_and_gate(project, monkeypatch):
 def test_changed_checkpoint_is_rechecked_before_recording(project, monkeypatch, capsys):
     directory = saved_run(project / "work/migration_runs")
     choices = iter(["approve", str(directory), "exit"])
-    def select(title, options):
+    def select(title, options, **kwargs):
         selected = next(choices)
         if selected == str(directory):
             with sqlite3.connect(directory / "state/migration.db") as conn:
@@ -126,7 +129,7 @@ def test_changed_checkpoint_is_rechecked_before_recording(project, monkeypatch, 
 
 def test_cancelled_gate_selection_preserves_decisions(project, monkeypatch):
     directory = saved_run(project / "work/migration_runs")
-    def select(title, options):
+    def select(title, options, **kwargs):
         if title == "Select a run awaiting a gate decision":
             raise interactive.SelectionCancelled
         return "approve"

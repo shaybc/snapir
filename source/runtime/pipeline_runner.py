@@ -24,7 +24,7 @@ from runtime.intake_progress import component_inventory_progress
 from runtime.inventory_reports import write_json_report
 
 
-def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
+def run_pipeline(profile: PipelineConfiguration, run_id: str, configuration_path=None) -> Path:
     """Create a new run and prepare planning inputs; fail on an existing run directory."""
     logger = logging.getLogger(__name__)
     logger.info("Starting workspace intake.")
@@ -35,6 +35,8 @@ def run_pipeline(profile: PipelineConfiguration, run_id: str) -> Path:
     directory.mkdir(parents=True, exist_ok=False)
     for folder in ("state", "reports", "logs", "generated"):
         (directory / folder).mkdir()
+    from runtime.run_identity import write_run_identity
+    write_run_identity(directory, profile, configuration_path)
     from runtime.workflow_stages import REPORT_FOLDERS
     for stage in REPORT_FOLDERS.values():
         (directory / "reports" / stage).mkdir()

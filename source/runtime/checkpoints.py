@@ -37,6 +37,8 @@ def resume_pipeline(output_root: str, run_id: str):
         if run is None:
             raise ValueError("Run does not exist")
         config = RunConfig.model_validate(run["run_config_json"])
+        from runtime.run_identity import record_resume_started
+        record_resume_started(directory)
         from tools.composer_mapper_tools.indexed_analysis import is_indexed_map, IndexedAnalysis
         if is_indexed_map(config.vault_root):
             from tools.component_inventory_tools.mapped_inventory import MappedInventory

@@ -41,8 +41,9 @@ class ClassLocations(Mapping):
 class ClassProjects(Mapping):
     """Project ownership by exact file, without retaining every declaration in Python."""
 
-    def __init__(self, mapped):
+    def __init__(self, mapped, *, selected_only=False):
         self.mapped = mapped
+        self.selected_only = selected_only
 
     def __getitem__(self, path):
         original = str(self.mapped.analysis.source_root / Path(path).relative_to(self.mapped.workspace))
@@ -52,10 +53,12 @@ class ClassProjects(Mapping):
         return row[0]
 
     def __iter__(self):
-        return (self.mapped.location(row[0]) for row in self.mapped.analysis.conn.execute('SELECT file FROM java_sources ORDER BY file'))
+        query = 'SELECT s.file FROM java_sources s' + (' JOIN selected_java j ON j.file=s.file' if self.selected_only else '') + ' ORDER BY s.file'
+        return (self.mapped.location(row[0]) for row in self.mapped.analysis.conn.execute(query))
 
     def __len__(self):
-        return self.mapped.analysis.conn.execute('SELECT count(*) FROM java_sources').fetchone()[0]
+        query = 'SELECT count(*) FROM java_sources s' + (' JOIN selected_java j ON j.file=s.file' if self.selected_only else '')
+        return self.mapped.analysis.conn.execute(query).fetchone()[0]
 
 
 class MappedSourceIndex(SimpleNamespace):

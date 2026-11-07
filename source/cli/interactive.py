@@ -24,7 +24,8 @@ def is_interactive() -> bool:
 
 
 def select_option(title: str, options: list[tuple[str, str]], *, clear_after_selection: bool = True,
-                  initial=None, heading=None, details=None, filterable=False) -> str:
+                  initial=None, heading=None, details=None, filterable=False,
+                  empty_message='No matching operations') -> str:
     """Select with Up/Down and Enter; cancel with Escape or Ctrl+C."""
     from prompt_toolkit.application import Application
     from prompt_toolkit.key_binding import KeyBindings
@@ -43,37 +44,41 @@ def select_option(title: str, options: list[tuple[str, str]], *, clear_after_sel
 
     def menu_text():
         return [("reverse" if index == selected_index else "", f"{'>' if index == selected_index else ' '} {label}\n")
-                for index, (_, label) in enumerate(visible)] or [('', 'No matching operations')]
+                for index, (_, label) in enumerate(visible)] or [('', empty_message)]
 
     control = FormattedTextControl(menu_text, focusable=True, get_cursor_position=lambda: Point(0, selected_index))
     menu = Window(control, wrap_lines=bool(heading),
                   get_vertical_scroll=(lambda window: max(0, selected_index -
-                      (window.render_info.window_height if window.render_info else 1) + 1)) if filterable else None)
+                      (window.render_info.window_height if window.render_info else 1) + 1)) if filterable and not callable(details) else None)
     summary_scroll = 0
     def summary_text():
         from prompt_toolkit.application.current import get_app
         from cli.configuration_review import wrapped_summary
-        return wrapped_summary(details or [], get_app().output.get_size().columns)
+        lines = details(visible[selected_index][0]) if callable(details) and visible else ([] if callable(details) else details or [])
+        return wrapped_summary(lines, get_app().output.get_size().columns)
     summary = Window(FormattedTextControl(summary_text, show_cursor=False,
                      get_cursor_position=lambda: Point(0, summary_scroll)), wrap_lines=False,
                      get_vertical_scroll=lambda window: summary_scroll, allow_scroll_beyond_bottom=True)
     def filtered(buffer):
-        nonlocal visible, selected_index
+        nonlocal visible, selected_index, summary_scroll
         visible = [(value, label) for value, label in options if buffer.text.casefold() in label.casefold()]
         selected_index = 0
+        summary_scroll = 0
         menu.vertical_scroll = 0
     search = Buffer(on_text_changed=filtered)
     search_control = BufferControl(search, input_processors=[BeforeInput('Filter: ')])
 
     @bindings.add("up")
     def move_up(event):
-        nonlocal selected_index
+        nonlocal selected_index, summary_scroll
         selected_index = (selected_index - 1) % max(1, len(visible))
+        summary_scroll = 0
 
     @bindings.add("down")
     def move_down(event):
-        nonlocal selected_index
+        nonlocal selected_index, summary_scroll
         selected_index = (selected_index + 1) % max(1, len(visible))
+        summary_scroll = 0
 
     @bindings.add("enter", eager=True)
     def accept(event):
@@ -169,7 +174,8 @@ def complete_run_selection(args, profile) -> None:
     options = discover_runs(profile.output_root, resumable_only=args.command == "resume")
     if not options:
         raise ValueError(f"No current-layout runs found in {profile.output_root}")
-    selected = select_option("Select a run", options)
+    from cli.run_presentation import select_run
+    selected = select_run("Select a run", options, output_root=profile.output_root)
     args.run_id = selected or None
 
 
@@ -178,9 +184,9 @@ def select_status_run() -> Path:
     return _select_saved_run(resumable_only=False)
 
 
-def select_resume_run() -> Path:
+def select_resume_run(*, initial=None) -> Path:
     """Choose a supported checkpoint with a saved profile independently of original YAML."""
-    return _select_saved_run(resumable_only=True)
+    return _select_saved_run(resumable_only=True, initial=initial)
 
 
 def select_gate_run() -> Path:
@@ -188,13 +194,15 @@ def select_gate_run() -> Path:
     options = discover_status_runs(project_root(), awaiting_gate_only=True)
     if not options:
         raise ValueError("No gate awaiting a decision was found in the default or configured output roots")
-    return Path(select_option("Select a run awaiting a gate decision", options))
+    from cli.run_presentation import select_run
+    return Path(select_run("Select a run awaiting a gate decision", options))
 
 
-def _select_saved_run(*, resumable_only: bool) -> Path:
+def _select_saved_run(*, resumable_only: bool, initial=None) -> Path:
     options = discover_status_runs(project_root(), resumable_only=resumable_only)
     if not options:
         if resumable_only:
             raise ValueError("No resumable runs with saved profiles found in the default or configured output roots")
         raise ValueError("No readable current-layout runs found in the default or configured output roots")
-    return Path(select_option("Select a run", options))
+    from cli.run_presentation import select_run
+    return Path(select_run("Select a run", options, initial=initial))

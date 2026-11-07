@@ -129,6 +129,8 @@ def test_resume_preflight_preserves_status_and_menu(tmp_path, monkeypatch, capsy
 
 def test_interactive_start_keeps_warning_after_clear(tmp_path, monkeypatch, capsys):
     from cli.main import main
+    monkeypatch.setattr('cli.main.choose_run_name', lambda *_: 'warning-check')
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: 'start')
     profile = PipelineConfiguration(output_root=str(tmp_path))
     commands = iter(["start", "exit"])
     def complete(args, _):

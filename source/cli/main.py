@@ -3,7 +3,6 @@
 import argparse
 import json
 import sqlite3
-import uuid
 
 from runtime.configuration import load_configuration
 from runtime.pipeline_runner import run_pipeline
@@ -23,6 +22,7 @@ from runtime.workflow_stages import workflow_stage_label
 from cli.workflow_progress import display_workflow_progress
 from cli.migration_start_review import confirm_migration_start
 from cli.interactive import select_configuration, is_interactive
+from cli.run_naming import choose_run_name, suggested_run_name, validate_run_name
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,11 +38,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     diagnostics = console_diagnostics(args.verbose)
     diagnostics.__enter__()
+    preferred_run = None
     try:
         while True:
             directory = None
             command_selected_from_menu = args.command is None
-            interactive_start = command_selected_from_menu or (args.command == 'start' and not args.config and is_interactive())
+            interactive_start = command_selected_from_menu or (args.command == 'start' and not args.run_id and is_interactive())
             complete_arguments(args, parser)
             if args.command == "create_config":
                 create_configuration()
@@ -54,7 +55,9 @@ def main(argv: list[str] | None = None) -> int:
                 profile = load_configuration(args.config)
                 if interactive_start:
                     while True:
-                        action = confirm_migration_start(args.config, profile)
+                        run_id = args.run_id or choose_run_name(args.config, profile.output_root)
+                        validate_run_name(profile.output_root, run_id)
+                        action = confirm_migration_start(args.config, profile, run_id)
                         if action != 'back':
                             break
                         try:
@@ -69,8 +72,12 @@ def main(argv: list[str] | None = None) -> int:
                         args.command = None
                         continue
                 complete_run_selection(args, profile)
-                run_id = args.run_id or f"run-{uuid.uuid4().hex}"
-                directory = run_pipeline(profile, run_id)
+                if not interactive_start:
+                    run_id = args.run_id or (choose_run_name(args.config, profile.output_root) if is_interactive()
+                                             else suggested_run_name(args.config))
+                    validate_run_name(profile.output_root, run_id)
+                directory = run_pipeline(profile, run_id, args.config)
+                preferred_run = str(directory)
                 if command_selected_from_menu:
                     print(f"Run created: {run_id}")
                     if getattr(profile, "model_provider", None) is not None:
@@ -100,13 +107,14 @@ def main(argv: list[str] | None = None) -> int:
                     if args.verbose:
                         print("Detailed diagnostics are saved in the run's logs folder.")
                 else:
+                    preferred_run = str(directory)
                     print(f"Gate {gate} {decision} for run: {directory.name}")
                     print("Decision recorded. Resume the run to continue.")
                 args.run_id = None
                 args.gate = None
             elif args.command == "resume" and command_selected_from_menu:
                 try:
-                    directory = select_resume_run()
+                    directory = select_resume_run(initial=preferred_run) if preferred_run else select_resume_run()
                     from cli.service_connections import answer_connection_questions
                     from pathlib import Path
                     answers = json.loads(Path(args.connection_answers).read_text()) if args.connection_answers else None

@@ -47,6 +47,7 @@ def collect_defaults(monkeypatch, name="new_config", *, cancel_at=None):
         return options[0][0]
     monkeypatch.setattr(wizard, "select_option", select)
     monkeypatch.setattr("cli.main.confirm_migration_start", lambda *_: "start")
+    monkeypatch.setattr("cli.main.choose_run_name", lambda *_: 'named-run')
     from models.test_deployment_settings import TestDeploymentSettings as DeploymentSettings
     monkeypatch.setattr(wizard, "collect_test_deployment_settings", lambda prompt:
                         dict(test_deployment=DeploymentSettings().model_dump(mode="json")))
@@ -106,7 +107,7 @@ def test_defaults_and_yaml_round_trip(project, monkeypatch):
         "include_operations": ["WebOperation"], "target_languages": ["java"],
         "java_version": 25, "java_home": str(project / "jdk-25"),
         "java_scan_inactivity_timeout_seconds": 900,
-        "external_dependencies": [], "conversion_strategy": "legacy_components",
+        "external_dependencies": [], "conversion_strategy": "behavior_units",
         "plan_approval_policy": "human",
         "gate_policies": {str(number): "human" for number in range(1, 6)},
         "model_provider": "litellm", "model_name": "openai/your-model-name",
@@ -133,10 +134,11 @@ def test_new_config_saves_automatic_gate_control(project, monkeypatch, answers):
     assert loaded.gate_policies == {str(number): "automatic" for number in range(1, 6)}
 
 
-def test_new_config_saves_custom_model_settings(project, monkeypatch):
+@pytest.mark.parametrize("provider", ["gemini", "litellm"])
+def test_new_config_saves_custom_model_settings(project, monkeypatch, provider):
     collect_defaults(monkeypatch)
     answers = {
-        "model_provider (gemini, litellm, or mock)": "litellm",
+        "model_provider (gemini, litellm, or mock)": provider,
         "model_name": "openai/local-model",
         "model_base_url": "http://localhost:4000/v1",
         "model_api_key_environment (environment variable name, not the API key)": "LOCAL_MODEL_KEY",
@@ -145,10 +147,28 @@ def test_new_config_saves_custom_model_settings(project, monkeypatch):
                         answers.get(title, default or "custom_model"))
     destination = wizard.create_configuration()
     loaded = load_configuration(destination)
-    assert loaded.model_provider == "litellm"
+    assert loaded.model_provider == provider
     assert loaded.model_name == "openai/local-model"
     assert loaded.model_base_url == "http://localhost:4000/v1"
     assert loaded.model_api_key_environment == "LOCAL_MODEL_KEY"
+
+
+def test_new_config_mock_skips_model_connection_prompts(project, monkeypatch):
+    collect_defaults(monkeypatch)
+
+    def text(title, default="", **kwargs):
+        assert title not in {"model_name", "model_base_url"}
+        assert not title.startswith("model_api_key_environment")
+        if title == "model_provider (gemini, litellm, or mock)":
+            return "mock"
+        return default or "mock_config"
+
+    monkeypatch.setattr(wizard, "prompt_text", text)
+    destination = wizard.create_configuration()
+    data = yaml.safe_load(destination.read_text())
+    assert data["model_provider"] == "mock"
+    assert not {"model_name", "model_base_url", "model_api_key_environment"} & data.keys()
+    assert load_configuration(destination).model_provider == "mock"
 
 
 def test_new_config_saves_custom_java_scan_timeout(project, monkeypatch):
@@ -228,6 +248,39 @@ def test_java_selection_retries_version_and_mismatched_jdk(project, monkeypatch,
     output = capsys.readouterr().out
     assert "supported Java version" in output
     assert "must use Java 21" in output
+
+
+def test_section_complete_can_edit_retained_answers_before_continuing(project, monkeypatch):
+    collect_defaults(monkeypatch)
+    name_prompts = []
+    sections = []
+    original_select = wizard.select_option
+    original_text = wizard.prompt_text
+
+    def select(title, options, **kwargs):
+        if title == "Section complete":
+            assert options == [("next", "Next - skip editing and continue"),
+                               ("edit", "Back - change your answers"),
+                               ("_cancel", "Cancel configuration")]
+            sections.append(kwargs["heading"])
+            if len(sections) == 1:
+                assert not (project / "configs").exists()
+                return "edit"
+        return original_select(title, options, **kwargs)
+
+    def text(title, default="", **kwargs):
+        if title.startswith("Config name"):
+            name_prompts.append(default)
+            return "first_name" if len(name_prompts) == 1 else "edited_name"
+        return original_text(title, default, **kwargs)
+
+    monkeypatch.setattr(wizard, "select_option", select)
+    monkeypatch.setattr(wizard, "prompt_text", text)
+    destination = wizard.create_configuration()
+    assert name_prompts == ["", "first_name"]
+    assert all("Section 1 of 9" in heading for heading in sections[:2])
+    assert destination == project / "configs" / "edited_name.yaml"
+    assert not (project / "configs" / "first_name.yaml").exists()
 
 
 def test_custom_paths_are_preserved_and_config_relative(project, monkeypatch):
@@ -368,7 +421,7 @@ def test_created_config_is_discovered_on_subsequent_start(project, monkeypatch):
         return next(selections)
     monkeypatch.setattr(interactive, "select_option", select)
     calls = []
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id:
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path:
                         calls.append((profile, run_id)) or project)
     assert main([]) == 0
     assert menus == ["What would you like to do?", "What would you like to do?", "Select a configuration", "What would you like to do?"]
@@ -383,13 +436,13 @@ def test_return_to_menu_preserves_supplied_arguments(project, monkeypatch):
     monkeypatch.setattr(interactive, "select_option", lambda title, options: next(selections))
     monkeypatch.setattr("cli.main.create_configuration", lambda: None)
     loaded = []
-    monkeypatch.setattr("cli.main.load_configuration", lambda path: loaded.append(path) or "profile")
+    monkeypatch.setattr("cli.main.load_configuration", lambda path: loaded.append(path) or type("Profile", (), {"output_root": str(project)})())
     calls = []
-    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id:
+    monkeypatch.setattr("cli.main.run_pipeline", lambda profile, run_id, configuration_path:
                         calls.append((profile, run_id)) or project)
     assert main(["--config", "supplied.yaml", "--run-id", "supplied", "--verbose"]) == 0
     assert loaded == ["supplied.yaml"]
-    assert calls == [("profile", "supplied")]
+    assert len(calls) == 1 and calls[0][1] == "supplied"
 
 
 @pytest.mark.parametrize("keys, expected", [

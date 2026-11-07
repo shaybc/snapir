@@ -43,11 +43,11 @@ class WizardInputs:
         self.pending[title] = value
         return value
 
-    def menu(self, title, options):
+    def menu(self, title, options, *, allow_back=True):
         """Remember section choices and provide visible Back/Cancel actions."""
         key = '@menu:' + title
         choices = list(options)
-        if self.draft.section > 0:
+        if allow_back and self.draft.section > 0:
             choices.append(('_back', 'Back (discard unfinished section edits)'))
         choices.append(('_cancel', 'Cancel configuration'))
         value = self.api.select_option(title, choices, initial=self.pending.get(key),
@@ -71,7 +71,10 @@ class WizardInputs:
 
     def next(self):
         """Require an explicit section commit, distinct from finishing the final field."""
-        return self.menu('Section complete', [('next', 'Next - keep these section answers')])
+        return self.menu('Section complete', [
+            ('next', 'Next - skip editing and continue'),
+            ('edit', 'Back - change your answers'),
+        ], allow_back=False)
 
     def discard(self):
         """Confirm draft cancellation without allowing Escape to silently discard it."""

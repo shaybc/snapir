@@ -1,6 +1,7 @@
 """Verify disk-backed waves and both portable indexed workbook entry points."""
 
 import importlib.util
+from copy import copy
 import os
 from pathlib import Path
 import random
@@ -54,6 +55,11 @@ def test_indexed_workbooks_match_portable_and_existing_rows(tmp_path,indexed_map
         for name in with_output.sheetnames:
             assert list(with_output[name].values)==list(with_expected[name].values)
             assert list(with_output[name].tables)==list(with_expected[name].tables)
+            for cell in with_output[name][5]:
+                expected_cell=with_expected[name][cell.coordinate]
+                assert copy(cell.font)==copy(expected_cell.font)
+                assert copy(cell.fill)==copy(expected_cell.fill)
+                assert copy(cell.alignment)==copy(expected_cell.alignment)
     finally:with_output.close();with_expected.close()
     isolated=tmp_path/'portable';isolated.mkdir();script=isolated/'Excel Generator.py';shutil.copy2(ROOT/'Excel Generator.py',script)
     result=subprocess.run([sys.executable,'-B',str(script),str(vault),'--output',str(tmp_path/'portable.xlsx')],

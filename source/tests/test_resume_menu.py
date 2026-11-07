@@ -14,11 +14,14 @@ def saved_run(root, run_id="existing", phase="planning_failed", *, profile=True)
     directory = root / run_id
     state = directory / "state"
     state.mkdir(parents=True)
+    from runtime.run_identity import write_run_identity
+    write_run_identity(state.parent, SimpleNamespace(channels=['INTERNET'], include_operations=['Overview'],
+                       conversion_strategy='behavior_units'), root.parent / 'configs/bank_demo.yaml')
     if profile:
         (state / "profile.json").write_text('{"model_name": "saved-model"}')
     with sqlite3.connect(state / "migration.db") as conn:
-        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
-        conn.execute("INSERT INTO runs VALUES (?, 'failed', ?)", (run_id, phase))
+        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT, created_at TEXT DEFAULT '2026-11-07T10:00:00+00:00', updated_at TEXT DEFAULT '2026-11-07T10:00:00+00:00')")
+        conn.execute("INSERT INTO runs (run_id,status,current_phase) VALUES (?, 'failed', ?)", (run_id, phase))
     return directory
 
 
@@ -57,7 +60,7 @@ def test_resume_uses_selected_saved_run_and_shows_updated_checkpoint(project, mo
     directory = saved_run(project / "alternate")
     choices = iter(["resume", str(directory), "exit"])
     events = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         assert title != "Select a configuration"
         selected = next(choices)
         if selected == "exit":
@@ -88,7 +91,7 @@ def test_blocked_dependency_resume_offers_report_then_returns_to_menu(project, m
     with sqlite3.connect(directory / "state/migration.db") as conn:
         conn.execute("UPDATE runs SET status='blocked'")
     choices = iter(["resume", str(directory), "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     monkeypatch.setattr("cli.main.resume_pipeline", lambda *_: directory)
     offered = []
     monkeypatch.setattr("cli.main.offer_dependency_closure_report", lambda path: offered.append(path))
@@ -101,7 +104,7 @@ def test_handled_resume_failure_returns_menu_and_preserves_failed_checkpoint(pro
     directory = saved_run(project / "work/migration_runs", phase="planning_inputs_ready")
     choices = iter(["resume", str(directory), "exit"])
     calls = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         selected = next(choices)
         if selected == "exit":
             output = capsys.readouterr()
@@ -128,7 +131,7 @@ def test_repeated_resume_always_asks_for_a_fresh_run(project, monkeypatch):
     second = saved_run(root, "second")
     choices = iter(["resume", str(first), "resume", str(second), "exit"])
     menus = []
-    def select(title, options):
+    def select(title, options, **kwargs):
         menus.append(title)
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
@@ -141,7 +144,7 @@ def test_repeated_resume_always_asks_for_a_fresh_run(project, monkeypatch):
 
 def test_cancelled_resume_does_not_execute(project, monkeypatch):
     saved_run(project / "work/migration_runs")
-    def select(title, options):
+    def select(title, options, **kwargs):
         if title == "Select a run":
             raise interactive.SelectionCancelled
         return "resume"
@@ -153,7 +156,7 @@ def test_cancelled_resume_does_not_execute(project, monkeypatch):
 def test_no_resumable_runs_reports_error_and_returns_menu(project, monkeypatch, capsys):
     saved_run(project / "work/migration_runs", phase="paused_awaiting_operator")
     choices = iter(["resume", "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     monkeypatch.setattr("cli.main.resume_pipeline", lambda *_: pytest.fail("Resumed unsupported run"))
     assert main([]) == 0
     assert "No resumable runs with saved profiles" in capsys.readouterr().out

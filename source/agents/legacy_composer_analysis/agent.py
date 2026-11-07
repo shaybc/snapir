@@ -39,18 +39,7 @@ def run_legacy_composer_analysis(
     task_id = _task_id(run_config.run_id)
     try:
         summary = import_vault(conn, run_config.vault_root, run_config)
-        upsert_agent_task(
-            conn,
-            task_id=task_id,
-            run_id=run_config.run_id,
-            agent_name=AGENT_NAME,
-            scope_type="run",
-            scope_id=run_config.run_id,
-            channel="all",
-            target_language="any",
-            status="completed",
-            output_data={"import_summary": asdict(summary)},
-        )
+        record_import_summary(conn, run_config, summary)
     except Exception as exc:
         upsert_agent_task(
             conn,
@@ -94,6 +83,22 @@ def run_legacy_composer_analysis(
         "invalidation_summary": asdict(invalidation_summary),
         "paused": False,
     }
+
+
+def record_import_summary(conn: sqlite3.Connection, run_config: RunConfig, summary) -> None:
+    """Persist completed import evidence from either intake path without repeating import."""
+    upsert_agent_task(
+        conn,
+        task_id=_task_id(run_config.run_id),
+        run_id=run_config.run_id,
+        agent_name=AGENT_NAME,
+        scope_type="run",
+        scope_id=run_config.run_id,
+        channel="all",
+        target_language="any",
+        status="completed",
+        output_data={"import_summary": asdict(summary)},
+    )
 
 
 def _task_id(run_id: str) -> str:

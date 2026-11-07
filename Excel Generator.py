@@ -800,7 +800,7 @@ def streamed_sheet(workbook, name, title, context, headers, rows, widths, table_
     append([context] + [None] * (len(headers) - 1), 3)
     append([None] * len(headers), 4)
     sheet.row_dimensions[5].height = 32
-    append(headers, 5)
+    append(headers, 5, header=True)
     for number, values in enumerate(rows, 6):
         lines = max((sum((max(1, math.ceil(len(line) / max(1, widths[i] - 2))) for line in str(value or '').split('\n'))) for i, value in enumerate(values)))
         sheet.row_dimensions[number].height = min(409, max(18, lines * 15))

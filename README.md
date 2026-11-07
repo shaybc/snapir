@@ -65,6 +65,10 @@ Deployment manifests reference a supplied `image_name`; they do not build or ins
 
 Each migration run has its own folder under `work/migration_runs/<run-id>` (or the configured `output_root`). The table below describes the artifacts produced by a successful deterministic intake and legacy analysis stage.
 
+When starting interactively, name the run before confirming its configuration and destination. The name is both its run ID and folder name; use up to 100 letters, numbers, dashes or underscores. Existing names cannot be overwritten. Press Enter to accept the suggested configuration-and-time name, or supply `--run-id` when scripting.
+
+Resume, Status and gate menus show the run name, originating configuration, latest activity and stage, sorted newest first. Type to filter; the highlighted run's details show its start/resume times, latest recorded gate decision, scope and folder. Times display in the computer's local timezone. `state/run_identity.json` stores creation provenance and `state/run_activity.json` records resume entry. These menus require the new identity metadata; older runs are not migrated.
+
 After intake, the run pauses at `planning_inputs_ready`, before model-driven migration planning. These artifacts describe the legacy workspace and prepare planning inputs; generated services are added in later stages. Failed or earlier paused runs may contain only some of these artifacts.
 
 | File or folder | Contents |

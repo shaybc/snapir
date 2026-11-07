@@ -230,14 +230,15 @@ def test_interactive_start_review_precedes_run_creation(tmp_path, monkeypatch, a
     selections = iter(['start', 'exit'])
     monkeypatch.setattr(interactive, 'select_option', lambda *_: next(selections))
     monkeypatch.setattr('cli.main.load_configuration', lambda _: SimpleNamespace(output_root=str(tmp_path)))
+    monkeypatch.setattr('cli.main.choose_run_name', lambda *_: 'named-run')
     confirmations, calls = [], []
-    def confirm(path, profile):
+    def confirm(path, profile, run_id):
         assert not calls
         confirmations.append(path)
         return 'start' if len(confirmations) > 1 else action
     monkeypatch.setattr('cli.main.confirm_migration_start', confirm)
     monkeypatch.setattr('cli.main.select_configuration', lambda **kwargs: 'second.yaml')
-    monkeypatch.setattr('cli.main.run_pipeline', lambda profile, run_id: calls.append(run_id) or tmp_path)
+    monkeypatch.setattr('cli.main.run_pipeline', lambda profile, run_id, configuration_path: calls.append(run_id) or tmp_path)
     assert main(['--config', 'first.yaml']) == 0
     assert len(calls) == (0 if action == 'cancel' else 1)
     assert confirmations == (['first.yaml', 'second.yaml'] if action == 'back' else ['first.yaml'])
@@ -247,10 +248,12 @@ def test_start_review_defaults_back_and_escape_cancels(monkeypatch):
     from cli.migration_start_review import confirm_migration_start
     def menu(title, options, **kwargs):
         assert options[0][0] == 'back'
-        assert 'no mapping is running now' in '\n'.join(kwargs['details'])
+        assert 'Run name: named-run' in '\n'.join(kwargs['details'])
+        assert 'Configuration: test.yaml' in kwargs['details']
+        assert f'Run folder: {Path("runs").resolve() / "named-run"}' in kwargs['details']
         raise interactive.SelectionCancelled
     monkeypatch.setattr('cli.migration_start_review.select_option', menu)
-    assert confirm_migration_start('test.yaml', SimpleNamespace(source_root='demo')) == 'cancel'
+    assert confirm_migration_start('test.yaml', SimpleNamespace(source_root='demo', output_root='runs'), 'named-run') == 'cancel'
 
 
 def test_wizard_checkbox_defaults_and_back_key(monkeypatch):

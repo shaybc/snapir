@@ -70,7 +70,7 @@ def collect_section(draft, inputs, configs, api):
                     java_scan_inactivity_timeout_seconds=api.collect_java_scan_timeout(inputs.text))
     if section == 5:
         result = api.collect_external_dependencies(inputs.text)
-        strategy = inputs.text('conversion_strategy (legacy_components or behavior_units)', 'legacy_components')
+        strategy = inputs.text('conversion_strategy (legacy_components or behavior_units)', 'behavior_units')
         if strategy not in {'legacy_components', 'behavior_units'}:
             raise ValueError('Choose legacy_components or behavior_units')
         return dict(**result, conversion_strategy=strategy)
@@ -113,7 +113,9 @@ def run_configuration_wizard(configs, api):
                 inputs.begin(retain=retry)
                 retry = False
                 result = collect_section(draft, inputs, configs, api)
-                inputs.next()
+                if inputs.next() == 'edit':
+                    retry = True
+                    continue
                 _commit(draft, inputs, result)
                 inputs.feedback = ''
                 if draft.review_return or draft.section == len(SECTION_NAMES) - 1:

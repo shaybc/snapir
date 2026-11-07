@@ -15,9 +15,12 @@ def saved_run(root, run_id, phase="planning_inputs_ready"):
     directory = root / run_id
     state = directory / "state"
     state.mkdir(parents=True)
+    from runtime.run_identity import write_run_identity
+    write_run_identity(state.parent, SimpleNamespace(channels=['INTERNET'], include_operations=['Overview'],
+                       conversion_strategy='behavior_units'), root.parent / 'configs/bank_demo.yaml')
     with sqlite3.connect(state / "migration.db") as conn:
-        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT)")
-        conn.execute("INSERT INTO runs VALUES (?, 'paused', ?)", (run_id, phase))
+        conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, current_phase TEXT, created_at TEXT DEFAULT '2026-11-07T10:00:00+00:00', updated_at TEXT DEFAULT '2026-11-07T10:00:00+00:00')")
+        conn.execute("INSERT INTO runs (run_id,status,current_phase) VALUES (?, 'paused', ?)", (run_id, phase))
     return directory
 
 
@@ -32,7 +35,7 @@ def project(tmp_path, monkeypatch):
 def test_default_root_status_without_configs_or_source_inputs(project, monkeypatch, capsys):
     directory = saved_run(project / "work/migration_runs", "persisted")
     choices = iter(["status", str(directory), "exit"])
-    def select(title, options):
+    def select(title, options, **kwargs):
         assert title != "Select a configuration"
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
@@ -68,7 +71,9 @@ def test_alternate_shared_roots_and_duplicate_ids(project):
     labels = dict(choices)
     assert "default_checkpoint" in labels[str(first)]
     assert "alternate_checkpoint" in labels[str(second)]
-    assert "work" in labels[str(first)] and "other-runs" in labels[str(second)]
+    from cli.run_presentation import read_run_summary
+    assert str(first) in '\n'.join(read_run_summary(first)['details'])
+    assert str(second) in '\n'.join(read_run_summary(second)['details'])
 
 
 def test_selected_directory_is_authoritative_across_duplicate_ids(project, monkeypatch, capsys):
@@ -78,7 +83,7 @@ def test_selected_directory_is_authoritative_across_duplicate_ids(project, monke
     saved_run(project / "work/migration_runs", "same", phase="not-selected")
     selected = saved_run(project / "alternate", "same", phase="selected-checkpoint")
     choices = iter(["status", str(selected), "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     monkeypatch.setattr("cli.main.load_configuration", lambda *_: pytest.fail("Loaded retained config"))
     assert main(["--config", "unusable-config.yaml", "--run-id", "ignored"]) == 0
     output = capsys.readouterr().out
@@ -102,10 +107,12 @@ def test_invalid_or_legacy_runs_are_skipped_without_creating_databases(project):
 def test_status_retains_config_for_next_start(project, monkeypatch):
     directory = saved_run(project / "work/migration_runs", "existing")
     choices = iter(["status", str(directory), "start", "exit"])
-    monkeypatch.setattr(interactive, "select_option", lambda *_: next(choices))
+    monkeypatch.setattr(interactive, "select_option", lambda *_, **kwargs: next(choices))
     loaded = []
     monkeypatch.setattr("cli.main.load_configuration", lambda path:
                         loaded.append(path) or SimpleNamespace(output_root=str(project)))
+    monkeypatch.setattr("cli.main.choose_run_name", lambda *_: 'new-run')
+    monkeypatch.setattr("cli.main.confirm_migration_start", lambda *_: 'start')
     monkeypatch.setattr("cli.main.run_pipeline", lambda *_: project / "new-run")
     assert main(["--config", "retained.yaml", "--run-id", "ignored"]) == 0
     assert loaded == ["retained.yaml"]
