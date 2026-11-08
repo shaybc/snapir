@@ -17,14 +17,18 @@ from tools.maven_dependency_tools.pom_manager import initialize_managed_pom
 from test_component_graph import origin,step,operation
 
 
-def make_plan(folder,*,cycle=False,value='first'):
+def make_plan(folder,*,cycle=False,value='first',separate_helper=False):
     originals=[origin('example.Helper',['example.Work'] if cycle else []),origin('example.Work',['example.Helper']),origin('example.Other')]
     for item,text in originals:
         path=folder/(item['fqcn'].rsplit('.',1)[-1]+'.java')
         if not path.exists(): path.write_text(text)
         item.update(source_file=str(path),source_hash=file_digest(path))
     originals=[(item,Path(item['source_file']).read_text()) for item,_ in originals]
-    return build_component_plan({'XML/Flow':operation([step(value=value),step('other-step',implementation='example.Other')],originals)})
+    units=[step(value=value),step('other-step',implementation='example.Other')]
+    if separate_helper:
+        # A configured implementation remains a conversion node instead of folded supporting evidence.
+        units.append(step('helper-step',implementation='example.Helper'))
+    return build_component_plan({'XML/Flow':operation(units,originals)})
 
 
 def contract_for(plan,key,**changes):
@@ -75,6 +79,14 @@ def state(tmp_path):
     conn.close()
 
 
+@pytest.fixture
+def dependency_state(state):
+    conn,_,profile,output,source=state
+    plan=make_plan(source,separate_helper=True)
+    assert named(plan,'example.Helper') in plan.components[named(plan,'example.Work')].dependencies
+    return conn,plan,profile,output,source
+
+
 def register_all(conn,plan,profile,run='run'):
     registered={};contracts={}
     for group in plan.groups:
@@ -105,7 +117,9 @@ def test_unchanged_resume_revalidates_without_model_calls_or_unit_acceptance(sta
     root=plan.unit_roots['step-1'];checks=[]
     def validate(contracts,results): checks.extend(results);return True
     result=reuse_component_result(conn,'run',plan,root,profile,output,validator=validate)
-    assert result==saved[root] and len(checks)==3
+    assert result==saved[root] and len(checks)==2
+    assert set(checks)=={root,named(plan,'example.Work')}
+    assert [item['fqcn'] for item in plan.components[named(plan,'example.Work')].provenance['supporting_sources']]==['example.Helper']
     assert named(plan,'example.Other') not in checks
     assert conn.execute("SELECT count(*) FROM behavior_snapshots WHERE category IN ('unit','unit_verification','operation')").fetchone()[0]==0
     assert conn.execute('SELECT count(*) FROM behavior_attempts').fetchone()[0]==0
@@ -118,6 +132,9 @@ def test_source_configuration_and_platform_changes_do_not_reuse_old_results(stat
     cache_all(conn,plan,profile,output)
     sibling=plan.unit_roots['other-step']
     (source/'Helper.java').write_text('package example; public class Helper { public int changed; }')
+    with pytest.raises(ValueError,match='Original component source changed'):
+        reuse_component_result(conn,'run',plan,plan.unit_roots['step-1'],profile,output,validator=lambda *a:True)
+    assert records.head(conn,'run',component_group(plan,plan.unit_roots['step-1']).group_id)['status']=='stale'
     revised=make_plan(source)
     assert reuse_component_result(conn,'run',revised,revised.unit_roots['step-1'],profile,output,validator=lambda *a:True) is None
     assert reuse_component_result(conn,'run',revised,sibling,profile,output,validator=lambda *a:True) is not None
@@ -128,8 +145,8 @@ def test_source_configuration_and_platform_changes_do_not_reuse_old_results(stat
     assert reuse_component_result(conn,'run',configured,sibling,other_profile,output,validator=lambda *a:True) is None
 
 
-def test_dependency_invalidation_during_reuse_cannot_return_a_valid_result(state):
-    conn,plan,profile,output,_=state
+def test_dependency_invalidation_during_reuse_cannot_return_a_valid_result(dependency_state):
+    conn,plan,profile,output,_=dependency_state
     cache_all(conn,plan,profile,output)
     root=plan.unit_roots['step-1']
     helper=component_group(plan,named(plan,'example.Helper'))
@@ -142,8 +159,8 @@ def test_dependency_invalidation_during_reuse_cannot_return_a_valid_result(state
     assert records.head(conn,'run',component_group(plan,root).group_id)['status']=='stale'
 
 
-def test_contract_change_preserves_old_revision_and_stales_consumers_only(state):
-    conn,plan,profile,output,_=state
+def test_contract_change_preserves_old_revision_and_stales_consumers_only(dependency_state):
+    conn,plan,profile,output,_=dependency_state
     registered,_,_=cache_all(conn,plan,profile,output)
     key=named(plan,'example.Helper');group=component_group(plan,key)
     old=registered[group.group_id]['contract_revision']
@@ -155,8 +172,8 @@ def test_contract_change_preserves_old_revision_and_stales_consumers_only(state)
     assert records.head(conn,'run',group.group_id)['status']=='contract_registered'
 
 
-def test_implementation_revision_stales_consumers_and_keeps_unchanged_sibling(state):
-    conn,plan,profile,output,_=state
+def test_implementation_revision_stales_consumers_and_keeps_unchanged_sibling(dependency_state):
+    conn,plan,profile,output,_=dependency_state
     registered,contracts,_=cache_all(conn,plan,profile,output)
     key=named(plan,'example.Helper');group=component_group(plan,key)
     replacement=artifact(output,plan,key,contracts[key],registered[group.group_id],version='new-output')
@@ -166,8 +183,8 @@ def test_implementation_revision_stales_consumers_and_keeps_unchanged_sibling(st
 
 
 @pytest.mark.parametrize('change',['source','compiled','report','metadata','validator'])
-def test_tampered_dependency_evidence_invalidates_all_consumers(state,change):
-    conn,plan,profile,output,source=state
+def test_tampered_dependency_evidence_invalidates_all_consumers(dependency_state,change):
+    conn,plan,profile,output,source=dependency_state
     _,_,saved=cache_all(conn,plan,profile,output)
     helper=named(plan,'example.Helper');group=component_group(plan,helper);result=saved[helper]
     if change=='source': (source/'Helper.java').write_text('changed source')
@@ -184,9 +201,10 @@ def test_tampered_dependency_evidence_invalidates_all_consumers(state,change):
 
 
 def test_cycles_require_atomic_contract_and_result_sets(tmp_path):
-    source=tmp_path/'original';source.mkdir();plan=make_plan(source,cycle=True)
+    source=tmp_path/'original';source.mkdir();plan=make_plan(source,cycle=True,separate_helper=True)
     conn=get_connection(':memory:');create_all_tables(conn);profile=PipelineConfiguration()
     group=next(group for group in plan.groups if group.cyclic)
+    assert set(group.members)=={named(plan,'example.Work'),named(plan,'example.Helper')}
     contracts={key:contract_for(plan,key) for key in group.members}
     with pytest.raises(ValueError,match='every component'):
         register_component_contracts(conn,'run',plan,group.group_id,{group.members[0]:contracts[group.members[0]]},profile)
@@ -211,8 +229,8 @@ def test_component_registration_does_not_commit_outer_transaction(state):
     assert conn.execute('SELECT count(*) FROM conversion_component_heads').fetchone()[0]==0
 
 
-def test_missing_build_or_escaping_paths_cannot_record_component_validation(state):
-    conn,plan,profile,output,_=state
+def test_missing_build_or_escaping_paths_cannot_record_component_validation(dependency_state):
+    conn,plan,profile,output,_=dependency_state
     registered,contracts=register_all(conn,plan,profile)
     key=named(plan,'example.Helper');group=component_group(plan,key)
     result=artifact(output,plan,key,contracts[key],registered[group.group_id])
@@ -229,8 +247,8 @@ def test_missing_build_or_escaping_paths_cannot_record_component_validation(stat
     assert records.head(conn,'run',group.group_id)['result_revision'] is None
 
 
-def test_real_jvm_artifact_can_be_revalidated_without_a_model(state):
-    conn,plan,profile,output,_=state
+def test_real_jvm_artifact_can_be_revalidated_without_a_model(dependency_state):
+    conn,plan,profile,output,_=dependency_state
     registered,contracts=register_all(conn,plan,profile)
     key=named(plan,'example.Helper');group=component_group(plan,key)
     result=artifact(output,plan,key,contracts[key],registered[group.group_id],real=True)

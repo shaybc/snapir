@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
+from models.pipeline_configuration import PipelineConfiguration
 from runtime.component_conversion.unit_artifacts import (load_unit_artifacts,save_unit_component_receipt,
     require_unit_components,require_partition_records)
 from runtime.component_conversion.unit_binding import resolve_checklist,native_unit_binding
@@ -99,7 +100,7 @@ def test_unit_correction_limits_do_not_retry_capability_gaps(monkeypatch,incompl
     from test_component_graph import step
     unit=ScopedConfiguredUnit.model_validate(step('unit'))
     provider=ComponentUnitProvider.__new__(ComponentUnitProvider)
-    provider.conn,provider.config,provider.profile=None,None,SimpleNamespace(max_agent_task_retries=2)
+    provider.conn,provider.config,provider.profile=None,None,PipelineConfiguration(max_agent_task_retries=2)
     provider.plan,provider.model_call=None,None
     provider.boundaries={'boundaries':{'unit':boundary_contract(unit.model_dump(mode='json')).model_dump(mode='json')}}
     monkeypatch.setattr('runtime.scoped_native.scope.require_task',lambda *a:None)
@@ -173,7 +174,7 @@ def test_step_binding_request_is_metadata_only_and_runs_whole_unit_validator(mon
     unit=SimpleNamespace(unit_id='step',kind='configured_step',logical_id='Step',effective_configuration={},configuration_xml='<opStep/>')
     artifacts=dict(root_report=dict(owned_sources=['src/main/java/Step.java']),proof={},contract=dict(apis=[]),files={'src/main/java/Step.java':'source'})
     checked=[]
-    bundle=native_unit_binding(None,None,None,unit,artifacts,lambda metadata:metadata,lambda bundle,**kw:checked.append(bundle),None)
+    bundle=native_unit_binding(None,None,PipelineConfiguration(),unit,artifacts,lambda metadata:metadata,lambda bundle,**kw:checked.append(bundle),None)
     assert bundle.verification_binding.method_name=='execute' and len(checked)==1
     assert captured[0][3]=='unit_binding' and captured[0][7].__name__=='ComponentUnitBinding'
     assert 'files' not in captured[0][6]
@@ -270,7 +271,8 @@ def test_real_maven_component_format_is_promoted_only_after_whole_unit_checks_an
         request=json.loads(encoded);calls.append(request)
         return json.dumps(candidate(request))
     convert_basic_components(conn,config,profile,tmp_path/'component-run',preparation,None,model_call=model,context_factory=actual_build,include_formats=True)
-    assert len(calls)==3
+    assert len(calls)==2
+    assert {node['label'] for request in calls for node in request['components'].values()}=={'example.SimpleFormat','response'}
     unit=ScopedConfiguredUnit.model_validate(dict(units['response'],schema_version='scoped-component-unit-v1'))
     monkeypatch.setattr('runtime.scoped_native.scope.validate_checkpoints',lambda *args:None)
     # Fixture has no imported-vault checkpoint ledger; the real scoped ledger is covered by regression tests.

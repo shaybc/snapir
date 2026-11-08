@@ -17,6 +17,7 @@ from tools.operation_call_tools.published_calls import resolve_published_calls, 
 
 def publication_evidence(setup):
     conn, config, profile, directory, operations = setup
+    profile.shared_store_root = str(directory.parent / 'shared')
     output = directory / 'services/INTERNET/C/target/service.jar'
     output.parent.mkdir(parents=True)
     output.write_bytes(b'controlled package artifact')
