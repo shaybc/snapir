@@ -18,7 +18,8 @@ from tools.conversion_tools.scoped_closure.state import initialize, save_closure
 
 
 def build_scoped_closure(conn, operation_id, channel, run_id, composer_root, *,
-                         java_project=None, classpath_index=None, profile=None, included_contexts=None):
+                         java_project=None, classpath_index=None, profile=None, included_contexts=None,
+                         published_contexts=()):
     """Build and store only reachable qualified closures; all generation gates remain closed."""
     access = ScopedVaultAccess(conn, run_id)
     root_context = access.operation(channel, operation_id)
@@ -33,7 +34,7 @@ def build_scoped_closure(conn, operation_id, channel, run_id, composer_root, *,
         context = pending.pop()
         if context.operation_identity in closures:
             continue
-        closure = _local_closure(access, context, sources, source_index, classpath_index, java_project, profile)
+        closure = _local_closure(access, context, sources, source_index, classpath_index, java_project, profile, published_contexts)
         closures[context.operation_identity] = closure
         for call in closure.calls:
             if call.get('detail'):
@@ -78,7 +79,7 @@ def build_scoped_closure(conn, operation_id, channel, run_id, composer_root, *,
     return closures[root_context.operation_identity]
 
 
-def _local_closure(access, context, sources, source_index, classpath_index, java_project, profile):
+def _local_closure(access, context, sources, source_index, classpath_index, java_project, profile, published_contexts):
     sources.used = {}
     closure = ScopedOperationClosure(run_id=access.run_id, operation_identity=context.operation_identity,
         operation_id=context.operation_id, channel=context.channel, definition_id=context.definition_id)
@@ -98,7 +99,8 @@ def _local_closure(access, context, sources, source_index, classpath_index, java
         closure.steps = list(access.steps(context))
         closure.calls = list(access.calls(context))
         for call in closure.calls:
-            if call.get('detail'):
+            target = call.get('target_context') or context.channel + '/' + call['target_name']
+            if call.get('detail') and target not in published_contexts:
                 issue(call['step_note'], call['detail'])
         closure.routing_graph, switches = resolve_routing(access, context, sources, closure.steps, issue)
         mappings = dict((name, fqcn) for name, fqcn, _ in parse_channel_note(

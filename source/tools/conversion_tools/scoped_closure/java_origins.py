@@ -68,7 +68,7 @@ def resolve_java_origins(access, context, sources, required, source_index, class
                 origins.append(dict(fqcn=fqcn, status='verified_platform', location=locations[0], source_hash=digest))
                 continue
             if java_project is None or source_index is None or java_project not in source_index.source_roots:
-                raise ValueError('An explicit production source-project profile is required: ' + fqcn)
+                raise ValueError('Production source project is missing or ambiguous in workspace metadata: ' + fqcn)
             projects, queue = set(), [java_project]
             while queue:
                 project = queue.pop()

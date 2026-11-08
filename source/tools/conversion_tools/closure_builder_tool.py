@@ -28,12 +28,13 @@ LOGGER = logging.getLogger(__name__)
 
 
 def build_scoped_operation_closure(conn, operation_id, channel, run_id, composer_root, *,
-                                   java_project=None, classpath_index=None, profile=None, included_contexts=None):
+                                   java_project=None, classpath_index=None, profile=None, included_contexts=None,
+                                   published_contexts=()):
     """Inspect qualified schema-three dependencies without opening the conversion gate."""
     from tools.conversion_tools.scoped_closure.builder import build_scoped_closure
     return build_scoped_closure(conn, operation_id, channel, run_id, composer_root,
         java_project=java_project, classpath_index=classpath_index, profile=profile,
-        included_contexts=included_contexts)
+        included_contexts=included_contexts, published_contexts=published_contexts)
 
 
 def build_operation_closure(

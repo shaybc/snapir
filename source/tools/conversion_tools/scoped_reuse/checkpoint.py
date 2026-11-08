@@ -29,8 +29,9 @@ def observe_inputs(conn, config, profile, classpath):
     index = discover_java_sources(config.source_root)
     from tools.conversion_tools.scoped_workflow.source_project import scoped_source_project
     channels = [item[0] for item in conn.execute(
-        'SELECT DISTINCT channel FROM scoped_operation_contexts WHERE run_id=? AND selected=1', (config.run_id,))]
-    allowed, pending = set(), [scoped_source_project(profile, channel) for channel in channels]
+        'SELECT DISTINCT channel FROM scoped_operation_contexts WHERE run_id=?', (config.run_id,))]
+    projects = {channel: scoped_source_project(profile, channel, source_root=config.source_root, source_index=index) for channel in channels}
+    allowed, pending = set(), list(projects.values())
     while pending:
         project = pending.pop()
         if project in allowed:
@@ -56,7 +57,7 @@ def observe_inputs(conn, config, profile, classpath):
         artifact_schema=getattr(config, 'artifact_schema_version', None), run_schema=getattr(config, 'schema_version', None),
         target_languages=[getattr(item, 'value', item) for item in getattr(config, 'target_languages', ())], selection=selection,
         intake_hash=digest(intake), policy=conversion_policy(profile), classpath=classpath_fingerprint(classpath),
-        source_index=digest(structure), layout=source_layout(config.source_root), intake=intake)
+        source_index=digest(structure), resolved_projects=projects, layout=source_layout(config.source_root), intake=intake)
 
 
 def context_inputs(conn, config, identity, common, files):

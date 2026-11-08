@@ -119,10 +119,10 @@ identities from evidence, never by guessing another channel's operation.
 
 Traverse dependencies of operations still requiring conversion. An included
 operation needs its required conversion evidence. A published service satisfies
-the dependency boundary and supplies its trusted API contract. Otherwise block,
-list the missing operation and call path, and ask the user to include or resolve
-it. Detect cycles, display their complete path and evidence, and request user
-resolution before planning proceeds. Do not expand scope silently.
+the dependency boundary and supplies its trusted API contract. Otherwise add the
+mapped source dependency automatically and record its call path separately from
+the requested roots. Explicit exclusions, missing or ambiguous evidence, and
+cycles still block with their complete paths before planning proceeds.
 
 Acceptance: intake fixtures cover direct/indirect and out-of-scope dependencies,
 reused published APIs, unresolved targets and cycle blocking. Failed preflight
@@ -132,10 +132,11 @@ Stage 2 implementation record:
 
 - Native intake retains the full Mapper channel inventory while keeping the
   selected conversion operations unchanged. Legacy channel filtering is unchanged.
-- Preflight traverses mapped direct and indirect calls, requires omitted
-  dependencies to be included or published in the shared registry, and retains
-  complete call evidence and actual cycle paths. It does not guess cross-channel
-  identities, expand scope, or traverse the internals of reused published services.
+- Preflight traverses mapped direct and indirect calls, automatically adds required
+  source dependencies to the execution queue, and retains requested roots, complete
+  call evidence and actual cycle paths. It does not guess cross-channel identities
+  or traverse the internals of reused published services. Configuration selections
+  remain unchanged.
 - Missing target notes retain their exact target identity for registry lookup;
   unresolved or conflicting evidence still blocks. Included operations also need
   their referenced mapped format evidence.

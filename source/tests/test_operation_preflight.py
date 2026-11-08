@@ -11,13 +11,40 @@ from tools.converted_service_registry_tools.registry import open_registry, publi
 from tests.test_service_registry import contract
 
 
-def test_direct_and_indirect_missing_paths(tmp_path):
+def test_direct_and_indirect_dependencies_are_added_automatically(tmp_path):
     graph = discover_operation_calls(vault(tmp_path))
     result = check_dependencies(graph, ['INTERNET/A'], lambda key: None)
-    assert {tuple(item['path']) for item in result['blockers']} >= {
-        ('INTERNET/A', 'INTERNET/B'), ('INTERNET/A', 'INTERNET/B', 'INTERNET/C')}
-    assert result['selected'] == ['INTERNET/A']
+    assert result['blockers'] == []
+    assert result['requested'] == ['INTERNET/A']
+    assert result['selected'] == ['INTERNET/A', 'INTERNET/B', 'INTERNET/C']
     assert not check_dependencies(graph, graph['operations'], lambda key: None)['blockers']
+
+
+def test_intake_queues_dependencies_without_changing_requested_roots(tmp_path):
+    from tools.state_store_tools.db import create_all_tables
+    from tools.state_store_tools.channel_operations import upsert_operation
+    root = tmp_path / 'vault'
+    root.mkdir()
+    vault(root)
+    graph = discover_operation_calls(root)
+    conn = get_connection(':memory:')
+    create_all_tables(conn)
+    upsert_operation(conn, operation_id='A', channel='INTERNET', run_id='run')
+    save_graph(conn, 'run', graph)
+    plan_contracts(conn, 'run', graph, root)
+    config = SimpleNamespace(run_id='run', target_channels=['INTERNET'], include_operations=['A'], exclude_operations=None)
+    profile = SimpleNamespace(source_workspace_id='bank', source_root=str(tmp_path),
+        service_registry_path=str(tmp_path / 'registry.db'))
+    try:
+        for _ in range(2):
+            result = run_intake_preflight(conn, config, profile, tmp_path)
+            assert not result['blockers']
+            assert result['requested'] == ['INTERNET/A']
+            assert result['selected'] == ['INTERNET/A', 'INTERNET/B', 'INTERNET/C']
+        assert {row[0] for row in conn.execute('SELECT operation_id FROM operations')} == {'A', 'B', 'C'}
+        assert config.target_channels == ['INTERNET'] and config.include_operations == ['A']
+    finally:
+        conn.close()
 
 
 def test_published_boundary_does_not_reopen_its_dependencies(tmp_path, contract):
@@ -73,7 +100,9 @@ def test_unrelated_issues_do_not_block_selected_scope(tmp_path):
 def test_intake_saves_reports_and_planning_cannot_bypass_blocker(tmp_path, contract, monkeypatch):
     root = tmp_path / 'vault'
     root.mkdir()
-    graph = discover_operation_calls(vault(root))
+    vault(root)
+    (root / 'operations/C.md').unlink()
+    graph = discover_operation_calls(root)
     conn = get_connection(str(tmp_path / 'run.db'))
     conn.execute('CREATE TABLE operations(run_id TEXT,channel TEXT,operation_id TEXT)')
     conn.execute("INSERT INTO operations VALUES ('run','INTERNET','B')")
@@ -121,7 +150,9 @@ def test_intake_runner_stops_before_planning_and_keeps_full_inventory(tmp_path, 
     from tools.state_store_tools.runs import get_run
     root = tmp_path / 'vault-fixture'
     root.mkdir()
-    graph = discover_operation_calls(vault(root))
+    vault(root)
+    (root / 'operations/C.md').unlink()
+    graph = discover_operation_calls(root)
     dummy = SimpleNamespace(issues=[], classes={}, model_dump_json=lambda **kwargs: '{}')
     inventory = SimpleNamespace(workspace_id='test', diagnostics=[], java_dependencies=dummy, model_dump_json=lambda **kwargs: '{}')
     monkeypatch.setattr(runner, 'java_scope', lambda profile: nullcontext())

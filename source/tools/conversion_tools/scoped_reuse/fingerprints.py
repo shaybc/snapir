@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
 
-POLICY_VERSION = 'scoped-v3-unit-evidence-v2'
+POLICY_VERSION = 'scoped-v3-unit-evidence-v3-auto-dependencies'
 
 
 def digest(value):

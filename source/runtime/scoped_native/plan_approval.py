@@ -17,8 +17,10 @@ def _snapshot(conn, config, profile, plan):
     validate_checkpoints(conn, config, profile, classpath, keys)
     proof = {item.operation_key: item.fingerprint for item in checkpoints(conn, config.run_id).values()
              if item.operation_key in keys}
+    prepared = conn.execute('SELECT preparation_json FROM scoped_workflow_preparations WHERE run_id=?', (config.run_id,)).fetchone()
+    dependency_plan = json.loads(prepared[0]).get('dependency_plan') if prepared else None
     return dict(capability='scoped-behavior-v1', plan=plan.model_dump(mode='json'), checkpoints=proof,
-                approval_policy=profile.plan_approval_policy)
+                approval_policy=profile.plan_approval_policy, dependency_plan=dependency_plan)
 
 
 def _render(snapshot):

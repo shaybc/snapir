@@ -57,7 +57,9 @@ def component_package(candidate, bundle, key):
             relative = path.relative_to(root).as_posix()
             if relative == 'pom.xml' or relative.startswith(('src/', 'target/surefire-reports/')) or relative.startswith('component-'):
                 files['evidence/' + relative] = path
+    from tools.conversion_tools.dependency_planning.reuse_sources import component_input_identity
     return files, dict(validated=True, validation_scope='component_build_and_tests', behavioral_equivalence='not_established',
+                       input_identity=component_input_identity(candidate.plan, candidate.group, candidate.profile),
                        bindings=request_bindings(candidate.request),
                        coordinates=coordinates, owned_sources=owned, classes=sorted(classes),
                        logical_components=sorted(candidate.plan.components[member].label for member in candidate.group.members),

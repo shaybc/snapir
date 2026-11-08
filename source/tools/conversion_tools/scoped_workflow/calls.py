@@ -22,13 +22,21 @@ def bind_context_calls(graph, closures, contracts, pins, profile, *, require_pub
     effective = dict(operations={key: {} for key in closures}, calls=[], issues=[])
     for key, closure in closures.items():
         by_note = {step.source.note: step for step in closure.steps}
+        source_calls = [item for item in graph['calls'] if item['caller'] == key]
         for item in graph['issues']:
             if item['operation'] == key:
-                issues[key].append(item['detail'])
-        for call in (item for item in graph['calls'] if item['caller'] == key):
+                candidates = pins.get(item.get('callee'), [])
+                if len(candidates) == 1 and 'application/xml' in candidates[0].contract.media_types:
+                    source_calls.append(dict({name: value for name, value in item.items() if name not in {'operation', 'detail'}}, caller=key))
+                else:
+                    issues[key].append(item['detail'])
+        for call in source_calls:
             step = by_note.get(call['note'])
             expected = [item for item in closure.calls if item['step_note'] == call['note']]
-            if step is None or len(expected) != 1 or expected[0].get('target_context') != call['callee']:
+            target = expected[0].get('target_context') if len(expected) == 1 else None
+            if target is None and len(expected) == 1 and pins.get(call['callee']):
+                target = closure.channel + '/' + expected[0]['target_name']
+            if step is None or len(expected) != 1 or target != call['callee']:
                 issues[key].append('Call disagrees with selected occurrence/target context: ' + call['note'])
                 continue
             target = call['callee']
@@ -55,7 +63,7 @@ def bind_context_calls(graph, closures, contracts, pins, profile, *, require_pub
                 else:
                     effective['calls'].append(call)
             else:
-                issues[key].append('Include the required operation or pin its published API: ' + target)
+                issues[key].append('Required operation has no resolved source or reusable API: ' + target)
             if getattr(profile, 'conversion_strategy', None) != 'behavior_units':
                 issues[key].append('Complex operation calls require native behavior-unit conversion: ' + target)
             if contract is not None:

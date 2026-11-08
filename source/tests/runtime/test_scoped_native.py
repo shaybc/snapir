@@ -184,7 +184,7 @@ def test_real_scoped_native_generation_review_compile_and_behavior(tmp_path, sco
     conn, config = scoped_state(tmp_path, scoped_mapper)
     profile = PipelineConfiguration(source_root=config.source_root, mapper_vault_layout='scoped', source_workspace_id='native',
         scoped_native_mode='behavior_units_v1', scoped_java_project='.', conversion_strategy='behavior_units',
-        plan_approval_policy='automatic',
+        plan_approval_policy='automatic', staged_unit_conversion=False,
         java_version=25, java_home=home, model_provider='mock', max_agent_task_retries=1,
         gate_policies={'1': 'automatic', '2': 'automatic', '3': 'human', '4': 'human'}, classpath_jars=[], eclipse_classpath_variables={})
     model = NativeModel()

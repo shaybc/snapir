@@ -55,6 +55,9 @@ def preparation_acceptance(conn, run_id, preparation, elapsed_seconds):
     counts['prepared_contexts'] = sum(item.get('status') == 'prepared' for item in operations.values())
     counts['blocked_contexts'] = sum(item.get('status') == 'blocked' for item in operations.values())
     counts['reused_contexts'] = len(preparation.get('reused_contexts', []))
+    dependency_plan = preparation.get('dependency_plan', {})
+    counts['required_contexts'] = len(dependency_plan.get('required_operations', operations))
+    counts['reused_services'] = len(dependency_plan.get('reused_services', {}))
     error = preparation.get('preparation_error')
     ready = bool(operations) and not error and counts['prepared_contexts'] == len(operations)
     return dict(report_version=1, run_id=run_id, recorded_at=datetime.now(timezone.utc).isoformat(),

@@ -15,8 +15,9 @@ from tools.state_store_tools.operation_calls import get_contract, set_contract_s
 
 
 def settings(root, vault):
-    config = SimpleNamespace(run_id='scoped', source_root=str(root), vault_root=str(vault))
+    config = SimpleNamespace(run_id='scoped', source_root=str(root), vault_root=str(vault), exclude_operations=None)
     profile = PipelineConfiguration(source_root=str(root), scoped_java_project='.', conversion_strategy='behavior_units',
+        shared_store_root=str(root.parent / 'shared'),
         external_dependencies=[ExternalDependencyRule(class_name='com.ibm.il.dse.cc.cut.CCComplexOpStep', treatment='replace')])
     return config, profile
 
@@ -85,14 +86,15 @@ def test_contextual_contracts_units_routes_and_readiness(tmp_path, scoped_mapper
 
 
 def test_excluded_call_requires_pin_without_analyzing_or_scheduling_callee(tmp_path, scoped_mapper):
-    conn, root, vault = import_workspace(tmp_path, scoped_mapper)
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper, exclude_operations=['Flow'])
     config, profile = settings(root, vault)
     # Break only the excluded implementation: a pinned service must not read it.
+    config.exclude_operations = ['Flow']
     (root / 'src/example/Work.java').unlink()
     report = prepare(conn, config, profile, selected={'SME/Caller'})
     item = report['operations']['SME/Caller']
     assert item['status'] == 'blocked'
-    assert any('pin its published API' in issue for issue in item['blockers'])
+    assert any('explicitly excluded' in issue for issue in item['blockers'])
     saved = [json.loads(row[0]) for row in conn.execute('SELECT closure_json FROM scoped_operation_closures')]
     assert [(item['channel'], item['operation_id']) for item in saved] == [('SME', 'Caller')]
     pin(conn)
@@ -166,13 +168,14 @@ def test_pinned_target_does_not_propagate_selected_callee_source_failures(tmp_pa
     assert report['operations']['SME/Caller']['status'] == 'prepared'
 
 
-def test_missing_source_project_blocks_without_enabling_generation(tmp_path, scoped_mapper):
+def test_source_project_is_inferred_without_enabling_generation(tmp_path, scoped_mapper):
     conn, root, vault = import_workspace(tmp_path, scoped_mapper)
     config, profile = settings(root, vault)
     profile.scoped_java_project = None
     report = prepare(conn, config, profile)
-    assert report['operations']['SME/Flow']['status'] == 'blocked'
-    assert report['operations']['SME/Caller']['status'] == 'blocked'
+    assert report['operations']['SME/Flow']['status'] == 'prepared'
+    assert report['operations']['SME/Caller']['status'] == 'prepared'
+    assert report['dependency_plan']['source_projects']['SME/Flow'] == '.'
     assert not report['conversion_enabled']
 
 

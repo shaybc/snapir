@@ -4,6 +4,7 @@ import json
 
 from models.converted_service_contract import ConvertedServiceContract
 from models.service_api_use import ServiceApiUse
+from tools.state_store_tools.savepoint import savepoint
 
 
 def initialize_service_uses(conn):
@@ -40,7 +41,7 @@ def record_service_use(conn, run_id, contract, environment, *, profile=None):
     initialize_service_uses(conn)
     key = (use.run_id, contract.application_id, contract.channel, contract.operation_id)
     payload = json.dumps(use.model_dump(mode="json"), sort_keys=True)
-    with conn:
+    with savepoint(conn):
         conn.execute("INSERT OR IGNORE INTO service_api_uses VALUES (?,?,?,?,?)", (*key, payload))
         saved = conn.execute("""SELECT use_json FROM service_api_uses
             WHERE run_id=? AND application_id=? AND channel=? AND operation_id=?""", key).fetchone()[0]

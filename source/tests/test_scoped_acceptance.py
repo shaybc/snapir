@@ -13,7 +13,9 @@ from tools.composer_mapper_tools.scoped_vault_importer import SCOPED_SCHEMA
 
 
 @pytest.fixture
-def inventory():
+def inventory(monkeypatch):
+    # Measurement tests use synthetic rows, not a mapped vault for boundary discovery.
+    monkeypatch.setattr('runtime.behavior_verification_boundaries.write_boundary_report', lambda *args, **kwargs: None)
     conn = sqlite3.connect(':memory:')
     for statement in SCOPED_SCHEMA + SCOPED_CONTEXT_SCHEMA:
         conn.execute(statement)
@@ -29,10 +31,11 @@ def test_counts_are_run_scoped_and_prepared_is_not_accepted(inventory, monkeypat
     monkeypatch.setattr('runtime.scoped_acceptance.process_peak_memory',
         lambda: dict(bytes=123, scope='process_lifetime_peak_rss', error=None))
     result = preparation_acceptance(inventory, 'run', dict(
-        operations={'XML/Flow': {'status': 'prepared'}}, reused_contexts=['XML/Flow']), 1.25)
+        operations={'XML/Flow': {'status': 'prepared'}}, reused_contexts=['XML/Flow'],
+        dependency_plan=dict(required_operations=['XML/Flow', 'WEB/B'], reused_services={'WEB/B': {}})), 1.25)
     assert result['counts'] == dict(source_definitions=1, entity_usages=0, operation_contexts=2,
         context_bindings=0, selected_contexts=1, attempted_contexts=1, prepared_contexts=1,
-        blocked_contexts=0, reused_contexts=1)
+        blocked_contexts=0, reused_contexts=1, required_contexts=2, reused_services=1)
     assert result['elapsed_seconds'] == 1.25
     assert result['peak_memory']['bytes'] == 123
     assert result['preparation_status'] == 'passed'

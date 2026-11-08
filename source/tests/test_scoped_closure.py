@@ -59,7 +59,7 @@ def workspace(root, wrapper='CCIColl'):
         (java / (name + '.java')).write_text('package example;\npublic class ' + name + ' {}\n', encoding='utf-8')
 
 
-def import_workspace(tmp_path, mapper, *, wrapper='CCIColl', change=None):
+def import_workspace(tmp_path, mapper, *, wrapper='CCIColl', change=None, exclude_operations=None):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     workspace(root, wrapper)
     if change:
@@ -69,7 +69,7 @@ def import_workspace(tmp_path, mapper, *, wrapper='CCIColl', change=None):
     conn = get_connection(':memory:')
     create_all_tables(conn)
     config = SimpleNamespace(run_id='scoped', run_mode=SimpleNamespace(value='full_inventory'),
-        target_channels=[], include_operations=None, exclude_operations=None, source_root=str(root))
+        target_channels=[], include_operations=None, exclude_operations=exclude_operations, source_root=str(root))
     import_vault(conn, str(vault), config, progress=lambda message: None)
     return conn, root, vault
 

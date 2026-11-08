@@ -5,65 +5,25 @@ from pathlib import Path
 
 from tools.converted_service_registry_tools.location import resolve_registry_settings
 from tools.converted_service_registry_tools.registry import open_registry, get_service
-from tools.operation_call_tools.ordering import operation_waves
 from tools.state_store_tools.operation_calls import load_graph
 
 
-def check_dependencies(graph, selected, lookup_service):
-    """Return scope blockers and reused contracts without changing scope or contacting services.
+def check_dependencies(graph, selected, lookup_service, *, excluded=()):
+    """Expand requested roots automatically; stop at compatible published APIs.
 
-    Lookup receives a channel-qualified identity. Published boundaries are trusted;
-    their source issues and internal calls are deliberately not traversed.
+    Missing/ambiguous evidence and explicit exclusions remain blockers. Omitted
+    channel/include selections never turn an available dependency into a blocker.
     """
-    selected = set(selected)
-    blockers, reused, evidence, visited = [], {}, [], set()
-    outgoing = {}
-    issues = {}
-    for call in graph['calls']:
-        outgoing.setdefault(call['caller'], []).append(call)
-    for issue in graph['issues']:
-        issues.setdefault(issue['operation'], []).append(issue)
-    # Reuse existing graph calculations for cycle membership; report actual paths below.
-    waves = operation_waves(graph)
-    for start in sorted(selected):
-        pending = [(start, [start])]
-        while pending:
-            node, path = pending.pop()
-            if node in path[:-1]:
-                blockers.append(dict(kind='cycle', path=path[path.index(node):-1] + [node],
-                                     detail='Resolve this operation dependency cycle before planning.'))
-                continue
-            if node in visited:
-                continue
-            visited.add(node)
-            if node not in graph['operations']:
-                blockers.append(dict(kind='missing_evidence', operation=node, path=path,
-                                     detail='Provide the mapped operation evidence for conversion.'))
-                continue
-            for issue in issues.get(node, []):
-                target = issue.get('callee')
-                if target:
-                    evidence.append(dict(issue, caller=node))
-                    service = lookup_service(target) if target not in selected else None
-                    if service is not None:
-                        reused[target] = service.model_dump(mode='json')
-                        continue
-                blockers.append(dict(kind='unresolved_target', operation=node, path=path + ([target] if target else []),
-                                     detail=issue['detail'], evidence=issue))
-            for call in sorted(outgoing.get(node, []), key=lambda item: (item['callee'], item['step']), reverse=True):
-                evidence.append(call)
-                target = call['callee']
-                if target not in selected:
-                    service = lookup_service(target)
-                    if service is not None:
-                        reused[target] = service.model_dump(mode='json')
-                        continue
-                    blockers.append(dict(kind='missing_dependency', operation=target, path=path + [target],
-                                         detail='Include this required operation in the conversion scope.', evidence=call))
-                pending.append((target, path + [target]))
-    return dict(selected=sorted(selected), blockers=blockers, reused_services=reused,
-                call_evidence=evidence, cyclic_operations=sorted({node for item in blockers
-                    if item['kind'] == 'cycle' for node in item['path'] if waves[node]['cycle_group']}))
+    from tools.conversion_tools.dependency_planning.required_scope import required_scope
+    roots = set(selected)
+    scope = required_scope(graph, roots, lambda key: lookup_service(key) if key not in roots else None, excluded=excluded)
+    evidence = [call for call in graph['calls'] if call['caller'] in scope.source_operations]
+    evidence.extend(dict(issue, caller=issue['operation']) for issue in graph['issues']
+                    if issue['operation'] in scope.source_operations and issue.get('callee'))
+    return dict(requested=scope.requested_operations, selected=sorted(roots | set(scope.source_operations)),
+                blockers=scope.blockers, reused_services=scope.reused_services, call_evidence=evidence,
+                cyclic_operations=sorted({node for item in scope.blockers if item['kind'] == 'cycle'
+                                          for node in item['members']}))
 
 
 def run_intake_preflight(conn, config, profile, directory):
@@ -75,17 +35,19 @@ def run_intake_preflight(conn, config, profile, directory):
     graph = load_graph(conn, config.run_id)
     if graph is None:
         raise ValueError('Mapped operation graph is required for dependency preflight')
-    selected = [row[0] + '/' + row[1] for row in conn.execute(
-        'SELECT channel,operation_id FROM operations WHERE run_id=? ORDER BY channel,operation_id', (config.run_id,))]
+    from tools.state_store_tools.dependency_scope import requested_operations, include_required_operations
+    selected = requested_operations(conn, config)
     application_id, registry_path = resolve_registry_settings(profile)
     registry = open_registry(registry_path)
     try:
         def lookup(key):
             channel, operation = key.split('/', 1)
             return get_service(registry, application_id, channel, operation)
-        report = check_dependencies(graph, selected, lookup)
+        report = check_dependencies(graph, selected, lookup, excluded=getattr(config, 'exclude_operations', ()))
     finally:
         registry.close()
+    include_required_operations(conn, config, graph, report['selected'])
+    selected = report['selected']
     from tools.state_store_tools.operation_calls import get_contract
     for key in selected:
         if key not in graph['operations'] or not graph['operations'][key].get('ref_formats'):
@@ -120,4 +82,4 @@ def require_preflight_passed(conn, run_id):
         return
     row = conn.execute('SELECT report_json FROM operation_dependency_preflights WHERE run_id=?', (run_id,)).fetchone()
     if row and json.loads(row[0])['blockers']:
-        raise ValueError('Dependency preflight is blocked; include or resolve required operations before planning')
+        raise ValueError('Dependency preflight is blocked; resolve its dependency evidence before planning')
