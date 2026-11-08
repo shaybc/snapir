@@ -22,8 +22,14 @@ public final class MapperProgress implements AutoCloseable {
 
     /** Opens a fresh run log and starts a daemon console heartbeat every five seconds. */
     public MapperProgress(Path path, long started) throws IOException {
+        this(path, started, false);
+    }
+
+    /** Appends later stages to the source-capture log when an indexed session is active. */
+    public MapperProgress(Path path, long started, boolean append) throws IOException {
         this.started = started;
-        log = Files.newBufferedWriter(path, StandardCharsets.UTF_8);
+        log = Files.newBufferedWriter(path, StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE,
+            append ? java.nio.file.StandardOpenOption.APPEND : java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
         heartbeat = Executors.newSingleThreadScheduledExecutor(task -> {
             Thread thread = new Thread(task, "mapper-progress");
             thread.setDaemon(true);
@@ -44,7 +50,7 @@ public final class MapperProgress implements AutoCloseable {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed writing Mapper progress log", e);
         }
-        if (display) System.out.println(line);
+        if (display) { System.out.println(line); System.out.flush(); }
     }
 
     /** Formats monotonic wall duration, including hours for long enterprise runs. */

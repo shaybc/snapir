@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1740" viewBox="0 0 2600 1740"><defs>
+<marker id="main" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M1,1 L8,4 L1,7" fill="none" stroke="#2c658e" stroke-width="1.5"/></marker>
+<marker id="data" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M1,1 L8,4 L1,7" fill="none" stroke="#8868a4" stroke-width="1.5"/></marker>
+<marker id="manual" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M1,1 L8,4 L1,7" fill="none" stroke="#bd7d21" stroke-width="1.5"/></marker>
+</defs><rect width="2600" height="1740" fill="#ffffff"/>
+<text x="80" y="61" font-family="Arial,sans-serif" font-size="33" fill="#183c5a" font-weight="700" text-anchor="start">SNAPIR — SYSTEM ARCHITECTURE</text>
+<text x="80" y="99" font-family="Arial,sans-serif" font-size="21" fill="#607285" font-weight="400" text-anchor="start">Real participants, recognizable symbols, and one central converter application</text>
+<polyline points="500,835 900,835" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)"/>
+<rect x="550.3" y="789" width="299.4" height="36" rx="5" fill="white"/>
+<text x="700" y="810" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">1  Configure, start, resume</text>
+<polyline points="1000,650 1000,360" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)" marker-start="url(#main)"/>
+<rect x="875.8" y="479" width="248.39999999999998" height="36" rx="5" fill="white"/>
+<text x="1000" y="500" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">2a  Generate a new map</text>
+<polyline points="850,240 500,240" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)"/>
+<rect x="586.5" y="201" width="177.0" height="36" rx="5" fill="white"/>
+<text x="675" y="222" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">Read Java / XML</text>
+<polyline points="850,315 650,315 650,480 500,480" fill="none" stroke="#8868a4" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)"/>
+<rect x="541.1" y="376" width="217.79999999999998" height="36" rx="5" fill="white"/>
+<text x="650" y="397" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">Write / reuse index</text>
+<polyline points="900,700 700,700 700,550 500,550" fill="none" stroke="#8868a4" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)"/>
+<rect x="565.6" y="612" width="268.79999999999995" height="36" rx="5" fill="white"/>
+<text x="700" y="633" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">2b  Read an existing map</text>
+<polyline points="1300,650 1300,490 1510,490 1510,360" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)" marker-start="url(#main)"/>
+<rect x="1365.4" y="440" width="289.2" height="36" rx="5" fill="white"/>
+<text x="1510" y="461" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">4  AI requests / responses</text>
+<polyline points="1490,650 1490,540 1960,540 1960,360" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)" marker-start="url(#main)"/>
+<rect x="1629.5" y="500" width="381.0" height="36" rx="5" fill="white"/>
+<text x="1820" y="521" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">5  Compile, execute tests, validate</text>
+<polyline points="1550,835 2130,835" fill="none" stroke="#2c658e" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#main)"/>
+<rect x="1695.4" y="787" width="289.2" height="64" rx="5" fill="white"/>
+<text x="1840" y="808" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">6  Write runnable packages</text>
+<text x="1840" y="836" font-family="Arial,sans-serif" font-size="20" fill="#2c658e" font-weight="600" text-anchor="middle">and validation evidence</text>
+<polyline points="1010,950 1010,1270" fill="none" stroke="#8868a4" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)"/>
+<rect x="885.8" y="1079" width="248.39999999999998" height="64" rx="5" fill="white"/>
+<text x="1010" y="1100" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">Persist / reload state</text>
+<text x="1010" y="1128" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">throughout every stage</text>
+<polyline points="1250,950 1250,1130 1395,1130 1395,1270" fill="none" stroke="#8868a4" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)"/>
+<rect x="1224.9" y="1181" width="340.2" height="36" rx="5" fill="white"/>
+<text x="1395" y="1202" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">3a  Reuse / register components</text>
+<polyline points="1480,950 1480,1060 1855,1060 1855,1270" fill="none" stroke="#8868a4" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)"/>
+<rect x="1710.4" y="1159" width="289.2" height="36" rx="5" fill="white"/>
+<text x="1855" y="1180" font-family="Arial,sans-serif" font-size="20" fill="#8868a4" font-weight="600" text-anchor="middle">3b  Resolve operation APIs</text>
+<polyline points="2305,960 2305,1270" fill="none" stroke="#bd7d21" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#manual)" stroke-dasharray="8 6"/>
+<rect x="2165.5" y="1083" width="279.0" height="64" rx="5" fill="white"/>
+<text x="2305" y="1104" font-family="Arial,sans-serif" font-size="20" fill="#bd7d21" font-weight="600" text-anchor="middle">7  User publishes images</text>
+<text x="2305" y="1132" font-family="Arial,sans-serif" font-size="20" fill="#bd7d21" font-weight="600" text-anchor="middle">and deploys microservices</text>
+<path d="M220,185 V168 Q220,160 232,160 H308.0 L327.8,185 H428 Q440,185 440,197 V266 Q440,278 428,278 H232 Q220,278 220,266 Z" fill="#fff8e6" stroke="#c79531" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M220,200 H440" fill="none" stroke="#c79531" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M260,202 H292 L317,227 V279 H260 Z M292,202 V227 H317" fill="#ffffff" stroke="#ad7f24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="288.5" y="251.28" font-family="Arial,sans-serif" font-size="22" fill="#ad7f24" font-weight="700" text-anchor="middle">XML</text>
+<path d="M335,202 H367 L392,227 V279 H335 Z M367,202 V227 H392" fill="#ffffff" stroke="#ad7f24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="363.5" y="251.28" font-family="Arial,sans-serif" font-size="22" fill="#ad7f24" font-weight="700" text-anchor="middle">Java</text>
+<text x="325" y="314" font-family="Arial,sans-serif" font-size="24" fill="#68501b" font-weight="700" text-anchor="middle">Composer source workspace</text>
+<text x="325" y="344" font-family="Arial,sans-serif" font-size="18" fill="#526274" font-weight="400" text-anchor="middle">Original projects, XML, Java and libraries</text>
+<path d="M225,447 V430 Q225,422 237,422 H309.0 L327.9,447 H423 Q435,447 435,459 V510 Q435,522 423,522 H237 Q225,522 225,510 Z" fill="#fff8e6" stroke="#9b7fb3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M225,462 H435" fill="none" stroke="#9b7fb3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M265,454 H303 L328,479 V528 H265 Z M303,454 V479 H328" fill="#ffffff" stroke="#8868a4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="296.5" y="501.36" font-family="Arial,sans-serif" font-size="22" fill="#8868a4" font-weight="700" text-anchor="middle">AST</text>
+<text x="325" y="565" font-family="Arial,sans-serif" font-size="23" fill="#543c70" font-weight="700" text-anchor="middle">Reusable map / AST index</text>
+<text x="325" y="593" font-family="Arial,sans-serif" font-size="18" fill="#25374a" font-weight="400" text-anchor="middle">Source fingerprints + parsed analysis</text>
+<circle cx="190" cy="705" r="19" fill="#487998"/>
+<path d="M158,757 Q158,725 190,725 Q222,725 222,757" fill="#e6f0f7" stroke="#487998" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="250" y="720" width="225" height="132" rx="8" fill="#19364c" stroke="#19364c" stroke-width="2.2"/>
+<path d="M270,735 H455" fill="none" stroke="#87a8c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<text x="280" y="793" font-family="Arial,sans-serif" font-size="37" fill="#aee8c1" font-weight="700" text-anchor="start">&gt;_</text>
+<text x="366" y="794" font-family="Arial,sans-serif" font-size="24" fill="#eff6fa" font-weight="600" text-anchor="middle">snapir</text>
+<path d="M270,855 H458 L482,871 H248 Z" fill="#d4e2ec" stroke="#19364c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<text x="325" y="912" font-family="Arial,sans-serif" font-size="24" fill="#183c5a" font-weight="700" text-anchor="middle">User + command-line interface</text>
+<text x="325" y="944" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Configuration wizard · Start / Resume</text>
+<text x="325" y="971" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Select operations and approve gates</text>
+<text x="325" y="998" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">YAML config → saved state/profile.json</text>
+<path d="M918,156 H983 L1008,181 V268 H918 Z M983,156 V181 H1008" fill="#ffffff" stroke="#517da2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="963.0" y="227.68" font-family="Arial,sans-serif" font-size="22" fill="#517da2" font-weight="700" text-anchor="middle">XML</text>
+<path d="M1062.0,244.0 L1054.235574881616,248.63046016519084 L1053.1512728823366,253.14690303349843 L1057.9672413949695,260.79764849036326 L1054.9336287918732,265.7480543348215 L1045.9303607231218,264.9303607231218 L1042.3984434678573,267.9469030334985 L1041.7976484903631,276.9672413949696 L1036.4336287918732,279.18909110292066 L1029.630460165191,273.23557488161606 L1025.0,273.6 L1019.2119247935115,280.5444686020201 L1013.566371208127,279.18909110292066 L1011.5618812077095,270.3737931159757 L1007.6015565321428,267.9469030334985 L998.8370490960978,270.16295090390224 L995.066371208127,265.7480543348215 L998.6262068840243,257.4381187922906 L996.8487271176634,253.14690303349846 L988.4555313979799,249.78807520648854 L988.0,244.0 L995.7644251183839,239.36953983480916 L996.8487271176634,234.85309696650157 L992.0327586050304,227.20235150963677 L995.066371208127,222.25194566517848 L1004.0696392768782,223.0696392768782 L1007.6015565321428,220.05309696650156 L1008.2023515096367,211.03275860503038 L1013.566371208127,208.81090889707932 L1020.3695398348092,214.7644251183839 L1025.0,214.4 L1030.7880752064884,207.4555313979799 L1036.4336287918732,208.81090889707932 L1038.4381187922907,217.6262068840243 L1042.3984434678573,220.05309696650156 L1051.1629509039024,217.83704909609773 L1054.9336287918732,222.25194566517848 L1051.3737931159758,230.5618812077094 L1053.1512728823366,234.85309696650154 L1061.54446860202,238.21192479351146 Z" fill="#eaf3fa" stroke="#3e7ca7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="1025" cy="244" r="12.95" fill="white" stroke="#3e7ca7" stroke-width="3"/>
+<text x="1000" y="314" font-family="Arial,sans-serif" font-size="25" fill="#183c5a" font-weight="700" text-anchor="middle">Composer Mapper</text>
+<text x="1000" y="344" font-family="Arial,sans-serif" font-size="19" fill="#25374a" font-weight="400" text-anchor="middle">Java tool · XML + AST analysis</text>
+<path d="M1370,250 C1330,250 1328,190 1370,185 C1380,135 1450,129 1475,165 C1520,136 1580,158 1587,201 C1640,201 1650,250 1603,260 H1370 Z" fill="#f1edfa" stroke="#7564aa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="1456" y="175" width="77" height="70" rx="10" fill="#ffffff" stroke="#7564aa" stroke-width="2.2"/>
+<text x="1495" y="220" font-family="Arial,sans-serif" font-size="28" fill="#665096" font-weight="700" text-anchor="middle">AI</text>
+<circle cx="1437" cy="188" r="5" fill="#7564aa"/>
+<path d="M1437,188 H1456" fill="none" stroke="#7564aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="1437" cy="225" r="5" fill="#7564aa"/>
+<path d="M1437,225 H1456" fill="none" stroke="#7564aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="1550" cy="188" r="5" fill="#7564aa"/>
+<path d="M1550,188 H1533" fill="none" stroke="#7564aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="1550" cy="225" r="5" fill="#7564aa"/>
+<path d="M1550,225 H1533" fill="none" stroke="#7564aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1510" y="314" font-family="Arial,sans-serif" font-size="25" fill="#55417c" font-weight="700" text-anchor="middle">External LLM API</text>
+<text x="1510" y="344" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Gemini Studio / configured model</text>
+<path d="M2023.0,215.0 L2009.359793710947,223.134592182092 L2007.4549388473479,231.06888370749726 L2015.915424072244,244.50938248307054 L2010.5861046343716,253.20604139901076 L1994.7695526217005,251.76955262170048 L1988.5648331192085,257.06888370749726 L1987.5093824830706,272.9154240722439 L1978.0861046343716,276.81867355918496 L1966.134592182092,266.35979371094714 L1958.0,267.0 L1947.831759772385,279.199742138684 L1937.9138953656284,276.81867355918496 L1934.3924940135435,261.3323392577951 L1927.4351668807915,257.06888370749726 L1912.0380592228744,260.9619407771256 L1905.4138953656284,253.20604139901076 L1911.6676607422048,238.60750598645643 L1908.5450611526521,231.06888370749726 L1893.8002578613161,225.168240227615 L1893.0,215.0 L1906.640206289053,206.865407817908 L1908.545061152652,198.93111629250276 L1900.084575927756,185.49061751692946 L1905.4138953656284,176.79395860098924 L1921.2304473782995,178.23044737829952 L1927.4351668807915,172.93111629250274 L1928.4906175169294,157.08457592775608 L1937.9138953656284,153.181326440815 L1949.865407817908,163.64020628905286 L1958.0,163.0 L1968.168240227615,150.80025786131603 L1978.0861046343716,153.181326440815 L1981.6075059864563,168.66766074220487 L1988.5648331192085,172.93111629250274 L2003.9619407771256,169.0380592228744 L2010.5861046343716,176.79395860098924 L2004.3323392577952,191.39249401354357 L2007.4549388473479,198.93111629250274 L2022.1997421386839,204.83175977238497 Z" fill="#eaf3fa" stroke="#3e7ca7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="1958" cy="215" r="22.75" fill="white" stroke="#3e7ca7" stroke-width="3"/>
+<path d="M1925,248 L1993,180 M1925,248 L1935,258 M1982,169 L2004,191" fill="none" stroke="#3e7ca7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1960" y="314" font-family="Arial,sans-serif" font-size="24" fill="#183c5a" font-weight="700" text-anchor="middle">Build &amp; verification toolchain</text>
+<text x="1960" y="344" font-family="Arial,sans-serif" font-size="20" fill="#25374a" font-weight="400" text-anchor="middle">JDK · Maven · JUnit · Helm</text>
+<rect x="900" y="650" width="650" height="300" rx="18" fill="#e8f2f9" stroke="#2c658e" stroke-width="2.2"/>
+<path d="M996.0,714.0 L989.2848215192355,718.0047223050299 L988.347046817156,721.9108350559986 L992.5122087740277,728.5276959916655 L989.8885438199983,732.8091280733591 L982.1019335983756,732.1019335983756 L979.0473024586873,734.7108350559987 L978.5276959916655,742.5122087740277 L973.8885438199983,744.4338085214449 L968.0047223050299,739.2848215192355 L964.0,739.6 L958.9940971187126,745.6060268990444 L954.1114561800017,744.4338085214449 L952.3778432066676,736.8097670192222 L948.9526975413127,734.7108350559987 L941.3725830020305,736.6274169979695 L938.1114561800017,732.8091280733591 L941.1902329807778,725.6221567933324 L939.652953182844,721.9108350559986 L932.3939731009556,719.0059028812874 L932.0,714.0 L938.7151784807645,709.9952776949701 L939.652953182844,706.0891649440014 L935.4877912259723,699.4723040083345 L938.1114561800017,695.1908719266409 L945.8980664016244,695.8980664016244 L948.9526975413127,693.2891649440013 L949.4723040083345,685.4877912259723 L954.1114561800017,683.5661914785551 L959.9952776949701,688.7151784807645 L964.0,688.4 L969.0059028812874,682.3939731009556 L973.8885438199983,683.5661914785551 L975.6221567933324,691.1902329807778 L979.0473024586873,693.2891649440013 L986.6274169979695,691.3725830020305 L989.8885438199983,695.1908719266409 L986.8097670192222,702.3778432066676 L988.347046817156,706.0891649440014 L995.6060268990444,708.9940971187126 Z" fill="#eaf3fa" stroke="#3e7ca7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<circle cx="964" cy="714" r="11.2" fill="white" stroke="#3e7ca7" stroke-width="3"/>
+<text x="1018" y="711" font-family="Arial,sans-serif" font-size="30" fill="#173f5d" font-weight="700" text-anchor="start">SNAPIR CONVERTER</text>
+<text x="1018" y="746" font-family="Arial,sans-serif" font-size="21" fill="#52778f" font-weight="400" text-anchor="start">Local Python application</text>
+<path d="M927,773 H1523" fill="none" stroke="#a8c3d8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1225" y="813" font-family="Arial,sans-serif" font-size="23" fill="#284b64" font-weight="400" text-anchor="middle">Configuration/profile, intake and dependencies</text>
+<text x="1225" y="847" font-family="Arial,sans-serif" font-size="23" fill="#284b64" font-weight="400" text-anchor="middle">Shared reuse and native Java generation</text>
+<text x="1225" y="881" font-family="Arial,sans-serif" font-size="23" fill="#284b64" font-weight="400" text-anchor="middle">LiteLLM client · validation · artifact packaging</text>
+<text x="1225" y="915" font-family="Arial,sans-serif" font-size="23" fill="#284b64" font-weight="400" text-anchor="middle">Approvals, checkpoints, retries and resume</text>
+<path d="M850,1295 V1465 C850,1498 1170,1498 1170,1465 V1295" fill="#eee7f6" stroke="#8868a4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+<ellipse cx="1010.0" cy="1295" rx="160.0" ry="25" fill="#f8f3fd" stroke="#8868a4" stroke-width="2.5"/>
+<path d="M850,1437 C850,1470 1170,1470 1170,1437" fill="none" stroke="#b19bc4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1010.0" y="1348" font-family="Arial,sans-serif" font-size="22" fill="#543c70" font-weight="700" text-anchor="middle">SQLite run database</text>
+<text x="1010.0" y="1383" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">state/migration.db</text>
+<text x="1010.0" y="1409" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">Tasks, attempts, approvals</text>
+<text x="1010.0" y="1435" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">Checkpoints, pins and evidence</text>
+<path d="M1295,1303 V1286 Q1295,1278 1307,1278 H1377.0 L1395.45,1303 H1488 Q1500,1303 1500,1315 V1371 Q1500,1383 1488,1383 H1307 Q1295,1383 1295,1371 Z" fill="#fff8e6" stroke="#9979b6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M1295,1318 H1500" fill="none" stroke="#9979b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M1320,1310 H1351 L1376,1335 V1382 H1320 Z M1351,1310 V1335 H1376" fill="#ffffff" stroke="#8868a4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1348.0" y="1356.08" font-family="Arial,sans-serif" font-size="22" fill="#8868a4" font-weight="700" text-anchor="middle">JAR</text>
+<ellipse cx="1454" cy="1315" rx="24" ry="8" fill="#eee7f6" stroke="#8868a4" stroke-width="2"/>
+<path d="M1430,1315 V1360 C1430,1373 1478,1373 1478,1360 V1315" fill="#eee7f6" stroke="#8868a4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1395" y="1424" font-family="Arial,sans-serif" font-size="24" fill="#543c70" font-weight="700" text-anchor="middle">Shared component store</text>
+<text x="1395" y="1456" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Converted source + typed APIs + JARs</text>
+<text x="1395" y="1483" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Versioned artifacts and registry index</text>
+<path d="M1690,1295 V1465 C1690,1498 2020,1498 2020,1465 V1295" fill="#eee7f6" stroke="#8868a4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+<ellipse cx="1855.0" cy="1295" rx="165.0" ry="25" fill="#f8f3fd" stroke="#8868a4" stroke-width="2.5"/>
+<path d="M1690,1437 C1690,1470 2020,1470 2020,1437" fill="none" stroke="#b19bc4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+<text x="1855.0" y="1348" font-family="Arial,sans-serif" font-size="22" fill="#543c70" font-weight="700" text-anchor="middle">Operation API registry</text>
+<text x="1855.0" y="1383" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">shared/operations/registry.db</text>
+<text x="1855.0" y="1409" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">HTTP contracts and paths</text>
+<text x="1855.0" y="1435" font-family="Arial,sans-serif" font-size="18" fill="#5d4b73" font-weight="400" text-anchor="middle">Internal / external addresses</text>
+<path d="M2218,718 L2305,680 L2392,718 L2305,757 Z M2218,718 V815 L2305,855 L2392,815 V718 M2305,757 V855 M2262,699 L2350,738 V775" fill="#edf7f1" stroke="#4e9878" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="2305" y="899" font-family="Arial,sans-serif" font-size="25" fill="#2c6b50" font-weight="700" text-anchor="middle">Generated deliverables</text>
+<text x="2305" y="931" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Standalone package + shared JARs</text>
+<text x="2305" y="958" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Microservice JAR + Helm + reports</text>
+<rect x="2165" y="1295" width="280" height="126" rx="12" fill="#fff5e7" stroke="#c28b3d" stroke-width="2.2"/>
+<rect x="2200" y="1322" width="49" height="60" rx="4" fill="white" stroke="#c28b3d" stroke-width="2.2"/>
+<path d="M2210,1336 H2238" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2210,1352 H2238" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2210,1368 H2238" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="2280" y="1322" width="49" height="60" rx="4" fill="white" stroke="#c28b3d" stroke-width="2.2"/>
+<path d="M2290,1336 H2318" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2290,1352 H2318" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2290,1368 H2318" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="2360" y="1322" width="49" height="60" rx="4" fill="white" stroke="#c28b3d" stroke-width="2.2"/>
+<path d="M2370,1336 H2398" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2370,1352 H2398" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<path d="M2370,1368 H2398" fill="none" stroke="#c28b3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+<text x="2305" y="1462" font-family="Arial,sans-serif" font-size="24" fill="#8a5b1b" font-weight="700" text-anchor="middle">OpenShift / deployed operations</text>
+<text x="2305" y="1494" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Standalone → external URLs</text>
+<text x="2305" y="1521" font-family="Arial,sans-serif" font-size="19" fill="#526274" font-weight="400" text-anchor="middle">Microservices → internal Service DNS</text>
+<path d="M80,1568 H2520" fill="none" stroke="#d9e2e9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+<text x="80" y="1610" font-family="Arial,sans-serif" font-size="20" fill="#25374a" font-weight="400" text-anchor="start">How to read: numbered links describe the main exchanges around the converter; double arrows mean requests and returned results.</text>
+<text x="80" y="1646" font-family="Arial,sans-serif" font-size="20" fill="#25374a" font-weight="400" text-anchor="start">Database cylinders = structured state/metadata. Folders = source, maps and artifact files. Deployment is a user action.</text>
+<text x="80" y="1682" font-family="Arial,sans-serif" font-size="20" fill="#254e6c" font-weight="600" text-anchor="start">Default: fact collection/validation OFF · AST/source analysis ON · AI-generated tests and mocks ON · compatible shared work reused.</text>
+</svg>

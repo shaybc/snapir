@@ -19,6 +19,9 @@ public final class AnalysisSession implements AutoCloseable {
     public final AnalysisSettings settings;
     private boolean closed;
     private NoteReuse noteReuse;
+    private boolean restoredIndex;
+    private boolean rejectedCheckpoint;
+    private String checkpointScope = "";
     private final Map<Path,JavaClassDef> javaMetadata=new LinkedHashMap<>(64,0.75f,true);
     private final Map<Path,Long> metadataWeights=new HashMap<>();private long metadataBytes;
     private static final Set<String> DESCRIPTORS=Set.of("ejb-jar.xml","web.xml","application.xml","application-client.xml","ra.xml","persistence.xml","beans.xml","faces-config.xml","validation.xml");
@@ -27,6 +30,10 @@ public final class AnalysisSession implements AutoCloseable {
         this(root,vault,workspace,AnalysisSettings.defaults());
     }
     public AnalysisSession(Path root,Path vault,String workspace,AnalysisSettings settings) throws Exception {
+        this(root,vault,workspace,settings,null,"");
+    }
+    /** Restores only a completed, compatible source index into a fresh output directory. */
+    public AnalysisSession(Path root,Path vault,String workspace,AnalysisSettings settings,Path recovery,String scope) throws Exception {
         this.settings=settings;
         this.root=root;this.vault=vault;this.workspace=workspace;
         realRoot=root.toRealPath();
@@ -35,7 +42,11 @@ public final class AnalysisSession implements AutoCloseable {
         if(Files.exists(vault))try(var entries=Files.list(vault)){if(entries.findAny().isPresent())throw new IllegalArgumentException("Indexed map requires a fresh destination");}
         Files.createDirectories(vault);
         Files.writeString(vault.resolve("vault-generation.json"),"{\"vault_schema_version\":4,\"complete\":false}\n",StandardOpenOption.CREATE_NEW,StandardOpenOption.WRITE);
-        database=vault.resolve("analysis/analysis.sqlite");store=new AnalysisStore(database,settings.sqliteCacheMib());
+        database=vault.resolve("analysis/analysis.sqlite");
+        checkpointScope=scope;
+        restoredIndex=IndexCheckpoint.restore(recovery,database,root,workspace,settings,scope);
+        rejectedCheckpoint=IndexCheckpoint.exists(recovery)&&!restoredIndex;
+        store=new AnalysisStore(database,settings.sqliteCacheMib());
     }
 
     public static AnalysisSession current(){return ACTIVE.get();}
@@ -45,6 +56,18 @@ public final class AnalysisSession implements AutoCloseable {
         prepare(null,false);
     }
     public void prepare(Path prior,boolean recovery) throws Exception {
+        try (var progress = new il.co.dcd.composermapper.service.MapperProgress(vault.resolve("composer-mapper.log"),System.nanoTime())) {
+            if (restoredIndex) {
+                progress.event("Resuming completed source index; restarting map rendering in fresh destination: " + vault, true);
+                store.execute("CREATE TEMP TABLE operation_uses(node TEXT,caller TEXT,kind TEXT,implementation TEXT,valid INTEGER,PRIMARY KEY(node,caller))");
+                ACTIVE.set(this);
+                return;
+            }
+            prepareFacts(rejectedCheckpoint ? null : prior,recovery,progress);
+        }
+    }
+
+    private void prepareFacts(Path prior,boolean recovery,il.co.dcd.composermapper.service.MapperProgress progress) throws Exception {
         String policy=FileFactReuse.policy();
         store.execute("INSERT OR REPLACE INTO revision VALUES ('analysis_policy',?)",policy);
         store.execute("INSERT OR REPLACE INTO revision VALUES ('source_root',?)",root.toString());store.commit();
@@ -58,9 +81,9 @@ public final class AnalysisSession implements AutoCloseable {
                 Path file=iterator.next().toAbsolutePath().normalize();
                 if(!file.toRealPath().startsWith(realRoot))throw new IllegalArgumentException("Source file escapes workspace: "+file);
                 String name=file.getFileName().toString().toLowerCase(Locale.ROOT);
-                if(DESCRIPTORS.contains(name))continue;
+                if(!sourceFile(file))continue;
                 boolean java=name.endsWith(".java");
-                if(!java&&!name.endsWith(".xml")&&!name.endsWith(".ini")&&!name.equals(".classpath")&&!name.equals(".project"))continue;
+                progress.event("Starting source capture: " + file, true);
                 String channel=null;for(int i=0;i<file.getNameCount()-1;i++)if(file.getName(i).toString().equalsIgnoreCase("channel")){channel=file.getName(i+1).toString();break;}
                 if(java) {
                     if(Files.size(file)>settings.javaFileBytes())throw new IllegalArgumentException("Java source exceeds configured analysis size limit: "+file);
@@ -95,6 +118,20 @@ public final class AnalysisSession implements AutoCloseable {
         reuse.finish();
         ACTIVE.set(this);
         new CanonicalComponentRoots(this).build();
+    }
+
+    /** Indicates that catalog construction can use the verified persisted index directly. */
+    public boolean restoredIndex(){return restoredIndex;}
+
+    /** Saves the completed index before any operation views or inventory output are rendered. */
+    public void checkpointIndex() throws IOException {
+        try { IndexCheckpoint.save(this,checkpointScope); }
+        catch (Exception error) { throw new IOException("Could not save completed source index",error); }
+    }
+
+    static boolean sourceFile(Path file) {
+        String name=file.getFileName().toString().toLowerCase(Locale.ROOT);
+        return !DESCRIPTORS.contains(name)&&(name.endsWith(".java")||name.endsWith(".xml")||name.endsWith(".ini")||name.equals(".classpath")||name.equals(".project"));
     }
 
     public Document document(Path path){return SqlXmlViews.document(store,path.toAbsolutePath().normalize());}
@@ -156,22 +193,7 @@ public final class AnalysisSession implements AutoCloseable {
 
     /** Pin source bytes at publication; hashing is not another syntax parse. */
     public void verifySources(){
-        String after="";
-        while(true) {
-            var page=store.rows("SELECT path,hash FROM files WHERE path>? ORDER BY path LIMIT 250",after);
-            if(page.isEmpty())break;
-            for(var row:page){if(!FileUtil.rawSha256(Path.of(row[0])).equals(row[1]))throw new IllegalStateException("Source changed during mapping: "+row[0]);after=row[0];}
-        }
-        try(var paths=Files.walk(root)) {
-            var iterator=paths.filter(Files::isRegularFile).iterator();int count=0;
-            while(iterator.hasNext()) {
-                Path file=iterator.next().toAbsolutePath().normalize();String name=file.getFileName().toString().toLowerCase(Locale.ROOT);
-                if(DESCRIPTORS.contains(name)||!(name.endsWith(".java")||name.endsWith(".xml")||name.endsWith(".ini")||name.equals(".classpath")||name.equals(".project")))continue;
-                if(store.scalar("SELECT path FROM files WHERE path=?",file.toString())==null)throw new IllegalStateException("Source added during mapping: "+file);
-                count++;
-            }
-            if(count!=Integer.parseInt(store.scalar("SELECT count(*) FROM files")))throw new IllegalStateException("Source membership changed during mapping");
-        }catch(IOException error){throw new IllegalStateException("Could not verify map source membership",error);}
+        IndexCheckpoint.verifySources(store.connection,root);
     }
 
     public void close(){if(closed)return;closed=true;ACTIVE.remove();try{if(noteReuse!=null)noteReuse.close();}finally{store.close();}}

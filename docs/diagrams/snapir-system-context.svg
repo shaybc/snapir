@@ -1,0 +1,264 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2440" height="1600" viewBox="0 0 2440 1600">
+<defs><pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.8" fill="#353b42"/></pattern>
+<marker id="flow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#65d6e7" stroke-width="1.3"/></marker>
+<marker id="store" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#ba9af5" stroke-width="1.3"/></marker>
+<marker id="external" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#96a9ba" stroke-width="1.3"/></marker>
+<marker id="human" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#efbc71" stroke-width="1.3"/></marker></defs>
+<rect width="2440" height="1600" fill="#14171b"/><rect x="14" y="14" width="2412" height="1572" rx="22" fill="#20252b" stroke="#49515a"/><rect x="15" y="144" width="2410" height="1440" fill="url(#dots)"/>
+<text x="56" y="52" fill="#8a9caa" font-family="Arial, sans-serif" font-size="16" font-weight="600" text-anchor="start">SNAPIR  /  SYSTEM CONTEXT  /  CONVERSION WORKFLOW</text>
+<text x="56" y="100" fill="#eef5fa" font-family="Arial, sans-serif" font-size="34" font-weight="700" text-anchor="start">Composer → Native Java → Microservices</text>
+<text x="56" y="129" fill="#b8c3ce" font-family="Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start">Level 1 · Current default workflow · Stable component IDs support future drill-downs</text>
+<rect x="50" y="345" width="2300" height="710" rx="18" fill="#1b2229" fill-opacity="0.74" stroke="#465c6c" stroke-dasharray="8 7"/>
+<text x="2320" y="368" fill="#8ea4b4" font-family="Arial, sans-serif" font-size="15" font-weight="600" text-anchor="end">SNAPIR CONVERTER · approval gates govern progression</text>
+<rect x="1960" y="180" width="360" height="110" rx="12" fill="#203338" stroke="#3d6d73"/>
+<text x="1980" y="209" fill="#65d6e7" font-family="Arial, sans-serif" font-size="15" font-weight="700" text-anchor="start">DEFAULT FULL-CONVERSION POLICY</text>
+<text x="1980" y="236" fill="#e9f6f7" font-family="Arial, sans-serif" font-size="18" font-weight="600" text-anchor="start">Facts OFF · AI tests + mocks ON</text>
+<text x="1980" y="263" fill="#c0d4d7" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start">Shared reuse · Standalone + Microservice</text>
+<text x="80" y="762" fill="#839ba9" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">CONVERT &amp; VERIFY</text>
+<text x="80" y="1159" fill="#839ba9" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">STATE, REUSE, EXTERNAL SERVICES &amp; DELIVERY</text>
+<polyline points="260,290 260,380" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<polyline points="730,290 730,320 1120,320 1120,380" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="835.82" y="300" width="88.36" height="19" rx="3" fill="#20262d"/>
+<text x="880" y="313" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">read source</text>
+<polyline points="1440,290 1440,310 1300,310 1300,380" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<polyline points="440,490 550,490" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="457.58" y="464" width="74.84" height="19" rx="3" fill="#20262d"/>
+<text x="495" y="477" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">load YAML</text>
+<polyline points="910,490 1020,490" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="917.44" y="464" width="95.12" height="19" rx="3" fill="#20262d"/>
+<text x="965" y="477" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">start intake</text>
+<polyline points="1380,490 1490,490" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="1387.44" y="464" width="95.12" height="19" rx="3" fill="#20262d"/>
+<text x="1435" y="477" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">map evidence</text>
+<polyline points="1850,490 1960,490" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="1864.2" y="464" width="81.60000000000001" height="19" rx="3" fill="#20262d"/>
+<text x="1905" y="477" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">plan scope</text>
+<polyline points="2140,600 2140,690 260,690 260,800" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="923.64" y="662" width="552.72" height="20" rx="3" fill="#20262d"/>
+<text x="1200" y="676" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="400" text-anchor="middle">Approved plan · dependency-first conversion · gates may pause for approval</text>
+<polyline points="440,910 550,910" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="437.3" y="884" width="115.4" height="19" rx="3" fill="#20262d"/>
+<text x="495" y="897" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">reuse / convert</text>
+<polyline points="910,910 1020,910" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="920.82" y="884" width="88.36" height="19" rx="3" fill="#20262d"/>
+<text x="965" y="897" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">verify code</text>
+<polyline points="1380,910 1490,910" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="1384.06" y="884" width="101.88000000000001" height="19" rx="3" fill="#20262d"/>
+<text x="1435" y="897" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">accepted Java</text>
+<polyline points="1850,910 1960,910" fill="none" stroke="#65d6e7" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#flow)"/>
+<rect x="1850.68" y="884" width="108.64" height="19" rx="3" fill="#20262d"/>
+<text x="1905" y="897" fill="#65d6e7" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">wrap operation</text>
+<polyline points="590,600 590,630 25,630 25,1300 80,1300" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<polyline points="190,1190 190,1020" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<rect x="109.92" y="1105" width="122.16" height="19" rx="3" fill="#20262d"/>
+<text x="171" y="1118" fill="#ba9af5" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">resume / persist</text>
+<polyline points="680,1190 680,1080 350,1080 350,1020" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<rect x="425.53999999999996" y="1054" width="128.92000000000002" height="19" rx="3" fill="#20262d"/>
+<text x="490" y="1067" fill="#ba9af5" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">lookup / register</text>
+<polyline points="790,1020 790,1130 1200,1130 1200,1190" fill="none" stroke="#96a9ba" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#external)" stroke-dasharray="7 5"/>
+<rect x="923.78" y="1104" width="142.44" height="19" rx="3" fill="#20262d"/>
+<text x="995" y="1117" fill="#96a9ba" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">bounded model tasks</text>
+<polyline points="1600,1020 1600,1190" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<rect x="1514.16" y="1097" width="135.68" height="19" rx="3" fill="#20262d"/>
+<text x="1582" y="1110" fill="#ba9af5" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">package + evidence</text>
+<polyline points="2030,1020 2030,1090 1770,1090 1770,1190" fill="none" stroke="#ba9af5" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#store)" stroke-dasharray="7 5"/>
+<rect x="1825.54" y="1064" width="128.92000000000002" height="19" rx="3" fill="#20262d"/>
+<text x="1890" y="1077" fill="#ba9af5" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">service artifacts</text>
+<polyline points="2240,1020 2240,1190" fill="none" stroke="#efbc71" stroke-width="1.8" stroke-linejoin="round" marker-end="url(#human)" stroke-dasharray="7 5"/>
+<rect x="2172.44" y="1097" width="95.12" height="19" rx="3" fill="#20262d"/>
+<text x="2220" y="1110" fill="#efbc71" font-family="Arial, sans-serif" font-size="13" font-weight="400" text-anchor="middle">user deploys</text>
+<rect x="80" y="184" width="360" height="110" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="80" y="180" width="360" height="110" rx="10" fill="#30353a" stroke="#53616d"/>
+<rect x="80" y="192" width="3" height="86" rx="1" fill="#efbc71"/>
+<text x="98" y="207" fill="#efbc71" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">U01</text>
+<path d="M413, 194 l8,4 v9 l-8,4 l-8,-4 v-9 z M405,198 l8,4 l8,-4 M413,202 v9" fill="none" stroke="#efbc71" stroke-width="1.4"/>
+<text x="98" y="236" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Migration operator</text>
+<text x="98" y="259" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Configure source and selected operations</text>
+<text x="98" y="278" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Start / resume; review and approve gates</text>
+<rect x="550" y="184" width="360" height="110" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="550" y="180" width="360" height="110" rx="10" fill="#30353a" stroke="#53616d"/>
+<rect x="550" y="192" width="3" height="86" rx="1" fill="#9daebc"/>
+<text x="568" y="207" fill="#9daebc" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">E01</text>
+<path d="M883, 194 l8,4 v9 l-8,4 l-8,-4 v-9 z M875,198 l8,4 l8,-4 M883,202 v9" fill="none" stroke="#9daebc" stroke-width="1.4"/>
+<text x="568" y="236" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Composer workspace</text>
+<text x="568" y="259" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Java + XML across source projects</text>
+<text x="568" y="278" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Classpath, Maven and external dependencies</text>
+<rect x="1020" y="184" width="830" height="110" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1020" y="180" width="830" height="110" rx="10" fill="#302c3e" stroke="#53616d"/>
+<rect x="1020" y="192" width="3" height="86" rx="1" fill="#ba9af5"/>
+<text x="1038" y="207" fill="#ba9af5" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S00</text>
+<path d="M1823, 194 l8,4 v9 l-8,4 l-8,-4 v-9 z M1815,198 l8,4 l8,-4 M1823,202 v9" fill="none" stroke="#ba9af5" stroke-width="1.4"/>
+<text x="1038" y="236" fill="#eff5fa" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="start">Reusable analysis / AST index</text>
+<text x="1038" y="259" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Indexed Composer map + source fingerprints</text>
+<text x="1038" y="278" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.5" font-weight="400" text-anchor="start">Reuse verified analysis; rebuild stale or missing inputs</text>
+<rect x="80" y="384" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="80" y="380" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="80" y="392" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="98" y="407" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C01</text>
+<path d="M413, 394 l8,4 v9 l-8,4 l-8,-4 v-9 z M405,398 l8,4 l8,-4 M413,402 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="98" y="436" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Configuration wizard</text>
+<text x="98" y="462" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Create Default Config / Advanced Configuration</text>
+<text x="98" y="487" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Choose source, root operations, JDK and Maven</text>
+<text x="98" y="512" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Set LiteLLM model + credential variable name</text>
+<text x="98" y="537" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Set shared storage, namespace and service URLs</text>
+<text x="98" y="562" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Save configs/&lt;name&gt;.yaml; no conversion yet</text>
+<rect x="550" y="384" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="550" y="380" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="550" y="392" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="568" y="407" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C02</text>
+<path d="M883, 394 l8,4 v9 l-8,4 l-8,-4 v-9 z M875,398 l8,4 l8,-4 M883,402 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="568" y="436" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Run startup &amp; profile</text>
+<text x="568" y="462" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Load YAML; validate and resolve settings</text>
+<text x="568" y="487" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Create an isolated run_id and run directories</text>
+<text x="568" y="512" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Persist effective state/profile.json</text>
+<text x="568" y="537" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Open the run database and save run settings</text>
+<text x="568" y="562" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Credentials stay in the environment</text>
+<rect x="1020" y="384" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1020" y="380" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1020" y="392" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1038" y="407" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C03</text>
+<path d="M1353, 394 l8,4 v9 l-8,4 l-8,-4 v-9 z M1345,398 l8,4 l8,-4 M1353,402 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1038" y="436" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Composer Mapper &amp; AST</text>
+<text x="1038" y="462" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Generate indexed/scoped map OR use existing</text>
+<text x="1038" y="487" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Read Java, XML, definitions and source links</text>
+<text x="1038" y="512" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Verify workspace identity and source hashes</text>
+<text x="1038" y="537" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Reuse valid map / analysis-cache entries</text>
+<text x="1038" y="562" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Collect dependency evidence; facts are OFF</text>
+<rect x="1490" y="384" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1490" y="380" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1490" y="392" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1508" y="407" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C04</text>
+<path d="M1823, 394 l8,4 v9 l-8,4 l-8,-4 v-9 z M1815,398 l8,4 l8,-4 M1823,402 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1508" y="436" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Automatic dependency closure</text>
+<text x="1508" y="462" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Expand each selected root operation</text>
+<text x="1508" y="487" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Resolve operations, formats and OpSteps</text>
+<text x="1508" y="512" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Find classes and sources across projects</text>
+<text x="1508" y="537" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Identify shared candidates and HTTP targets</text>
+<text x="1508" y="562" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">No extra channel selection is required</text>
+<rect x="1960" y="384" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1960" y="380" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1960" y="392" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1978" y="407" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C05</text>
+<path d="M2293, 394 l8,4 v9 l-8,4 l-8,-4 v-9 z M2285,398 l8,4 l8,-4 M2293,402 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1978" y="436" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Plan, gates &amp; orchestration</text>
+<text x="1978" y="462" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Persist operation scope, dependencies and order</text>
+<text x="1978" y="487" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Create typed tasks and dependency-first batches</text>
+<text x="1978" y="512" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Apply configured approval gates</text>
+<text x="1978" y="537" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Checkpoint work; retry or resume from state</text>
+<text x="1978" y="562" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Detect stale inputs and incomplete artifacts</text>
+<rect x="80" y="804" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="80" y="800" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="80" y="812" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="98" y="827" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C06</text>
+<path d="M413, 814 l8,4 v9 l-8,4 l-8,-4 v-9 z M405,818 l8,4 l8,-4 M413,822 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="98" y="856" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Shared reuse resolver</text>
+<text x="98" y="882" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Consult compatible, versioned shared entries</text>
+<text x="98" y="907" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Reuse base classes, formats and OpStep code</text>
+<text x="98" y="932" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Restore source, contracts and compiled JARs</text>
+<text x="98" y="957" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Use registered HTTP APIs for called operations</text>
+<text x="98" y="982" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Convert missing or incompatible dependencies</text>
+<rect x="550" y="804" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="550" y="800" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="550" y="812" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="568" y="827" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C07</text>
+<path d="M883, 814 l8,4 v9 l-8,4 l-8,-4 v-9 z M875,818 l8,4 l8,-4 M883,822 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="568" y="856" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Native Java conversion</text>
+<text x="568" y="882" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Generate components first, in dependency order</text>
+<text x="568" y="907" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Separate Java, API metadata and test stages</text>
+<text x="568" y="932" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Specialize configured formats and OpSteps</text>
+<text x="568" y="957" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Assemble operation flow and HTTP clients</text>
+<text x="568" y="982" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">AI prepares tests, shared fixtures and mocks</text>
+<rect x="1020" y="804" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1020" y="800" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1020" y="812" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1038" y="827" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C08</text>
+<path d="M1353, 814 l8,4 v9 l-8,4 l-8,-4 v-9 z M1345,818 l8,4 l8,-4 M1353,822 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1038" y="856" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Build &amp; validation</text>
+<text x="1038" y="882" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Compile Java and execute Maven / JUnit tests</text>
+<text x="1038" y="907" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Compare XML formats with tests and mocks</text>
+<text x="1038" y="932" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Check source freshness, APIs and settings</text>
+<text x="1038" y="957" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Advisory mutation tests and AI review</text>
+<text x="1038" y="982" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Fact collection and fact validation are OFF</text>
+<rect x="1490" y="804" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1490" y="800" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1490" y="812" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1508" y="827" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C09</text>
+<path d="M1823, 814 l8,4 v9 l-8,4 l-8,-4 v-9 z M1815,818 l8,4 l8,-4 M1823,822 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1508" y="856" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Standalone &amp; portable output</text>
+<text x="1508" y="882" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Build a runnable operation and launch scripts</text>
+<text x="1508" y="907" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Include a validated example XML request</text>
+<text x="1508" y="932" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Package shared JARs and a local Maven repo</text>
+<text x="1508" y="957" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Retain runtime settings and test/demo assets</text>
+<text x="1508" y="982" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Called services use external URLs</text>
+<rect x="1960" y="804" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1960" y="800" width="360" height="220" rx="10" fill="#28343d" stroke="#53616d"/>
+<rect x="1960" y="812" width="3" height="196" rx="1" fill="#65d6e7"/>
+<text x="1978" y="827" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">C10</text>
+<path d="M2293, 814 l8,4 v9 l-8,4 l-8,-4 v-9 z M2285,818 l8,4 l8,-4 M2293,822 v9" fill="none" stroke="#65d6e7" stroke-width="1.4"/>
+<text x="1978" y="856" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Microservice &amp; Helm output</text>
+<text x="1978" y="882" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Wrap accepted operation with Spring Boot HTTP</text>
+<text x="1978" y="907" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Produce executable JAR and Helm chart</text>
+<text x="1978" y="932" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Seed values.yaml with namespace and port</text>
+<text x="1978" y="957" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Validate build, tests, Helm lint/render/package</text>
+<text x="1978" y="982" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Called services use internal OpenShift DNS</text>
+<rect x="80" y="1194" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="80" y="1190" width="360" height="220" rx="10" fill="#302c3e" stroke="#53616d"/>
+<rect x="80" y="1202" width="3" height="196" rx="1" fill="#ba9af5"/>
+<text x="98" y="1217" fill="#ba9af5" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S01</text>
+<path d="M413, 1204 l8,4 v9 l-8,4 l-8,-4 v-9 z M405,1208 l8,4 l8,-4 M413,1212 v9" fill="none" stroke="#ba9af5" stroke-width="1.4"/>
+<text x="98" y="1246" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Run state · SQLite</text>
+<text x="98" y="1272" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">&lt;run&gt;/state/migration.db</text>
+<text x="98" y="1297" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Tasks, attempts, approvals and checkpoints</text>
+<text x="98" y="1322" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Dependencies, pinned revisions and evidence</text>
+<text x="98" y="1347" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">All stages persist progress here</text>
+<text x="98" y="1372" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Resume reads the database + saved profile</text>
+<rect x="550" y="1194" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="550" y="1190" width="360" height="220" rx="10" fill="#302c3e" stroke="#53616d"/>
+<rect x="550" y="1202" width="3" height="196" rx="1" fill="#ba9af5"/>
+<text x="568" y="1217" fill="#ba9af5" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S02</text>
+<path d="M883, 1204 l8,4 v9 l-8,4 l-8,-4 v-9 z M875,1208 l8,4 l8,-4 M883,1212 v9" fill="none" stroke="#ba9af5" stroke-width="1.4"/>
+<text x="568" y="1246" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Persistent shared registries</text>
+<text x="568" y="1272" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">shared/components · shared/operations</text>
+<text x="568" y="1297" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Converted source, typed contracts and JARs</text>
+<text x="568" y="1322" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Operation HTTP contracts and address settings</text>
+<text x="568" y="1347" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Manifests, hashes and rebuildable indexes</text>
+<text x="568" y="1372" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Current-run validation still guards reuse</text>
+<rect x="1020" y="1194" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1020" y="1190" width="360" height="220" rx="10" fill="#30353a" stroke="#53616d"/>
+<rect x="1020" y="1202" width="3" height="196" rx="1" fill="#9daebc"/>
+<text x="1038" y="1217" fill="#9daebc" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S03</text>
+<path d="M1353, 1204 l8,4 v9 l-8,4 l-8,-4 v-9 z M1345,1208 l8,4 l8,-4 M1353,1212 v9" fill="none" stroke="#9daebc" stroke-width="1.4"/>
+<text x="1038" y="1246" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Live AI provider</text>
+<text x="1038" y="1272" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">LiteLLM → Gemini Studio / configured model</text>
+<text x="1038" y="1297" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">API key read from the process environment</text>
+<text x="1038" y="1322" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Generates Java, tests, fixtures and mocks</text>
+<text x="1038" y="1347" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Receives source and accepted dependency APIs</text>
+<text x="1038" y="1372" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">AI claims do not replace executed validation</text>
+<rect x="1490" y="1194" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1490" y="1190" width="360" height="220" rx="10" fill="#302c3e" stroke="#53616d"/>
+<rect x="1490" y="1202" width="3" height="196" rx="1" fill="#ba9af5"/>
+<text x="1508" y="1217" fill="#ba9af5" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S04</text>
+<path d="M1823, 1204 l8,4 v9 l-8,4 l-8,-4 v-9 z M1815,1208 l8,4 l8,-4 M1823,1212 v9" fill="none" stroke="#ba9af5" stroke-width="1.4"/>
+<text x="1508" y="1246" fill="#eff5fa" font-family="Arial, sans-serif" font-size="21" font-weight="700" text-anchor="start">Deliverables &amp; evidence</text>
+<text x="1508" y="1272" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Per-run generated projects and portable packages</text>
+<text x="1508" y="1297" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Standalone + microservice JARs / Helm charts</text>
+<text x="1508" y="1322" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">reports/ · logs/ · validation receipts</text>
+<text x="1508" y="1347" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Source/configuration fingerprints and manifests</text>
+<text x="1508" y="1372" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Artifacts remain traceable to their conversion</text>
+<rect x="1960" y="1194" width="360" height="220" rx="10" fill="#101419" opacity="0.45"/>
+<rect x="1960" y="1190" width="360" height="220" rx="10" fill="#30353a" stroke="#53616d"/>
+<rect x="1960" y="1202" width="3" height="196" rx="1" fill="#9daebc"/>
+<text x="1978" y="1217" fill="#9daebc" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">S05</text>
+<path d="M2293, 1204 l8,4 v9 l-8,4 l-8,-4 v-9 z M2285,1208 l8,4 l8,-4 M2293,1212 v9" fill="none" stroke="#9daebc" stroke-width="1.4"/>
+<text x="1978" y="1246" fill="#eff5fa" font-family="Arial, sans-serif" font-size="19" font-weight="700" text-anchor="start">OpenShift &amp; deployed services</text>
+<text x="1978" y="1272" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">USER publishes images and deploys services</text>
+<text x="1978" y="1297" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Called operations are assumed available</text>
+<text x="1978" y="1322" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Standalone callers → external service URLs</text>
+<text x="1978" y="1347" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Microservices → internal Service DNS</text>
+<text x="1978" y="1372" fill="#c3cdd7" font-family="Arial, sans-serif" font-size="15.3" font-weight="400" text-anchor="start">Conversion does not deploy the cluster</text>
+<text x="80" y="1439" fill="#9cb3c3" font-family="Arial, sans-serif" font-size="14" font-weight="400" text-anchor="start">CYAN: conversion flow     PURPLE: state / reuse     GRAY: model tasks     AMBER: user action</text>
+<text x="80" y="1463" fill="#65d6e7" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start">HOW TO READ</text>
+<text x="80" y="1492" fill="#b8c3ce" font-family="Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start">C01–C05: configure, analyze and plan.  C06–C10: reuse, convert, validate and package.  S00–S05: durable information and external systems.</text>
+<text x="80" y="1524" fill="#b8c3ce" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start">Deployment is a user action. Microservices call internal OpenShift Services; standalone packages call external URLs. Facts are disabled; source/AST analysis remains enabled.</text>
+<text x="80" y="1554" fill="#9cb3c3" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start">Drill-down examples: “Expand C04 dependency closure”, “Expand C07 native conversion”, or “Expand S02 shared registries”.</text>
+</svg>

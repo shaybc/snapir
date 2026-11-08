@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="1740" viewBox="0 0 2500 1740"><defs>
+<marker id="normal" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#47739a" stroke-width="1.5"/></marker>
+<marker id="data" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#8060a2" stroke-width="1.5"/></marker>
+<marker id="manual" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#b87821" stroke-width="1.5"/></marker>
+</defs><rect width="2500" height="1740" fill="#f7f9fc"/>
+<text x="65" y="57" font-family="Arial,sans-serif" font-size="30" fill="#193c5d" font-weight="700" text-anchor="start">SNAPIR CONVERTER — ARCHITECTURE &amp; COMPONENT INTERACTIONS</text>
+<text x="65" y="89" font-family="Arial,sans-serif" font-size="19" fill="#36465a" font-weight="400" text-anchor="start">Who participates, what each component owns, and what they exchange</text>
+<polyline points="440,255 600,255" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)"/>
+<rect x="460.0" y="221" width="120" height="28" rx="5" fill="#f7f9fc"/>
+<text x="520" y="238" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">save settings</text>
+<polyline points="970,255 1110,255" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)"/>
+<rect x="984.0" y="221" width="112" height="28" rx="5" fill="#f7f9fc"/>
+<text x="1040" y="238" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">load profile</text>
+<polyline points="255,180 255,120 1345,120 1345,190" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)"/>
+<rect x="686.0" y="88" width="208" height="28" rx="5" fill="#f7f9fc"/>
+<text x="790" y="105" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">start / resume / approve</text>
+<polyline points="1110,355 1030,355 1030,490 255,490 255,600" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="551.0" y="457" width="208" height="28" rx="5" fill="#f7f9fc"/>
+<text x="655" y="474" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">request source discovery</text>
+<polyline points="440,695 600,695" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="460.0" y="660" width="120" height="51" rx="5" fill="#f7f9fc"/>
+<text x="520" y="677" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">invoke mapper</text>
+<text x="520" y="700" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">read map</text>
+<polyline points="1345,400 1345,600" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="1225.0" y="481" width="240" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1345" y="498" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">request dependency closure</text>
+<text x="1345" y="521" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">source / JAR / API decisions</text>
+<polyline points="970,695 1110,695" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="984.0" y="651" width="112" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1040" y="668" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">query</text>
+<text x="1040" y="691" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">dependencies</text>
+<polyline points="785,790 785,1090" fill="none" stroke="#8060a2" stroke-width="2" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)" stroke-dasharray="8 5"/>
+<rect x="709.0" y="932" width="152" height="51" rx="5" fill="#f7f9fc"/>
+<text x="785" y="949" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">read / publish</text>
+<text x="785" y="972" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">verified analysis</text>
+<polyline points="1345,790 1345,1090" fill="none" stroke="#8060a2" stroke-width="2" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)" stroke-dasharray="8 5"/>
+<rect x="1241.0" y="926" width="208" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1345" y="943" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">lookup / restore</text>
+<text x="1345" y="966" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">register validated reuse</text>
+<polyline points="1580,300 1760,300" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="1582.0" y="265" width="176" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1670" y="282" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">delegate conversion</text>
+<text x="1670" y="305" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">accepted APIs + code</text>
+<polyline points="1580,690 1660,690 1660,405 1760,405" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)"/>
+<rect x="1568.0" y="518" width="184" height="28" rx="5" fill="#f7f9fc"/>
+<text x="1660" y="535" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">resolved dependencies</text>
+<polyline points="2070,460 2070,650" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="1954.0" y="540" width="232" height="51" rx="5" fill="#f7f9fc"/>
+<text x="2070" y="557" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">bounded generation requests</text>
+<text x="2070" y="580" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">structured model responses</text>
+<polyline points="2300,460 2440,460 2440,1145 2380,1145" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)" marker-start="url(#normal)"/>
+<rect x="2287.0" y="888" width="176" height="51" rx="5" fill="#f7f9fc"/>
+<text x="2375" y="905" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">compile / test</text>
+<text x="2375" y="928" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">diagnostics / repair</text>
+<polyline points="1150,400 1070,400 1070,870 255,870 255,1090" fill="none" stroke="#8060a2" stroke-width="2" stroke-linejoin="round" marker-end="url(#data)" marker-start="url(#data)" stroke-dasharray="8 5"/>
+<rect x="484.0" y="837" width="392" height="28" rx="5" fill="#f7f9fc"/>
+<text x="680" y="854" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">persist / reload tasks, checkpoints and results</text>
+<polyline points="1760,1195 1660,1195 1660,1490 1580,1490" fill="none" stroke="#47739a" stroke-width="2" stroke-linejoin="round" marker-end="url(#normal)"/>
+<rect x="1576.0" y="1348" width="168" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1660" y="1365" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">accepted code</text>
+<text x="1660" y="1388" font-family="Arial,sans-serif" font-size="16" fill="#47739a" font-weight="400" text-anchor="middle">validation evidence</text>
+<polyline points="1345,1320 1345,1450" fill="none" stroke="#8060a2" stroke-width="2" stroke-linejoin="round" marker-end="url(#data)" stroke-dasharray="8 5"/>
+<rect x="1229.0" y="1365" width="232" height="28" rx="5" fill="#f7f9fc"/>
+<text x="1345" y="1382" font-family="Arial,sans-serif" font-size="16" fill="#8060a2" font-weight="400" text-anchor="middle">include shared dependencies</text>
+<polyline points="1580,1540 1760,1540" fill="none" stroke="#b87821" stroke-width="2" stroke-linejoin="round" marker-end="url(#manual)" stroke-dasharray="8 5"/>
+<rect x="1606.0" y="1505" width="128" height="51" rx="5" fill="#f7f9fc"/>
+<text x="1670" y="1522" font-family="Arial,sans-serif" font-size="16" fill="#b87821" font-weight="400" text-anchor="middle">user publishes</text>
+<text x="1670" y="1545" font-family="Arial,sans-serif" font-size="16" fill="#b87821" font-weight="400" text-anchor="middle">and deploys</text>
+<rect x="70" y="180" width="370" height="150" rx="13" fill="#eaf0f7" stroke="#7b95ad" stroke-width="2"/>
+<text x="90" y="216" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">User / CLI wizard</text>
+<text x="90" y="252" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Select source and root operations</text>
+<text x="90" y="279" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Configure AI, Java, storage and URLs</text>
+<text x="90" y="306" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Start, resume and approve work</text>
+<rect x="600" y="180" width="370" height="150" rx="13" fill="#e9e3f4" stroke="#9679b4" stroke-width="2"/>
+<text x="620" y="216" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">Configuration &amp; run profile</text>
+<text x="620" y="252" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Saved YAML configuration</text>
+<text x="620" y="279" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Resolved state/profile.json</text>
+<text x="620" y="306" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Settings used by this run</text>
+<rect x="1110" y="190" width="470" height="210" rx="13" fill="#204e73" stroke="#204e73" stroke-width="2"/>
+<text x="1130" y="226" font-family="Arial,sans-serif" font-size="23" fill="#ffffff" font-weight="700" text-anchor="start">CONVERSION ORCHESTRATOR</text>
+<text x="1130" y="262" font-family="Arial,sans-serif" font-size="17" fill="#e7f0f8" font-weight="400" text-anchor="start">Coordinates the participating components</text>
+<text x="1130" y="289" font-family="Arial,sans-serif" font-size="17" fill="#e7f0f8" font-weight="400" text-anchor="start">Orders work by dependency</text>
+<text x="1130" y="316" font-family="Arial,sans-serif" font-size="17" fill="#e7f0f8" font-weight="400" text-anchor="start">Manages gates, checkpoints and retries</text>
+<text x="1130" y="343" font-family="Arial,sans-serif" font-size="17" fill="#e7f0f8" font-weight="400" text-anchor="start">Resumes work from persisted state</text>
+<rect x="70" y="600" width="370" height="190" rx="13" fill="#e1eef9" stroke="#779cb9" stroke-width="2"/>
+<text x="90" y="636" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">Workspace intake</text>
+<text x="90" y="672" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Discovers source projects and classpath</text>
+<text x="90" y="699" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Reads Composer XML and Java sources</text>
+<text x="90" y="726" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Prepares evidence for selected operations</text>
+<text x="90" y="753" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Locates dependencies across projects</text>
+<rect x="600" y="600" width="370" height="190" rx="13" fill="#e1eef9" stroke="#779cb9" stroke-width="2"/>
+<text x="620" y="636" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">Composer Mapper + AST analysis</text>
+<text x="620" y="672" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Run mapper OR load an existing map</text>
+<text x="620" y="699" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Identify operations, formats and OpSteps</text>
+<text x="620" y="726" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Map Java classes and dependency links</text>
+<text x="620" y="753" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Verify source fingerprints</text>
+<rect x="1110" y="600" width="470" height="190" rx="13" fill="#e1eef9" stroke="#779cb9" stroke-width="2"/>
+<text x="1130" y="636" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">Dependency &amp; reuse resolution</text>
+<text x="1130" y="672" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Expand each operation’s complete dependency graph</text>
+<text x="1130" y="699" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Consult converted component and operation registries</text>
+<text x="1130" y="726" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Choose original source, compatible JAR or HTTP API</text>
+<text x="1130" y="753" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Provide accepted dependency contracts to generation</text>
+<rect x="1760" y="250" width="620" height="210" rx="13" fill="#e1eef9" stroke="#779cb9" stroke-width="2"/>
+<text x="1780" y="286" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">Native conversion engine</text>
+<text x="1780" y="322" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Generate missing components in dependency order</text>
+<text x="1780" y="349" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Convert configured formats and operation steps</text>
+<text x="1780" y="376" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Assemble native operation flow and HTTP clients</text>
+<text x="1780" y="403" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Keep implementation, API metadata and tests separate</text>
+<rect x="1760" y="650" width="620" height="170" rx="13" fill="#edf0f3" stroke="#9aa6af" stroke-width="2"/>
+<text x="1780" y="686" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">AI adapter → LiteLLM → configured model</text>
+<text x="1780" y="722" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Gemini Studio or another configured model API</text>
+<text x="1780" y="749" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Generate Java, tests, fixtures and mocks</text>
+<text x="1780" y="776" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Read API key from the environment</text>
+<rect x="70" y="1090" width="370" height="190" rx="13" fill="#e9e3f4" stroke="#9679b4" stroke-width="2"/>
+<text x="90" y="1126" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">SQLite run database</text>
+<text x="90" y="1162" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">state/migration.db</text>
+<text x="90" y="1189" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Tasks, attempts, approvals and checkpoints</text>
+<text x="90" y="1216" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Dependency pins, accepted results, evidence</text>
+<text x="90" y="1243" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Used throughout conversion and resume</text>
+<rect x="600" y="1090" width="370" height="190" rx="13" fill="#e9e3f4" stroke="#9679b4" stroke-width="2"/>
+<text x="620" y="1126" font-family="Arial,sans-serif" font-size="21" fill="#173a55" font-weight="700" text-anchor="start">Reusable analysis &amp; map storage</text>
+<text x="620" y="1162" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Indexed Composer map / AST records</text>
+<text x="620" y="1189" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Source hashes and parsed-analysis caches</text>
+<text x="620" y="1216" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Reuse valid analysis across runs</text>
+<text x="620" y="1243" font-family="Arial,sans-serif" font-size="16" fill="#36465a" font-weight="400" text-anchor="start">Rebuild stale or missing analysis</text>
+<rect x="1110" y="1090" width="470" height="230" rx="13" fill="#e9e3f4" stroke="#9679b4" stroke-width="2"/>
+<text x="1130" y="1126" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">Persistent shared registries</text>
+<text x="1130" y="1162" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">COMPONENTS: converted source, typed APIs and JARs</text>
+<text x="1130" y="1189" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">OPERATIONS: HTTP contracts, paths and addresses</text>
+<text x="1130" y="1216" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Versioned manifests and artifact integrity hashes</text>
+<text x="1130" y="1243" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Reuse compatible work across separate runs</text>
+<text x="1130" y="1270" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Revalidate candidates in the current context</text>
+<rect x="1760" y="1040" width="620" height="210" rx="13" fill="#e1eef9" stroke="#779cb9" stroke-width="2"/>
+<text x="1780" y="1076" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">Build &amp; validation tools</text>
+<text x="1780" y="1112" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">JDK + Maven: compile and execute JUnit tests</text>
+<text x="1780" y="1139" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Compare XML formats using tests and mocks</text>
+<text x="1780" y="1166" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Check APIs, runtime settings and source freshness</text>
+<text x="1780" y="1193" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Return diagnostics for targeted correction</text>
+<rect x="1110" y="1450" width="470" height="180" rx="13" fill="#e6f1e9" stroke="#80a38b" stroke-width="2"/>
+<text x="1130" y="1486" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">Packaging &amp; deliverables</text>
+<text x="1130" y="1522" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Standalone: launchers, XML example, shared JARs</text>
+<text x="1130" y="1549" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Microservice: Spring Boot JAR + Helm chart</text>
+<text x="1130" y="1576" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Include runtime configuration and test resources</text>
+<text x="1130" y="1603" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Retain reports, logs and validation evidence</text>
+<rect x="1760" y="1450" width="620" height="180" rx="13" fill="#edf0f3" stroke="#9aa6af" stroke-width="2"/>
+<text x="1780" y="1486" font-family="Arial,sans-serif" font-size="23" fill="#173a55" font-weight="700" text-anchor="start">User-managed deployment &amp; runtime</text>
+<text x="1780" y="1522" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">User publishes images and deploys microservices</text>
+<text x="1780" y="1549" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Standalone calls other services through external URLs</text>
+<text x="1780" y="1576" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Microservice calls use internal OpenShift Service DNS</text>
+<text x="1780" y="1603" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Called operations are assumed deployed</text>
+<text x="65" y="1680" font-family="Arial,sans-serif" font-size="19" fill="#193c5d" font-weight="600" text-anchor="start">Default policy: facts OFF · AST/source analysis ON · AI-generated tests and mocks ON · shared reuse ON</text>
+<text x="65" y="1712" font-family="Arial,sans-serif" font-size="17" fill="#36465a" font-weight="400" text-anchor="start">Arrows show requests, data and results. SQLite is used by all modules; representative connections are shown. Deployment is a user action.</text>
+</svg>

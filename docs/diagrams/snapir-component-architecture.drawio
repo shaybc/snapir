@@ -1,0 +1,182 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" compressed="false">
+  <diagram id="snapir-components" name="Component context · Snapir">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageWidth="2620" pageHeight="1900" background="#282c2f">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="converter" value="SNAPIR CONVERTER · logical modules and persistent stores" parent="1" vertex="1" style="rounded=1;html=1;align=left;verticalAlign=top;spacing=22;fillColor=#252d34;strokeColor=#627482;fontColor=#9bb6c7;fontSize=17;dashed=1;container=1;collapsible=0;">
+          <mxGeometry as="geometry" x="50" y="320" width="2020" height="1350" />
+        </mxCell>
+        <mxCell id="E01" value="&lt;b&gt;E01 · Composer workspace&lt;/b&gt;&lt;br&gt;&lt;br&gt;Original Java + Composer XML&lt;br&gt;Source projects, libraries and classpath" parent="1" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="80" y="170" width="360" height="110" />
+        </mxCell>
+        <mxCell id="E02" value="&lt;b&gt;E02 · Migration operator&lt;/b&gt;&lt;br&gt;&lt;br&gt;Selects operations and settings&lt;br&gt;Starts, resumes and approves work" parent="1" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1100" y="170" width="400" height="110" />
+        </mxCell>
+        <mxCell id="A01" value="&lt;b&gt;A01 · CLI &amp;amp; configuration wizard&lt;/b&gt;&lt;br&gt;&lt;br&gt;Create Default Config / Advanced Configuration&lt;br&gt;Collects source, scope, model and runtime settings&lt;br&gt;Accepts start, resume and approval commands" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1050" y="50" width="400" height="170" />
+        </mxCell>
+        <mxCell id="D01" value="&lt;b&gt;D01 · Configuration &amp;amp; run profile&lt;/b&gt;&lt;br&gt;&lt;br&gt;configs/&amp;lt;name&amp;gt;.yaml: user choices&lt;br&gt;&amp;lt;run&amp;gt;/state/profile.json: effective settings&lt;br&gt;Key variable name only; never its secret value" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#36333e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1050" y="310" width="400" height="150" />
+        </mxCell>
+        <mxCell id="A02" value="&lt;b&gt;A02 · Workspace intake&lt;/b&gt;&lt;br&gt;&lt;br&gt;Discovers projects, Java, XML and classpath&lt;br&gt;Selects root operations and source scope&lt;br&gt;Requests mapping and verifies source fingerprints&lt;br&gt;Supplies pinned source evidence to conversion" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="550" y="320" width="360" height="190" />
+        </mxCell>
+        <mxCell id="A03" value="&lt;b&gt;A03 · Composer XML Mapper&lt;/b&gt;&lt;br&gt;&lt;br&gt;Parses Composer XML and related Java AST&lt;br&gt;Builds indexed/scoped workspace analysis&lt;br&gt;Links operations, formats, classes and OpSteps&lt;br&gt;Generates a map or uses verified existing data" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="30" y="320" width="360" height="190" />
+        </mxCell>
+        <mxCell id="D03" value="&lt;b&gt;D03 · Analysis cache &amp;amp; AST index&lt;/b&gt;&lt;br&gt;&lt;br&gt;Indexed Composer map and dependency records&lt;br&gt;Source hashes and reusable parsed analysis&lt;br&gt;Rebuildable when missing or out of date&lt;br&gt;Separate from converted-code registries" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#36333e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="30" y="670" width="360" height="190" />
+        </mxCell>
+        <mxCell id="A04" value="&lt;b&gt;A04 · Dependency &amp;amp; shared reuse&lt;/b&gt;&lt;br&gt;&lt;br&gt;Resolves the complete dependency closure&lt;br&gt;Checks source / policy / artifact compatibility&lt;br&gt;Chooses source, reusable JAR or operation API&lt;br&gt;Automatically resolves cross-project requirements" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="550" y="670" width="360" height="190" />
+        </mxCell>
+        <mxCell id="A05" value="&lt;b&gt;A05 · Conversion orchestrator&lt;/b&gt;&lt;br&gt;&lt;br&gt;Coordinates selected operation conversions&lt;br&gt;Schedules work in dependency order&lt;br&gt;Applies gates, checkpoints, retries and resume&lt;br&gt;Delegates generation, checks and packaging" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#334e61;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1050" y="540" width="400" height="220" />
+        </mxCell>
+        <mxCell id="A06" value="&lt;b&gt;A06 · Native conversion engine&lt;/b&gt;&lt;br&gt;&lt;br&gt;Converts base components and configured units&lt;br&gt;Assembles native operation flow + HTTP clients&lt;br&gt;Separates Java, API metadata and test stages&lt;br&gt;Creates AI tests, shared fixtures and mocks" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#2d404e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1610" y="540" width="360" height="220" />
+        </mxCell>
+        <mxCell id="A07" value="&lt;b&gt;A07 · AI execution adapter&lt;/b&gt;&lt;br&gt;&lt;br&gt;LiteLLM transport and structured responses&lt;br&gt;Sends bounded source / contract context&lt;br&gt;Manages model attempts and correction feedback" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1610" y="50" width="360" height="170" />
+        </mxCell>
+        <mxCell id="E03" value="&lt;b&gt;E03 · AI model / Gemini Studio&lt;/b&gt;&lt;br&gt;&lt;br&gt;Configured model API, reached through LiteLLM&lt;br&gt;Generates code, metadata, tests and mocks&lt;br&gt;API key supplied through the environment" parent="1" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="2180" y="370" width="360" height="170" />
+        </mxCell>
+        <mxCell id="A08" value="&lt;b&gt;A08 · Build &amp;amp; validation tools&lt;/b&gt;&lt;br&gt;&lt;br&gt;JDK + Maven compilation and executed JUnit&lt;br&gt;XML format comparison with tests / mocks&lt;br&gt;API, settings, source and artifact checks&lt;br&gt;Advisory mutation tests and AI review" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1610" y="320" width="360" height="170" />
+        </mxCell>
+        <mxCell id="A09" value="&lt;b&gt;A09 · Standalone &amp;amp; service packaging&lt;/b&gt;&lt;br&gt;&lt;br&gt;Builds portable standalone operation packages&lt;br&gt;Wraps native code as Spring Boot microservices&lt;br&gt;Includes shared JARs, test assets and settings&lt;br&gt;Generates values.yaml and validated Helm charts" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1610" y="920" width="360" height="210" />
+        </mxCell>
+        <mxCell id="E04" value="&lt;b&gt;E04 · Runnable deliverables&lt;/b&gt;&lt;br&gt;&lt;br&gt;Standalone package + example XML + launchers&lt;br&gt;Microservice executable JAR + Helm chart&lt;br&gt;Portable dependency repository and resources&lt;br&gt;Reports, logs, manifests and validation evidence" parent="1" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="2180" y="1240" width="360" height="210" />
+        </mxCell>
+        <mxCell id="D04" value="&lt;b&gt;D04 · Shared component registry&lt;/b&gt;&lt;br&gt;&lt;br&gt;Persistent shared/components store&lt;br&gt;Converted source, typed APIs and compiled JARs&lt;br&gt;Pinned versions, manifests and integrity hashes&lt;br&gt;Supports reuse and recovery across runs" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#36333e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="30" y="1110" width="360" height="190" />
+        </mxCell>
+        <mxCell id="D05" value="&lt;b&gt;D05 · Shared operation registry&lt;/b&gt;&lt;br&gt;&lt;br&gt;Persistent shared/operations registry&lt;br&gt;Converted operation HTTP contracts and paths&lt;br&gt;Internal / external address conventions + overrides&lt;br&gt;Describes callable services; does not deploy them" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#36333e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="550" y="1110" width="360" height="190" />
+        </mxCell>
+        <mxCell id="D02" value="&lt;b&gt;D02 · SQLite run database&lt;/b&gt;&lt;br&gt;&lt;br&gt;&amp;lt;run&amp;gt;/state/migration.db&lt;br&gt;Tasks, attempts, approvals and checkpoints&lt;br&gt;Dependency pins, accepted results and evidence&lt;br&gt;All conversion modules persist progress here" parent="converter" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#36333e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="1050" y="1110" width="400" height="190" />
+        </mxCell>
+        <mxCell id="E05" value="&lt;b&gt;E05 · OpenShift / deployed operations&lt;/b&gt;&lt;br&gt;&lt;br&gt;User publishes images and deploys services&lt;br&gt;Standalone callers use external URLs&lt;br&gt;Microservices use internal OpenShift Service DNS" parent="1" vertex="1" style="rounded=1;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=17;fontSize=15;fontColor=#f0f5f8;fillColor=#343a3e;strokeColor=#64717a;">
+          <mxGeometry as="geometry" x="2180" y="1590" width="360" height="170" />
+        </mxCell>
+        <mxCell id="operator" value="configure / control" parent="1" edge="1" source="E02" target="A01" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="configuration" value="save configuration" parent="1" edge="1" source="A01" target="D01" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="effective-profile" value="load settings / snapshot profile" parent="1" edge="1" source="A05" target="D01" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=0.0;entryX=0.5;entryY=1.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="commands" value="start / resume&lt;br&gt;gate decisions" parent="1" edge="1" source="A01" target="A05" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=1.0;exitY=0.5;entryX=1.0;entryY=0.2727272727272727;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1560" y="455" />
+              <mxPoint x="1560" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="intake" value="request intake&lt;br&gt;source evidence" parent="1" edge="1" source="A05" target="A02" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.0;exitY=0.18181818181818182;entryX=1.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1030" y="900" />
+              <mxPoint x="1030" y="735" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="workspace" value="discover sources / classpath" parent="1" edge="1" source="A02" target="E01" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#a3afb8;fontColor=#a3afb8;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=0.0;entryX=1.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="780" y="580" />
+              <mxPoint x="490" y="580" />
+              <mxPoint x="490" y="225" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="mapper-source" value="read XML + Java" parent="1" edge="1" source="A03" target="E01" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#a3afb8;fontColor=#a3afb8;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=0.0;entryX=0.5;entryY=1.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="mapping" value="invoke mapper&lt;br&gt;read / reuse map" parent="1" edge="1" source="A02" target="A03" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.0;exitY=0.5;entryX=1.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="index" value="publish / reuse index" parent="1" edge="1" source="A03" target="D03" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="query-index" value="query AST index" parent="1" edge="1" source="A04" target="D03" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.0;exitY=0.5;entryX=1.0;entryY=0.5;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="source-evidence" value="source inventory" parent="1" edge="1" source="A02" target="A04" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="resolve" value="resolve closure&lt;br&gt;source / JAR / API" parent="1" edge="1" source="A05" target="A04" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.0;exitY=0.6818181818181818;entryX=1.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1030" y="1010" />
+              <mxPoint x="1030" y="1085" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="components" value="lookup / restore / register code" parent="1" edge="1" source="A04" target="D04" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.2222222222222222;exitY=1.0;entryX=0.5;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="680" y="1300" />
+              <mxPoint x="260" y="1300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="operations" value="query HTTP contracts&lt;br&gt;resolve address bindings" parent="1" edge="1" source="A04" target="D05" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.6111111111111112;exitY=1.0;entryX=0.6111111111111112;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="state" value="persist / reload run state&lt;br&gt;checkpoints, approvals, results" parent="1" edge="1" source="A05" target="D02" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#b8a0df;fontColor=#b8a0df;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="generate" value="delegate conversion&lt;br&gt;code + typed contracts" parent="1" edge="1" source="A05" target="A06" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=1.0;exitY=0.6818181818181818;entryX=0.0;entryY=0.6818181818181818;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="ai-adapter" value="bounded AI tasks&lt;br&gt;structured results" parent="1" edge="1" source="A06" target="A07" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.0;exitY=0.2727272727272727;entryX=0.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1620" y="920" />
+              <mxPoint x="1620" y="455" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="model-api" value="model API&lt;br&gt;generated responses" parent="1" edge="1" source="A07" target="E03" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#a3afb8;fontColor=#a3afb8;fontSize=13;labelBackgroundColor=#282c2f;exitX=1.0;exitY=0.5;entryX=0.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="checks" value="validate / diagnostics" parent="1" edge="1" source="A06" target="A08" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=0.0;entryX=0.5;entryY=1.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="packaging" value="accepted code + APIs" parent="1" edge="1" source="A06" target="A09" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="package-checks" value="package tests&lt;br&gt;Helm validation" parent="1" edge="1" source="A09" target="A08" style="rounded=1;html=1;endArrow=open;startArrow=open;endFill=0;startFill=0;strokeColor=#80cbd5;fontColor=#80cbd5;fontSize=13;labelBackgroundColor=#282c2f;exitX=1.0;exitY=0.2857142857142857;entryX=1.0;entryY=0.5;">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="2120" y="1300" />
+              <mxPoint x="2120" y="725" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="outputs" value="writes packages&lt;br&gt;and evidence" parent="1" edge="1" source="A09" target="E04" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#a3afb8;fontColor=#a3afb8;fontSize=13;labelBackgroundColor=#282c2f;exitX=1.0;exitY=0.6666666666666666;entryX=0.0;entryY=0.6666666666666666;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="deployment" value="user publishes&lt;br&gt;and deploys" parent="1" edge="1" source="E04" target="E05" style="rounded=1;html=1;endArrow=open;startArrow=none;endFill=0;startFill=0;strokeColor=#e8bc77;fontColor=#e8bc77;fontSize=13;labelBackgroundColor=#282c2f;exitX=0.5;exitY=1.0;entryX=0.5;entryY=0.0;dashed=1;">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="title" value="&lt;b&gt;The components behind a Composer conversion&lt;/b&gt;&lt;br&gt;Snapir · Component context · Not execution order" parent="1" vertex="1" style="text;html=1;align=left;fontColor=#c1cbd2;fontSize=19;whiteSpace=wrap;">
+          <mxGeometry as="geometry" x="55" y="38" width="2200" height="100" />
+        </mxCell>
+        <mxCell id="legend" value="Interaction view · Logical modules and persistent stores&lt;br&gt;Facts OFF · AST/source analysis ON · AI tests and mocks ON&lt;br&gt;Standalone uses external service URLs; microservices use internal Service DNS. User performs deployment." parent="1" vertex="1" style="text;html=1;align=left;fontColor=#c1cbd2;fontSize=19;whiteSpace=wrap;">
+          <mxGeometry as="geometry" x="80" y="1710" width="1980" height="150" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

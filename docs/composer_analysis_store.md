@@ -82,9 +82,42 @@ java -Xmx768m -jar source/composer-mapper/target/composer-mapper-1.1.1-jar-with-
 ```
 
 After an interrupted or failed build, `--resume-analysis C:\maps\failed-builder`
-reuses only compatible, completed file facts into a fresh destination. It never
-publishes partially analyzed files or updates a live map in place. Choose either
+first checks for a completed source-index checkpoint. New indexed builds save
+`analysis/index-checkpoint.sqlite` and its SHA-256 sidecar after source capture,
+dependency/consumer analysis, and definition catalog construction finish, before
+rendering operation views or inventory notes. The snapshot contains no partially
+rendered output. It requires extra disk space roughly equal to the index database.
+
+Recovery verifies the snapshot digest, SQLite integrity, source bytes and membership,
+source location, workspace ID, analysis budgets, channel/Markdown settings, mapper
+implementation, analyzer policy, and JDK. A compatible checkpoint skips source
+parsing and catalog construction and restarts map rendering in a **fresh** destination.
+It does not resume at an individual failed definition. The failed builder remains
+unchanged. An incompatible or damaged checkpoint causes a fresh index build.
+
+```powershell
+java -Xmx768m -jar source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar --root C:\code\composer --vault C:\maps\recovered --vault-layout scoped --workspace-id bank --md true --analysis-format indexed-v1 --resume-analysis C:\maps\failed-builder
+```
+
+Keep the source, workspace ID and settings the same when retrying. After recovery,
+use the completed map as the converter's existing-map input. This command recovers
+mapping; it does not independently resume native conversion or deployment.
+
+Older builders without a completed-index checkpoint can still reuse compatible,
+completed file facts through the existing recovery path, but must rebuild the
+catalog and later stages. No partially analyzed files are published. Choose either
 `--reuse-analysis` or `--resume-analysis`, not both.
+
+The console and `composer-mapper.log` now record each source file before capture
+and indexing, each operation/resource before processing, and each inventory
+definition before rendering. Inventory messages include the original file path,
+definition name and XML selector, and are flushed before work starts. Inventory
+exceptions repeat that context. Existing progress summaries remain available.
+
+Inline `fmtDef` elements retain their definition and inclusion in the parent format.
+Inventories classify them as format containers, not Java formatter classes. Both
+inventory implementations follow `refFmt` references, including `refid` and `refId`,
+so referenced format implementations contribute to dependency and consumer counts.
 
 Unchanged files need no AST/XML parse. Changed Java files are parsed again.
 Unchanged callers can reuse resolved edges while the symbol/visibility policy

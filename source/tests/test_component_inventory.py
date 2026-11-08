@@ -89,6 +89,36 @@ def test_two_formats_share_formatter_but_not_configured_definition(tmp_path):
     assert all(use.mapping_source.endswith("XML/dse.ini") for use in formatters)
 
 
+def inline_reference_workspace(tmp_path):
+    """A named inline definition includes a shared format from a different source file."""
+    workspace, _ = make_workspace(tmp_path)
+    base = workspace / 'Common/src/Channel/XML'
+    ini = base / 'dse.ini'
+    ini.write_text(ini.read_text().replace('<field id="CCString"',
+        '<field id="CCIColl" value="org.example.StringFormatter"/><field id="CCString"'))
+    (base / 'formats.xml').write_text('''<XML>
+      <fmtDef id="FormatA"><CCIColl><fmtDef id="Nested"><refFmt refId="Shared"/></fmtDef></CCIColl></fmtDef>
+      <fmtDef id="FormatB"><refFmt refid="Shared"/></fmtDef>
+    </XML>''')
+    (base / 'shared.xml').write_text('<XML><fmtDef id="Shared"><CCString dataName="Shared"/></fmtDef></XML>')
+    return workspace
+
+
+def test_inline_format_references_follow_external_definition_and_count_uses(tmp_path):
+    workspace = inline_reference_workspace(tmp_path)
+    inventory = build_component_inventory(workspace, 'enterprise')
+    formatters = [use for use in inventory.uses if use.component_kind == 'formatter' and use.definition_path.endswith('shared.xml')]
+    assert len(formatters) == 2
+    assert {use.operation_id for use in formatters} == {'WebOp', 'KioskOp'}
+    assert all(use.definition_path.endswith('shared.xml') for use in formatters)
+    assert all(use.implementation_id and not use.resolution_issue for use in formatters)
+    assert not any('refFmt' in issue and 'mapping' in issue.lower() for issue in inventory.diagnostics)
+    nested = next(definition for definition in inventory.definitions if definition.logical_id == 'Nested')
+    assert nested.component_kind == 'format' and nested.resolution_issue is None
+    uses = [use for use in inventory.uses if use.definition_id == nested.definition_id]
+    assert len(uses) == 1 and uses[0].component_kind == 'format' and uses[0].resolution_issue is None
+
+
 def test_source_edit_changes_hash_not_identity(tmp_path):
     workspace, java = make_workspace(tmp_path)
     before = build_component_inventory(workspace, "enterprise")

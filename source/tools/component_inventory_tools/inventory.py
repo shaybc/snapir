@@ -179,8 +179,9 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
             selector = definition["selectors"][id(node)]
             site = definition["path"].relative_to(workspace).as_posix() + selector
             references = []
-            if tag == "refFormat" and reference_value(node.get("refid")):
-                references.append(("format", reference_value(node.get("refid"))))
+            format_reference = reference_value(node.get("refid") or node.get("refId"))
+            if tag in {"refFormat", "refFmt"} and format_reference:
+                references.append(("format", format_reference))
             if reference_value(node.get("refFmt")):
                 references.append(("format", reference_value(node.get("refFmt"))))
             if node is root and definition["kind"] == "operation" and reference_value(node.get("operationContext")):
@@ -193,7 +194,10 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
                     add_use(operation, definition, node, caller, kind=kind, issue=error)
                 else:
                     visit(operation, target, caller + " -> " + site, active)
-            if (node is root and definition["kind"] in {"format", "context"}) or tag in {"refFormat", "iniValue", "field"}:
+            if (node is root and definition["kind"] in {"format", "context"}) or tag in {"refFormat", "refFmt", "iniValue", "field"}:
+                continue
+            if tag == "fmtDef" and node is not root:
+                add_use(operation, definition, node, caller, kind="format")
                 continue
             if tag == "opStep" or node.get("implClass") or node.get("javaClass") or tag in mappings.get(definition["channel"], {}):
                 add_use(operation, definition, node, caller,
@@ -211,9 +215,11 @@ def build_component_inventory(workspace_root, workspace_id=None, source_index=No
                 mapping = mappings.get(definition["channel"], {}).get(node.get("id")) or mapping
             if node is definition["node"]:
                 kind = definition["kind"]
+            elif tag == "fmtDef":
+                kind = "format"
             elif tag == "opStep":
                 kind = "opStep"
-            elif definition["kind"] == "format" and tag not in {"refFormat", "field"}:
+            elif definition["kind"] == "format" and tag not in {"refFormat", "refFmt", "field"}:
                 kind = "decorator" if mapping and ".decorator." in mapping["fqcn"].lower() else "formatter"
             else:
                 continue

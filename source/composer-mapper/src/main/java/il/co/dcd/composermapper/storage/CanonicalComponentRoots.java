@@ -75,7 +75,7 @@ final class CanonicalComponentRoots {
         String tag=node.getTagName(),id=SqlXmlViews.identity(node);
         if(contextMode&&tag.equals("opStep")&&!il.co.dcd.composermapper.util.ChannelStepSelection.applies(node.getAttribute("onlyFor"),operation.channel()))return;
         List<String[]> refs=new ArrayList<>();
-        if(tag.equals("refFormat")&&value(node.getAttribute("refid"))!=null)refs.add(new String[]{"format",value(node.getAttribute("refid"))});
+        if(Set.of("refFormat","refFmt").contains(tag)&&value(XmlUtil.attrIgnoreCase(node,"refid"))!=null)refs.add(new String[]{"format",value(XmlUtil.attrIgnoreCase(node,"refid"))});
         if(value(node.getAttribute("refFmt"))!=null)refs.add(new String[]{"format",value(node.getAttribute("refFmt"))});
         if(node==root&&definition.kind().equals("operation")&&value(node.getAttribute("operationContext"))!=null)refs.add(new String[]{"context",value(node.getAttribute("operationContext"))});
         if(node==root&&definition.kind().equals("context")&&value(node.getAttribute("parent"))!=null)refs.add(new String[]{"context",value(node.getAttribute("parent"))});
@@ -84,7 +84,8 @@ final class CanonicalComponentRoots {
             if(target==null){issue(operation.name()+": "+session.root.relativize(Path.of(definition.file()))+store.scalar("SELECT selector FROM xml_nodes WHERE id=?",id)+": Missing or ambiguous "+ref[0]+" reference: "+ref[1]);bind(operation,definition,node,caller,ref[0],true);}
             else visit(operation,target,caller+" -> "+definition.file()+store.scalar("SELECT selector FROM xml_nodes WHERE id=?",id),new HashSet<>(active));
         }
-        if(!(node==root&&Set.of("format","context").contains(definition.kind()))&&!Set.of("refFormat","iniValue","field").contains(tag)) {
+        if(tag.equals("fmtDef")&&node!=root)bind(operation,definition,node,caller,"format",false);
+        else if(!(node==root&&Set.of("format","context").contains(definition.kind()))&&!Set.of("refFormat","refFmt","iniValue","field").contains(tag)) {
             boolean mapped=store.scalar("SELECT tag FROM "+mappingTable()+" WHERE channel=? AND tag=?",contextMode?operation.channel():definition.channel(),tag)!=null;
             if(tag.equals("opStep")||value(node.getAttribute("implClass"))!=null||value(node.getAttribute("javaClass"))!=null||mapped)
                 bind(operation,definition,node,caller,node==root&&definition.kind().equals("operation")?"operation":null,false);

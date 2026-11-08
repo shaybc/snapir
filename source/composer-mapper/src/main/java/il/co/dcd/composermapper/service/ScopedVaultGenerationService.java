@@ -40,13 +40,18 @@ public final class ScopedVaultGenerationService {
         }
         Files.createDirectories(vault);
         FileUtil.writeString(vault.resolve("vault-generation.json"), "{\"vault_schema_version\":3,\"complete\":false}\n");
-        try (MapperProgress progress = new MapperProgress(vault.resolve("composer-mapper.log"), started)) {
+        try (MapperProgress progress = new MapperProgress(vault.resolve("composer-mapper.log"), started, analysis != null)) {
         try {
         progress.event("Scoped run started: root=" + root + " | source files=" + files.size()
             + " | log=" + vault.resolve("composer-mapper.log"), true);
         progress.event("Indexing source definitions", true);
         ScopedDefinitionCatalog catalog = new ScopedDefinitionCatalog(root, files, report,
-            message -> progress.event(message, false));
+            message -> progress.event(message, true));
+        if (analysis != null) {
+            progress.event("Saving completed source index checkpoint", true);
+            analysis.checkpointIndex();
+            progress.event("Completed source index checkpoint saved", true);
+        }
         VaultManifestWriter manifest = analysis == null ? new VaultManifestWriter(workspace)
             : new il.co.dcd.composermapper.storage.IndexedManifestWriter(analysis,workspace);
         manifest.useCanonicalLayout();
@@ -116,7 +121,7 @@ public final class ScopedVaultGenerationService {
                         value -> registrations(files, sourceChain));
                     if (!inventory.contains(dependency.key(workspace))) {
                         var sourceConnection = writeOperation(vault, catalog, manifest, sourceRegistration, sourceChain,
-                            sourceChannel, dependency, workspace, markdown, true);
+                            sourceChannel, dependency, workspace, markdown, true, progress);
                         if (catalog.steps(dependency).stream().allMatch(step ->
                             ChannelStepSelection.applies(XmlUtil.attr(step.element(), "onlyFor"), sourceChannel)))
                             sourceConnections.put(dependency.key(workspace), sourceConnection);
@@ -124,7 +129,7 @@ public final class ScopedVaultGenerationService {
                     var sourceConnection = sourceConnections.get(dependency.key(workspace));
                     connections.add(channel.equals(sourceChannel) && sourceConnection != null ? sourceConnection
                         : writeOperation(vault, catalog, manifest, registration, chain, channel,
-                            dependency, workspace, markdown, false));
+                            dependency, workspace, markdown, false, progress));
                     for (var target : OperationDependencyConnections.targets(catalog, dependency, chain, channel, registration))
                         pending.add(target);
                 }
@@ -146,7 +151,14 @@ public final class ScopedVaultGenerationService {
             if (inventoryProcessed == 1 || inventoryProcessed % 100 == 0 || inventoryProcessed == inventoryDefinitions.size())
                 progress.event("Inventory " + inventoryProcessed + "/" + inventoryDefinitions.size() + " "
                     + definition.kind() + " " + definition.name() + " | source=" + definition.file(), false);
-            writeInventory(vault, definition, manifest, workspace, markdown, catalog);
+            String context = definition.kind() + " " + definition.name() + " | source=" + definition.file()
+                + " | selector=" + definition.selector();
+            progress.event("Starting inventory definition " + inventoryProcessed + "/" + inventoryDefinitions.size()
+                + " " + context, true);
+            try { writeInventory(vault, definition, manifest, workspace, markdown, catalog); }
+            catch (IOException | RuntimeException error) {
+                throw new IOException("Inventory definition failed: " + context + " | " + error.getMessage(), error);
+            }
         }
         if (report.hasFailures()) report.failedXmlFiles().forEach((file, error) ->
             diagnostic("", "", "source_parse", file + ": " + error));
@@ -182,7 +194,9 @@ public final class ScopedVaultGenerationService {
 
     private Map<String, Object> writeOperation(Path vault, ScopedDefinitionCatalog catalog, VaultManifestWriter manifest,
             Indexes registration, List<String> chain, String channel, SourceDefinitionIdentity operation,
-            String workspace, boolean markdown, boolean render) throws IOException {
+            String workspace, boolean markdown, boolean render, MapperProgress progress) throws IOException {
+        progress.event("Starting operation definition " + operation.name() + " | source=" + operation.file()
+            + " | selector=" + operation.selector(), true);
         if (analysis != null) analysis.contextMappings(channel,registration,chain);
         String prefix = ScopedVaultPaths.operation(operation.channel(), operation.name());
         String operationIdentity = SourceDefinitionIdentity.digest(channel, operation.key(workspace));
@@ -236,6 +250,8 @@ public final class ScopedVaultGenerationService {
                     diagnostic(channel, operation.name(), "resource", "Missing " + kind + ": " + name);
                     continue;
                 }
+                progress.event("Starting operation resource " + source.kind() + " " + source.name()
+                    + " | source=" + source.file() + " | selector=" + source.selector(), true);
                 selected.put(kind + ":" + name, source);
                 paths.put(FOLDERS.get(kind) + ":" + name, OperationDependencyConnections.resourcePath(source, workspace));
                 if (kind.equals("format")) {
@@ -266,6 +282,7 @@ public final class ScopedVaultGenerationService {
             // Render a unique source candidate as evidence, without declaring it the loaded implementation.
             if (candidates.size() == 1) {
                 var source = candidates.getFirst(); selected.put("java_class:" + name, source);
+                progress.event("Starting operation Java resource " + source.name() + " | source=" + source.file(), true);
                 index.classToSource().put(name, source.file());
                 paths.put("classes:" + name, OperationDependencyConnections.resourcePath(source, workspace));
                 var parsed = new JavaClassParser().parse(source.file());

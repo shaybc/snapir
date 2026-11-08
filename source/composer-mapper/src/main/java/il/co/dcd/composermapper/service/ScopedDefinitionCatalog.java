@@ -26,9 +26,11 @@ public final class ScopedDefinitionCatalog {
     /** Catalogs the same source occurrences while reporting indexing progress. */
     public ScopedDefinitionCatalog(Path root, List<DiscoveredFile> files, ProcessingReport report,
                                    java.util.function.Consumer<String> progress) {
+        if (analysis != null && analysis.restoredIndex()) return;
         int processed = 0;
         for (var file : analysis == null ? files.stream().sorted(Comparator.comparing(f -> f.path().toString())).toList() : files) {
             processed++;
+            progress.accept("Starting source indexing " + processed + "/" + files.size() + ": " + file.path());
             if (processed == 1 || processed % 100 == 0 || processed == files.size())
                 progress.accept("Indexing source " + processed + "/" + files.size() + ": " + file.path());
             if (file.type() == DiscoveredFile.FileType.XML) {

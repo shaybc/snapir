@@ -222,6 +222,35 @@ def test_nested_same_name_definitions_keep_parent_occurrences(tmp_path, scoped_m
     assert [node.children[0].attributes['dataName'] for node in nested] == ['NestedFirst', 'NestedSecond']
 
 
+def test_inline_switch_format_preserves_cases_and_reference_targets(tmp_path, scoped_mapper):
+    def change(root):
+        for channel in ('XML', 'SME'):
+            ini = root / 'Channel' / channel / 'dse.ini'
+            ini.write_text(ini.read_text().replace('<kColl id="formats">', '<kColl id="formats">'
+                '<field id="SwitchCaseFormat" value="example.Collection"/>'
+                '<field id="caseRefFmt" value="example.Collection"/>'))
+        path = root / 'Channel/XML/Flows.xml'
+        path.write_text(path.read_text().replace('<refFmt refid="Leaf"/><refFmt refid="Leaf"/>', '''
+          <fmtDef id="Choice"><SwitchCaseFormat>
+            <caseRefFmt keyName="Option" keyValue="S"><refFmt refid="Leaf"/></caseRefFmt>
+            <caseRefFmt keyName="Option" keyValue="D"><refFmt refid="Two"/></caseRefFmt>
+            <caseRefFmt default="yes"><refFmt refid="Err"/></caseRefFmt>
+          </SwitchCaseFormat></fmtDef><refFmt refid="Leaf"/>'''))
+    conn, root, _ = import_workspace(tmp_path, scoped_mapper, change=change)
+    closure = profiled(conn, root)
+    assert closure.status == 'evidence_ready', closure.blocking_issues
+    request = closure.formats[closure.format_roles['csRequestFormat']]
+    inner = next(node for node in nodes(request) if node.tag == 'fmtDef' and node.attributes['id'] == 'Choice')
+    switch = inner.children[0]
+    assert switch.tag == 'SwitchCaseFormat'
+    assert [child.attributes for child in switch.children] == [
+        {'keyName': 'Option', 'keyValue': 'S'}, {'keyName': 'Option', 'keyValue': 'D'}, {'default': 'yes'}]
+    references = [child.children[0] for child in switch.children]
+    assert [node.attributes['refid'] for node in references] == ['Leaf', 'Two', 'Err']
+    assert all(node.reference_definition_id in closure.formats for node in references)
+    assert request.children[0].children[-1].attributes == {'refid': 'Leaf'}
+
+
 def test_context_storage_does_not_mix_channel_overrides(tmp_path, scoped_mapper):
     conn, root, _ = import_workspace(tmp_path, scoped_mapper)
     sme = profiled(conn, root)

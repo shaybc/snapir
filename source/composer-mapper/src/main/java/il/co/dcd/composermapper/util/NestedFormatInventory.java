@@ -28,7 +28,7 @@ public final class NestedFormatInventory {
     public static int ordinal(SourceDefinitionIdentity source, SourceDefinitionIdentity parent) {
         List<Element> nested = new ArrayList<>();
         collect(parent.element(), nested);
-        for (int i = 0; i < nested.size(); i++) if (nested.get(i) == source.element()) return i + 1;
+        for (int i = 0; i < nested.size(); i++) if (nested.get(i).isSameNode(source.element())) return i + 1;
         throw new IllegalArgumentException("Nested format is absent from parent: " + source.selector());
     }
 

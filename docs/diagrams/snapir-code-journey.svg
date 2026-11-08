@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2420" height="1740" viewBox="0 0 2420 1740"><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#386e98" stroke-width="1.6"/></marker></defs><rect width="2420" height="1740" fill="#ffffff"/>
+<text x="80" y="65" font-family="Arial,sans-serif" font-size="34" fill="#193f5c" font-weight="700" text-anchor="start">SNAPIR — THE CODE JOURNEY</text>
+<text x="80" y="109" font-family="Arial,sans-serif" font-size="24" fill="#31475a" font-weight="400" text-anchor="start">From Composer source to a tested native operation, then to a portable microservice project</text>
+<text x="80" y="157" font-family="Arial,sans-serif" font-size="20" fill="#65788a" font-weight="400" text-anchor="start">Follow stages 1–9. Component-level validation and operation-level validation are separate checkpoints.</text>
+<polyline points="700,370 900,370" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="737.75" y="334" width="124.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="800" y="354" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">parse / map</text>
+<polyline points="1520,370 1720,370" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1576.75" y="334" width="86.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="1620" y="354" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">resolve</text>
+<polyline points="2030,520 2030,720" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1925.0" y="612" width="210.0" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="2030" y="632" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">convert missing code</text>
+<polyline points="1720,870 1520,870" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1543.5" y="834" width="153.0" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="1620" y="854" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">compile / test</text>
+<polyline points="900,870 700,870" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="728.25" y="834" width="143.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="800" y="854" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">accepted APIs</text>
+<polyline points="390,1020 390,1220" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="299.25" y="1111" width="181.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="390" y="1131" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">test the assembly</text>
+<polyline points="700,1370 900,1370" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="728.25" y="1334" width="143.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="800" y="1354" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">accepted Java</text>
+<polyline points="1520,1370 1720,1370" fill="none" stroke="#386e98" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1576.75" y="1334" width="86.5" height="32" rx="3" fill="white" stroke="white" stroke-width="2"/>
+<text x="1620" y="1354" font-family="Arial,sans-serif" font-size="18" fill="#386e98" font-weight="600" text-anchor="middle">package</text>
+<rect x="80" y="220" width="620" height="300" rx="15" fill="#fff8e8" stroke="#d5ac58" stroke-width="2"/>
+<circle cx="116" cy="255" r="23" fill="#89652b"/>
+<text x="116" y="263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">1</text>
+<text x="155" y="263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Composer source</text>
+<path d="M110,300 H170 L192,322 V390 H110 Z M170,300 V322 H192" fill="#ffffff" stroke="#89652b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="151" y="361" font-family="Arial,sans-serif" font-size="23" fill="#89652b" font-weight="700" text-anchor="middle">XML</text>
+<text x="225" y="334" font-family="Arial,sans-serif" font-size="22" fill="#89652b" font-weight="600" text-anchor="start">Original system inputs</text>
+<path d="M103,406 H677" fill="none" stroke="#d5ac58" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">XML operation, format and step definitions</text>
+<text x="104" y="468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Java implementations, libraries and classpath</text>
+<text x="104" y="497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Selected operations are the conversion roots</text>
+<rect x="900" y="220" width="620" height="300" rx="15" fill="#edf4fa" stroke="#86abc5" stroke-width="2"/>
+<circle cx="936" cy="255" r="23" fill="#346b93"/>
+<text x="936" y="263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">2</text>
+<text x="975" y="263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">AST analysis &amp; Composer mapping</text>
+<path d="M930,300 H990 L1012,322 V390 H930 Z M990,300 V322 H1012" fill="#ffffff" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="971" y="361" font-family="Arial,sans-serif" font-size="23" fill="#346b93" font-weight="700" text-anchor="middle">AST</text>
+<text x="1045" y="334" font-family="Arial,sans-serif" font-size="22" fill="#346b93" font-weight="600" text-anchor="start">Structured source understanding</text>
+<path d="M923,406 H1497" fill="none" stroke="#86abc5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="924" y="439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Parse Java and Composer XML relationships</text>
+<text x="924" y="468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Generate a map or verify an existing map</text>
+<text x="924" y="497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Retain source fingerprints and reusable analysis</text>
+<rect x="1720" y="220" width="620" height="300" rx="15" fill="#edf4fa" stroke="#86abc5" stroke-width="2"/>
+<circle cx="1756" cy="255" r="23" fill="#346b93"/>
+<text x="1756" y="263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">3</text>
+<text x="1795" y="263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Dependency collection &amp; reuse</text>
+<rect x="1779" y="305" width="26" height="24" rx="5" fill="white" stroke="#346b93" stroke-width="2"/>
+<path d="M1792,329 L1760,361" fill="none" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1747" y="360" width="26" height="24" rx="5" fill="white" stroke="#346b93" stroke-width="2"/>
+<path d="M1792,329 L1824,361" fill="none" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1811" y="360" width="26" height="24" rx="5" fill="white" stroke="#346b93" stroke-width="2"/>
+<text x="1865" y="334" font-family="Arial,sans-serif" font-size="22" fill="#346b93" font-weight="600" text-anchor="start">Complete dependency graph</text>
+<path d="M1743,406 H2317" fill="none" stroke="#86abc5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1744" y="439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Collect formats, OpSteps, classes and operations</text>
+<text x="1744" y="468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Resolve dependencies across source projects</text>
+<text x="1744" y="497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Select reusable JARs or registered HTTP APIs</text>
+<rect x="1720" y="720" width="620" height="300" rx="15" fill="#edf4fa" stroke="#86abc5" stroke-width="2"/>
+<circle cx="1756" cy="755" r="23" fill="#346b93"/>
+<text x="1756" y="763" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">4</text>
+<text x="1795" y="763" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Low-level native conversion</text>
+<path d="M1750,800 H1810 L1832,822 V890 H1750 Z M1810,800 V822 H1832" fill="#ffffff" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1791" y="861" font-family="Arial,sans-serif" font-size="23" fill="#346b93" font-weight="700" text-anchor="middle">JAVA</text>
+<text x="1865" y="834" font-family="Arial,sans-serif" font-size="22" fill="#346b93" font-weight="600" text-anchor="start">Native Java components</text>
+<path d="M1743,906 H2317" fill="none" stroke="#86abc5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1744" y="939" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Reuse compatible converted components first</text>
+<text x="1744" y="968" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">AI converts missing base formats and OpSteps</text>
+<text x="1744" y="997" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Preserve typed APIs and configuration behavior</text>
+<rect x="900" y="720" width="620" height="300" rx="15" fill="#f2ecfa" stroke="#a98bc7" stroke-width="2"/>
+<circle cx="936" cy="755" r="23" fill="#77539b"/>
+<text x="936" y="763" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">5</text>
+<text x="975" y="763" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Component tests &amp; format checks</text>
+<path d="M945,809 H995 V889 H945 Z" fill="#ffffff" stroke="#77539b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M934,839 L946,850 L964,825" fill="none" stroke="#77539b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M961,865 H984 M961,878 H984" fill="none" stroke="#77539b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1045" y="834" font-family="Arial,sans-serif" font-size="22" fill="#77539b" font-weight="600" text-anchor="start">Validated component implementations</text>
+<path d="M923,906 H1497" fill="none" stroke="#a98bc7" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="924" y="939" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Compile and run AI-generated JUnit tests</text>
+<text x="924" y="968" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Mock external services, databases and resources</text>
+<text x="924" y="997" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Compare XML format behavior with shared fixtures</text>
+<rect x="80" y="720" width="620" height="300" rx="15" fill="#edf4fa" stroke="#86abc5" stroke-width="2"/>
+<circle cx="116" cy="755" r="23" fill="#346b93"/>
+<text x="116" y="763" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">6</text>
+<text x="155" y="763" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Operation assembly</text>
+<rect x="105" y="806" width="36" height="30" rx="4" fill="white" stroke="#346b93" stroke-width="2"/>
+<rect x="160" y="806" width="36" height="30" rx="4" fill="white" stroke="#346b93" stroke-width="2"/>
+<rect x="133" y="863" width="36" height="30" rx="4" fill="white" stroke="#346b93" stroke-width="2"/>
+<path d="M123,836 V849 H151 V863 M178,836 V849 H151" fill="none" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="225" y="834" font-family="Arial,sans-serif" font-size="22" fill="#346b93" font-weight="600" text-anchor="start">Complete native operation</text>
+<path d="M103,906 H677" fill="none" stroke="#86abc5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="939" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Compose accepted formats and operation steps</text>
+<text x="104" y="968" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Recreate routing, data flow and error handling</text>
+<text x="104" y="997" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Generate HTTP clients for called operations</text>
+<rect x="80" y="1220" width="620" height="300" rx="15" fill="#f2ecfa" stroke="#a98bc7" stroke-width="2"/>
+<circle cx="116" cy="1255" r="23" fill="#77539b"/>
+<text x="116" y="1263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">7</text>
+<text x="155" y="1263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Operation-level validation</text>
+<path d="M125,1309 H175 V1389 H125 Z" fill="#ffffff" stroke="#77539b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M114,1339 L126,1350 L144,1325" fill="none" stroke="#77539b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M141,1365 H164 M141,1378 H164" fill="none" stroke="#77539b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="225" y="1334" font-family="Arial,sans-serif" font-size="22" fill="#77539b" font-weight="600" text-anchor="start">Tested runnable operation</text>
+<path d="M103,1406 H677" fill="none" stroke="#a98bc7" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="1439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Execute JUnit tests for operation behavior/routes</text>
+<text x="104" y="1468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Use mocks for external systems and called APIs</text>
+<text x="104" y="1497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Retain validated XML samples and test evidence</text>
+<rect x="900" y="1220" width="620" height="300" rx="15" fill="#edf4fa" stroke="#86abc5" stroke-width="2"/>
+<circle cx="936" cy="1255" r="23" fill="#346b93"/>
+<text x="936" y="1263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">8</text>
+<text x="975" y="1263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Microservice generation</text>
+<path d="M930,1300 H990 L1012,1322 V1390 H930 Z M990,1300 V1322 H1012" fill="#ffffff" stroke="#346b93" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="971" y="1361" font-family="Arial,sans-serif" font-size="23" fill="#346b93" font-weight="700" text-anchor="middle">HTTP</text>
+<text x="1045" y="1334" font-family="Arial,sans-serif" font-size="22" fill="#346b93" font-weight="600" text-anchor="start">Spring Boot service + deployment files</text>
+<path d="M923,1406 H1497" fill="none" stroke="#86abc5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="924" y="1439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Wrap accepted business code with a REST API</text>
+<text x="924" y="1468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Configure service addresses and runtime settings</text>
+<text x="924" y="1497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Build/test the JAR; validate Helm output</text>
+<rect x="1720" y="1220" width="620" height="300" rx="15" fill="#eaf5ee" stroke="#81ad90" stroke-width="2"/>
+<circle cx="1756" cy="1255" r="23" fill="#3c7d56"/>
+<text x="1756" y="1263" font-family="Arial,sans-serif" font-size="24" fill="white" font-weight="700" text-anchor="middle">9</text>
+<text x="1795" y="1263" font-family="Arial,sans-serif" font-size="25" fill="#1f425c" font-weight="700" text-anchor="start">Portable, maintainable project</text>
+<path d="M1745,1322 L1789,1300 L1833,1322 L1789,1346 Z M1745,1322 V1373 L1789,1395 L1833,1373 V1322 M1789,1346 V1395" fill="#ffffff" stroke="#3c7d56" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1865" y="1334" font-family="Arial,sans-serif" font-size="22" fill="#3c7d56" font-weight="600" text-anchor="start">Source + tests + runnable deliverables</text>
+<path d="M1743,1406 H2317" fill="none" stroke="#81ad90" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1744" y="1439" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Keep Java/Maven sources, tests and shared JARs</text>
+<text x="1744" y="1468" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Include launchers, config, Helm and documentation</text>
+<text x="1744" y="1497" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Develop and maintain the delivered project</text>
+<rect x="80" y="563" width="1500" height="94" rx="10" fill="#f8f6fc" stroke="#d7cce6" stroke-width="2"/>
+<text x="104" y="597" font-family="Arial,sans-serif" font-size="17" fill="#79579b" font-weight="700" text-anchor="start">SHARED REUSE</text>
+<text x="104" y="629" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Compatible converted code can skip another AI conversion. Current-source, API and build/test checks still apply.</text>
+<rect x="900" y="1063" width="1440" height="94" rx="10" fill="#f8fafc" stroke="#d6e1e9" stroke-width="2"/>
+<text x="924" y="1097" font-family="Arial,sans-serif" font-size="17" fill="#496d87" font-weight="700" text-anchor="start">CONTROL &amp; RECOVERY</text>
+<text x="924" y="1129" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">SQLite checkpoints every stage. Failures return diagnostics to the relevant implementation or test work.</text>
+<text x="80" y="1595" font-family="Arial,sans-serif" font-size="21" fill="#244e69" font-weight="600" text-anchor="start">Deliverables include standalone and microservice outputs; the portable project retains the source and tests needed for maintenance.</text>
+<text x="80" y="1634" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Mocks replace external dependencies in tests, not the business behavior being validated. Format comparisons use observed XML cases.</text>
+<text x="80" y="1673" font-family="Arial,sans-serif" font-size="20" fill="#31475a" font-weight="400" text-anchor="start">Source/AST analysis stays enabled. Formal fact collection/validation stays disabled. Image publication and deployment are user actions.</text>
+</svg>
