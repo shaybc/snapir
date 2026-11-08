@@ -47,21 +47,23 @@ public class ChannelFormat {private String name; public void initializeFrom(Tag 
         discovery=dict(requirements=[dict(requirement_id='channel', context_key='runtime.channel', value_type='string', citations=[citation])]))
 
 
-@pytest.mark.parametrize('collect_facts', [True, False])
-def test_channel_context_runs_both_branches_without_a_format_specific_adapter(boundary_tool, tmp_path, collect_facts):
+@pytest.mark.parametrize('collect_facts,verification_mode', [(True,'checklist_v1'), (False,'checklist_v1'), (False,'test_based_v1')])
+def test_channel_context_runs_both_branches_without_a_format_specific_adapter(boundary_tool, tmp_path, collect_facts, verification_mode):
     plan = channel_case(); before = plan.model_dump_json()
-    profile = PipelineConfiguration(java_version=25, format_comparison={'enabled': True, 'collect_facts': collect_facts})
+    profile = PipelineConfiguration(java_version=25, format_comparison={'enabled': True, 'collect_facts': collect_facts},
+        executable_verification={'mode':verification_mode})
     report = run_comparison(plan, profile, tmp_path / 'channel', tool=boundary_tool)
     assert report['status'] == 'completed', report
-    assert report['counts']['matched'] == 2, report
+    assert report['counts']['matched'] == 3, report
     assert report['cases'][0]['legacy']['output'] == '<result>online</result>'
     assert report['cases'][1]['legacy']['output'] == '<result>branch</result>'
     assert report['cases'][2]['legacy']['exception']['causes'][0]['type'] == 'java.lang.IllegalStateException'
-    assert report['cases'][2]['status'] == 'comparison_unavailable'  # Partial state on failure remains explicit.
+    assert report['cases'][2]['status'] == 'matched'
+    assert report['cases'][2]['native']['exception']['causes'][0]['type'] == 'java.lang.IllegalStateException'
     assert report['inputs_unchanged'] and plan.model_dump_json() == before
     assert not report['conversion_resumed'] and not report['acceptance_changed']
     assert report['fact_validation'] == 'not_run' and not report['fact_validation_blocking']
-    assert report['fact_collection'] == ('enabled' if collect_facts else 'disabled_for_test')
+    assert report['fact_collection'] == ('enabled' if collect_facts else 'disabled' if verification_mode=='test_based_v1' else 'disabled_for_test')
     if not collect_facts:
         assert not any(probe['id'].startswith('check-') for case in report['cases'] for probe in case['legacy']['probes'])
     else:

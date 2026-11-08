@@ -17,6 +17,7 @@ from tools.behavior_verification.java_tool import default_tool_path
 
 def run_comparison(plan, profile, directory=None, *, tool=None):
     """Run explicit diagnostics only; never open migration state or mark conversion accepted."""
+    from runtime.behavior_conversion.verification_mode import test_based_mode
     settings = profile.format_comparison
     if not settings.enabled:
         raise ValueError('Format comparison is disabled; explicitly enable the diagnostic setting')
@@ -29,7 +30,7 @@ def run_comparison(plan, profile, directory=None, *, tool=None):
     report = dict(label=plan.label, directory=str(directory.resolve()), status='running', cases=[], acceptance_changed=False, conversion_resumed=False,
                   exhaustive_equivalence=False, plan_hash=digest(plan.model_dump(mode='json')),
                   policy=settings.model_dump(mode='json'), limitations=list(plan.discovery.limitations),
-                  fact_collection='enabled' if settings.collect_facts else 'disabled_for_test',
+                  fact_collection='enabled' if settings.collect_facts else 'disabled' if test_based_mode(profile) else 'disabled_for_test',
                   fact_validation='not_run', fact_validation_blocking=False,
                   unresolved_inputs=plan.discovery.model_dump(mode='json'),
                   isolation='fresh JVM per side per case; disposable compiled snapshots')

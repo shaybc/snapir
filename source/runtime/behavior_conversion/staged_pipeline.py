@@ -33,7 +33,10 @@ def staged_pipeline(conn,config,profile,category,identity,payload,schema,validat
     from runtime.behavior_conversion.stage_scope import verify_parent
     verify_parent(conn,config,profile,category,identity,payload)
     payload=dict(payload)
-    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload
+    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload,facts_disabled
+    if facts_disabled(profile):
+        payload.pop('parser_checklist',None)
+        payload.pop('checklist',None)
     if executable_mode(profile) or conversion_mode(profile):payload['executable_verification']=policy_payload(profile)
     if not payload.get('typed_boundary_contract'):attach_typed_boundary(payload)
     from runtime.behavior_conversion.compatibility import versioned_requirements

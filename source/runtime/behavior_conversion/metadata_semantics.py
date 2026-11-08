@@ -21,7 +21,7 @@ def semantic_request(payload,production,inventory):
     # Exact original methods/configuration can be followed through this local source
     # selection. Do not resend test examples, checklist entries or previous giant bundles.
     result['sources']=payload.get('sources',[])
-    if payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}:
+    if payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1','test_based_v1'}:
         result['slice_sources']=payload.get('slice_sources',[])
     return result
 
@@ -53,7 +53,7 @@ def materialize(value,payload,inventory,production):
             contracts[key]={**semantics,**expected[key],'apis':selected(names,members)}
         data['contracts']=contracts
     evidence=list(dict.fromkeys([item for fields in expected.values() for item in fields['evidence_ids']] or [s['identity'] for s in payload.get('sources',[])]))
-    if not evidence and payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}:
+    if not evidence and payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1','test_based_v1'}:
         evidence=list(payload.get('evidence_ids',[]))
     if data.get('unit_contract') is not None:
         unit=payload.get('unit') or payload.get('selected_unit') or payload

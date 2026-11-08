@@ -66,7 +66,8 @@ class Validator:
 
 @pytest.mark.parametrize('schema,kind',[(NativeComponentBundle,'basic_component'),
     (NativeFormatComponentBundle,'format_composition'),(NativeUnitBundle,'response_format')])
-def test_executable_mode_omits_checklist_mapping(monkeypatch,schema,kind):
+@pytest.mark.parametrize('verification_mode', ['executable_boundary_v1', 'test_based_v1'])
+def test_executable_mode_omits_checklist_mapping(monkeypatch,schema,kind,verification_mode):
     """The opt-in path never sends an exhaustive checklist to the model."""
     monkeypatch.setattr('runtime.component_conversion.scope.require_component_task',lambda *a:None)
     def forbidden(*args,**kwargs):raise AssertionError('Checklist mapping must not run')
@@ -82,16 +83,23 @@ def test_executable_mode_omits_checklist_mapping(monkeypatch,schema,kind):
         if title==schema.__name__.replace('Bundle','Details'):
             assert 'contracts' not in req['schema']['properties'] and 'unit_contract' not in req['schema']['properties']
             data={'component_details':{}} if 'contracts' in schema.model_fields else {}
-            if schema is NativeFormatComponentBundle:
+            if schema is NativeFormatComponentBundle and verification_mode != 'test_based_v1':
                 data['verification_binding']=metadata(schema)['verification_binding']
             elif schema is NativeUnitBundle:
-                data['verification_binding']=dict(owner_type=PKG+'.Formatter',method_name='format',
-                    arguments=[dict(type_name='java.lang.String',source='context',key='Value')])
+                if verification_mode == 'test_based_v1':
+                    data['entry_type'] = PKG+'.Formatter'
+                else:
+                    data['verification_binding']=dict(owner_type=PKG+'.Formatter',method_name='format',
+                        arguments=[dict(type_name='java.lang.String',source='context',key='Value')])
             return json.dumps(data)
         assert title=='NativeTestBundle'
-        return NativeTestBundle(files=[dict(path=TEST_PATH,content=TEST)],coverage={'r':[TEST_PATH]}).model_dump_json()
+        test = TEST
+        if verification_mode == 'test_based_v1' and schema is NativeUnitBundle:
+            test = ('package '+PKG+'; public class FormatterTest { @org.junit.jupiter.api.Test public void preservesValue(){'
+                'org.junit.jupiter.api.Assertions.assertEquals("value",new Formatter().format("value"));}}')
+        return NativeTestBundle(files=[dict(path=TEST_PATH,content=test)],coverage={'r':[TEST_PATH]}).model_dump_json()
     try:
-        profile=PipelineConfiguration(model_provider='mock',executable_verification={'mode':'executable_boundary_v1'})
+        profile=PipelineConfiguration(model_provider='mock',executable_verification={'mode':verification_mode})
         result,_=generate(conn,config,profile,'component_generation','unit','Unused combined instructions',payload,
             schema,validator=Validator(),model_call=model)
         assert not getattr(result,'checklist_implementations',{}) and len(result.files)==2

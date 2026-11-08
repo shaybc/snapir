@@ -27,7 +27,7 @@ def write_deployment(path, spec):
     Path(path).write_text(yaml.safe_dump(deployment_values(spec),sort_keys=False,allow_unicode=True),encoding='utf-8')
 
 
-def load_deployment(item, *, persist=True):
+def load_deployment(item, *, persist=True, profile=None):
     """Seed once or preview without writes; never copy credentials or overwrite an edited definition."""
     project = Path(item['project'])
     path = project / 'values.yaml'
@@ -52,6 +52,14 @@ def load_deployment(item, *, persist=True):
             operation=dict(identity=identity, database=selected if jdbc else None, initialization={}),
             http=dict(path=item['payload'].get('native_http_contract',{}).get('path','/api/' + identity),serviceName=name),
             databases={selected:dict(credentialsSecret=dict(name=name + '-database'))} if jdbc else {}))
+        from runtime.behavior_conversion.verification_mode import test_based_mode
+        if profile is not None and test_based_mode(profile):
+            from runtime.service_addresses import operation_address
+            address = operation_address(profile,item['channel'],item['operation_id'],'service.address')
+            data = result.model_dump(mode='json')
+            data['http'].update(port=address.port,serviceName=address.service_name)
+            data['deployment']['namespace'] = address.namespace or ''
+            result = MicroserviceDeployment.model_validate(data)
         if persist:
             write_deployment(path,result)
     if result.operation.identity != identity:

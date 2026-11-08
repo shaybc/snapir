@@ -160,6 +160,6 @@ class PipelineConfiguration(BaseModel):
         """Citation-free generation requires the separated implementation/test path."""
         if self.executable_verification.mode == 'executable_boundary_v1' and not self.staged_unit_conversion:
             raise ValueError('Executable boundary verification requires staged_unit_conversion')
-        if self.executable_verification.mode == 'conversion_checklist_v1' and (not self.staged_unit_conversion or not self.metadata_checklist_batching):
+        if self.executable_verification.mode in {'conversion_checklist_v1','test_based_v1'} and (not self.staged_unit_conversion or not self.metadata_checklist_batching):
             raise ValueError('Conversion checklist readiness requires staged conversion and bounded checklist batching')
         return self

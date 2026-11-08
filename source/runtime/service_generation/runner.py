@@ -100,7 +100,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
         deployment = None
         if profile.microservice.enabled and not item['issues']:
             from runtime.service_generation.deployment_configuration import load_deployment
-            deployment = load_deployment(item)
+            deployment = load_deployment(item,profile=profile)
             from runtime.operation_reuse.runtime_settings import configure_microservice_calls
             deployment = configure_microservice_calls(conn, config, profile, deployment, Path(item['project']) / 'values.yaml')
             item = dict(item, fingerprint=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest())
@@ -325,7 +325,7 @@ def run_service_generation(conn, config, profile, plan, directory, *, gate_check
     if profile.microservice.enabled:
         for item in fresh:
             if not item['issues']:
-                deployment=load_deployment(item)
+                deployment=load_deployment(item,profile=profile)
                 item['fingerprint']=hashlib.sha256((item['fingerprint']+deployment.model_dump_json()).encode()).hexdigest()
     expected = [(value["operation_id"], value["channel"],
                  hashlib.sha256((value["fingerprint"] + report + generation_settings_identity(profile)).encode()).hexdigest()) for value in fresh]

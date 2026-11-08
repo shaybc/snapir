@@ -42,13 +42,16 @@ def wrapped_summary(lines, width):
                      subsequent_indent='  ', replace_whitespace=False) or [''])
 
 
-def review_configuration(draft, inputs, configs, names):
+def review_configuration(draft, inputs, configs, names, *, settings_transform=None):
     """Offer explicit Save/Edit/Back/Cancel; an extra Enter initially chooses Edit."""
     data = draft.values()
+    if settings_transform:
+        data = settings_transform(data)
     destination = configs / (data['_name'] + '.yaml')
     while True:
         lines = [*([safe_value(inputs.feedback)] if inputs.feedback else []), f'Destination: {safe_value(str(destination))}',
                  'Existing file will require replacement confirmation.' if destination.exists() else 'New configuration file.',
+                 *(['Full conversion: fixed workflow settings; edit sections change user inputs only.'] if settings_transform else []),
                  *summary_lines(data, directory=configs)]
         action = inputs.api.select_option('Review configuration', [
             ('edit', 'Edit a section'), ('save', 'Save configuration'),

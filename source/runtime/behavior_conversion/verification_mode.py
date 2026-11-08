@@ -8,24 +8,42 @@ def executable_mode(profile):
 
 def conversion_mode(profile):
     """Conversion readiness requires mappings/build/JUnit, without paired execution."""
-    return getattr(getattr(profile,'executable_verification',None),'mode',None)=='conversion_checklist_v1'
+    return getattr(getattr(profile,'executable_verification',None),'mode',None) in {'conversion_checklist_v1','test_based_v1'}
 
 
-def facts_disabled(profile_or_settings):
-    """Only the explicit experimental profile may omit fact collection and validation."""
+def test_based_mode(profile_or_settings):
+    """Identify supported fact-free conversion without promoting historical experiments."""
+    settings = getattr(profile_or_settings, 'executable_verification', profile_or_settings)
+    return getattr(settings, 'mode', None) == 'test_based_v1'
+
+
+def experimental_mode(profile_or_settings):
+    """Preserve the explicit historical facts-disabled experiment boundary."""
     settings = getattr(profile_or_settings, 'executable_verification', profile_or_settings)
     return getattr(settings, 'mode', None) == 'conversion_checklist_v1' and bool(getattr(settings, 'experimental_disable_facts', False))
 
 
+def facts_disabled(profile_or_settings):
+    """Omit facts only for supported test-based conversion or explicit experiments."""
+    settings = getattr(profile_or_settings, 'executable_verification', profile_or_settings)
+    return test_based_mode(settings) or experimental_mode(settings)
+
+
 def conversion_version(profile):
     """Experimental build results cannot satisfy normal conversion-ready receipts."""
-    return 'conversion-facts-experiment-v1' if facts_disabled(profile) else 'conversion-checklist-v1'
+    if test_based_mode(profile):
+        return 'test-based-conversion-v1'
+    return 'conversion-facts-experiment-v1' if experimental_mode(profile) else 'conversion-checklist-v1'
 
 
 def policy_payload(profile):
     """Bind requests, cached stages and reuse to the complete verification policy."""
     data=profile.executable_verification.model_dump(mode='json')
     data.pop('experimental_disable_facts',None)
+    if test_based_mode(profile):
+        return dict(mode='test_based_v1', schema_version='test-based-conversion-v1',
+                    equivalence='not_assessed', fact_collection=False, fact_validation_blocking=False,
+                    checklist_mapping='disabled', executed_tests_required=True)
     if conversion_mode(profile):
         if facts_disabled(profile):
             return dict(mode='conversion_checklist_v1', schema_version='conversion-facts-experiment-v1',

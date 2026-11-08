@@ -11,8 +11,8 @@ from runtime.component_conversion.shared_identity import neutral_group, request_
 
 def convert_or_reuse(conn, config, profile, plan, group, request, candidate, generate):
     """Reuse only verified neutral code; always rebuild and validate against the current scope."""
-    from runtime.behavior_conversion.verification_mode import facts_disabled
-    if not getattr(profile, 'cross_run_component_reuse', True) or not neutral_group(plan, group) or facts_disabled(profile):
+    from runtime.behavior_conversion.verification_mode import experimental_mode
+    if not getattr(profile, 'cross_run_component_reuse', True) or not neutral_group(plan, group) or experimental_mode(profile):
         generate()
         return False
     key = request_identity(request, profile)

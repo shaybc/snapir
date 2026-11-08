@@ -12,7 +12,7 @@ class UnitStaticCheckReport(BaseModel):
     candidate_hash: str = ''
     policy_hash: str = ''
     tool_hash: str | None = None
-    status: Literal['mapping_valid', 'mapping_invalid', 'verification_incomplete', 'facts_disabled_for_test'] = 'verification_incomplete'
+    status: Literal['mapping_valid', 'mapping_invalid', 'verification_incomplete', 'facts_disabled_for_test', 'test_based_ready'] = 'verification_incomplete'
     decisions: list[dict[str, Any]] = Field(default_factory=list)
     errors: list[dict[str, Any]] = Field(default_factory=list)
     warnings: list[dict[str, Any]] = Field(default_factory=list)

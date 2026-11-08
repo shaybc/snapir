@@ -101,10 +101,13 @@ def _error_section(error):
     return 0
 
 
-def run_configuration_wizard(configs, api):
+def run_configuration_wizard(configs, api, *, flow=None):
     """Collect an editable draft and save only after explicit review and replacement approval."""
     draft = ConfigurationDraft()
-    inputs = WizardInputs(draft, api, SECTION_NAMES)
+    names = flow.SECTION_NAMES if flow else SECTION_NAMES
+    collector = flow.collect_section if flow else collect_section
+    error_section = flow.error_section if flow else _error_section
+    inputs = WizardInputs(draft, api, names)
     reviewing = False
     retry = False
     while True:
@@ -112,13 +115,13 @@ def run_configuration_wizard(configs, api):
             if not reviewing:
                 inputs.begin(retain=retry)
                 retry = False
-                result = collect_section(draft, inputs, configs, api)
+                result = collector(draft, inputs, configs, api)
                 if inputs.next() == 'edit':
                     retry = True
                     continue
                 _commit(draft, inputs, result)
                 inputs.feedback = ''
-                if draft.review_return or draft.section == len(SECTION_NAMES) - 1:
+                if draft.review_return or draft.section == len(names) - 1:
                     if draft.dirty:
                         draft.section = min(draft.dirty)
                         inputs.feedback = 'Source changed. Review channels and operations before saving.'
@@ -127,17 +130,21 @@ def run_configuration_wizard(configs, api):
                 else:
                     draft.section += 1
                     continue
-            action, section = review_configuration(draft, inputs, configs, SECTION_NAMES)
+            action, section = review_configuration(draft, inputs, configs, names,
+                **({'settings_transform': flow.completed_settings} if flow else {}))
             if action == 'cancel':
                 raise SelectionCancelled
             if action in {'back', 'edit'}:
-                draft.section = len(SECTION_NAMES) - 1 if action == 'back' else section
+                draft.section = len(names) - 1 if action == 'back' else section
                 draft.review_return = True
                 reviewing = False
                 continue
             if action != 'save':
                 continue
             data = draft.values()
+            if flow:
+                data = flow.completed_settings(data)
+                flow.validate_settings(data, configs)
             destination = api.configuration_path(configs, data.pop('_name'))
             # Validate before asking to replace an existing file; saving retains loader checks.
             api.PipelineConfiguration.model_validate(data)
@@ -171,7 +178,7 @@ def run_configuration_wizard(configs, api):
             inputs.feedback = 'Please correct: ' + safe_value(str(exc))
             print(inputs.feedback)
             if reviewing:
-                draft.section = _error_section(exc)
+                draft.section = error_section(exc)
                 draft.review_return = True
                 reviewing = False
             else:

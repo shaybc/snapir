@@ -18,7 +18,7 @@ An ambiguous binding remains unresolved. No checklist mapping is requested.'''
 
 def enabled(payload,schema):
     """Apply only to configured units and component contracts in the explicit new mode."""
-    return (payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1'}
+    return (payload.get('executable_verification',{}).get('mode') in {'executable_boundary_v1','conversion_checklist_v1','test_based_v1'}
         and ('contracts' in schema.model_fields or payload.get('kind') in
              {'request_unformat','response_format','configured_step'}))
 

@@ -137,7 +137,8 @@ def complete_arguments(args, parser) -> None:
         return
     if not args.command:
         args.command = select_option("What would you like to do?", [
-            ("create_config", "Create a new config"),
+            ("create_default_config", "Create Default Config"),
+            ("create_config", "Advanced Configuration"),
             ("start", "Start a new migration"), ("resume", "Resume a migration"),
             ("status", "View run status"), ("approve", "Approve a gate"),
             ("reject", "Reject a gate"),
@@ -149,7 +150,7 @@ def complete_arguments(args, parser) -> None:
         args.command = select_option("Help / README", [
             ("help", "Show help screen"), ("readme", "Open README in browser"),
         ])
-    if args.command in {"create_config", "help", "readme", "exit"}:
+    if args.command in {"create_default_config", "create_config", "help", "readme", "exit"}:
         return
     if not args.config:
         args.config = select_configuration()

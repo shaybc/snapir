@@ -19,7 +19,7 @@ def require_microservice_approval(conn, config, profile, directory, evidence, *,
         demo=None
         if not issues:
             try:
-                deployment=load_deployment(item,persist=True).model_dump(mode='json')
+                deployment=load_deployment(item,persist=True,profile=profile).model_dump(mode='json')
                 from pathlib import Path
                 from runtime.service_generation.deployment_configuration import read_deployment
                 from runtime.fixture_jdbc_tools.releases import file_hash,verify_directory

@@ -65,7 +65,7 @@ def test_command_menu_dispatches_selection(tmp_path, monkeypatch, terminal, comm
                    [command, str(tmp_path / "existing"), "exit"])
     def select(title, options, **kwargs):
         if title == "What would you like to do?":
-            assert [value for value, _ in options] == ["create_config", "start", "resume", "status", "approve", "reject", "documentation", "exit"]
+            assert [value for value, _ in options] == ["create_default_config", "create_config", "start", "resume", "status", "approve", "reject", "documentation", "exit"]
         return next(choices)
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))

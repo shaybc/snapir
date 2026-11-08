@@ -48,7 +48,7 @@ def require_unit_receipts(conn, config, record, *, expected_version=None):
             raise ValueError('Unit readiness policy changed; revalidate source, mappings and tests')
         if record.get('component_first') and not receipt.get('component_receipt'):
             raise ValueError('Component-first unit lacks transitive component acceptance: ' + binding['unit_id'])
-        allowed = {'parser-boundary-v1','executable-boundary-v1','conversion-checklist-v1'}
+        allowed = {'parser-boundary-v1','executable-boundary-v1','conversion-checklist-v1','test-based-conversion-v1'}
         if expected_version == 'conversion-facts-experiment-v1':allowed.add(expected_version)
         if receipt.get('verification_version') not in allowed or receipt.get('candidate_hash') != digest(binding['files']):
             raise ValueError('Unit verification receipt does not match native source manifest')
@@ -63,7 +63,7 @@ def _require_evidence(config, identity, receipt):
     if receipt.get('verification_version')=='conversion-facts-experiment-v1':
         from runtime.behavior_conversion.fact_validation_experiment import require_experiment_evidence
         return require_experiment_evidence(config,identity,receipt)
-    if receipt.get('verification_version')=='conversion-checklist-v1':
+    if receipt.get('verification_version') in {'conversion-checklist-v1','test-based-conversion-v1'}:
         from runtime.behavior_conversion.conversion_readiness import require_conversion_evidence
         return require_conversion_evidence(config,identity,receipt)
     from models.boundary_comparison_report import BoundaryComparisonReport

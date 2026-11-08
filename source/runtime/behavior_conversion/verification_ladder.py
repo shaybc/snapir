@@ -48,7 +48,7 @@ class UnitVerificationSession:
     def prepare_tests(self,bundle):
         """Finish source, invocation, settings and case preparation before test generation."""
         self.static(bundle)
-        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+        if self.executable_settings is not None and self.executable_settings.mode in {'conversion_checklist_v1','test_based_v1'}:
             return dict(mapping_status=self.static_report.status,behavioral_equivalence='not_assessed',
                 native_settings_apis=self.native_settings_apis)
         if self.executable_settings is not None and self.executable_settings.mode=='executable_boundary_v1':
@@ -58,7 +58,7 @@ class UnitVerificationSession:
 
     def static(self, bundle):
         """Schema/mapping/exclusion checks happen before compilation or file publication."""
-        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+        if self.executable_settings is not None and self.executable_settings.mode in {'conversion_checklist_v1','test_based_v1'}:
             from runtime.behavior_conversion.conversion_readiness import prepare_conversion
             return prepare_conversion(self,bundle)
         if self.executable_settings is not None and self.executable_settings.mode=='executable_boundary_v1':
@@ -82,9 +82,13 @@ class UnitVerificationSession:
 
     def complete(self,project,context,bundle,*,build_validation=None):
         """Complete the selected policy without invoking legacy execution in conversion mode."""
-        if self.executable_settings is not None and self.executable_settings.mode=='conversion_checklist_v1':
+        if self.executable_settings is not None and self.executable_settings.mode in {'conversion_checklist_v1','test_based_v1'}:
             from runtime.behavior_conversion.conversion_readiness import complete_conversion
-            return complete_conversion(self,bundle,build_validation)
+            result = complete_conversion(self,bundle,build_validation)
+            if self.executable_settings.mode == 'test_based_v1':
+                from runtime.behavior_conversion.verification_test_strength import prepare_measurement
+                prepare_measurement(self,project,bundle)
+            return result
         return self.compare(project,context,bundle,build_validation=build_validation)
 
     def compare(self, project, context, bundle, *, build_validation=None):

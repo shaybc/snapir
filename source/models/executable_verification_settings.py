@@ -8,7 +8,7 @@ from models.comparison_mutation_settings import ComparisonMutationSettings
 class ExecutableVerificationSettings(BaseModel):
     """Keep rollout explicit; coverage gaps never silently become verified behavior."""
     model_config=ConfigDict(extra='forbid')
-    mode: Literal['checklist_v1','executable_boundary_v1','conversion_checklist_v1']='checklist_v1'
+    mode: Literal['checklist_v1','executable_boundary_v1','conversion_checklist_v1','test_based_v1']='checklist_v1'
     experimental_disable_facts: bool = False
     max_cases: int=Field(default=512,ge=1,le=512)
     require_branch_coverage: bool=True

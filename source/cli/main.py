@@ -12,7 +12,7 @@ from tools.state_store_tools.runs import get_run
 from cli.interactive import SelectionCancelled, complete_arguments, complete_run_selection, select_status_run, select_resume_run, select_gate_run
 from cli.diagnostics import console_diagnostics
 from cli.readme import open_readme
-from cli.configuration_wizard import create_configuration
+from cli.configuration_wizard import create_configuration, create_default_configuration
 from cli.terminal_display import clear_screen
 from runtime.model_execution.error_details import sanitize_diagnostic, print_failure_traceback
 from runtime.model_execution.readiness import intake_model_warning
@@ -45,7 +45,9 @@ def main(argv: list[str] | None = None) -> int:
             command_selected_from_menu = args.command is None
             interactive_start = command_selected_from_menu or (args.command == 'start' and not args.run_id and is_interactive())
             complete_arguments(args, parser)
-            if args.command == "create_config":
+            if args.command == "create_default_config":
+                create_default_configuration()
+            elif args.command == "create_config":
                 create_configuration()
             elif args.command == "help":
                 parser.print_help()

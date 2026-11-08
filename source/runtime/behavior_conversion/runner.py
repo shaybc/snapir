@@ -484,8 +484,8 @@ def _convert_and_review(conn, config, profile, directory, closures, by_operation
             contract_project=str(project), contract_files=manifest["files"])
         from runtime.behavior_conversion.verification_mode import conversion_mode
         if conversion_mode(profile):
-            from runtime.behavior_conversion.verification_mode import facts_disabled,conversion_version
-            record.update(readiness_status='experimental_only' if facts_disabled(profile) else 'conversion_ready',
+            from runtime.behavior_conversion.verification_mode import experimental_mode,conversion_version
+            record.update(readiness_status='experimental_only' if experimental_mode(profile) else 'conversion_ready',
                           behavioral_equivalence='not_assessed',verification_version=conversion_version(profile))
         if component_provider is not None:
             record['component_first'] = True

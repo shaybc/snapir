@@ -394,7 +394,8 @@ def test_menu_create_returns_to_menu_then_exits_without_migration(monkeypatch):
     selections = iter(["create_config", "exit"])
     menus = []
     def select(title, options):
-        assert options[0] == ("create_config", "Create a new config")
+        assert options[0] == ("create_default_config", "Create Default Config")
+        assert ("create_config", "Advanced Configuration") in options
         menus.append(title)
         return next(selections)
     monkeypatch.setattr(interactive, "select_option", select)

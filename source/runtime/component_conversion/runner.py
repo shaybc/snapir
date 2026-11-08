@@ -28,14 +28,17 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     output = Path(config.output_root).resolve() / 'components'
     if not output.resolve().is_relative_to(Path(config.output_root).resolve()):
         raise ValueError('Component output is outside the run root')
-    from runtime.behavior_conversion.verification_mode import facts_disabled
+    from runtime.behavior_conversion.verification_mode import facts_disabled, test_based_mode
     boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile))
     units = {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}
     from tools.state_store_tools.component_reuse import record_consumers
     record_consumers(conn, config.run_id, plan, units, source_root=config.source_root)
     report = dict(capability='component-first-cf6' if include_formats else 'component-first-cf4' if include_steps else 'component-first-cf3', configured_units=len(plan.unit_roots), accepted_units=0,
         accepted_operations=0, behavioral_acceptance=False, groups={}, total_groups=len(plan.groups), format_chain_status='not_reached', component_validated=0, reused_components=0)
-    if facts_disabled(profile):
+    if test_based_mode(profile):
+        report.update(experimental_only=False,fact_collection=False,fact_validation='disabled',fact_validation_blocking=False,
+            verification_version='test-based-conversion-v1')
+    elif facts_disabled(profile):
         report.update(experimental_only=True,fact_collection=False,fact_validation='disabled_for_test',fact_validation_blocking=False)
     write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
     with component_execution(conn, config, profile, classpath, preparation, include_steps=include_steps,include_formats=include_formats):

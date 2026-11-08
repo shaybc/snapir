@@ -48,7 +48,7 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
             expected = hashlib.sha256((item["fingerprint"] + report3 + generation_settings_identity(profile)).encode()).hexdigest()
             if profile.microservice.enabled:
                 from runtime.service_generation.deployment_configuration import load_deployment
-                fingerprint=hashlib.sha256((item['fingerprint']+load_deployment(item).model_dump_json()).encode()).hexdigest()
+                fingerprint=hashlib.sha256((item['fingerprint']+load_deployment(item,profile=profile).model_dump_json()).encode()).hexdigest()
                 expected=hashlib.sha256((fingerprint+report3+generation_settings_identity(profile)).encode()).hexdigest()
             if row is None or row["input_hash"] != expected or not row["project_hash"] or _project_hash(project) != row["project_hash"]:
                 raise ValueError("Generated project evidence is missing or stale")
@@ -129,8 +129,9 @@ def run_finalization(conn, config, profile, plan, directory, *, complete_run=Tru
                      production_ready=bool(evidence) and not blockers)
     from runtime.behavior_conversion.verification_mode import conversion_mode
     if conversion_mode(profile):
+        from runtime.behavior_conversion.verification_mode import conversion_version
         inventory.update(conversion_ready=bool(evidence) and not blockers,production_ready=False,
-            behavioral_equivalence='not_assessed',verification_version='conversion-checklist-v1')
+            behavioral_equivalence='not_assessed',verification_version=conversion_version(profile))
     write_run_report(directory, "delivery_manifest.json", json.dumps(inventory, sort_keys=True, indent=2))
     final_report = "# Migration deliverable review\n\nNo cluster deployment or image publication was performed.\n\n" + json.dumps(inventory, sort_keys=True, indent=2)
     write_run_report(directory, "final_report.md", final_report)

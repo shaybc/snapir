@@ -123,3 +123,11 @@ def create_configuration() -> Path | None:
     import sys
     from cli.configuration_flow import run_configuration_wizard
     return run_configuration_wizard(project_root() / "configs", sys.modules[__name__])
+
+
+def create_default_configuration() -> Path | None:
+    """Collect user inputs for the fixed full-conversion workflow without executing it."""
+    import sys
+    from cli import default_configuration_flow
+    from cli.configuration_flow import run_configuration_wizard
+    return run_configuration_wizard(project_root() / 'configs', sys.modules[__name__], flow=default_configuration_flow)

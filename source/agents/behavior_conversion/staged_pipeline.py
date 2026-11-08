@@ -46,6 +46,8 @@ production contradictions remain unresolved or implementation failures, not weak
 def code_instruction(payload):
     """Carry task-specific implementation obligations without mixed response duties."""
     prompt=CODE
+    if payload.get('executable_verification',{}).get('mode')=='test_based_v1':
+        prompt+='\nConversion readiness uses source behavior, compiled Java and executed AI-generated JUnit tests and mocks. Do not collect facts or map checklist citations. Preserve typed APIs, settings and dependencies; behavioral equivalence is not assessed.'
     if payload.get('executable_verification',{}).get('mode')=='conversion_checklist_v1':
         prompt+='\nConversion readiness uses source checklist traceability, compilation and JUnit. Expose typed production APIs and settings normally; no legacy execution, comparison adapters or harness invocation recipes are required. Behavioral equivalence is not assessed.'
     if payload.get('kind')=='step_implementation':

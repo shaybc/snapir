@@ -118,7 +118,9 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     from agents.behavior_conversion.step_component import step_instruction
     specific = step_instruction(request['kind'])
     if skip_facts:
-        specific+='\nExperimental test only: parser facts and fact validation are disabled. Leave checklist mappings empty and checklist_answers null. Preserve all source behavior, API, settings, dependency, chain, compilation and JUnit requirements.'
+        from runtime.behavior_conversion.verification_mode import test_based_mode
+        specific+= ('\nSupported test-based conversion: parser facts and fact validation are disabled. Leave checklist mappings empty and checklist_answers null. Preserve all source behavior, API, settings, dependency, chain, compilation and JUnit requirements.' if test_based_mode(profile) else
+            '\nExperimental test only: parser facts and fact validation are disabled. Leave checklist mappings empty and checklist_answers null. Preserve all source behavior, API, settings, dependency, chain, compilation and JUnit requirements.')
     if request.get('format_chain_policy'):
         from runtime.component_conversion.format_chains import INSTRUCTION
         specific+='\n'+INSTRUCTION

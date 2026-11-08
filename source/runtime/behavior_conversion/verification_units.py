@@ -33,7 +33,9 @@ def generate_verified_unit(conn, config, profile, identity, instruction, payload
                     'Do not return comparison bindings, adapters, invocation recipes or comparison inputs; equivalence is not assessed.'
                     if conversion_mode(profile) else CHECKLIST_INSTRUCTION)
                 if facts_disabled(profile):
-                    checklist_instruction = 'Experimental test only: do not create or map checklist facts. Preserve source behavior, configuration, APIs and build/JUnit requirements. This is not normal conversion acceptance.'
+                    from runtime.behavior_conversion.verification_mode import test_based_mode
+                    checklist_instruction = ('Use supported test-based validation without collecting or mapping facts. Preserve source behavior, configuration, APIs and executed build/JUnit requirements.' if test_based_mode(profile) else
+                        'Experimental test only: do not create or map checklist facts. Preserve source behavior, configuration, APIs and build/JUnit requirements. This is not normal conversion acceptance.')
                 bundle, fingerprint = generate(conn, config, profile, 'unit', identity,
                     instruction + ('\nPreserve the selected executable boundary; no AI checklist citations are required.' if executable_mode(profile) else '\n' + checklist_instruction), request, NativeUnitBundle, validator, model_call, label)
             else:
@@ -47,7 +49,7 @@ def generate_verified_unit(conn, config, profile, identity, instruction, payload
     receipt = record_verification(conn, config, identity, 'accepted', session.last_report)
     from runtime.behavior_conversion.verification_test_strength import measure_accepted_unit
     from tools.state_store_tools.behavior_units import save
-    if not conversion_mode(profile):
+    if not conversion_mode(profile) or profile.executable_verification.mode == 'test_based_v1':
         try:
             strength = measure_accepted_unit(session, profile, receipt)
             save(conn, config.run_id, 'unit_test_strength', identity, digest(strength), strength, strength['status'])

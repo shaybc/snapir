@@ -16,10 +16,10 @@ def prepare_conversion(session,bundle):
     session.last_report=None
     session.attempt=session.root/('conversion-'+uuid.uuid4().hex)
     session.attempt.mkdir()
-    from runtime.behavior_conversion.verification_mode import facts_disabled
+    from runtime.behavior_conversion.verification_mode import facts_disabled, test_based_mode
     if facts_disabled(session.executable_settings):
         from runtime.behavior_conversion.fact_validation_experiment import prepare_experiment
-        return prepare_experiment(session,bundle)
+        return prepare_experiment(session,bundle,supported=test_based_mode(session.executable_settings))
     if bundle.checklist_answers is None:
         raise VerificationFailure(dict(stage='checklist',errors=['Missing checklist_answers']))
     report=validate_unit_static(session.unit,session.boundary,bundle.files,bundle.checklist_answers,
@@ -38,9 +38,10 @@ def prepare_conversion(session,bundle):
 def complete_conversion(session,bundle,build_validation):
     """Create readiness evidence only after mapping and actual managed build/JUnit success."""
     report=session.static_report
-    from runtime.behavior_conversion.verification_mode import facts_disabled
-    experimental = facts_disabled(session.executable_settings)
-    expected_status = 'facts_disabled_for_test' if experimental else 'mapping_valid'
+    from runtime.behavior_conversion.verification_mode import experimental_mode, test_based_mode
+    experimental = experimental_mode(session.executable_settings)
+    supported = test_based_mode(session.executable_settings)
+    expected_status = 'test_based_ready' if supported else 'facts_disabled_for_test' if experimental else 'mapping_valid'
     if report is None or report.status!=expected_status or report.candidate_hash!=candidate_digest(candidate_files(bundle.files)):
         raise VerificationFailure(dict(stage='revision',errors=['Candidate changed after checklist validation']))
     build=build_validation or {}
@@ -57,6 +58,9 @@ def complete_conversion(session,bundle,build_validation):
         from runtime.behavior_conversion.fact_validation_experiment import VERSION as EXPERIMENT_VERSION
         proof.update(verification_version=EXPERIMENT_VERSION,readiness_status='experimental_only',experimental_only=True,
                      fact_collection=False,fact_validation='disabled_for_test',tool_hash=report.tool_hash)
+    if supported:
+        proof.update(verification_version='test-based-conversion-v1', experimental_only=False,
+                     fact_collection=False, fact_validation='disabled', tool_hash=report.tool_hash)
     target=session.attempt/'conversion-readiness.json'
     target.write_text(json.dumps(proof,indent=2),encoding='utf-8')
     session.last_report=dict(proof,evidence=str(session.attempt),report_hash=_hash(target))
@@ -64,6 +68,9 @@ def complete_conversion(session,bundle,build_validation):
 
 def require_conversion_evidence(config,identity,receipt):
     """Reject old comparison receipts, changed evidence and readiness without a mapping/build proof."""
+    if receipt.get('verification_version') == 'test-based-conversion-v1':
+        from runtime.behavior_conversion.fact_validation_experiment import require_experiment_evidence
+        return require_experiment_evidence(config,identity,receipt,supported=True)
     folder=Path(receipt.get('evidence','')).resolve()
     root=(Path(config.output_root)/'.unit-verification').resolve()
     proof_file=folder/'conversion-readiness.json';static_file=folder/'static/unit-static-checks.json'

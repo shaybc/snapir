@@ -1,12 +1,21 @@
 """AI duties stay distinct; fixtures and scenario definitions cannot edit production."""
 from types import SimpleNamespace
+import pytest
 from models.pipeline_configuration import PipelineConfiguration
 from models.native_implementation import NativeImplementation
 from runtime.test_assets.preparation import prepare
 from test_shared_test_assets import fixtures,suites
 
 
-def test_three_independent_preparation_stages_share_fixtures(tmp_path):
+@pytest.fixture(autouse=True)
+def supplied_source_evidence(monkeypatch):
+    """Isolate stage-role tests from discovery; their synthetic units have no source workspace."""
+    monkeypatch.setattr('runtime.test_assets.original_evidence.complete_format_evidence',
+        lambda payload, configured, profile, direction: payload)
+
+
+def test_three_independent_preparation_stages_share_fixtures(tmp_path,monkeypatch):
+    monkeypatch.setattr('runtime.test_assets.preparation_feedback.junit_for_protocol',lambda tasks:tasks)
     profile=PipelineConfiguration(test_preparation={'mode':'ai_shared_fixtures_v1'},format_comparison={'enabled':True})
     bank=fixtures();junit,comparisons=suites();calls=[]
     class Tasks:
@@ -30,7 +39,8 @@ def test_three_independent_preparation_stages_share_fixtures(tmp_path):
     assert first['root']!=second['root']
 
 
-def test_opt_in_staged_pipeline_keeps_implementation_and_scenario_roles_separate(monkeypatch,tmp_path):
+@pytest.mark.parametrize('verification_mode', ['conversion_checklist_v1', 'test_based_v1'])
+def test_opt_in_staged_pipeline_keeps_implementation_and_scenario_roles_separate(monkeypatch,tmp_path,verification_mode):
     """Flow-only validator; real fixture/JUnit execution is tested in test_shared_fixture_execution."""
     import json
     from runtime.behavior_conversion.generation import generate
@@ -66,7 +76,7 @@ def test_opt_in_staged_pipeline_keeps_implementation_and_scenario_roles_separate
             return NativeTestBundle(files=[dict(path=TEST_PATH,content=text)],coverage={key:[TEST_PATH] for key in data['requirements']},fixture_manifest_hash=h,scenario_methods={'small':PKG+'.FormatterTest#check'}).model_dump_json()
         return json.dumps(dict(entry_type=PKG+'.Formatter'))
     profile=PipelineConfiguration(java_version=25,model_provider='mock',test_preparation={'mode':'ai_shared_fixtures_v1'},
-        format_comparison={'enabled':True},executable_verification={'mode':'conversion_checklist_v1','experimental_disable_facts':True})
+        format_comparison={'enabled':True,'collect_facts':False},executable_verification={'mode':verification_mode,'experimental_disable_facts':verification_mode=='conversion_checklist_v1'})
     try:
         with java_scope(profile):result,_=generate(conn,config,profile,'component_generation','unit','existing',payload,NativeUnitBundle,validator=Validate(),model_call=model)
         assert len(result.files)==2 and calls.count('NativeImplementation')==1
@@ -74,7 +84,10 @@ def test_opt_in_staged_pipeline_keeps_implementation_and_scenario_roles_separate
     finally:conn.close()
 
 
-def test_missing_fixture_feedback_returns_to_owning_preparation_stages(tmp_path):
+def test_missing_fixture_feedback_returns_to_owning_preparation_stages(tmp_path,monkeypatch):
+    # This in-memory Tasks fake records repair routing; durable protocol revisions
+    # are exercised by the staged-pipeline test above with real StageTasks.
+    monkeypatch.setattr('runtime.test_assets.preparation_feedback.junit_for_protocol',lambda tasks:tasks)
     from models.shared_test_fixture import SharedFixtureBank
     from models.junit_test_scenario import JunitScenarioSuite
     bank=fixtures();junit,comparisons=suites();junit.unresolved=['Missing configured tag fixture']

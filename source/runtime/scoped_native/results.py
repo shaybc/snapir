@@ -49,8 +49,8 @@ def record_operation(conn, config, profile, key, record):
     """Bind reviewed native assembly metadata and files to its complete checkpoint."""
     from runtime.behavior_conversion.verification_mode import conversion_mode
     if conversion_mode(profile):
-        from runtime.behavior_conversion.verification_mode import facts_disabled,conversion_version
-        record.update(readiness_status='experimental_only' if facts_disabled(profile) else 'conversion_ready',
+        from runtime.behavior_conversion.verification_mode import experimental_mode,conversion_version
+        record.update(readiness_status='experimental_only' if experimental_mode(profile) else 'conversion_ready',
                       behavioral_equivalence='not_assessed',verification_version=conversion_version(profile))
     from runtime.scoped_native.scope import require_task
     binding = require_task(conn, config, profile, 'service', key, {})

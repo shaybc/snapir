@@ -22,8 +22,8 @@ def candidate_key(components):
 
 def saved_package(profile, identity, default, components=None):
     """Keep the new policy revision while retaining immutable Java package names."""
-    from runtime.behavior_conversion.verification_mode import facts_disabled
-    if not facts_disabled(profile):
+    from runtime.behavior_conversion.verification_mode import experimental_mode
+    if not experimental_mode(profile):
         return default
     packages = _packages.get()
     return packages.get(identity,packages.get(candidate_key(components),default) if components else default)
