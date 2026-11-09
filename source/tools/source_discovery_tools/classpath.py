@@ -28,6 +28,7 @@ def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
     origins = {}
     project_cache = {}
     resolved_containers = {}
+    source_index = None
     from models.classpath_issue import ClasspathIssue
     def issue(kind, reference, detail, project=None):
         index.issues.append(detail)
@@ -69,9 +70,37 @@ def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
                     origins.setdefault(path, []).append((str(metadata.parent), value))
             elif kind == "con" and "JRE_CONTAINER" not in value:
                 from tools.source_discovery_tools.eclipse_containers import container_libraries
-                if value not in resolved_containers:
-                    resolved_containers[value] = container_libraries(value, variables or {}, containers or {})
-                resolved = resolved_containers[value]
+                from tools.source_discovery_tools.eclipse_project_containers import project_container, junit_test_only, JUNIT_CONTAINER
+                try:
+                    if value not in resolved_containers:
+                        resolved_containers[value] = container_libraries(value, variables or {}, containers or {})
+                    resolved = resolved_containers[value]
+                    method = 'explicit_binding' if value in containers else 'configured_runtime'
+                    if resolved is None:
+                        def source_document(path):
+                            if not path.exists():
+                                return None
+                            return source_xml(mapped, path) if mapped is not None else ElementTree.parse(path).getroot()
+                        component = project_container(value, metadata.parent, workspace, index.metadata_fingerprints,
+                                                      project_cache, source_document)
+                        if component is not None:
+                            resolved, references, method = component
+                            index.project_references.update(references)
+                        elif value.startswith(JUNIT_CONTAINER):
+                            if source_index is None:
+                                from tools.source_discovery_tools import discover_java_sources
+                                source_index = discover_java_sources(str(workspace))
+                            if junit_test_only(metadata.parent, workspace, entries, source_index):
+                                resolved, method = [], 'excluded_legacy_tests'
+                    if resolved is not None:
+                        record = dict(project=str(metadata.parent), reference=value, method=method,
+                                      libraries=[str(path) for path in resolved], scope='test' if method == 'excluded_legacy_tests' else 'production')
+                        index.container_resolutions.append(record)
+                        if progress:
+                            progress('Resolved container: ' + value + ' | project=' + str(metadata.parent) + ' | via=' + method)
+                except (ValueError, OSError, ElementTree.ParseError) as exc:
+                    issue('container', value, str(exc) + ' | project=' + str(metadata.parent) + ' | reference=' + value, str(metadata.parent))
+                    continue
                 if resolved is None:
                     issue('container', value, f"Unresolved Eclipse classpath container: {value} | project={metadata.parent}; configure its runtime or container JAR binding", str(metadata.parent))
                 else:
@@ -97,6 +126,8 @@ def discover_java_classpath(workspace_root: str, jars: list[str] | None = None,
         _index_archive(index, jdk / "jre/lib/rt.jar", platform=True)
     else:
         index.issues.append("JDK class inventory unavailable; configure JAVA_HOME")
+    from tools.source_discovery_tools.eclipse_metadata_snapshot import publish_supplement
+    publish_supplement(workspace, index)
     return index
 
 

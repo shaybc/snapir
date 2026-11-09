@@ -27,6 +27,8 @@ def observe_inputs(conn, config, profile, classpath):
     intake = json.loads(evidence[1])
     from tools.source_discovery_tools import discover_java_sources
     index = discover_java_sources(config.source_root)
+    from tools.source_discovery_tools.classpath_scope import with_component_projects
+    index = with_component_projects(index, classpath)
     from tools.conversion_tools.scoped_workflow.source_project import scoped_source_project
     channels = [item[0] for item in conn.execute(
         'SELECT DISTINCT channel FROM scoped_operation_contexts WHERE run_id=?', (config.run_id,))]

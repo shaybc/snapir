@@ -6,6 +6,18 @@ from contextvars import ContextVar
 container_bindings = ContextVar('eclipse_container_bindings', default=None)
 
 
+def with_component_projects(index, classpath):
+    """Expose module source availability without scheduling packaged projects for conversion."""
+    from copy import copy
+    if classpath is None or not classpath.project_references:
+        return index
+    result = copy(index)
+    result.project_references = {name: list(targets) for name, targets in index.project_references.items()}
+    for name, targets in classpath.project_references.items():
+        result.project_references[name] = sorted(set(result.project_references.get(name, [])) | set(targets))
+    return result
+
+
 def mapped_classpath_roots(workspace):
     """Return selected implementation and operation-owner roots, including declared project references."""
     from tools.composer_mapper_tools.mapped_scope import current_mapped

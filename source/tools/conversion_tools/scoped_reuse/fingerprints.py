@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
 
-POLICY_VERSION = 'scoped-v3-unit-evidence-v4-routing-classpath'
+POLICY_VERSION = 'scoped-v3-unit-evidence-v5-eclipse-containers'
 
 
 def digest(value):
@@ -60,7 +60,11 @@ def conversion_policy(profile):
 
 def classpath_fingerprint(index):
     """Include archive bytes, not only class names or archive paths."""
+    from tools.source_discovery_tools.eclipse_metadata_snapshot import RESOLVER_VERSION
+    for path, expected in index.metadata_fingerprints.items():
+        if revision(path) != expected:
+            raise ValueError('Eclipse metadata changed after resolution: ' + path)
     locations = {location[4:] for entries in index.classes.values() for location in entries
                  if location.startswith(('jar:', 'jdk:'))}
     locations.update(index.libraries)
-    return digest(dict(index=index.model_dump(mode='json'), archives={path: revision(path) for path in sorted(locations)}))
+    return digest(dict(resolver=RESOLVER_VERSION, index=index.model_dump(mode='json'), archives={path: revision(path) for path in sorted(locations)}))

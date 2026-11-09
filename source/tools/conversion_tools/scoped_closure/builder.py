@@ -29,6 +29,8 @@ def build_scoped_closure(conn, operation_id, channel, run_id, composer_root, *,
     if java_project is not None:
         from tools.source_discovery_tools import discover_java_sources
         source_index = discover_java_sources(composer_root)
+        from tools.source_discovery_tools.classpath_scope import with_component_projects
+        source_index = with_component_projects(source_index, classpath_index)
     closures, pending = {}, [root_context]
     while pending:
         context = pending.pop()

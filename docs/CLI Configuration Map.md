@@ -47,6 +47,26 @@ the configuration file's folder. A configured `APP_SERVER_PATH` can supply JARs
 for a supported WebSphere runtime container. Unsupported required containers stay
 blocked with their declaring project and reference; they are not silently ignored.
 
+Eclipse module and web containers are also resolved from the declaring project's
+`.settings/org.eclipse.wst.common.component`. A valid module with no dependent
+modules supplies an empty dependency list. Declared module handles establish
+source-project availability; they do not select every packaged operation for
+conversion. Web resources mapped to `/` supply their `WEB-INF/lib` JARs; resources
+mapped directly to `/WEB-INF/lib` supply JARs from that declared folder. Missing,
+malformed, ambiguous or unsupported metadata remains a blocker. Explicit JAR
+bindings take precedence over automatic resolution.
+
+An unmarked legacy JUnit container is excluded only when a test source root exists
+and production source evidence is available without JUnit references. Otherwise it
+still needs a real binding. This does not disable generated JUnit validation.
+Resolution details, metadata hashes and declared module references are saved in
+the indexed run's `state/eclipse-metadata.json`. This diagnostic supplement does
+not modify the saved Composer map or authorize reuse by itself. Current metadata
+hashes are included in conversion freshness checks, so changes or disappearance
+invalidate dependent prepared evidence. Older maps can use this supplement without
+Java reparsing or a full map rebuild. Resume reads the run's `state/profile.json`,
+not subsequent edits to the original YAML configuration.
+
 Starting a full native migration continues automatically after successful intake.
 Actual dependency blockers and configured human approval gates still stop the run.
 Resume continues the same saved run without remapping unchanged sources.

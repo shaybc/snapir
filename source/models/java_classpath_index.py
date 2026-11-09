@@ -11,3 +11,6 @@ class JavaClasspathIndex(BaseModel):
     libraries: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
     issue_details: list[ClasspathIssue] = Field(default_factory=list)
+    metadata_fingerprints: dict[str, str | None] = Field(default_factory=dict)
+    project_references: dict[str, list[str]] = Field(default_factory=dict)
+    container_resolutions: list[dict] = Field(default_factory=list)

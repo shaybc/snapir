@@ -10,13 +10,30 @@ from runtime.workspace_paths import run_database_path,run_report_path
 from tools.state_store_tools.db import get_connection
 
 
-def test_full_indexed_start_automatically_prepares_then_stops_at_real_plan_approval(tmp_path, indexed_mapper_jar, monkeypatch):
+@pytest.mark.parametrize('component_metadata', [False, True])
+def test_full_indexed_start_automatically_prepares_then_stops_at_real_plan_approval(tmp_path, indexed_mapper_jar, monkeypatch, component_metadata):
     from tests.test_scoped_closure import workspace as xml_workspace
     from runtime.pipeline_runner import run_pipeline
     from runtime.java_toolchain import resolve_java_home
     root, vault = tmp_path / 'source', tmp_path / 'map'
     xml_workspace(root)
+    if component_metadata:
+        (root / '.project').write_text('<projectDescription><name>Bank</name></projectDescription>')
+        (root / '.classpath').write_text('<classpath><classpathentry kind="src" path="src"/>'
+            '<classpathentry kind="src" path="test"/>'
+            '<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>'
+            '<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/></classpath>')
+        (root / 'test').mkdir()
+        (root / 'test/LegacyTest.java').write_text('import org.junit.Test; public class LegacyTest {}')
+        (root / '.settings').mkdir()
+        (root / '.settings/org.eclipse.wst.common.component').write_text(
+            '<project-modules><wb-module deploy-name="Bank"><wb-resource deploy-path="/" source-path="/src"/></wb-module></project-modules>')
     generate(indexed_mapper_jar, root, vault)
+    if component_metadata:
+        def forbidden_parse(*args, **kwargs):
+            pytest.fail('Metadata supplement must not reparse Java or rescan source declarations')
+        monkeypatch.setattr('tools.source_discovery_tools.discovery._index_classes', forbidden_parse)
+        monkeypatch.setattr('tools.java_analysis_tools.source_dependencies.parser._parse_batch', forbidden_parse)
     profile = PipelineConfiguration(source_root=str(root), existing_composer_map=str(vault), mapper_analysis_format='indexed-v1',
         mapper_vault_layout='scoped', source_workspace_id='bank', channels=['XML'], include_operations=['Flow'],
         output_root=str(tmp_path / 'runs'), java_version=25, java_home=resolve_java_home(25), model_provider='mock',
@@ -30,6 +47,17 @@ def test_full_indexed_start_automatically_prepares_then_stops_at_real_plan_appro
         assert conn.execute('SELECT count(*) FROM migration_plans WHERE run_id=?', ('automatic',)).fetchone()[0] == 1
     report = json.loads(run_report_path(directory, 'scoped_workflow_preparation.json').read_text())
     assert report['operations']['XML/Flow']['status'] == 'prepared'
+    if component_metadata:
+        supplement = json.loads((directory / 'state/eclipse-metadata.json').read_text())
+        assert str(root / '.settings/org.eclipse.wst.common.component') in supplement['files']
+        assert any(item['method'] == 'excluded_legacy_tests' for item in supplement['containers'])
+        component = root / '.settings/org.eclipse.wst.common.component'
+        component.write_text(component.read_text() + '\n')
+        from runtime.checkpoints import resume_pipeline
+        assert resume_pipeline(profile.output_root, 'automatic') == directory
+        with get_connection(str(run_database_path(directory))) as conn:
+            phase = conn.execute('SELECT current_phase FROM runs WHERE run_id=?', ('automatic',)).fetchone()[0]
+            assert phase == 'conversion_scoped_stale'
 
 
 @pytest.mark.parametrize('existing',[False,True])
