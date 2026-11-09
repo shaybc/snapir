@@ -137,5 +137,12 @@ class MavenRepositoryVerifier:
             from runtime.dependency_policy import check_resolved
             check_resolved(getattr(self,'dependency_profile',None),dependencies)
             result=self._run(arguments + [goal], project_root)
+            if result.returncode==0 and (project_root / 'retained-dependencies').exists():
+                from runtime.retained_libraries.artifacts import capture_resolved
+                repository = self.local_repository
+                if repository is None:
+                    from tools.maven_dependency_tools.import_ownership import repository_path
+                    repository = repository_path(self.settings_path, None, None)
+                capture_resolved(project_root, dependencies, repository)
             if result.returncode==0:check_resolved(getattr(self,'dependency_profile',None),dependencies,remember=True)
             return result

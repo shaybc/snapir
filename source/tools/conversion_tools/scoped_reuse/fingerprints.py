@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
 
-POLICY_VERSION = 'scoped-v3-unit-evidence-v5-eclipse-containers'
+POLICY_VERSION = 'scoped-v3-unit-evidence-v7-project-classpath-order'
 
 
 def digest(value):
@@ -25,7 +25,7 @@ def revision(path):
 def conversion_policy(profile):
     """Fingerprint relevant generation/origin policy without persisting credentials."""
     names = ('conversion_strategy', 'scoped_native_mode', 'source_workspace_id', 'scoped_java_project', 'scoped_java_projects', 'java_version', 'java_home', 'classpath_jars',
-        'eclipse_classpath_variables', 'eclipse_classpath_containers', 'allowed_ibm_artifacts', 'allowed_ibm_classes', 'external_dependencies',
+        'eclipse_classpath_variables', 'eclipse_classpath_containers', 'eclipse_project_classpath_containers', 'allowed_ibm_artifacts', 'allowed_ibm_classes', 'external_dependencies',
         'conversion_requirements', 'maven_settings_path', 'maven_local_repository',
         'approved_maven_repository_urls', 'service_maven_dependencies')
     values = {}

@@ -36,6 +36,11 @@ def install_artifact(directory, manifest, profile, *, visited=None):
     settings = getattr(profile, 'maven_settings_path', None)
     local = repository_path(settings, revision(settings) if settings else None, getattr(profile, 'maven_local_repository', None))
     for root in {store_root(profile) / 'maven-repository', Path(local)}:
+        retained = manifest['metadata'].get('retained_dependencies')
+        if retained:
+            from runtime.retained_libraries.artifacts import restore_portable
+            source = contained_path(directory, retained)
+            restore_portable(source, source, root)
         for name, source in repository_files(directory, manifest).items():
             target = contained_path(root, name)
             target.parent.mkdir(parents=True, exist_ok=True)

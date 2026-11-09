@@ -1,5 +1,6 @@
 """Optional post-build diagnostics; never candidate repair or conversion acceptance."""
 import json
+from runtime.behavior_conversion.original_classpath import original_classpath
 from pathlib import Path
 from models.format_comparison_case import FormatComparisonCase
 from models.format_comparison_plan import FormatComparisonEntry
@@ -41,7 +42,7 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
         from runtime.test_assets.materialization import comparison_plan
         plan=comparison_plan(validator.request['configured_format']['logical_id'],unit,sources,
             assets['bank'],assets['comparisons'],assets['manifest_hash'])
-        plan.native_classpath=list(native_classpath);plan.original_framework.classpath=list(validator.profile.classpath_jars)
+        plan.native_classpath=list(native_classpath);plan.original_framework.classpath=original_classpath(validator.profile,unit)
         from runtime.composer_units.comparison import prepare_comparison
         plan=prepare_comparison(plan,validator.profile,directory/'original-packages')
         result=run_comparison(plan,validator.profile,directory/'execution')
@@ -83,7 +84,7 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
         if plan is None:
             return preparation
         plan.native_classpath = list(native_classpath)
-        plan.original_framework.classpath = list(profile.classpath_jars)
+        plan.original_framework.classpath = original_classpath(profile,unit)
         from runtime.composer_units.comparison import prepare_comparison
         plan=prepare_comparison(plan,profile,directory/'original-packages')
         # Use only approved runtime dependencies from the existing build verifier.

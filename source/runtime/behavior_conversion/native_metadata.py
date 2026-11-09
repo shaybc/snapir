@@ -81,7 +81,9 @@ def resolve_dependencies(metadata, known, proposed=()):
         if key in inventory and (inventory[key].version,inventory[key].scope)!=(item.version,item.scope):
             raise ValueError('Dependency proposal changed a pinned dependency: '+':'.join(key))
         if item.group_id.startswith('com.ibm') or any(name.startswith('com.ibm.') for name in item.required_classes):
-            raise ValueError('IBM dependencies are forbidden')
+            from runtime.retained_libraries.catalog import approved_ibm_dependency
+            if not approved_ibm_dependency(item):
+                raise ValueError('IBM dependencies are forbidden unless the original client artifact is explicitly approved')
         inventory[key]=item
     selected={};unknown=[]
     for imp in metadata['imports']:

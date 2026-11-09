@@ -76,7 +76,8 @@ def _run_indexed_intake(profile, config, conn, directory, settings, vault, progr
                 classpath=discover_java_classpath(profile.source_root,profile.classpath_jars,profile.eclipse_classpath_variables,
                     visible_source_roots=[str(mapped.workspace/Path(row[0]).relative_to(analysis.source_root))
                         for row in analysis.conn.execute('SELECT DISTINCT s.root FROM java_sources s JOIN selected_java j ON j.file=s.file')],
-                    progress=progress.current)
+                    containers=profile.eclipse_classpath_containers,
+                    project_containers=profile.eclipse_project_classpath_containers, progress=progress.current)
                 write_json_report(run_report_path(directory,'java_classpath_index.json'),classpath)
                 inventory=build_component_inventory(profile.source_root,profile.source_workspace_id,mapped.index,storage)
                 persist_component_inventory(conn,config.run_id,inventory,analysis['analysis_hash'])

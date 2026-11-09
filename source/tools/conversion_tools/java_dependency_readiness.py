@@ -28,9 +28,10 @@ def _binary_names(name, document):
     return names
 
 
-def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None, *, dependency_graph=None,source_parser=None):
+def check_java_dependencies(components, source_index, classpath, expected_hashes=None, external_rules=(), behavior_document=None, external_records=None, *, dependency_graph=None,source_parser=None,evidence_profile=None):
     """Follow source dependencies recursively and report unresolved type references with origins."""
     issues = []
+    inventory = classpath
     expected_hashes = expected_hashes or {}
     from tools.conversion_tools.external_dependency_resolver import external_dependency
     external_records = external_records if external_records is not None else []
@@ -49,6 +50,8 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
         for document in analysis.findall("source"):
             path = str(Path(document.get("path")).resolve())
             owner = by_path[path]
+            from tools.source_discovery_tools.binary_resolution import classpath_for_project
+            classpath = classpath_for_project(inventory, source_index.class_projects.get(path))
             ignored = {node.get("name") for tag in ("local_type", "type_parameter") for node in document.findall(tag)}
             references = list(document.findall("reference"))
             for imported in document.findall("import"):
@@ -95,8 +98,8 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                             if expected_hashes and target not in expected_hashes:
                                 _issue(issues, name, owner, "Dependency source was not captured by intake; refresh intake")
                                 continue
-                            from tools.java_analysis_tools.java_source_reader import read_java_source
-                            content = read_java_source(target)
+                            from tools.java_analysis_tools.java_text import read_java_text
+                            content = read_java_text(target)
                             digest = hashlib.sha256(Path(target).read_bytes()).hexdigest()
                             if target in expected_hashes and digest != expected_hashes[target]:
                                 _issue(issues, name, owner, "Dependency source changed since intake; refresh intake")
@@ -116,9 +119,19 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                         variants.append(candidate)
                     for candidate in variants:
                         matches.update(classpath.classes.get(candidate, []))
+                if evidence_profile is not None and matches and all(location.startswith('jar:') for location in matches):
+                    from tools.conversion_tools.dependency_treatment import dependency_record
+                    owners = [candidate for candidate in _binary_names(name, document) if classpath.classes.get(candidate)]
+                    if len(owners) == 1:
+                        record = dependency_record(owners[0], external_rules, evidence_profile, owner.origin + ' -> ' + owner.logical_id, classpath)
+                        if record:
+                            edge(owner, owners[0])
+                            if record not in external_records:
+                                external_records.append(record)
+                            continue
                 # Classify framework boundaries only after source and binary resolution.
                 # A JDK match must not become an invented same-package Composer type.
-                if len(matches) <= 1 and (not matches or any(classpath.classes.get(candidate) for candidate in _binary_names(name, document)
+                if evidence_profile is None and len(matches) <= 1 and (not matches or any(classpath.classes.get(candidate) for candidate in _binary_names(name, document)
                     if candidate.startswith(tuple(package + "." for package in constants.COMPOSER_FRAMEWORK_PACKAGES)))):
                     records = [record for candidate in _binary_names(name, document)
                                if (record := external_dependency(candidate, external_rules, behavior_document,
@@ -128,6 +141,18 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
                             edge(owner, record['class_name'])
                             if record not in external_records:
                                 external_records.append(record)
+                        continue
+                if evidence_profile is not None and (not matches or len(matches) > 1):
+                    from tools.conversion_tools.dependency_treatment import dependency_record
+                    candidates = _binary_names(name, document)
+                    # Explicit imports/package-qualified names are evidence; ambiguous names stay unresolved candidates.
+                    candidate = candidates[0] if len(candidates) == 1 else name
+                    record = dependency_record(candidate, external_rules, evidence_profile, owner.origin + ' -> ' + owner.logical_id,
+                                               classpath, source_exists=False)
+                    if record:
+                        edge(owner, candidate)
+                        if record not in external_records:
+                            external_records.append(record)
                         continue
                 if not matches:
                     _issue(issues, name, owner, "Type has no source, JDK, or configured classpath definition; supply its source or replacement")

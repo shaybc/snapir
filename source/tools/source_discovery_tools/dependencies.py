@@ -12,6 +12,8 @@ def classify_java_imports(source_path: str, source_index, classpath_index) -> li
     """
     from tools.java_analysis_tools.java_text import read_java_text
     source = read_java_text(source_path, strip_bom=True)
+    from tools.source_discovery_tools.binary_resolution import classpath_for_project
+    classpath_index = classpath_for_project(classpath_index, source_index.class_projects.get(str(Path(source_path).resolve())))
     source = re.sub(r"/\*.*?\*/|//[^\n]*", "", source, flags=re.S)
     results = []
     for match in re.finditer(r"^\s*import\s+(static\s+)?([\w.*]+)\s*;", source, re.M):

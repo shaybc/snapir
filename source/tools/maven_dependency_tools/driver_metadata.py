@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
 from xml.etree import ElementTree
+from tools.maven_dependency_tools.jar_metadata import archive_coordinates
 
 
 def driver_candidates(driver_class, classpath):
@@ -16,23 +17,11 @@ def driver_candidates(driver_class, classpath):
         path = Path(location[4:])
         try:
             with ZipFile(path) as jar:
-                metadata = []
-                for name in jar.namelist():
-                    if name.startswith('META-INF/maven/') and name.endswith('/pom.properties'):
-                        values = dict(re.findall(r'(?m)^\s*(groupId|artifactId|version)\s*[=:]\s*(\S+)\s*$', jar.read(name).decode('utf-8', errors='replace')))
-                        if len(values) == 3:
-                            metadata.append(values)
                 manifest = jar.read('META-INF/MANIFEST.MF').decode('utf-8', errors='replace') if 'META-INF/MANIFEST.MF' in jar.namelist() else ''
-            sidecar = path.with_suffix('.pom')
-            if not metadata and sidecar.is_file():
-                root = ElementTree.parse(sidecar).getroot()
-                values = {key: root.findtext('{*}' + key) or (root.findtext('{*}parent/{*}' + key) if key != 'artifactId' else None)
-                          for key in ('groupId', 'artifactId', 'version')}
-                if all(value and '${' not in value for value in values.values()):
-                    metadata.append(values)
+            coordinates = archive_coordinates(path)
             item = dict(jar=path.name, jar_hash=hashlib.sha256(path.read_bytes()).hexdigest(), driver_class=driver_class)
-            if len(metadata) == 1:
-                values = metadata[0]
+            if coordinates:
+                values = dict(zip(('groupId', 'artifactId', 'version'), coordinates))
                 item['dependency'] = dict(group_id=values['groupId'], artifact_id=values['artifactId'], version=values['version'],
                     scope='runtime', reason='Driver identified in configured workspace classpath JAR', required_classes=[driver_class])
             else:
@@ -41,6 +30,6 @@ def driver_candidates(driver_class, classpath):
             if version:
                 item['manifest_version'] = version[1].strip()
             candidates.append(item)
-        except (OSError, BadZipFile, ElementTree.ParseError) as exc:
+        except (OSError, ValueError, BadZipFile, ElementTree.ParseError) as exc:
             candidates.append(dict(jar=path.name, driver_class=driver_class, issue='Unreadable driver JAR: ' + str(exc)))
     return candidates

@@ -2,6 +2,7 @@
 
 import json
 from runtime.behavior_conversion.native_reflection_policy import INSTRUCTION as NO_REFLECTION
+from agents.behavior_conversion.operation_scope import INSTRUCTION as OPERATION_SCOPE
 
 APPROVED_JUNIT_DEPENDENCY = {
     "group_id": "org.junit.jupiter", "artifact_id": "junit-jupiter", "version": "5.10.2",
@@ -9,11 +10,12 @@ APPROVED_JUNIT_DEPENDENCY = {
     "required_classes": ["org.junit.jupiter.api.Test", "org.junit.jupiter.api.Assertions"],
 }
 
-COMMON_INSTRUCTION = NO_REFLECTION + """Mandatory target-code contract for the FIRST response and every correction:
+COMMON_INSTRUCTION = OPERATION_SCOPE + NO_REFLECTION + """Mandatory target-code contract for the FIRST response and every correction:
 Generate ordinary native Java business behavior, not a Composer compatibility runtime.
 All original XML, Java source and embedded Composer documentation are behavior evidence
-ONLY, including their imports and code examples. They are not reusable target APIs.
-No com.ibm imports or executable references in ANY generated main or test file. Do not
+ONLY, including their imports and code examples. Composer framework APIs are not reusable target APIs;
+verified ordinary third-party APIs remain available through declared retained dependencies.
+No com.ibm imports or executable references in ANY generated main or test file except exact approved non-Composer client APIs in the supplied retained library catalog. Do not
 copy or rename Context, format/decorator holders, Tag initialization or framework engines.
 Use explicit typed inputs/results and plain mapper transformations for decorators.
 Reuse supplied accepted native interfaces without changing them. Retain documented ordinary
@@ -124,7 +126,8 @@ def native_instructions(kind, known=(), *, include_example=True):
 
 def reuse_known_dependencies(instruction, known, java_version=None):
     """Align response examples with current versions and guide every native code request."""
-    if instruction.startswith(("Mandatory target-code contract",NO_REFLECTION+"Mandatory target-code contract")):
+    if instruction.startswith(("Mandatory target-code contract",NO_REFLECTION+"Mandatory target-code contract",
+                               OPERATION_SCOPE+NO_REFLECTION+"Mandatory target-code contract")):
         _, specific = instruction.split("\nUnit-specific instructions:\n", 1)
         kind = "format" if "Implement the complete configured format unit" in specific else "step"
         instruction = native_instructions(kind, known) + specific

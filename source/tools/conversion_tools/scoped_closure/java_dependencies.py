@@ -5,7 +5,7 @@ from pathlib import Path
 from models.conversion_component import ConversionComponent
 from tools.conversion_tools.java_dependency_readiness import check_java_dependencies
 from tools.conversion_tools.scoped_closure.java_origins import resolve_java_origins
-from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.java_analysis_tools.java_text import read_java_text
 
 
 def check_scoped_java_dependencies(access, context, sources, origins, external, source_index,
@@ -33,7 +33,7 @@ def check_scoped_java_dependencies(access, context, sources, origins, external, 
             hashes[str(path)] = digest
     components = [ConversionComponent(kind='ibm_java', logical_id=origin['fqcn'],
         source_file=origin['source_file'], source_hash=origin['source_hash'],
-        source_content=read_java_source(origin['source_file'], expected_hash=origin['source_hash']), origin=context.operation_identity)
+        source_content=read_java_text(origin['source_file'], expected_hash=origin['source_hash']), origin=context.operation_identity)
         for origin in verified]
     rules = getattr(profile, 'external_dependencies', ()) if profile else ()
     document = getattr(profile, 'composer_behavior_document', None) if profile else None
@@ -41,7 +41,7 @@ def check_scoped_java_dependencies(access, context, sources, origins, external, 
     hashes.update({item.source_file: item.source_hash for item in components})
     graph = {}
     checked, problems = check_java_dependencies(components, scoped_index, classpath_index, hashes,
-                                               rules, document, external, dependency_graph=graph)
+                                               rules, document, external, dependency_graph=graph,evidence_profile=profile)
     for problem in problems:
         issue(problem.entity_id, problem.detail, problem.kind)
     existing = {origin['fqcn'] for origin in origins}

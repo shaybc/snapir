@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 
-RESOLVER_VERSION = 'eclipse-containers-v1'
+RESOLVER_VERSION = 'eclipse-project-order-v2'
 
 
 def read_metadata(path, workspace, evidence):
@@ -49,7 +49,9 @@ def publish_supplement(workspace, index):
     directory.mkdir(parents=True, exist_ok=True)
     payload = dict(resolver=RESOLVER_VERSION, workspace=str(Path(workspace).resolve()),
                    files=index.metadata_fingerprints, containers=index.container_resolutions,
-                   project_references=index.project_references)
+                   project_references=index.project_references,
+                   project_classpaths={name: view.model_dump(mode='json') for name, view in index.project_classpaths.items()},
+                   binary_resolutions=index.binary_resolutions)
     with NamedTemporaryFile(mode='w', encoding='utf-8', dir=directory, suffix='.tmp', delete=False) as stream:
         temporary = Path(stream.name)
         json.dump(payload, stream, sort_keys=True, indent=2)

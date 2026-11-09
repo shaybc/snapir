@@ -37,4 +37,4 @@ def component_metadata(project, workspace, evidence):
         if len(parts) != 2 or any(part in ('', '.', '..') or '\\' in part for part in parts):
             raise ValueError('Unsupported Eclipse module handle: ' + handle)
         references.append(parts[0])
-    return resources, sorted(set(references))
+    return resources, list(dict.fromkeys(references))

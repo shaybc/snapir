@@ -1,9 +1,10 @@
 """Narrow instructions for independent implementation, mapping and test requests."""
 
 from runtime.behavior_conversion.native_reflection_policy import INSTRUCTION as NO_REFLECTION
+from agents.behavior_conversion.operation_scope import INSTRUCTION as OPERATION_SCOPE
 
-IMPLEMENTATION_CONTRACT = '''MANDATORY IMPLEMENTATION CONTRACT — initial response and every correction:
-1. No IBM package imports/references and no recreated Composer runtime or reflection.
+IMPLEMENTATION_CONTRACT = OPERATION_SCOPE + '''MANDATORY IMPLEMENTATION CONTRACT — initial response and every correction:
+1. No IBM package imports/references except supplied exact approved non-Composer client APIs; no recreated Composer runtime or reflection.
 2. Use specific scalar/native DTO boundary types; no Object/Object[], maps, JSON nodes or raw/Object collections.
 3. Reuse supplied accepted native APIs unchanged and preserve source-defined behavior and settings.
 4. Return one valid JSON object matching NativeImplementation, with correctly escaped Java strings.
@@ -13,7 +14,7 @@ unaffected code and previously satisfied rules. Return complete corrected files,
 
 IMPLEMENTATION = IMPLEMENTATION_CONTRACT + NO_REFLECTION + '''Generate only production native Java files for the selected configured unit.
 Original XML, implementing sources and Composer documentation are behavior evidence, not target APIs.
-Convert all required supporting behavior; do not import/reference IBM packages or keep IBM runtime
+Convert all required supporting behavior; only supplied exact approved non-Composer IBM clients may be imported; do not keep Composer runtime
 dependencies. Use typed inputs/results, ordinary Java transformations and reusable accepted native
 APIs. Preserve runtime settings, defaults, missing/null/empty distinctions, outputs and side effects.
 Public boundary parameters/results must use specific scalar or native DTO types: rejected examples
@@ -44,7 +45,7 @@ unresolved production defect if the frozen implementation contradicts the origin
 Test runtime branches and input/output behavior evidenced by the original sources.
 Return only NativeTestBundle: files under src/test/java/, coverage links using exact supplied requirement
 IDs, and unresolved_questions. No production files, API contracts, dependency coordinates or bindings.
-No IBM references, runtime replicas or handwritten external-interface substitutes. Use supplied mocks
+No Composer runtime references/replicas or handwritten external-interface substitutes. Exact approved non-Composer IBM clients may be retained. Use supplied mocks
 for external services. Metadata/coverage links alone do not establish correctness; tests will run.
 '''
 
@@ -63,5 +64,5 @@ DEPENDENCIES = '''Propose dependency coordinates only for unresolved_imports, us
 Reuse existing known_dependencies exactly; do not change versions/scopes. Return NativeDependencyProposal
 with only needed dependencies and required_classes corresponding to unresolved imports. No source code,
 tests or behavioral claims. Artifact/class availability will be independently verified before acceptance.
-Never propose IBM runtime artifacts. Do not guess a dependency when evidence is insufficient.
+Never propose Composer runtime artifacts. Other IBM clients require supplied exact approvals. Do not guess a dependency when evidence is insufficient.
 '''

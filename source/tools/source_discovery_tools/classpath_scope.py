@@ -54,6 +54,9 @@ def discover_conversion_classpath(source_root, jars=None, variables=None, *, pro
         channels = getattr(profile, 'channels', [])
         projects = {scoped_source_project(profile, channel, source_root=source_root, source_index=index) for channel in channels}
         projects.discard(None)
+        # Explicit per-channel owners can be selected by an imported full-inventory run
+        # even when profile.channels still contains only its default channel.
+        projects.update(getattr(profile, 'scoped_java_projects', {}).values())
         explicit = getattr(profile, 'scoped_java_project', None)
         if explicit:
             projects.add(explicit)
@@ -67,4 +70,5 @@ def discover_conversion_classpath(source_root, jars=None, variables=None, *, pro
             roots = [root for project in sorted(projects) for root in index.source_roots.get(project, [])]
     from tools.source_discovery_tools.classpath import discover_java_classpath
     return discover_java_classpath(source_root, jars, variables, visible_source_roots=roots,
-        containers=getattr(profile, 'eclipse_classpath_containers', {}) if profile is not None else None, progress=progress)
+        containers=getattr(profile, 'eclipse_classpath_containers', {}) if profile is not None else None,
+        project_containers=getattr(profile, 'eclipse_project_classpath_containers', {}) if profile is not None else None, progress=progress)

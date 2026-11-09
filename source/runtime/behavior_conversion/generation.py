@@ -29,7 +29,8 @@ def generate(conn, config, profile, category, identity, instruction, payload, sc
              validator=None, model_call=None, label="", require_coverage=True):
     """Keep normal generation strict; opt into isolated recovery only for retained IBM dependencies."""
     from runtime.dependency_policy import dependency_policy_scope
-    with dependency_policy_scope(conn,config.run_id,profile,payload):
+    from runtime.retained_libraries.catalog import library_scope
+    with library_scope(profile,payload), dependency_policy_scope(conn,config.run_id,profile,payload):
         try:
             if profile.staged_unit_conversion:
                 from runtime.behavior_conversion.conversion_tasks import conversion_task

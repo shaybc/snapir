@@ -52,7 +52,7 @@ class ComponentJavaGraph:
             if node is None:
                 status=item['status']
                 source=status=='verified_source'
-                external=status in {'verified_platform','verified_retention','explicit_replacement','explicit_external'}
+                external=status in {'verified_platform','verified_retention','explicit_replacement','explicit_external','evidence_dependency'}
                 node=PlannedConversionComponent(component_id=key,kind='java_implementation' if source else
                     'external_dependency' if external else 'unresolved_dependency',label=current,
                     status='source_recorded' if source else 'external_recorded' if external else 'unresolved',provenance=item)

@@ -2,8 +2,9 @@
 
 import re
 from pathlib import Path
+from agents.behavior_conversion.operation_scope import INSTRUCTION as OPERATION_SCOPE
 
-CORRECTION_INSTRUCTION = """When compiler_correction is supplied, correct the latest failed_sources using
+CORRECTION_INSTRUCTION = OPERATION_SCOPE + """When compiler_correction is supplied, correct the latest failed_sources using
 its diagnostics and relevant_dependency_apis. Check every replacement call's parameters and
 return type against the verified API. Do not invent methods or change accepted interfaces.
 For a missing supporting class or package, check the returned files, supplied accepted native

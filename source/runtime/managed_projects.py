@@ -32,9 +32,11 @@ def create_build_context(profile, project_root: Path, artifact_id: str) -> Manag
     apply_shared_policy(pom,profile)
     verifier.dependency_profile=profile
     retained = [rule for rule in getattr(profile, "external_dependencies", []) if rule.treatment == "retain"]
-    return ManagedBuildContext(str(pom), verifier,
+    context = ManagedBuildContext(str(pom), verifier,
         tuple(dict.fromkeys([*profile.allowed_ibm_artifacts, *(rule.maven_coordinates for rule in retained if rule.maven_coordinates)])),
         tuple(dict.fromkeys([*profile.allowed_ibm_classes, *(rule.class_name for rule in retained if rule.class_name)])))
+    from runtime.retained_libraries.build import attach_build_context
+    return attach_build_context(context, profile, project_root)
 
 
 def run_managed_tasks(conn, config, profile, plan) -> dict[str, int]:

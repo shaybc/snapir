@@ -81,6 +81,11 @@ def input_files(closure, root):
             files[str(Path(origin['source_file']).resolve())] = origin['source_hash']
         elif origin['status'] in ('verified_retention', 'verified_platform'):
             files[str(Path(origin['location'][4:]).resolve())] = origin['source_hash']
+    for record in closure.external_dependencies:
+        library = record.get('library')
+        if library:
+            files[str(Path(library['path']).resolve())] = library['sha256']
+            files[str(Path(library['path']).with_suffix('.pom').resolve())] = library.get('pom_sha256')
     return files
 
 

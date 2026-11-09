@@ -429,9 +429,68 @@ dependency. Decreasing it can stop a valid but slow analysis prematurely.
 
 ### Step 6: external dependency declarations and conversion strategy
 
+Eclipse dependency resolution keeps a separate ordered build-path view for each
+project. Explicit entries retain `.classpath` order; project expansion respects
+exported dependencies. Duplicate binary classes select the first visible entry
+when precedence is established, and reports retain the shadowed alternatives.
+The flat JAR inventory is still available for diagnostics.
+
+`eclipse_classpath_containers` supplies ordered global container bindings.
+`eclipse_project_classpath_containers` optionally overrides a binding for one
+Eclipse project (using its declared project name). For example:
+
+```yaml
+eclipse_project_classpath_containers:
+  WSBCC_BANKADMIN:
+    'org.eclipse.jst.server.core.container/com.ibm.ws.ast.st.runtime.runtimeTarget.v85/was.base.v85':
+      - 'C:/Workspace/composer/extLib/AppServerJars/dev/JavaEE/6.0/j2ee.jar'
+      - 'C:/Workspace/composer/extLib/AppServerJars/runtimes/com.ibm.jaxws.thinclient_8.5.0.jar'
+```
+
+The example demonstrates syntax; supply the complete container list in its
+established Eclipse order. In the saved JSON profile, use the same nested
+project/container mapping with an ordered JSON array. Existing global bindings
+continue to apply where no project override exists. An explicit empty array is
+a valid empty container.
+
+A directory scan establishes available files, not Eclipse provider order.
+Competing classes within such a container remain unresolved until an ordered
+binding is supplied. Separate WebSphere runtime class-loader rules are outside
+this build-path reconstruction. Additional `classpath_jars` are appended after
+declared project entries in their configured order. Original-code comparisons
+also require established container order. Native Maven dependency policy is
+unchanged. Resume recalculates the view; changes to entry order or bindings
+invalidate affected evidence without requiring a full source remapping.
+
 **No external dependency rules (`[]`)** means no explicit retain/replace decisions
 are supplied through this field. Normal source discovery and dependency checks
 still run. It does not mean “ignore external dependencies.”
+
+For scoped behavior conversion, verified third-party JARs are available for
+retention by default; a separate retain rule for each Oracle or tracing API is
+unnecessary. Supporting sources remain complete for the AI. Their imports are
+candidate dependencies, not a requirement to convert every helper method or ship
+every library. The AI must convert only behavior required by the selected
+operation/component and its consumers, preserving required initialization,
+cleanup, side effects and error handling. Generated imports, Maven compilation
+and executed tests determine the target's actual dependencies.
+
+Composer runtime behavior must be replaced using the documented contracts or
+available project source. A required behavior with neither sufficient
+documentation nor source remains a specific conversion gap. Other IBM clients
+still require the configured exact class or original artifact exception; a local
+wrapper does not permit retaining Composer runtime classes.
+
+Retained candidates use verified Maven metadata where available. A JAR without
+coordinates uses a content-derived local Maven identity. Only selected artifacts
+and their resolved compile/runtime dependencies are copied into the generated
+project's `retained-dependencies/repository`, with checksums in
+`retained-dependencies/dependencies.lock.json`. The POM uses a project-relative
+repository so the package can move without its original Composer installation.
+Original JAR and sidecar-POM changes invalidate the saved evidence. Missing or
+changed packaged files fail verification even when a warm Maven cache exists.
+Source/original-oracle test dependencies remain separate from the shipped native
+runtime. AI input budgets and splitting remain unchanged.
 
 **Class selector (`class_name`)** targets one exact Java class. **Package selector
 (`package_prefix`)** declares a package boundary. Each rule must use exactly one

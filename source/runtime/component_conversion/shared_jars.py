@@ -58,6 +58,13 @@ def component_package(candidate, bundle, key):
             if relative == 'pom.xml' or relative.startswith(('src/', 'target/surefire-reports/')) or relative.startswith('component-'):
                 files['evidence/' + relative] = path
     from tools.conversion_tools.dependency_planning.reuse_sources import component_input_identity
+    retained = root / 'retained-dependencies'
+    if retained.exists():
+        from runtime.retained_libraries.artifacts import verify_portable
+        verify_portable(retained)
+        for path in retained.rglob('*'):
+            if path.is_file():
+                files['artifacts/retained-dependencies/' + path.relative_to(retained).as_posix()] = path
     return files, dict(validated=True, validation_scope='component_build_and_tests', behavioral_equivalence='not_established',
                        input_identity=component_input_identity(candidate.plan, candidate.group, candidate.profile),
                        bindings=request_bindings(candidate.request),
@@ -65,4 +72,5 @@ def component_package(candidate, bundle, key):
                        logical_components=sorted(candidate.plan.components[member].label for member in candidate.group.members),
                        pom_content=pom_bytes.decode('utf-8'),
                        generated_dependencies=[dict(key=item['lookup_key'], revision=item['revision']) for item in generated],
+                       retained_dependencies='artifacts/retained-dependencies' if retained.exists() else None,
                        jar='artifacts/' + artifact + '.jar', pom='artifacts/' + artifact + '.pom')

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from runtime.behavior_conversion.service_connection_evidence import connection_evidence
 from tools.component_inventory_tools.identity import stable_id
-from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.java_analysis_tools.java_text import read_java_text
 from tools.source_discovery_tools import discover_java_sources
 from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
 from tools.conversion_tools.scoped_workflow.source_project import scoped_source_project
@@ -47,7 +47,7 @@ def attach_scoped_connections(conn, config, closure, unit, profile, classpath_in
             origin = verified.get(str(Path(filename).resolve()))
             if origin is None:
                 raise ValueError('Service supporting source is outside the checked scoped closure: ' + filename)
-            read_java_source(filename, expected_hash=origin['source_hash'])
+            read_java_text(filename, expected_hash=origin['source_hash'])
     data = [record.model_dump(mode='json', exclude={'supporting_sources'}) for record in records]
     if not data:
         return unit

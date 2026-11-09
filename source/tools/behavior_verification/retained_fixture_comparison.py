@@ -1,6 +1,7 @@
 """Execute retained AI comparison scenarios independently of the JUnit generation outcome."""
 import argparse
 import json
+from runtime.behavior_conversion.original_classpath import original_classpath
 from pathlib import Path
 from models.shared_test_fixture import SharedFixtureBank
 from models.comparison_test_scenario import ComparisonScenarioSuite
@@ -35,7 +36,7 @@ def run(profile_path,artifact_root,unit_path,pilot_path,output):
     with java_scope(profile):
         context=create_build_context(profile,directory/'runtime-classpath','comparison-classpath')
         plan.native_classpath=native_runtime_classpath(root,context)
-        plan.original_framework.classpath=list(profile.classpath_jars)
+        plan.original_framework.classpath=original_classpath(profile,unit)
         if unit['kind']!='configured_step':
             from runtime.composer_units.comparison import prepare_comparison
             plan=prepare_comparison(plan,profile,directory/'original-packages')

@@ -42,7 +42,7 @@ def java_evidence(closure, roots):
             if 'required_classes' not in origin:
                 raise ValueError('Per-unit Java dependency graph is missing; refresh preparation')
             pending.extend(origin['required_classes'])
-        elif origin['status'] not in {'explicit_replacement', 'verified_retention', 'verified_platform'}:
+        elif origin['status'] not in {'explicit_replacement', 'verified_retention', 'verified_platform', 'evidence_dependency'}:
             raise ValueError('Unit Java dependency is unresolved: ' + name)
     records = [item for item in closure.external_dependencies if item['class_name'] in selected]
     return [selected[name] for name in sorted(selected)], records

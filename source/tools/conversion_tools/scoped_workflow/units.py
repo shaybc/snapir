@@ -9,7 +9,7 @@ from models.scoped_configured_unit import ScopedConfiguredUnit
 from models.scoped_operation_closure import ScopedOperationClosure
 from tools.composer_mapper_tools.scoped_vault_access import ScopedVaultAccess
 from tools.conversion_tools.scoped_closure.source_evidence import SourceEvidence
-from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.java_analysis_tools.java_text import read_java_text
 from tools.composer_mapper_tools.channel_note_parser import parse_channel_note
 from tools.conversion_tools.scoped_workflow.unit_evidence import format_evidence, java_evidence
 
@@ -40,7 +40,7 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
                 continue
             identity = (origin['definition_id'], origin['source_hash'])
             # Check current bytes even when another unit has cached this source.
-            content = read_java_source(origin['source_file'], expected_hash=origin['source_hash'], preserve_line_endings=True)
+            content = read_java_text(origin['source_file'], expected_hash=origin['source_hash'], preserve_line_endings=True)
             if identity not in cache or cache[identity].content != content:
                 cache[identity] = UnitSource(identity=identity[0], content=content, content_hash=identity[1])
             implementations.append(cache[identity])
@@ -106,7 +106,7 @@ def restore_cached_source_text(operation):
             origin=origins[source['identity']]
             if source['content_hash']!=origin['source_hash']:
                 raise ValueError('Cached source revision differs from original evidence')
-            content=read_java_source(origin['source_file'],expected_hash=source['content_hash'],preserve_line_endings=True)
+            content=read_java_text(origin['source_file'],expected_hash=source['content_hash'],preserve_line_endings=True)
             normalized=content.replace('\r\n','\n').replace('\r','\n')
             if source['content'] not in (content,normalized):
                 raise ValueError('Cached source content differs from original evidence')

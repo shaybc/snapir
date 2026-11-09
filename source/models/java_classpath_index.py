@@ -1,7 +1,8 @@
 """Available compiled classes and classpath discovery diagnostics."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from models.classpath_issue import ClasspathIssue
+from models.project_classpath import ProjectClasspath
 
 
 class JavaClasspathIndex(BaseModel):
@@ -14,3 +15,8 @@ class JavaClasspathIndex(BaseModel):
     metadata_fingerprints: dict[str, str | None] = Field(default_factory=dict)
     project_references: dict[str, list[str]] = Field(default_factory=dict)
     container_resolutions: list[dict] = Field(default_factory=list)
+    project_classpaths: dict[str, ProjectClasspath] = Field(default_factory=dict)
+    binary_resolutions: list[dict] = Field(default_factory=list)
+    active_project: str | None = None
+    _project_views: dict = PrivateAttr(default_factory=dict)
+    _archive_hashes: dict = PrivateAttr(default_factory=dict)

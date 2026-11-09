@@ -92,6 +92,8 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         prerequisite_components=dependencies, java_version=profile.java_version, requirements=requirements,
         validation_scope='build_and_tests', behavioral_equivalence='not_established',
         comparison_limitations=['No independent component invocation adapter; whole configured-unit comparison remains required.'])
+    from runtime.retained_libraries.catalog import plan_libraries
+    request['retained_libraries'] = plan_libraries(plan, group)
     if basic_format:
         request['composition_obligations']=[dict(checklist_id=key,source_identity=composition_obligations[key]['source_identity'],
             source_hash=composition_obligations[key]['source_hash'],owner='complete_configured_format') for key in sorted(composition_obligations)]

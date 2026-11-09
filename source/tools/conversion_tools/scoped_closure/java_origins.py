@@ -7,10 +7,11 @@ from zipfile import ZipFile, BadZipFile
 
 from models.conversion_models import ClosureStatus
 from tools.conversion_tools.external_dependency_resolver import external_dependency
-from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.java_analysis_tools.java_text import read_java_text
 from tools.source_discovery_tools.dependencies import classify_java_imports
 from tools.source_discovery_tools.resolver import resolve_indexed_source
 from tools.conversion_tools.scoped_closure.platform_imports import verified_platform_wildcard
+from tools.conversion_tools.dependency_treatment import dependency_record
 
 
 def _binary_digest(location, fqcn):
@@ -34,6 +35,7 @@ def resolve_java_origins(access, context, sources, required, source_index, class
     """
     origins, external, visited = [], [], set()
     pending = deque(sorted(required))
+    roots = set(required)
     rules = getattr(profile, 'external_dependencies', ()) if profile else ()
     document = getattr(profile, 'composer_behavior_document', None) if profile else None
     contextual = {entry['fqcn']: entry for entry in access.java_resolution(context)}
@@ -56,23 +58,33 @@ def resolve_java_origins(access, context, sources, required, source_index, class
         visited.add(fqcn)
         try:
             candidates = contextual.get(fqcn, {}).get('candidates', [])
-            record = external_dependency(fqcn, rules, document, 'Qualified operation ' + context.operation_identity,
-                                         allow_framework=not candidates and not (
-                                             source_index and source_index.classes.get(fqcn)))
+            from tools.source_discovery_tools.binary_resolution import classpath_for_project
+            source_paths = source_index.classes.get(fqcn, []) if source_index else []
+            owner = source_index.class_projects.get(source_paths[0], java_project) if len(source_paths) == 1 else java_project
+            resolved_classpath = classpath_for_project(classpath_index, owner)
+            record = dependency_record(fqcn, rules, profile, 'Qualified operation ' + context.operation_identity,
+                                       resolved_classpath, source_exists=bool(source_index and source_index.classes.get(fqcn)),
+                                       required=fqcn in roots and not captured_dependencies)
+            if record and record['treatment'] == 'candidate':
+                external.append(record)
+                origins.append(dict(fqcn=fqcn, status='evidence_dependency', evidence=record))
+                continue
             if record and record['treatment'] == 'replace':
                 external.append(record)
                 origins.append(dict(fqcn=fqcn, status='explicit_replacement', evidence=record))
                 continue
             if classpath_index is None or classpath_index.issues:
                 raise ValueError('An explicit resolved classpath profile is required: ' + fqcn)
-            locations = classpath_index.classes.get(fqcn, [])
+            locations = resolved_classpath.classes.get(fqcn, [])
             if record and record['treatment'] == 'retain':
                 if len(locations) != 1 or not locations[0].startswith('jar:'):
                     raise ValueError('Retained class requires one proven library origin: ' + fqcn)
                 digest = _binary_digest(locations[0], fqcn)
                 external.append(record)
                 origins.append(dict(fqcn=fqcn, status='verified_retention', location=locations[0],
-                                    source_hash=digest, evidence=record))
+                                    source_hash=digest, evidence=record,
+                                    binary_resolution=next((item for item in resolved_classpath.binary_resolutions
+                                        if item['class_name'] == fqcn), None)))
                 continue
             if not candidates and len(locations) == 1 and locations[0].startswith('jdk:'):
                 digest = _binary_digest(locations[0], fqcn)
@@ -103,7 +115,7 @@ def resolve_java_origins(access, context, sources, required, source_index, class
                 digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             if digest != reference.evidence['source_hash']:
                 raise ValueError('Java source revision differs from intake: ' + relative)
-            read_java_source(str(path), expected_hash=digest)  # Bind the guarded read to the proved revision.
+            read_java_text(str(path), expected_hash=digest)  # Bind the analysis read to the proved revision.
             dependencies = classify_java_imports(str(path), source_index, classpath_index)
             for dependency in dependencies:
                 if dependency['kind'] == 'needs_review' and verified_platform_wildcard(
@@ -121,7 +133,9 @@ def resolve_java_origins(access, context, sources, required, source_index, class
                     dependency_name = max(names, key=len) if names else imported
                     dependencies_allowed.add(dependency_name)
                     pending.append(dependency_name)
-                elif kind in ('missing', 'ambiguous', 'needs_review'):
+                elif kind in ('missing', 'ambiguous'):
+                    pending.append(imported)
+                elif kind == 'needs_review':
                     issue(fqcn, 'Unresolved Java dependency: ' + imported + ' (' + kind + ')',
                           ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
         except (ValueError, OSError, BadZipFile) as exc:

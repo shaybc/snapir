@@ -50,6 +50,11 @@ def _should_scan_line(line: str) -> bool:
 
 
 def _matched_patterns(line: str, forbidden_patterns: list[str], allowed_classes=()) -> list[str]:
+    from tools.conversion_tools.composer_runtime_contracts import composer_class
+    allowed_classes = tuple(name for name in allowed_classes if not composer_class(name))
+    for name in allowed_classes:
+        if name.startswith('com.ibm.') and not composer_class(name):
+            line = re.sub(r'(?<![\w.])' + re.escape(name) + r'(?![\w$])', '__approved_client__', line)
     lower_line = line.lower()
     imported = re.fullmatch(r"\s*import\s+([\w.]+)\s*;\s*", line)
     if imported and imported.group(1) in allowed_classes:

@@ -24,6 +24,7 @@ def prepare(spec,profile,directory,*,tool=None):
             home=(java_environment(profile.java_version,profile.java_home) or os.environ).get('JAVA_HOME')
             if home and (Path(home)/'release').exists():originals[str(Path(home)/'release')]=file_hash(Path(home)/'release')
             identity=digest(dict(spec=spec.model_dump(mode='json'),unit=unit,originals=originals,java=profile.java_version,
+                classpath=discovery['libraries'],classpath_metadata=discovery.get('classpath_metadata',{}),
                 runner={p.name:file_hash(p) for p in Path(__file__).parent.glob('*.py')}))
             root=Path(directory).resolve()/identity
             if root.exists():verify(root);return ComposerUnitResult(status='package_ready',package=str(root))

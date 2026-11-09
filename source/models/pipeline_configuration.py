@@ -94,6 +94,7 @@ class PipelineConfiguration(BaseModel):
     runtime_validation_mode: Literal["disabled", "dummy"] = constants.RUNTIME_VALIDATION_MODE
     eclipse_classpath_variables: dict[str, str] = Field(default_factory=lambda: deepcopy(constants.ECLIPSE_CLASSPATH_VARIABLES))
     eclipse_classpath_containers: dict[str, list[str]] = Field(default_factory=dict)
+    eclipse_project_classpath_containers: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
     model_api_key_environment: str = constants.MODEL_API_KEY_ENVIRONMENT
     model_timeout_seconds: int = Field(default=constants.MODEL_TIMEOUT_SECONDS, gt=0)
     max_model_attempts: int = Field(default=constants.MAX_MODEL_ATTEMPTS, ge=1, le=10)

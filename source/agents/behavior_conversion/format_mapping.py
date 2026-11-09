@@ -29,7 +29,7 @@ For example, TransferRequest toBusinessInput(TransferRequestXml wire) returns po
 fields after evidenced conversions and decorator removal; it does not mutate a Context.
 Use XmlMapper or the Spring Jackson XML converter for structural XML parsing, not Composer
 formatters. The legacy sources explain behavior; their runtime classes are not reusable APIs.
-Do not import IBM classes, create a Context class, rename Context into a generic data holder,
+Do not import Composer IBM classes (only supplied exact approved non-Composer clients may be retained), create a Context class, rename Context into a generic data holder,
 or use Map<String, Object> or string-key get/set access as a replacement context engine.
 No generated main or test method may accept a Context parameter. Use explicit typed fields,
 arguments and return values. Tests must assert the returned business object's field values.

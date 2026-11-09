@@ -32,6 +32,8 @@ def revalidate_components(profile, factory, *, config=None, units=None, boundari
                 project.mkdir()
                 shutil.copy2(Path(root) / 'pom.xml', project / 'pom.xml')
                 shutil.copytree(Path(root) / 'src', project / 'src')
+                from runtime.retained_libraries.artifacts import DIRECTORY, restore_portable
+                restore_portable(Path(root) / DIRECTORY, project / DIRECTORY)
                 report = json.loads((Path(root) / result.validation_report).read_text(encoding='utf-8'))
                 if report.get('format_partition_records'):
                     from runtime.component_conversion.unit_artifacts import require_partition_records

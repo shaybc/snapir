@@ -81,6 +81,11 @@ def materialize_operation_dependencies(conn, config, profile, project):
             if found is None:
                 raise ValueError('Cannot package a missing pinned component')
             directory, verified = found
+            retained = verified['metadata'].get('retained_dependencies')
+            if retained:
+                from runtime.retained_libraries.artifacts import restore_portable
+                from tools.shared_artifact_store.manifests import contained_path
+                restore_portable(contained_path(directory, retained), project / 'retained-dependencies')
             for name, source in repository_files(directory, verified).items():
                 target = destination / 'repository' / name
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -95,4 +100,7 @@ def materialize_operation_dependencies(conn, config, profile, project):
                     raise ValueError('Transitive shared component is unavailable')
                 pending.append(saved[1])
     manifest_path = destination / 'dependencies.lock.json'
+    if (project / 'retained-dependencies').exists():
+        from tools.shared_artifact_store.project_repository import attach_repository
+        attach_repository(project / 'pom.xml', (), retained=True)
     manifest_path.write_text(json.dumps(dict(schema_version=1, components=sorted(records,key=lambda item:item['key'])), indent=2) + '\n', encoding='utf-8')

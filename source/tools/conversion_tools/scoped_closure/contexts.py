@@ -1,7 +1,7 @@
 """Resolve context ancestry and field evidence within one consuming operation context."""
 
 from tools.conversion_tools.context_field_resolver_tool import _infer_java_type, _context_fields
-from tools.java_analysis_tools.java_source_reader import read_java_source
+from tools.java_analysis_tools.java_text import read_java_text
 from tools.conversion_tools.scoped_closure.collection_policy import effective_children, INDEXED_WRAPPERS
 
 
@@ -65,7 +65,7 @@ def resolve_fields(chain, formats, java_origins):
     for origin in java_origins:
         if origin.get('status') != 'verified_source':
             continue
-        source = read_java_source(origin['source_file'], expected_hash=origin['source_hash'])
+        source = read_java_text(origin['source_file'], expected_hash=origin['source_hash'])
         for name in _context_fields(source, ('setValueAt', 'setValue')):
             add(name, primary, 'implclass', writer=origin['definition_id'])
         for name in _context_fields(source, ('getValueAt', 'getValue')):

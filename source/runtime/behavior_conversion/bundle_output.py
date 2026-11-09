@@ -21,6 +21,8 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
     """Reject unsafe paths, incomplete code, undeclared contracts and unsupported claims."""
     if bundle.unresolved_questions:
         raise ValueError("Unresolved behavior: " + "; ".join(bundle.unresolved_questions))
+    from runtime.retained_libraries.catalog import allowed_client_classes
+    allowed_classes = allowed_client_classes(allowed_classes)
     files = {}
     for item in bundle.files:
         name = item.path
@@ -100,6 +102,9 @@ def file_manifest(project, paths):
 
 def verify_manifest(project, manifest):
     """Reject changed or missing accepted sources before cache reuse or approval."""
+    from runtime.retained_libraries.artifacts import verify_portable, DIRECTORY
+    if (Path(project) / DIRECTORY).exists():
+        verify_portable(Path(project) / DIRECTORY)
     for name, digest in manifest.items():
         path = (Path(project) / name).resolve()
         if not path.is_relative_to(Path(project).resolve()) or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
@@ -121,6 +126,8 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
                 shutil.copy2(project / "pom.xml", staged / "pom.xml")
             if (project / "src").exists():
                 shutil.copytree(project / "src", staged / "src")
+            from runtime.retained_libraries.artifacts import restore_portable, DIRECTORY
+            restore_portable(project / DIRECTORY, staged / DIRECTORY)
             for name in excluded_test_files:
                 target = (staged / name).resolve()
                 if not name.startswith("src/test/java/") or not target.is_relative_to((staged / "src/test/java").resolve()):
@@ -198,4 +205,5 @@ def accept_bundle(project, files, context_factory, profile, dependencies, depend
             from runtime.test_assets.junit_support import stage
             stage(project,assets)
         shutil.copy2(staged / "pom.xml", project / "pom.xml")
+        restore_portable(staged / DIRECTORY, project / DIRECTORY)
     return result.model_dump(mode="json"), file_manifest(project, files)
