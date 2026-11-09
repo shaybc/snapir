@@ -37,7 +37,8 @@ def native_inputs(report):
             if unit.unit_id in units:
                 raise ValueError('Scoped configured unit is shared between execution contexts')
             units[unit.unit_id] = unit
-        bindings[key] = {step['occurrence_id']: workflow['unit_bindings'][step['note']] for step in workflow['steps']}
+        bindings[key] = {step['occurrence_id']: workflow['unit_bindings'][step['note']] for step in workflow['steps']
+                         if step.get('execution_kind', 'processing') != 'routing_only'}
         bindings[key].update({name: identity for name, identity in sorted(workflow['unit_bindings'].items()) if name not in notes})
         closures.append(dict(operation_id=workflow['operation_id'], channel=workflow['channel'],
             operation_identity=workflow['operation_identity'], definition_id=workflow['definition_id'],

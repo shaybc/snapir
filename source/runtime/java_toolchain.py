@@ -88,9 +88,12 @@ def java_scope(profile):
     token = _selected.set((profile.java_version, profile.java_home))
     scan_token = _scan_inactivity_timeout.set(getattr(profile, "java_scan_inactivity_timeout_seconds",
                                                      constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS))
+    from tools.source_discovery_tools.classpath_scope import container_bindings
+    container_token = container_bindings.set(getattr(profile, 'eclipse_classpath_containers', {}))
     try:
         yield
     finally:
+        container_bindings.reset(container_token)
         _scan_inactivity_timeout.reset(scan_token)
         _selected.reset(token)
 

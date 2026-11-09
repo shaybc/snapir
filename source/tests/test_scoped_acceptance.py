@@ -90,7 +90,7 @@ def test_runtime_writes_measurement_and_retains_guard(inventory, tmp_path, monke
     assert report['preparation_status'] == ('blocked' if failure else 'passed')
     assert not report['conversion_enabled'] and not report['acceptance_complete']
     assert json.loads(run_report_path(tmp_path, 'scoped_workflow_preparation.json').read_text()) == original
-    assert statuses == [('blocked', 'conversion_scoped_gated')]
+    assert statuses == [('blocked', 'conversion_scoped_gated') if failure else ('paused', 'conversion_scoped_prepared')]
 
 
 def test_stale_runtime_preserves_stale_status_in_acceptance_report(inventory, tmp_path, monkeypatch):

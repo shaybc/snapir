@@ -87,12 +87,16 @@ def main(argv: list[str] | None = None) -> int:
                         if warning:
                             print(warning)
                 print(f"Run workspace: {directory}")
-                print("Intake result is saved. Inspect status and the intake reports for the plan or any blockers."
+                print("Migration has continued through intake; inspect the current status and reports for any required action."
+                      if getattr(profile, 'scoped_native_mode', 'prepare') in {'component_first_v1', 'behavior_units_v1'} else
+                      "Intake result is saved. Inspect status and the intake reports for the plan or any blockers."
                       if getattr(profile, 'conversion_strategy', None) == 'behavior_units' else
                       "Intake stopped before model-driven planning. Inspect status for the persisted result.")
                 if not command_selected_from_menu:
                     return 0
-                print("Review the conversion plan in the intake reports and approve it when required."
+                print("The current checkpoint below shows any blocker, approval requirement, or completed result."
+                      if getattr(profile, 'scoped_native_mode', 'prepare') in {'component_first_v1', 'behavior_units_v1'} else
+                      "Review the conversion plan in the intake reports and approve it when required."
                       if getattr(profile, 'conversion_strategy', None) == 'behavior_units' else
                       "You may review the intake reports before continuing. Choose Resume a migration when ready to begin planning.")
                 args.run_id = None

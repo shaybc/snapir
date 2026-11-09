@@ -9,7 +9,7 @@ from cli.run_presentation import read_run_summary
 
 # Checkpoints currently accepted by resume_pipeline; discovery never executes it.
 RESUMABLE_PHASES = {
-    "scoped_inventory_ready", "conversion_scoped_gated", "conversion_scoped_stale",
+    "scoped_inventory_ready", "conversion_scoped_gated", "conversion_scoped_stale", "conversion_scoped_prepared",
     "conversion_scoped_native_failed", "conversion_scoped_unsupported",
     "conversion_plan_pending", "conversion_plan_rejected", "conversion_plan_approved", "conversion_plan_blocked",
     "planning_inputs_ready", "planning", "planning_failed", "gate_1_pending",

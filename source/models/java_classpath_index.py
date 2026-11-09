@@ -1,6 +1,7 @@
 """Available compiled classes and classpath discovery diagnostics."""
 
 from pydantic import BaseModel, Field
+from models.classpath_issue import ClasspathIssue
 
 
 class JavaClasspathIndex(BaseModel):
@@ -9,3 +10,4 @@ class JavaClasspathIndex(BaseModel):
     classes: dict[str, list[str]] = Field(default_factory=dict)
     libraries: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
+    issue_details: list[ClasspathIssue] = Field(default_factory=list)

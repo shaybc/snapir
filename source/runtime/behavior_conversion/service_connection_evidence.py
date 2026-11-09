@@ -3,7 +3,7 @@
 from pathlib import Path
 from xml.etree import ElementTree
 from tools.source_discovery_tools import discover_java_sources
-from tools.source_discovery_tools.classpath import discover_java_classpath
+from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
 from tools.component_inventory_tools.service_connections import resolve_service_connections
 from tools.state_store_tools.service_connections import remember, decision
 from tools.component_inventory_tools.identity import stable_id
@@ -23,8 +23,8 @@ def connection_evidence(conn, config, channel, unit_key, sources, xml, profile=N
                         source_index=None, classpath_index=None, persist=True):
     """Resolve and persist source-backed records, reusing decisions only for matching facts."""
     index = source_index if source_index is not None else discover_java_sources(config.source_root)
-    classpath = classpath_index if classpath_index is not None else discover_java_classpath(
-        config.source_root, getattr(profile, 'classpath_jars', []), getattr(profile, 'eclipse_classpath_variables', {}))
+    classpath = classpath_index if classpath_index is not None else discover_conversion_classpath(
+        config.source_root, getattr(profile, 'classpath_jars', []), getattr(profile, 'eclipse_classpath_variables', {}), profile=profile)
     parameters = ElementTree.fromstring(xml).attrib
     records = resolve_service_connections(config.source_root, channel, sources, parameters, index, classpath)
     for record in records:

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from tools.component_inventory_tools.service_connections import resolve_service_connections
 from tools.source_discovery_tools import discover_java_sources
-from tools.source_discovery_tools.classpath import discover_java_classpath
+from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
 
 
 def verify_connection_sources(config, profile, connections):
@@ -12,7 +12,7 @@ def verify_connection_sources(config, profile, connections):
     if not connections:
         return
     index = discover_java_sources(config.source_root)
-    classpath = discover_java_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+    classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables, profile=profile)
     for record in connections:
         source = 'getService(' + json.dumps(record['service_id']) + ');'
         current = resolve_service_connections(config.source_root, record['channel'], {'saved-lookup': source}, {}, index, classpath)

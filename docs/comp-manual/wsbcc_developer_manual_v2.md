@@ -32,7 +32,7 @@ IBM WebSphere Business Component Composer (WSBCC) is a configuration-driven serv
 |---|---|
 | **Channel** | A deployment context (INTERNET, IVR, SME, etc.). Each channel has its own dse.ini, operation registry, and may override or extend shared operations. |
 | **Operation** | A complete service unit. Defined in an XML file. Receives a request, executes a chain of opSteps, returns a response. |
-| **opStep** | One step in an operation's execution chain. Maps to a Java class that performs a specific action (DB call, error mapping, data transformation, backend call). |
+| **opStep** | One step in an operation's execution chain. Processing steps map to Java classes; routing-only steps declare flow control without requiring a Java implementation. |
 | **Format (fmtDef)** | A declarative description of an XML data structure. Drives serialization (format) and deserialization (unformat) of XML ↔ context data. |
 | **Decorator** | A post-processor chained after a formatter tag. Transforms the formatter's string result in one or both directions (format/unformat). |
 | **Context** | A runtime data carrier. A hierarchical map that holds all data flowing through an operation — request fields, backend results, computed values, error codes. |
@@ -578,7 +578,7 @@ This type operates at the XML attribute level rather than the string value level
 
 ### What an opStep Is
 
-An opStep is one step in an operation's execution chain. Each opStep maps to a Java class that performs a specific, bounded piece of business logic — a database call, a backend service call, an error code mapping, a data transformation, a validation check.
+An opStep is one step in an operation's execution chain. A processing opStep maps to a Java class that performs a specific, bounded piece of business logic — a database call, a backend service call, an error code mapping, a data transformation, a validation check. A routing-only opStep can instead declare flow control without invoking a Java implementation.
 
 ### opStep Tag Structure
 
@@ -598,13 +598,31 @@ An opStep is one step in an operation's execution chain. Each opStep maps to a J
 | Attribute | Description |
 |---|---|
 | `id` | Human-readable step label used by named transitions. Multiple occurrences may share the label, including within one channel's flow. Source position distinguishes the occurrences. |
-| `implClass` | FQCN of the Java class implementing this step. Overrides dse.ini lookup. |
+| `implClass` | FQCN of the Java class implementing a processing step. Overrides dse.ini lookup. Not required for a routing-only step. |
 | `on{N}Do` | Where to go when execute() returns integer N. Can be a step id, "next", or "end" |
 | `onOtherDo` | Default routing when no `on{N}Do` matches the return code |
 | `onOtherDoDefault` | Final fallback routing (with runtime warning) |
 | `onTimeoutDo` | Where to go when execute() returns RC_TIMEOUT |
 | `on{N}Return` | When RC=N, switch the error reply format body before routing |
 | `onlyFor` | Comma-separated channel names this step runs on. Absent or blank = runs on all channels. The Mapper matches channel names without case sensitivity. |
+
+### Routing-Only Steps Without a Java Implementation
+
+The following Composer behavior was clarified by the workspace owner: an opStep used purely as a routing fallback or terminal node does not require an `implClass` attribute or a corresponding implementation mapping in `dse.ini`.
+
+```xml
+<opStep id="OperationFailed" onOtherDo="end"/>
+```
+
+This step performs no business processing and invokes no custom Java class or external service. Its fallback route terminates the execution path. A preceding step can route to it through a named transition, such as `onOtherDo="OperationFailed"`.
+
+`OperationFailed` is a user-defined label, not a reserved failure-handler name. A label such as `StopAfterFailure` can serve the same purpose when incoming transitions use that label. The name alone does not imply logging, cleanup, exception handling, or an error response.
+
+Routing-only steps can also declare valid transitions to another step rather than `end`. Preserve the declared routing semantics. The presence of `onOtherDo` alone does not make an implemented processing step routing-only: processing steps can have fallback routes too. Likewise, absence of `implClass` alone does not prove that a step is routing-only, because a processing implementation may be supplied through the channel registry.
+
+**Conversion requirement:** retain a genuine routing-only step as a control-flow node, preserve its incoming and outgoing transitions and source position, and generate the equivalent routing without requiring a Java implementation or scheduling an implementation conversion. Continue resolving implementations for processing steps. Do not special-case the label `OperationFailed` or insert an arbitrary implementation into the source XML.
+
+The scoped native conversion path recognizes pure, implementation-free fallback nodes using `onOtherDo` or `onOtherDoDefault`, including channel restrictions. Explicit implementations and named/default channel implementation mappings retain processing semantics. Steps with business parameters, child configuration, non-whitespace body text, or conditional-only routes remain unresolved rather than being silently treated as no-ops. Recognized routing-only occurrences remain in the assembly and route-test evidence but do not create Java implementation conversion units.
 
 ### Channel-Specific Steps — onlyFor
 

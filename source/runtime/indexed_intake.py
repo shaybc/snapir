@@ -72,9 +72,11 @@ def _run_indexed_intake(profile, config, conn, directory, settings, vault, progr
                     project_references=mapped.index.project_references,issues=mapped.index.issues,
                     analysis_scope='Selected Java closure; global declarations remain in the indexed Composer map'))
                 from tools.source_discovery_tools.classpath import discover_java_classpath
+                progress.stage('Resolving selected project classpath')
                 classpath=discover_java_classpath(profile.source_root,profile.classpath_jars,profile.eclipse_classpath_variables,
                     visible_source_roots=[str(mapped.workspace/Path(row[0]).relative_to(analysis.source_root))
-                        for row in analysis.conn.execute('SELECT DISTINCT s.root FROM java_sources s JOIN selected_java j ON j.file=s.file')])
+                        for row in analysis.conn.execute('SELECT DISTINCT s.root FROM java_sources s JOIN selected_java j ON j.file=s.file')],
+                    progress=progress.current)
                 write_json_report(run_report_path(directory,'java_classpath_index.json'),classpath)
                 inventory=build_component_inventory(profile.source_root,profile.source_workspace_id,mapped.index,storage)
                 persist_component_inventory(conn,config.run_id,inventory,analysis['analysis_hash'])
@@ -87,6 +89,7 @@ def _run_indexed_intake(profile, config, conn, directory, settings, vault, progr
                 write_json_report(run_report_path(directory,'configured_component_usage.json'),iter_configured_component_usage(conn,config.run_id,selected_only=True))
                 from tools.composer_mapper_tools.indexed_vault_importer import import_indexed_vault
                 from tools.composer_mapper_tools.vault_importer import VaultImportSummary
+                progress.stage('Importing selected mapper evidence')
                 summary=import_indexed_vault(conn,analysis,mapped,config,VaultImportSummary(),progress=logger.info)
                 from agents.legacy_composer_analysis.agent import record_import_summary
                 record_import_summary(conn,config,summary)

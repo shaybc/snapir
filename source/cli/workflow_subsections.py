@@ -152,12 +152,21 @@ def active_subsections(conn, directory, status, phase):
         for key, report in (("discover.sources", "java_source_index.json"), ("discover.classpath", "java_classpath_index.json"),
                             ("inventory.definitions", "component_inventory.json"), ("inventory.usage", "configured_component_usage.json")):
             done(key, bool(_report(directory, report)))
-        done("mapper", bool(_rows(conn, "source_artifacts", directory.name)))
-        analysis = [row for row in tasks if row.get("agent_name") == "LegacyComposerAnalysis"]
+        scoped = bool(_rows(conn, "scoped_vault_runs", directory.name))
+        done("mapper", bool(_rows(conn, "source_artifacts", directory.name)) or scoped)
+        analysis = [row for row in tasks if row.get("agent_name") in {"LegacyComposerAnalysis", "LegacyComposerAnalysisAgent"}]
         if analysis:
             states["analysis"] = _aggregate([_task_status(row["status"]) for row in analysis])
         done("contexts.hierarchies", bool(_rows(conn, "context_hierarchies", directory.name)))
         done("contexts.scope", bool(_report(directory, "planning_inputs.json")))
+        done("contexts.scope", bool(_report(directory, "conversion_scope.json")))
+        if scoped:
+            done("analysis", any(row.get('status') == 'completed' for row in analysis))
+            prepared = _report(directory, 'scoped_workflow_preparation.json')
+            done('contexts.hierarchies', bool(prepared.get('operations')) and all(
+                item.get('status') == 'prepared' for item in prepared['operations'].values()))
+            if phase == 'scoped_inventory_ready' and 'contexts.hierarchies' not in states:
+                extra.setdefault('contexts', []).append(('preparation', 'Qualified context preparation runs next', 'pending', []))
     elif stage == "migration_planning":
         done("scope", bool(_report(directory, "planning_inputs.json")))
         planned = bool(_rows(conn, "migration_plans", directory.name))
@@ -170,9 +179,16 @@ def active_subsections(conn, directory, status, phase):
         closures = _report(directory, "dependency_closure.json")
         ready = bool(closures) and isinstance(closures, list) and all(item.get("status") == "READY" for item in closures)
         done("closure", ready)
+        prepared = _report(directory, 'scoped_workflow_preparation.json')
+        if prepared:
+            from runtime.scoped_diagnostics import preparation_blockers
+            if preparation_blockers(prepared):
+                states['closure'] = 'attention'
+            else:
+                done('closure', bool(prepared.get('operations')))
         if phase == "closures_blocked":
             states["closure"] = "attention"
-        done("units", bool(_report(directory, "native_unit_plan.json")) or bool(_rows(conn, "agent_tasks", directory.name)))
+        done("units", bool(_report(directory, "native_unit_plan.json")) or any(item.get('units') for item in prepared.get('operations', {}).values()))
         units = [row for row in tasks if row.get("scope_type") in {"unit", "component"}]
         unit_plan = _report(directory, "native_unit_plan.json")
         labels = {item["unit_id"]: item.get("logical_id", item["unit_id"]) for item in unit_plan.get("units", [])} if isinstance(unit_plan, dict) else {}
@@ -253,7 +269,7 @@ def active_subsections(conn, directory, status, phase):
 
 def subsection_lines(nodes, depth=1):
     """Render the same four markers with indentation for nested subtasks."""
-    markers = {"completed": "[V]", "current": "ג†’", "pending": "[ ]", "attention": "!"}
+    markers = {"completed": "[V]", "current": "\u2192", "pending": "[ ]", "attention": "!"}
     for number, (_, title, state, children) in enumerate(nodes, 1):
         yield "    " * depth + f"{markers[state]} {number}. {title}"
         yield from subsection_lines(children, depth + 1)

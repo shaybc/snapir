@@ -12,7 +12,7 @@ from tools.conversion_tools.scoped_workflow.payloads import operation_payload
 from tools.conversion_tools.scoped_workflow.units import build_scoped_units
 from tools.conversion_tools.scoped_workflow.source_project import scoped_source_project
 from tools.operation_call_tools.discovery import discover_operation_calls
-from tools.source_discovery_tools.classpath import discover_java_classpath
+from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
 from tools.state_store_tools.operation_calls import save_graph
 from tools.conversion_tools.scoped_reuse.checkpoint import validate_checkpoints, observe_inputs, make_checkpoints
 from tools.conversion_tools.scoped_reuse.artifacts import remember_prepared, reuse_prepared
@@ -21,8 +21,9 @@ from tools.conversion_tools.scoped_reuse.fingerprints import digest
 from tools.conversion_tools.component_graph import build_component_plan
 from tools.conversion_tools.dependency_planning.operation_sources import operation_scope
 from tools.conversion_tools.dependency_planning.reuse_sources import component_sources
+from runtime.preparation_progress import report_preparation
 
-GENERATION_GATE = 'Scoped generation remains disabled pending C6 end-to-end acceptance.'
+GENERATION_GATE = 'Preparation evidence does not authorize generation; native execution requires a supported profile and current approval gates.'
 
 
 def is_scoped_run(conn, run_id):
@@ -40,8 +41,10 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
     selected = set(included) if selected is None else set(selected)
     if not selected:
         raise ValueError('Scoped preparation requires a nonempty subset of the imported selection')
-    classpath = classpath_index if classpath_index is not None else discover_java_classpath(
-        config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+    classpath = classpath_index if classpath_index is not None else discover_conversion_classpath(
+        config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables,
+        profile=profile,
+        progress=report_preparation)
     if (Path(config.vault_root) / 'vault-generation.json').exists():
         validate_checkpoints(conn, config, profile, classpath, selected)
     graph = discover_operation_calls(config.vault_root)
@@ -73,6 +76,7 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
         save_graph(conn, config.run_id, graph)
         closures = {}
         for key in scope.order:
+            report_preparation('Preparing operation dependencies: ' + key)
             channel, name = key.split('/', 1)
             context = access.operation(channel, name)
             if context.definition_id != graph['operations'][key]['definition_id']:
@@ -92,6 +96,7 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
             payload = {}
             if not blockers:
                 try:
+                    report_preparation('Building configured units: ' + key)
                     units, bindings = build_scoped_units(conn, config, closure, calls=calls[key], source_cache=cache,
                         profile=profile, classpath_index=classpath)
                     payload = operation_payload(config, closure, contracts[key], calls[key], units, bindings)
@@ -130,6 +135,7 @@ def prepare_scoped_workflow(conn, config, profile, *, selected=None, classpath_i
 
 def _resolved_report(conn, config, profile, access, scope, operations, reused):
     """Keep root/dependency reasons and source/artifact choices in the existing run snapshot."""
+    report_preparation('Planning component dependencies for prepared operations')
     plan = _component_plan(operations, access, conn, config.run_id, profile)
     scope.components = component_sources(plan, profile)
     return dict(run_id=config.run_id, schema_version='scoped-v3-c5', conversion_enabled=False,

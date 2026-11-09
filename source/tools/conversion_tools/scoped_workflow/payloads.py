@@ -12,6 +12,7 @@ def operation_payload(config, closure, contract, calls, units, bindings):
         element = sources.xml(step.source)
         steps.append(dict(occurrence_id=step.source.definition_id, note=step.source.note,
             business_name=step.source.entity_id, source_index=step.source_index, effective_index=step.effective_index,
+            execution_kind=step.execution_kind,
             attributes=dict(element.attrib), configuration_xml=ElementTree.tostring(element, encoding='unicode'),
             unit_id=bindings.get(step.source.note), routes=closure.routing_graph[step.source.note],
             return_body_switches=closure.return_body_switches.get(step.source.note, {}),
@@ -22,6 +23,10 @@ def operation_payload(config, closure, contract, calls, units, bindings):
         outcome_precedence='Preserve evidenced timeout, error and onOther handling; do not invent missing routes.',
         return_body_switches='Preserve occurrence-specific response/error-body selection and restoration.',
         native_calls='Use accepted native Java methods directly; preserve the existing HTTP call contract for complex calls.')
+    if any(step['execution_kind'] == 'routing_only' for step in steps):
+        requirements['routing_only_steps'] = ('Routing-only occurrences invoke no Java implementation and require no constructor dependency. '
+            'Preserve their occurrence, incoming edges and declared fallback transition. Do not invent a return code, business action, '
+            'logging or exception handling for them; follow their unconditional fallback without calling a unit.')
     if calls:
         from runtime.behavior_conversion.operation_calls import INSTRUCTION
         requirements['operation_calls'] = INSTRUCTION

@@ -110,11 +110,19 @@ def _local_closure(access, context, sources, source_index, classpath_index, java
         closure.format_roles, closure.formats = resolver.roles, resolver.nodes
         closure.context_chain = resolve_contexts(access, context, sources, element, issue)
         required = set(resolver.java_classes)
+        from dataclasses import replace
+        from tools.conversion_tools.scoped_closure.step_semantics import routing_only, step_implementation
+        closure.steps = [replace(step, execution_kind='routing_only') if routing_only(sources.xml(step.source), mappings)
+                         else step for step in closure.steps]
         for step in closure.steps:
             source = sources.xml(step.source)
-            fqcn = source.get('implClass') or mappings.get('opStep')
+            if step.execution_kind == 'routing_only':
+                continue
+            fqcn = step_implementation(source, mappings)
             if not fqcn:
-                issue(step.source.note, 'Missing implementation or consuming-channel opStep mapping',
+                issue(step.source.note, 'Missing implementation or consuming-channel opStep mapping: '
+                      + step.source.entity_id + ' | source=' + str(step.source.evidence.get('source_relative_path', ''))
+                      + ' | selector=' + str(step.source.evidence.get('source_selector', '')),
                       ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
             else:
                 required.add(fqcn)
@@ -125,7 +133,7 @@ def _local_closure(access, context, sources, source_index, classpath_index, java
         by_class = {origin['fqcn']: origin for origin in closure.java_origins if origin.get('status') == 'verified_source'}
         for step in closure.steps:
             element_step = sources.xml(step.source)
-            fqcn = element_step.get('implClass') or mappings.get('opStep')
+            fqcn = step_implementation(element_step, mappings)
             for code in by_class.get(fqcn, {}).get('return_codes', {}):
                 conditions = closure.routing_graph.get(step.source.note, {})
                 if 'on' + code + 'Do' not in conditions and 'onOtherDo' not in conditions:

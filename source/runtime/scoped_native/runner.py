@@ -28,7 +28,7 @@ def resume_scoped_pipeline(conn, config, profile, directory, *, plan=None, model
     from runtime.behavior_conversion.runner import _convert_and_review, _gate
     from runtime.behavior_conversion.ownership import create_native_context
     from runtime.managed_projects import create_build_context
-    from tools.source_discovery_tools.classpath import discover_java_classpath
+    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
     from tools.state_store_tools.behavior_units import initialize
     closures, by_operation, units, bindings = native_inputs(report)
     output_root = Path(config.output_root).resolve()
@@ -44,7 +44,7 @@ def resume_scoped_pipeline(conn, config, profile, directory, *, plan=None, model
     if not _gate(conn, config, profile, directory, 1, gate, True, 'conversion_pending'):
         return Path(directory)
     initialize(conn)
-    classpath = discover_java_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+    classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables, profile=profile)
     factory = context_factory or create_build_context
     if profile.scoped_native_mode == 'component_first_v1':
         from runtime.component_conversion.runner import convert_basic_components

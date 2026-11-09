@@ -20,6 +20,19 @@ def make_run(tmp_path, phase, status="paused", profile=None):
     return directory
 
 
+def test_scoped_blocker_is_visible_without_falsely_completed_planning(tmp_path, capsys):
+    directory = make_run(tmp_path, 'conversion_scoped_gated', 'blocked')
+    report = run_report_path(directory, 'scoped_workflow_preparation.json')
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(json.dumps({'operations': {'BANKADMIN/Phone': {'status': 'blocked', 'blockers': [
+        'Missing library: /Shared/lib/client.jar | project=Shared']}}}))
+    display_workflow_progress(directory)
+    text = capsys.readouterr().out
+    assert 'BANKADMIN/Phone' in text and '/Shared/lib/client.jar' in text
+    assert 'No detailed failure reason' not in text
+    assert 'Migration planning (NOT YET COMPLETED)' in text
+
+
 @pytest.mark.parametrize('decision,changed,advances', [('approved', False, True), ('rejected', False, False), ('approved', True, False)])
 def test_gate_three_moves_display_only_after_current_report_approval(tmp_path, capsys, decision, changed, advances):
     directory = make_run(tmp_path, 'gate_3_pending')

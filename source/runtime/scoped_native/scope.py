@@ -46,6 +46,6 @@ def require_task(conn, config, profile, category, identity, payload):
 
 def verify_context(conn, config, profile, key):
     """Validate qualified evidence at downstream packaging or service-call boundaries."""
-    from tools.source_discovery_tools.classpath import discover_java_classpath
-    classpath = discover_java_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
+    classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables, profile=profile)
     validate_checkpoints(conn, config, profile, classpath, {key})

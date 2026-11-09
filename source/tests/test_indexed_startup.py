@@ -10,6 +10,28 @@ from runtime.workspace_paths import run_database_path,run_report_path
 from tools.state_store_tools.db import get_connection
 
 
+def test_full_indexed_start_automatically_prepares_then_stops_at_real_plan_approval(tmp_path, indexed_mapper_jar, monkeypatch):
+    from tests.test_scoped_closure import workspace as xml_workspace
+    from runtime.pipeline_runner import run_pipeline
+    from runtime.java_toolchain import resolve_java_home
+    root, vault = tmp_path / 'source', tmp_path / 'map'
+    xml_workspace(root)
+    generate(indexed_mapper_jar, root, vault)
+    profile = PipelineConfiguration(source_root=str(root), existing_composer_map=str(vault), mapper_analysis_format='indexed-v1',
+        mapper_vault_layout='scoped', source_workspace_id='bank', channels=['XML'], include_operations=['Flow'],
+        output_root=str(tmp_path / 'runs'), java_version=25, java_home=resolve_java_home(25), model_provider='mock',
+        scoped_native_mode='component_first_v1', conversion_strategy='behavior_units', plan_approval_policy='human',
+        executable_verification=dict(mode='test_based_v1'), test_preparation=dict(mode='ai_shared_fixtures_v1'))
+    monkeypatch.setattr('runtime.behavior_conversion.runner.generate', lambda *args, **kwargs: pytest.fail('AI called before human approval'))
+    directory = run_pipeline(profile, 'automatic')
+    with get_connection(str(run_database_path(directory))) as conn:
+        row = conn.execute('SELECT status,current_phase FROM runs WHERE run_id=?', ('automatic',)).fetchone()
+        assert tuple(row) == ('paused', 'conversion_plan_pending')
+        assert conn.execute('SELECT count(*) FROM migration_plans WHERE run_id=?', ('automatic',)).fetchone()[0] == 1
+    report = json.loads(run_report_path(directory, 'scoped_workflow_preparation.json').read_text())
+    assert report['operations']['XML/Flow']['status'] == 'prepared'
+
+
 @pytest.mark.parametrize('existing',[False,True])
 def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_mapper_jar,monkeypatch,existing,caplog):
     from runtime import pipeline_runner

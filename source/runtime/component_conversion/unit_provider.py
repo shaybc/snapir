@@ -92,7 +92,7 @@ class ComponentUnitProvider:
         if unit.kind != 'configured_step' or unit.effective_configuration.get('attributes',{}).get('implClass'):
             return {}
         node = self.plan.components[self.plan.unit_roots[unit.unit_id]]
-        return {'opStep':node.provenance['resolved_implementation']}
+        return {unit.effective_configuration.get('implementation_mapping_key', 'opStep'):node.provenance['resolved_implementation']}
 
     def _repair(self, unit, error):
         """Invalidate only the failing configured root; retain dependency artifacts and siblings."""

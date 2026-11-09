@@ -25,6 +25,10 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
         name: str(((profile_path.parent if "eclipse_classpath_variables" in config.model_fields_set else project_directory) / path).resolve())
         for name, path in config.eclipse_classpath_variables.items()
     }
+    config.eclipse_classpath_containers = {
+        name: [str((profile_path.parent / path).resolve()) for path in paths]
+        for name, paths in config.eclipse_classpath_containers.items()
+    }
     if not Path(config.source_root).is_dir():
         raise ValueError("source_root must identify an existing directory")
     if config.existing_composer_map is not None:

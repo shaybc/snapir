@@ -8,6 +8,9 @@ from pathlib import Path
 import tempfile
 from threading import RLock
 from time import monotonic
+from contextvars import ContextVar
+
+active_inventory_work = ContextVar('active_inventory_work', default=None)
 
 
 class InventoryWork:

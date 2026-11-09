@@ -1,6 +1,7 @@
 """A selected step occurrence in an operation execution context."""
 
 from dataclasses import dataclass
+from typing import Literal
 from models.scoped_entity_reference import ScopedEntityReference
 
 
@@ -14,3 +15,4 @@ class ScopedStepOccurrence:
     source: ScopedEntityReference
     transition_targets: dict
     calls: tuple[dict, ...]
+    execution_kind: Literal['processing', 'routing_only'] = 'processing'

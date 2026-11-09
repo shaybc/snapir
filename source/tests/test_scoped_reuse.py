@@ -263,7 +263,7 @@ def test_runtime_reports_stale_contexts_without_rebuilding(saved, tmp_path, monk
     upsert_run(conn, run_id=config.run_id, run_mode='full_inventory')
     path = Path(config.source_root) / 'src/example/Work.java'
     path.write_text(path.read_text() + '\n// stale runtime')
-    monkeypatch.setattr(preparation, 'discover_java_classpath', lambda *args: JavaClasspathIndex())
+    monkeypatch.setattr(preparation, 'discover_conversion_classpath', lambda *args, **kwargs: JavaClasspathIndex())
     monkeypatch.setattr(preparation, 'build_scoped_operation_closure', lambda *a, **k: pytest.fail('Stale closure rebuilt'))
     report = prepare_scoped_runtime(conn, config, profile, tmp_path)
     assert report['stale_contexts']

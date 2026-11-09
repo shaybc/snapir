@@ -37,6 +37,17 @@ def resolve_java_origins(access, context, sources, required, source_index, class
     rules = getattr(profile, 'external_dependencies', ()) if profile else ()
     document = getattr(profile, 'composer_behavior_document', None) if profile else None
     contextual = {entry['fqcn']: entry for entry in access.java_resolution(context)}
+    if classpath_index is not None and classpath_index.issues:
+        details = {item.detail: item for item in classpath_index.issue_details}
+        reasons = []
+        for message in dict.fromkeys(classpath_index.issues):
+            detail = details.get(message)
+            if detail and detail.project and 'project=' not in message:
+                message += ' | project=' + detail.project + ' | reference=' + detail.reference
+            reasons.append(message)
+        issue('classpath', 'Required project classpath is incomplete: ' + '; '.join(reasons),
+              ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
+        return origins, external
     dependencies_allowed = set(required) if captured_dependencies else set()
     while pending:
         fqcn = pending.popleft()

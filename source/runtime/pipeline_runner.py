@@ -25,6 +25,13 @@ from runtime.inventory_reports import write_json_report
 
 
 def run_pipeline(profile: PipelineConfiguration, run_id: str, configuration_path=None) -> Path:
+    """Start intake and continue full native profiles through the existing gated workflow."""
+    directory = _run_intake(profile, run_id, configuration_path)
+    from runtime.migration_start import continue_after_intake
+    return continue_after_intake(profile, directory)
+
+
+def _run_intake(profile: PipelineConfiguration, run_id: str, configuration_path=None) -> Path:
     """Create a new run and prepare planning inputs; fail on an existing run directory."""
     logger = logging.getLogger(__name__)
     logger.info("Starting workspace intake.")

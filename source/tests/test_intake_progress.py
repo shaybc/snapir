@@ -65,3 +65,15 @@ def test_idle_work_captures_stack_evidence_without_aborting(tmp_path, monkeypatc
     work.persist()
     assert captured == [True]
     assert 'Computing sharing counts' in (tmp_path / 'intake-stacks.log').read_text()
+
+
+def test_report_writing_replaces_stale_operation_progress(tmp_path):
+    from runtime.inventory_reports import write_json_report
+    with component_inventory_progress(0, log_directory=tmp_path / 'logs') as work:
+        work.stage('Expanding selected evidence', 15)
+        work.advance(15, detail='OLD/Operation')
+        write_json_report(tmp_path / 'component_usage.json', [{'value': 1}])
+        snapshot = work.snapshot()
+    assert snapshot['phase'] == 'Writing inventory report: component_usage.json'
+    assert snapshot['detail'] == 'Report saved: component_usage.json'
+    assert snapshot['completed'] == 1 and snapshot['total'] is None

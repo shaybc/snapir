@@ -18,7 +18,8 @@ The wizard asks for these user inputs. It never starts mapping or conversion whe
    automatically; Java is the fixed target language.
 5. JDK version/home, scan inactivity timeout and Helm executable.
 6. External dependencies, additional classpath JARs (JSON list), Eclipse classpath
-   variables (JSON object), Maven settings and optional local repository.
+   variables (JSON object), Eclipse container-to-JAR bindings (JSON object of lists),
+   Maven settings and optional local repository.
 7. Human or automatic approval policy and gate choices.
 8. LiteLLM model, API endpoint and credential environment variable name. The
    defaults target Gemini Studio and `GEMINI_API_KEY`. Set the key in the process
@@ -32,6 +33,23 @@ Address overrides can supply `internal_base_url`, `external_base_url`,
 `service_name`, `namespace` and `service_port` (`port` is also accepted).
 For example: `{"XML/ValidateClientOp":{"service_port":8081}}`. Unspecified
 values inherit the selected environment convention.
+
+Eclipse workspace library references such as `/SharedProject/lib/example.jar`
+resolve against the Composer workspace's declared project, while `lib/example.jar`
+resolves against the declaring project. Explicit drive and UNC paths retain their
+filesystem meaning. Do not move libraries to the drive root to satisfy an Eclipse
+workspace reference.
+
+Container bindings default to `{}`. Supply the exact unresolved container name and
+the actual JAR paths it provides, for example
+`{"vendor.RUNTIME":["../runtime/lib/client.jar"]}`. Relative paths resolve against
+the configuration file's folder. A configured `APP_SERVER_PATH` can supply JARs
+for a supported WebSphere runtime container. Unsupported required containers stay
+blocked with their declaring project and reference; they are not silently ignored.
+
+Starting a full native migration continues automatically after successful intake.
+Actual dependency blockers and configured human approval gates still stop the run.
+Resume continues the same saved run without remapping unchanged sources.
 
 The review shows these fixed settings, without offering older implementations:
 

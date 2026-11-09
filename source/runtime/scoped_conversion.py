@@ -19,7 +19,9 @@ def prepare_scoped_runtime(conn, config, profile, directory, *, plan=None):
     started = perf_counter()
     logging.getLogger(__name__).info('Starting scoped preparation acceptance measurement: %s', config.run_id)
     try:
-        report = prepare_scoped_workflow(conn, config, profile, selected=selected)
+        from runtime.preparation_progress import preparation_progress
+        with preparation_progress('Qualified operation preparation'):
+            report = prepare_scoped_workflow(conn, config, profile, selected=selected)
     except (ValueError, OSError) as exc:
         report = dict(run_id=config.run_id, conversion_enabled=False, generation_gate=GENERATION_GATE,
                       preparation_error=str(exc), operations={})
@@ -28,6 +30,9 @@ def prepare_scoped_runtime(conn, config, profile, directory, *, plan=None):
             report['stale_contexts'] = exc.affected
     elapsed = perf_counter() - started
     write_run_report(directory, 'scoped_workflow_preparation.json', json.dumps(report, indent=2))
+    from runtime.scoped_diagnostics import preparation_blockers
+    for reason in preparation_blockers(report):
+        logging.getLogger(__name__).error('Preparation blocked: %s', reason)
     from runtime.scoped_acceptance import preparation_acceptance
     acceptance = preparation_acceptance(conn, config.run_id, report, elapsed)
     write_run_report(directory, 'scoped_acceptance.json', json.dumps(acceptance, indent=2))
@@ -38,5 +43,8 @@ def prepare_scoped_runtime(conn, config, profile, directory, *, plan=None):
         acceptance['preparation_status'], acceptance['counts']['prepared_contexts'],
         acceptance['counts']['attempted_contexts'], acceptance['elapsed_seconds'])
     phase = 'conversion_scoped_stale' if report.get('stale_contexts') else 'conversion_scoped_gated'
-    update_run_status(conn, config.run_id, 'blocked', phase)
+    if preparation_blockers(report) or not report.get('operations'):
+        update_run_status(conn, config.run_id, 'blocked', phase)
+    else:
+        update_run_status(conn, config.run_id, 'paused', 'conversion_scoped_prepared')
     return report

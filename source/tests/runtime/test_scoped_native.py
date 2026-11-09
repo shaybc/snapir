@@ -85,7 +85,8 @@ class NativeModel:
             return json.dumps(dict(approved=True, issues=[], unresolved_questions=[]))
         if title == 'RouteTestPlan':
             graph = data['closure']['routing_graph']
-            edges = [dict(source=source, outcome='on0Do', target=targets['on0Do']) for source, targets in graph.items()]
+            edges = [dict(source=source, outcome=outcome, target=target) for source, targets in graph.items()
+                     for outcome, target in targets.items()]
             return json.dumps(dict(scenarios=[dict(scenario_id='increment-order', description='Apply configured transformations in source order',
                 inputs=['input=4'], dependency_setup=[], expected_outcome='result=412', expected_side_effects=[],
                 covers=list(data['requirements']), routes=edges)]))
@@ -142,7 +143,7 @@ class NativeModel:
                 request_type='int', success_type='int', error_type='int', step_dependencies=dependencies)).model_dump_json()
 
 
-def scoped_state(tmp_path, mapper):
+def scoped_state(tmp_path, mapper, *, routing_terminal=False):
     root, vault = tmp_path / 'source', tmp_path / 'vault'
     channel = root / 'Channel/XML'
     channel.mkdir(parents=True)
@@ -166,6 +167,10 @@ def scoped_state(tmp_path, mapper):
     demo_framework = Path(__file__).resolve().parents[3] / 'bank-demo/composer/Workspace/WSBCC_XML/src/com/ibm/dse/base'
     for name in ('Context', 'Tag'):
         (framework / (name + '.java')).write_text((demo_framework / (name + '.java')).read_text())
+    if routing_terminal:
+        operation = channel / 'Flow.xml'
+        operation.write_text(operation.read_text().replace('increment="2" on0Do="end"', 'increment="2" on0Do="StopAfterFailure"')
+            .replace('</CCDSEServerOperation>', '<opStep id="StopAfterFailure" onOtherDo="end"/></CCDSEServerOperation>'))
     mapped = invoke_mapper(mapper, root, vault)
     assert mapped.returncode == 0, mapped.stderr
     conn = get_connection(':memory:')
@@ -281,4 +286,34 @@ def test_original_fixture_java_establishes_an_order_sensitive_oracle(tmp_path, s
     result = subprocess.run([str(home / 'bin/java'), '-cp', str(classes), 'Oracle'],
         check=True, capture_output=True, text=True)
     assert result.stdout == '412'
+    conn.close()
+
+
+def test_routing_only_terminal_compiles_and_runs_route_junit_without_unit_conversion(tmp_path, scoped_mapper, monkeypatch):
+    """Exercise real Java assembly; numeric fixture portable XML examples are outside this routing test."""
+    conn, config = scoped_state(tmp_path, scoped_mapper, routing_terminal=True)
+    profile = PipelineConfiguration(source_root=config.source_root, mapper_vault_layout='scoped', source_workspace_id='native',
+        scoped_native_mode='behavior_units_v1', scoped_java_project='.', conversion_strategy='behavior_units',
+        plan_approval_policy='automatic', staged_unit_conversion=False, java_version=25, java_home=resolve_java_home(25),
+        model_provider='mock', max_agent_task_retries=1,
+        gate_policies={'1': 'automatic', '2': 'automatic', '3': 'human', '4': 'human'}, classpath_jars=[], eclipse_classpath_variables={})
+    monkeypatch.setattr('runtime.operation_assembly.values.prepare_operation_values', lambda *args, **kwargs: None)
+    monkeypatch.setattr('runtime.behavior_conversion.standalone_sample.write_operation_sample', lambda *args, **kwargs: None)
+    if profile.composer_behavior_document:
+        behavior = tmp_path / 'composer-behavior.md'
+        behavior.write_bytes(Path(profile.composer_behavior_document).read_bytes())
+        profile.composer_behavior_document = str(behavior)
+    model = NativeModel()
+    from runtime.behavior_conversion.runner import resume_behavior_pipeline
+    with java_scope(profile):
+        resume_behavior_pipeline(conn, config, profile, tmp_path, model_call=model, context_factory=actual_build)
+    assert get_run(conn, 'native')['current_phase'] == 'gate_3_pending'
+    record = json.loads(snapshot(conn, 'native', 'operation', 'XML/Flow')['data_json'])
+    assert len(record['bindings']) == 2
+    assert not any(request.get('logical_id') == 'StopAfterFailure' for request in model.requests)
+    preparation = json.loads(run_report_path(tmp_path, 'scoped_workflow_preparation.json').read_text())
+    assert len(preparation['operations']['XML/Flow']['behavior_request']['steps']) == 3
+    manifest = json.loads(snapshot(conn, 'native', 'manifest', 'service:XML/Flow')['data_json'])
+    assert manifest['validation']['build_passed'] and manifest['validation']['tests_passed']
+    assert conn.execute("SELECT count(*) FROM behavior_snapshots WHERE category='route_test_report'").fetchone()[0] > 0
     conn.close()

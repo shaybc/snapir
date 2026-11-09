@@ -34,6 +34,14 @@ def _saved_problem(directory, stage):
     """Select current-stage diagnostic evidence, not stale errors from earlier stages."""
     if stage == 'dependency_closure_and_component_conversion':
         try:
+            report = json.loads(run_report_path(directory, 'scoped_workflow_preparation.json').read_text(encoding='utf-8'))
+            from runtime.scoped_diagnostics import preparation_blockers
+            blockers = preparation_blockers(report)
+            if blockers:
+                return '; '.join(blockers)
+        except (OSError, ValueError):
+            pass
+        try:
             with sqlite3.connect(run_database_path(directory).as_uri() + '?mode=ro', uri=True) as conn:
                 row = conn.execute('SELECT current_phase FROM runs WHERE run_id=?', (directory.name,)).fetchone()
             if row and row[0] == 'conversion_service_connections_pending':

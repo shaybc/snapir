@@ -71,6 +71,18 @@ def checkpoint_guidance(directory, status, phase):
             "Review the component conversion reports, resolve any failures, then resume this run.")
     if phase == "closures_blocked":
         return ["Dependency check found unresolved dependencies"], "Open the dependency closure report and resolve its blocking issues."
+    if phase in {'conversion_scoped_gated', 'conversion_scoped_stale', 'conversion_scoped_prepared'}:
+        path = run_report_path(directory, 'scoped_workflow_preparation.json')
+        try:
+            from runtime.scoped_diagnostics import preparation_blockers
+            report = json.loads(path.read_text(encoding='utf-8'))
+            reasons = preparation_blockers(report)
+            if reasons:
+                return [*reasons, 'Report: ' + str(path)], 'Resolve these preparation blockers, then resume the saved run; retain its completed map.'
+            if report.get('operations'):
+                return ['Qualified preparation completed; native conversion is not yet complete', 'Report: ' + str(path)], 'Resume with a full native-conversion profile to continue through the approval gates.'
+        except (OSError, ValueError):
+            pass
     if phase.startswith("gate_"):
         gate = phase.split("_")[1]
         if phase == 'gate_4_blocked':
@@ -137,6 +149,15 @@ def display_workflow_progress(directory):
     for index, label in enumerate(STAGES.values()):
         if index < current or completed:
             marker, description = "[V]", "completed"
+            if index == 1 and phase.startswith('conversion_scoped_'):
+                # Preparation can stop before a migration plan has ever been created.
+                try:
+                    with sqlite3.connect(run_database_path(directory).as_uri() + '?mode=ro', uri=True) as state:
+                        planned = state.execute('SELECT 1 FROM migration_plans WHERE run_id=? LIMIT 1', (directory.name,)).fetchone()
+                except sqlite3.Error:
+                    planned = None
+                if not planned:
+                    marker, description = '[ ]', 'not yet completed'
         elif index > current:
             marker, description = "[ ]", "pending"
         else:

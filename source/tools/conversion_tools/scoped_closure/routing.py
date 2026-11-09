@@ -32,7 +32,7 @@ def resolve_routing(access, context, sources, steps, issue):
     for index, step in enumerate(steps):
         element = sources.xml(step.source)
         transitions = {key: value for key, value in element.attrib.items()
-                       if key.startswith('on') and key.endswith('Do')}
+                       if key.startswith('on') and (key.endswith('Do') or key == 'onOtherDoDefault')}
         routes[step.source.note] = {}
         for condition, label in transitions.items():
             target_index = None

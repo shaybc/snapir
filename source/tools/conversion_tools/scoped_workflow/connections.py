@@ -6,7 +6,7 @@ from runtime.behavior_conversion.service_connection_evidence import connection_e
 from tools.component_inventory_tools.identity import stable_id
 from tools.java_analysis_tools.java_source_reader import read_java_source
 from tools.source_discovery_tools import discover_java_sources
-from tools.source_discovery_tools.classpath import discover_java_classpath
+from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
 from tools.conversion_tools.scoped_workflow.source_project import scoped_source_project
 
 
@@ -27,8 +27,8 @@ def attach_scoped_connections(conn, config, closure, unit, profile, classpath_in
         pending.extend(index.project_references.get(current, []))
     index = index.model_copy(update={'classes': {name: [path for path in paths if index.class_projects[path] in allowed]
         for name, paths in index.classes.items() if any(index.class_projects[path] in allowed for path in paths)}})
-    classpath = classpath_index if classpath_index is not None else discover_java_classpath(
-        config.source_root, getattr(profile, 'classpath_jars', []), getattr(profile, 'eclipse_classpath_variables', {}))
+    classpath = classpath_index if classpath_index is not None else discover_conversion_classpath(
+        config.source_root, getattr(profile, 'classpath_jars', []), getattr(profile, 'eclipse_classpath_variables', {}), profile=profile)
     # Native operation calls replace this dispatch boundary; it is not an external
     # service resource. Keep the original source in the unit's conversion evidence.
     dispatchers = {origin['definition_id'] for origin in closure.java_origins

@@ -14,11 +14,11 @@ def resolve_pending_connections(conn, config, profile, directory, units, factory
     if not affected:
         return True
     from runtime.behavior_conversion.driver_resolution import verify_connections
-    from tools.source_discovery_tools.classpath import discover_java_classpath
+    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
     from runtime.workspace_paths import write_run_report
     import logging
     logger = logging.getLogger(__name__)
-    classpath = discover_java_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+    classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables, profile=profile)
     context = factory(profile, Path(directory) / 'connection-verification', 'connection-verification')
     conn.execute('''CREATE TABLE IF NOT EXISTS service_connection_verifications (
         run_id TEXT, fingerprint TEXT, record_json TEXT, PRIMARY KEY(run_id,fingerprint))''')

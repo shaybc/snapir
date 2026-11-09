@@ -44,9 +44,11 @@ def resume_pipeline(output_root: str, run_id: str):
             from tools.component_inventory_tools.mapped_inventory import MappedInventory
             from tools.composer_mapper_tools.mapped_scope import mapped_scope
             from tools.state_store_tools.map_snapshot import pin_map,validation_receipt
-            mapped_analysis = IndexedAnalysis(config.vault_root,receipt=validation_receipt(profile.output_root,config.vault_root))
-            mapped_analysis.verify_sources(config.source_root)
-            pin_map(conn,config,mapped_analysis)
+            from runtime.preparation_progress import preparation_progress, report_preparation
+            with preparation_progress('Verifying saved Composer map'):
+                mapped_analysis = IndexedAnalysis(config.vault_root,receipt=validation_receipt(profile.output_root,config.vault_root),progress=report_preparation)
+                mapped_analysis.verify_sources(config.source_root,report_preparation)
+                pin_map(conn,config,mapped_analysis)
             mapped_runtime = mapped_scope(MappedInventory(mapped_analysis,config.source_root,config))
             mapped_runtime.__enter__()
         from runtime.gate_numbering import check_gate_numbering

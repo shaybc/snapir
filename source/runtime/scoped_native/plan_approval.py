@@ -9,11 +9,11 @@ from tools.state_store_tools.runs import update_run_status
 def _snapshot(conn, config, profile, plan):
     from tools.conversion_tools.scoped_reuse.state import checkpoints
     from tools.conversion_tools.scoped_reuse.checkpoint import validate_checkpoints
-    from tools.source_discovery_tools.classpath import discover_java_classpath
+    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
     from runtime.java_toolchain import java_scope
     keys = {packet.channel + '/' + packet.operation_id for batch in plan.batches for packet in batch.task_packets}
     with java_scope(profile):
-        classpath = discover_java_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables)
+        classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars, profile.eclipse_classpath_variables, profile=profile)
     validate_checkpoints(conn, config, profile, classpath, keys)
     proof = {item.operation_key: item.fingerprint for item in checkpoints(conn, config.run_id).values()
              if item.operation_key in keys}

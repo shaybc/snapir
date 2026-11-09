@@ -60,13 +60,17 @@ def build_scoped_units(conn, config, closure, *, calls=(), source_cache=None, pr
         return attach_scoped_connections(conn, config, closure, unit, profile, classpath_index)
 
     for step in closure.steps:
+        if step.execution_kind == 'routing_only':
+            continue
         element = sources.xml(step.source)
         attached = [call for call in calls if call['occurrence_id'] == step.source.definition_id]
         unit = make('configured_step', step.source.entity_id, step.source.definition_id, step.source.definition_id,
             ElementTree.tostring(element, encoding='unicode'),
             dict(attributes=dict(element.attrib), routes=closure.routing_graph[step.source.note],
-                 return_body_switches=closure.return_body_switches.get(step.source.note, {})), attached,
-            {element.get('implClass') or mappings.get('opStep')}, [])
+                 return_body_switches=closure.return_body_switches.get(step.source.note, {}),
+                 resolved_implementation=element.get('implClass') or mappings.get(element.get('id')) or mappings.get('opStep'),
+                 implementation_mapping_key=element.get('id') if element.get('id') in mappings else 'opStep'), attached,
+            {element.get('implClass') or mappings.get(element.get('id')) or mappings.get('opStep')}, [])
         units.append(unit)
         bindings[step.source.note] = unit.unit_id
     directions = [(role, kind, closure.format_roles[role]) for role, kind in (

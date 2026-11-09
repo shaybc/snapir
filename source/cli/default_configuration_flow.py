@@ -70,6 +70,7 @@ def collect_section(draft, inputs, configs, api):
         result = api.collect_external_dependencies(inputs.text)
         result['classpath_jars'] = _json(inputs, 'Additional classpath JARs (JSON list)', [], list)
         result['eclipse_classpath_variables'] = _json(inputs, 'Eclipse classpath variables (JSON object)', {}, dict)
+        result['eclipse_classpath_containers'] = _json(inputs, 'Eclipse container JAR bindings (JSON object of lists; empty uses discovery)', {}, dict)
         result['maven_settings_path'] = inputs.text('Maven settings file (empty uses Maven defaults)', '') or None
         result['maven_local_repository'] = inputs.text('Maven local repository (empty uses Maven defaults)', '') or None
         return result

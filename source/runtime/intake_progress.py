@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import logging
 from threading import Event, Thread
 from time import monotonic
-from runtime.inventory_work import InventoryWork
+from runtime.inventory_work import InventoryWork, active_inventory_work
 
 
 @contextmanager
@@ -17,6 +17,7 @@ def component_inventory_progress(source_count, *, interval_seconds=10, log_direc
     started = monotonic()
     stopped = Event()
     work = InventoryWork(log_directory)
+    token = active_inventory_work.set(work)
     file_handler = None
     if log_directory is not None:
         from pathlib import Path
@@ -44,6 +45,7 @@ def component_inventory_progress(source_count, *, interval_seconds=10, log_direc
     finally:
         stopped.set()
         worker.join()
+        active_inventory_work.reset(token)
         logger.info("Component inventory %s after %.1f seconds.", outcome, monotonic() - started)
         work.status = outcome
         try:

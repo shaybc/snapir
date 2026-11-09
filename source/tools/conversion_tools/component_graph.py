@@ -72,7 +72,7 @@ class _ConfiguredGraph:
             configuration if step else dict(direction=self.unit['kind'],configuration_xml=self.unit['configuration_xml']), 'unit')
         self.plan.unit_roots[self.unit['unit_id']]=root.component_id
         if step:
-            implementation=configuration.get('attributes',{}).get('implClass') or self.step_mapping
+            implementation=configuration.get('attributes',{}).get('implClass') or configuration.get('resolved_implementation') or self.step_mapping
             root.provenance['resolved_implementation']=implementation
             self.implementation(root,implementation,'step_implementation')
             for index,call in enumerate(self.unit.get('operation_calls',[])):

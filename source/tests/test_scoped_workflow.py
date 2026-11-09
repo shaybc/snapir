@@ -285,7 +285,7 @@ def test_runtime_paths_prepare_then_stop_before_models_and_component_gates(tmp_p
     from tools.state_store_tools.runs import upsert_run, get_run
     upsert_run(conn, run_id='scoped', run_mode='full_inventory')
     from tools.conversion_tools.scoped_workflow import preparation
-    monkeypatch.setattr(preparation, 'discover_java_classpath', lambda *args: JavaClasspathIndex())
+    monkeypatch.setattr(preparation, 'discover_conversion_classpath', lambda *args, **kwargs: JavaClasspathIndex())
     def forbidden(*args, **kwargs):
         pytest.fail('Generation/gate/legacy planning was invoked')
     directory = tmp_path / 'run'
@@ -298,8 +298,8 @@ def test_runtime_paths_prepare_then_stop_before_models_and_component_gates(tmp_p
         plan = SimpleNamespace(run_id='scoped', batches=[SimpleNamespace(task_packets=[packet])])
         phase = run_operation_assembly(conn, config, profile, plan, directory, gate_checker=forbidden,
             plan_builder=forbidden, context_factory=forbidden, skeleton_generator=forbidden)
-        assert phase == 'conversion_scoped_gated'
-    assert get_run(conn, 'scoped')['current_phase'] == 'conversion_scoped_gated'
+        assert phase == 'conversion_scoped_prepared'
+    assert get_run(conn, 'scoped')['current_phase'] == 'conversion_scoped_prepared'
     from runtime.workspace_paths import run_report_path
     report = json.loads(run_report_path(directory, 'scoped_workflow_preparation.json').read_text())
     assert not report['conversion_enabled']
@@ -335,7 +335,7 @@ def test_checkpoint_dispatches_scoped_before_legacy_planning(tmp_path, scoped_ma
     monkeypatch.setattr(checkpoints, 'get_connection', lambda *args: conn)
     monkeypatch.setattr(checkpoints, 'run_model_diagnostics', lambda *args: nullcontext())
     monkeypatch.setattr(checkpoints, 'java_scope', lambda *args: nullcontext())
-    monkeypatch.setattr(preparation, 'discover_java_classpath', lambda *args: JavaClasspathIndex())
+    monkeypatch.setattr(preparation, 'discover_conversion_classpath', lambda *args, **kwargs: JavaClasspathIndex())
     monkeypatch.setattr(checkpoints, 'get_operations_for_planning', lambda *args: pytest.fail('Legacy planning invoked'))
     assert checkpoints.resume_pipeline(str(tmp_path), 'scoped') == directory
     report = json.loads(run_report_path(directory, 'scoped_workflow_preparation.json').read_text())

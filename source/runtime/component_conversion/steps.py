@@ -32,9 +32,10 @@ def default_step_mappings(plan):
         if not implementation: continue
         for operation in node.operations:
             mapping = result.setdefault(operation, {})
-            if mapping.get('opStep', implementation) != implementation:
+            key = node.configuration.get('implementation_mapping_key', 'opStep')
+            if mapping.get(key, implementation) != implementation:
                 raise ValueError('Operation has conflicting qualified default step implementations')
-            mapping['opStep'] = implementation
+            mapping[key] = implementation
     return result
 
 

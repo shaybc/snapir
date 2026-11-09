@@ -14,6 +14,11 @@ from time import monotonic
 def write_json_report(path, value):
     """Atomically stream ordinary report schemas, holding only one record at a time."""
     path = Path(path)
+    from runtime.inventory_work import active_inventory_work
+    work = active_inventory_work.get()
+    if work is not None:
+        work.stage('Writing inventory report: ' + path.name)
+        work.current(str(path))
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     logger = logging.getLogger(__name__)
@@ -31,6 +36,8 @@ def write_json_report(path, value):
             _write(stream, value)
             stream.write('\n')
         os.replace(temporary, path)
+        if work is not None:
+            work.advance(detail='Report saved: ' + path.name)
         logger.info('Wrote %s: %s bytes in %.1f seconds.', path.name, path.stat().st_size, monotonic() - started)
     finally:
         stopped.set()
