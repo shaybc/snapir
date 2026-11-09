@@ -50,7 +50,6 @@ def resolve_java_origins(access, context, sources, required, source_index, class
         issue('classpath', 'Required project classpath is incomplete: ' + '; '.join(reasons),
               ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
         return origins, external
-    dependencies_allowed = set(required) if captured_dependencies else set()
     while pending:
         fqcn = pending.popleft()
         if fqcn in visited:
@@ -125,19 +124,8 @@ def resolve_java_origins(access, context, sources, required, source_index, class
                 source_file=str(path), source_hash=digest, source_project=source_index.class_projects[str(path)],
                 profile_project=java_project, dependencies=dependencies,
                 return_codes=reference.evidence.get('parsed', {}).get('return_codes', {})))
-            for dependency in dependencies:
-                kind, imported = dependency['kind'], dependency['import_name']
-                if kind in ('source', 'replacement_required', 'library'):
-                    # Resolve static imports to their evidenced enclosing class, not a method name.
-                    names = [name for name in source_index.classes if imported == name or imported.startswith(name + '.')]
-                    dependency_name = max(names, key=len) if names else imported
-                    dependencies_allowed.add(dependency_name)
-                    pending.append(dependency_name)
-                elif kind in ('missing', 'ambiguous'):
-                    pending.append(imported)
-                elif kind == 'needs_review':
-                    issue(fqcn, 'Unresolved Java dependency: ' + imported + ' (' + kind + ')',
-                          ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
+            # Imports remain diagnostic/name-resolution facts. The syntax dependency
+            # pass follows actual references and qualifies any supporting sources.
         except (ValueError, OSError, BadZipFile) as exc:
             issue(fqcn, str(exc), ClosureStatus.BLOCKED_MISSING_IMPL_CLASS)
             origins.append(dict(fqcn=fqcn, status='unresolved_classpath', detail=str(exc)))

@@ -54,12 +54,21 @@ def check_java_dependencies(components, source_index, classpath, expected_hashes
             classpath = classpath_for_project(inventory, source_index.class_projects.get(path))
             ignored = {node.get("name") for tag in ("local_type", "type_parameter") for node in document.findall(tag)}
             references = list(document.findall("reference"))
-            for imported in document.findall("import"):
-                name = imported.get("name")
-                if not name.endswith(".*"):
-                    if imported.get("static") == "true":
-                        name = name.rsplit(".", 1)[0]
-                    references.append(ElementTree.Element("reference", name=name, kind="type"))
+            # Imports resolve actual references; they do not create type uses themselves.
+            variables = {node.get("name") for node in document.findall("variable")}
+            methods = {node.get("name") for node in document.findall("method")}
+            for reference in list(references):
+                name, kind = reference.get("name"), reference.get("kind")
+                if kind == "qualifier" and name.split(".")[0] not in variables:
+                    for imported in document.findall("import"):
+                        imported_name = imported.get("name")
+                        if imported.get("static") != "true" and imported_name.rsplit(".", 1)[-1] == name:
+                            references.append(ElementTree.Element("reference", name=imported_name, kind="type"))
+                elif kind in ("static_member", "static_field") and name not in variables and not (kind == "static_member" and name in methods):
+                    for imported in document.findall("import"):
+                        imported_name = imported.get("name")
+                        if imported.get("static") == "true" and (imported_name.endswith("." + name) or imported_name.endswith(".*")):
+                            references.append(ElementTree.Element("reference", name=imported_name.rsplit(".", 1)[0], kind="type"))
             for reference in references:
                 name, kind = reference.get("name"), reference.get("kind")
                 if kind == "type" and name not in ignored:

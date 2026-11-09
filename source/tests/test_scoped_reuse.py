@@ -56,6 +56,63 @@ def test_unchanged_workflow_reuses_proof_without_closure_analysis(saved, monkeyp
     assert not second['conversion_enabled']
 
 
+def test_prepared_evidence_under_old_import_policy_is_not_reused(tmp_path, scoped_mapper, monkeypatch):
+    from tools.conversion_tools.scoped_reuse import checkpoint
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper)
+    config, profile = settings(root, vault)
+    try:
+        with monkeypatch.context() as old:
+            old.setattr(checkpoint, 'POLICY_VERSION', 'scoped-v3-unit-evidence-v7-project-classpath-order')
+            prepare(conn, config, profile)
+        with pytest.raises(ScopedCheckpointStale, match='Changed common'):
+            prepare(conn, config, profile)
+    finally:
+        conn.close()
+
+
+def test_blocked_unused_import_run_resumes_without_remapping_or_importing_extra_records(tmp_path, scoped_mapper, monkeypatch):
+    from xml.etree import ElementTree
+    from tools.conversion_tools.scoped_closure import java_dependencies
+    from tools.conversion_tools.scoped_reuse import checkpoint
+    from tools.java_analysis_tools.source_dependencies.parser import parse_source_references
+    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
+    def change(root):
+        folder = root / 'src/support'
+        folder.mkdir()
+        (folder / 'ServiceNotAvailableException.java').write_text('package support; public class ServiceNotAvailableException {}')
+        (root / 'src/example/Work.java').write_text('package example;\nimport support.ServiceNotAvailableException;\npublic class Work {}\n')
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper, change=change)
+    config, profile = settings(root, vault)
+    conn.execute("DELETE FROM scoped_source_definitions WHERE logical_id='support.ServiceNotAvailableException'")
+    manifest_hash = file_digest(vault / 'vault-manifest.json')
+    checker = java_dependencies.check_java_dependencies
+    def old_checker(*args, **kwargs):
+        def old_parser(paths):
+            analysis = parse_source_references(paths)
+            for document in analysis.findall('source'):
+                for imported in document.findall('import'):
+                    if imported.get('name') == 'support.ServiceNotAvailableException':
+                        document.append(ElementTree.Element('reference', name=imported.get('name'), kind='type'))
+            return analysis
+        return checker(*args, **kwargs, source_parser=old_parser)
+    try:
+        with monkeypatch.context() as old:
+            old.setattr(checkpoint, 'POLICY_VERSION', 'scoped-v3-unit-evidence-v7-project-classpath-order')
+            old.setattr(java_dependencies, 'check_java_dependencies', old_checker)
+            first = prepare(conn, config, profile, selected={'SME/Flow'})
+        assert first['operations']['SME/Flow']['status'] == 'blocked'
+        monkeypatch.setattr('tools.composer_mapper_tools.vault_importer.import_vault', lambda *a, **k: pytest.fail('Resume repeated intake'))
+        second = prepare(conn, config, profile, selected={'SME/Flow'})
+        assert second['operations']['SME/Flow']['status'] == 'prepared', second['operations']['SME/Flow']['blockers']
+        assert not second.get('reused_contexts')
+        assert file_digest(vault / 'vault-manifest.json') == manifest_hash
+        assert conn.execute("SELECT count(*) FROM scoped_source_definitions WHERE logical_id='support.ServiceNotAvailableException'").fetchone()[0] == 0
+        assert any('import support.ServiceNotAvailableException;' in source['content']
+                   for unit in second['operations']['SME/Flow']['units'] for source in unit['sources'])
+    finally:
+        conn.close()
+
+
 def test_shared_implementations_reuse_once_but_units_stay_contextual(saved):
     conn, config, profile, report = saved
     entries = conn.execute("SELECT count(*) FROM scoped_reuse_entries WHERE category='implementation'").fetchone()[0]

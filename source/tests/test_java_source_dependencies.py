@@ -72,6 +72,65 @@ def test_unused_imports_comments_and_strings_do_not_create_utility_edges(tmp_pat
     assert not [edge for edge in inventory.java_dependencies.dependencies if edge.caller_implementation_id == root]
 
 
+@pytest.mark.parametrize('import_line', [
+    'import support.ServiceNotAvailableException;',
+    'import static support.Helper.value;',
+    'import support.*;',
+    'import static support.Helper.*;',
+])
+def test_preparation_does_not_promote_unused_imports_to_required_evidence(tmp_path, import_line):
+    from models.conversion_component import ConversionComponent
+    from models.java_classpath_index import JavaClasspathIndex
+    from tools.source_discovery_tools import discover_java_sources
+    from tools.conversion_tools.java_dependency_readiness import check_java_dependencies
+    source = tmp_path / 'src/example/Work.java'
+    source.parent.mkdir(parents=True)
+    text = 'package example; ' + import_line + ' public class Work { public int execute(){return 0;} }'
+    source.write_text(text)
+    helper = tmp_path / 'src/support/Helper.java'
+    helper.parent.mkdir()
+    helper.write_text('package support; public class Helper { public static int value(){return 1;} }')
+    (helper.parent / 'ServiceNotAvailableException.java').write_text('package support; public class ServiceNotAvailableException {}')
+    component = ConversionComponent(kind='ibm_java',logical_id='example.Work',source_file=str(source),source_content=text,
+                                    source_hash='fixture',origin='test')
+    graph = {}
+    checked, issues = check_java_dependencies([component],discover_java_sources(str(tmp_path)),JavaClasspathIndex(),
+        expected_hashes={str(source.resolve()):'fixture'},dependency_graph=graph)
+    assert not issues
+    assert [item.logical_id for item in checked] == ['example.Work']
+    assert not graph.get('example.Work')
+    assert checked[0].source_content == text
+
+
+@pytest.mark.parametrize('import_line, body', [
+    ('import support.Helper;', 'Helper value = new Helper();'),
+    ('import support.Helper;', 'Class<?> value = Helper.class;'),
+    ('import support.*;', 'Helper value = new Helper();'),
+    ('import static support.Helper.value;', 'int result = value();'),
+    ('import static support.Helper.*;', 'int result = value();'),
+])
+def test_preparation_preserves_actual_uses_resolved_through_imports(tmp_path, import_line, body):
+    from models.conversion_component import ConversionComponent
+    from models.java_classpath_index import JavaClasspathIndex
+    from tools.source_discovery_tools import discover_java_sources
+    from tools.conversion_tools.java_dependency_readiness import check_java_dependencies
+    source = tmp_path / 'src/example/Work.java'
+    source.parent.mkdir(parents=True)
+    text = 'package example; ' + import_line + ' public class Work { public void execute(){' + body + '} }'
+    source.write_text(text)
+    helper = tmp_path / 'src/support/Helper.java'
+    helper.parent.mkdir()
+    helper.write_text('package support; public class Helper { public static int value(){return 1;} }')
+    component = ConversionComponent(kind='ibm_java',logical_id='example.Work',source_file=str(source),source_content=text,
+                                    source_hash='fixture',origin='test')
+    graph = {}
+    # A helper absent from captured intake hashes must still fail when actually used.
+    _, issues = check_java_dependencies([component],discover_java_sources(str(tmp_path)),JavaClasspathIndex(),
+        expected_hashes={str(source.resolve()):'fixture'},dependency_graph=graph)
+    assert 'support.Helper' in graph['example.Work']
+    assert any('not captured by intake' in issue.detail for issue in issues)
+
+
 @pytest.mark.parametrize("body", [
     "return org.example.Helper.value() > 0;",
     "Helper helper = new Helper(); return helper.value() > 0;",

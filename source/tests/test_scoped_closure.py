@@ -284,6 +284,34 @@ def test_same_package_java_dependency_uses_captured_coordinates(tmp_path, scoped
                for origin in closure.java_origins)
 
 
+@pytest.mark.parametrize('used', [False, True])
+def test_import_only_exception_needs_no_intake_record_but_used_exception_does(tmp_path, scoped_mapper, used):
+    def change(root):
+        support = root / 'src/support'
+        support.mkdir()
+        (support / 'ServiceNotAvailableException.java').write_text(
+            'package support; public class ServiceNotAvailableException extends java.lang.Exception {}')
+        (root / 'src/example/Work.java').write_text('package example;\n'
+            'import support.ServiceNotAvailableException;\npublic class Work {\n'
+            'public int execute()' + (' throws ServiceNotAvailableException' if used else '') + ' { return 0; }\n}\n')
+    conn, root, _ = import_workspace(tmp_path, scoped_mapper, change=change)
+    try:
+        # The mapper created the note; simulate the saved run omitting its intake record.
+        conn.execute("DELETE FROM scoped_source_definitions WHERE logical_id='support.ServiceNotAvailableException'")
+        closure = profiled(conn, root)
+        if used:
+            assert closure.status == 'blocked'
+            assert any('not captured by intake' in issue.detail for issue in closure.blocking_issues)
+        else:
+            assert closure.status == 'evidence_ready', closure.blocking_issues
+            assert not any(item['fqcn'] == 'support.ServiceNotAvailableException' for item in closure.java_origins)
+            work = next(item for item in closure.java_origins if item['fqcn'] == 'example.Work')
+            assert 'support.ServiceNotAvailableException' not in work['required_classes']
+            assert 'import support.ServiceNotAvailableException;' in (root / 'src/example/Work.java').read_text()
+    finally:
+        conn.close()
+
+
 def test_uncaptured_new_java_helper_blocks_selected_source(tmp_path, scoped_mapper):
     def change(root):
         (root / 'src/example/Work.java').write_text('package example;\npublic class Work { Helper helper; }\n')
