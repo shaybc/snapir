@@ -152,8 +152,12 @@ class ScopedVaultAccess:
             WHERE run_id=? AND kind='java_class' AND logical_id=?
             AND json_extract(record_json,'$.source_relative_path')=?''',
             (self.run_id, fqcn, relative_path)).fetchall()
-        if len(rows) != 1:
-            raise ValueError('Java dependency source was not uniquely captured by intake: ' + relative_path)
+        if not rows:
+            raise ValueError('Java dependency has no matching saved intake record: ' + fqcn + ' | path=' + relative_path +
+                             ' | This is an intake-record lookup, not a filesystem existence check')
+        if len(rows) > 1:
+            raise ValueError('Java dependency has multiple matching saved intake records (' + str(len(rows)) + '): ' +
+                             fqcn + ' | path=' + relative_path)
         return self._reference(json.loads(rows[0][0]))
 
     def captured_java_revisions(self, context):
