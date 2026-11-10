@@ -1,0 +1,27 @@
+id: scope-composer-mapper
+scope: composer-mapper
+layout:
+  composer-map:
+    x: 1412
+    y: 551
+  conversion-cli:
+    x: -54
+    y: 355
+  legacy-workspace:
+    x: 1436
+    y: 245
+  mapper-analysis:
+    x: 308
+    y: 548
+  mapper-discovery:
+    x: 1090
+    y: 47
+  mapper-entry:
+    x: 293
+    y: 42
+  mapper-index:
+    x: 883
+    y: 129
+  mapper-vault:
+    x: 1009
+    y: 388

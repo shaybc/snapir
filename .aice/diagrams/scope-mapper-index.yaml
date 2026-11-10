@@ -1,0 +1,9 @@
+id: scope-mapper-index
+scope: mapper-index
+layout:
+  mapper-java-index:
+    x: 77
+    y: 309
+  mapper-xml-index:
+    x: 78
+    y: 32

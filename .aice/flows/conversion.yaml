@@ -1,64 +1,19 @@
 id: conversion
-name: Qualified conversion
-description: Representative scoped behavior-unit path after intake; readiness, profile settings, and approval gates
-  can stop execution.
+name: Conversion overview
+description: Six major stages with evidence handoffs; drill into each stage for internal paths and gates.
 diagram: conversion
 steps:
-- connection: operator-intake
-  description: Select workspace, channels, and operations.
-- connection: intake-mapper
-  description: Generate a Composer map unless an existing map was supplied.
-- connection: mapper-map
-  description: Publish reusable analysis and source-linked evidence.
-- connection: intake-map
-  description: Validate the map and load selected inventory; indexed intake pauses at scoped inventory readiness.
-- connection: intake-state
-  description: Persist the selected snapshot.
-- connection: operator-resume
-  description: Continue the prepared run explicitly or through an eligible automatic continuation.
-- connection: resume-coordinator
-  description: Continue operation execution in dependency order.
-- connection: coordinator-behavior
-  description: Choose the behavior-unit strategy.
-- connection: behavior-scoped
-  description: Route scoped evidence through native capability checks.
-- connection: scoped-preparation
-  description: Prepare qualified operation contexts; preparation-only mode stops here.
-- connection: preparation-state
-  description: Reject stale or incomplete preparation checkpoints.
+- connection: intake-prepared-handoff
+  description: 1. Intake maps and analyzes the selected workspace and supplies pinned evidence to preparation.
 - connection: scoped-plan
-  description: Build or load the execution plan for prepared operations.
-- connection: scoped-gates
-  description: Require plan approval and Gate 1; unsupported or unready runs stop.
-- connection: scoped-behavior
-  description: Convert units in dependency order; component-first mode optionally supplies converted components.
-- connection: behavior-generation
-  description: Request implementation from complete original evidence.
-- connection: generation-staged
-  description: Use narrow stages when staged conversion is enabled.
-- connection: staged-model
-  description: Generate production implementation and the required metadata and tests in separate requests.
-- connection: model-provider-call
-  description: Call the configured provider with bounded transport attempts.
-- connection: staged-verification
-  description: Compile and validate staged outputs, routing correction feedback to its owning stage.
-- connection: generation-verification
-  description: Apply the owning task acceptance checks and applicable behavior comparisons.
-- connection: verification-java-call
-  description: Inspect or compare Java behavior when required by the verification policy.
-- connection: generation-state
-  description: Retain accepted results and attempt evidence.
-- connection: behavior-gates
-  description: Require accepted unit reviews at Gate 2, then assemble and review operations before Gate 3.
+  description: 2. Preparation resolves qualified closures, contracts, configured units, and freshness before planning
+    native execution.
+- connection: plan-conversion-handoff
+  description: 3. Planning provides validated dependency order and task selection; current approval gates authorize
+    conversion.
 - connection: behavior-services
-  description: Generate service wrappers around approved operations.
-- connection: services-gates
-  description: Require Gate 4 creation approval before generating microservices when that mode is enabled.
-- connection: services-verification
-  description: Build, test, and validate the service artifacts.
-- connection: behavior-finalization
-  description: Finalize only after service generation reports validation evidence readiness.
-- connection: finalization-output
-  description: Verify evidence and artifact fingerprints and produce reports and deployment manifests.
-- connection: finalization-gates
-  description: Approve Gate 5 only when required final evidence passes; deployment remains a separate action.
+  description: 4. Conversion checks reusable components and units, assembles operations, and requires accepted reviews
+    before service creation.
+- connection: service-final-handoff
+  description: 5. Service creation requires applicable Gate 4 approval and produces build, test, package, and deployment
+    evidence; 6. Finalization checks freshness, creates deliverables, and requires Gate 5 without deployment.

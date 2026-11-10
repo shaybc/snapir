@@ -7,6 +7,7 @@ from xml.etree import ElementTree
 
 from runtime.java_toolchain import run_java
 from tools.behavior_verification.analysis_progress import run_with_progress
+from tools.behavior_verification.analysis_xml import read_analysis_xml
 
 
 def default_tool_path():
@@ -76,7 +77,7 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         if file_digest(tool) != tool_hash:
             raise ValueError('Converter analysis tool changed during boundary discovery')
         verify_libraries()
-        report = ElementTree.fromstring((folder / 'output.xml').read_bytes().replace(b'\r', b'&#13;'))
+        report = read_analysis_xml(folder / 'output.xml')
         if any(scope.get('classpath') for scope in scopes.values()):
             if report.get('classpath_protocol') != 'project-classpath-v1':
                 raise ValueError('Boundary analyzer JAR lacks project classpath support; rebuild source/behavior-verification-java/pom.xml')

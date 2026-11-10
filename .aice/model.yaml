@@ -11,16 +11,6 @@ objects:
     type: system
     name: Snapir conversion
     description: Converts Composer behavior into reviewed Java services.
-  - id: legacy-workspace
-    type: system
-    name: Legacy Composer workspace
-    description: Provides original XML configuration, Java implementations, and classpath dependencies.
-    external: true
-  - id: model-provider
-    type: system
-    name: Configured model provider
-    description: Generates structured conversion results and reviews through Gemini or a compatible endpoint.
-    external: true
   - id: conversion-cli
     type: app
     name: Conversion CLI
@@ -31,6 +21,475 @@ objects:
     code:
       - source/workspace_intake.py
       - source/runtime/**
+  - id: intake
+    type: component
+    name: 1. Intake and analyze
+    description: Builds selected inventory through indexed map-first or legacy discovery paths.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/pipeline_runner.py
+      - source/runtime/indexed_intake.py
+      - source/tools/component_inventory_tools/**
+      - source/tools/composer_mapper_tools/**
+  - id: intake-control
+    type: component
+    name: Intake routing
+    description: Selects indexed map-first or legacy discovery intake and manages the run lifecycle.
+    parent: intake
+    technologies:
+      - Python
+    code:
+      - source/runtime/pipeline_runner.py
+      - source/runtime/indexed_intake.py
+  - id: source-discovery
+    type: component
+    name: Source and classpath discovery
+    description: Resolves Java sources, project classpaths, and legacy workspace inventory facts.
+    parent: intake
+    technologies:
+      - Python
+    code:
+      - source/tools/source_discovery_tools/**
+      - source/tools/state_store_tools/workspace_analysis.py
+  - id: analyzer
+    type: component
+    name: Composer analyzer
+    description: Validates mapped evidence, selects inventory, imports definitions, and records source changes.
+    parent: intake
+    technologies:
+      - Python
+    code:
+      - source/agents/legacy_composer_analysis/**
+      - source/tools/composer_mapper_tools/**
+      - source/tools/component_inventory_tools/**
+  - id: map-validation
+    type: component
+    name: Map validation and source freshness
+    description: Checks existing vault structure and indexed map publication and source fingerprints.
+    parent: analyzer
+    technologies:
+      - Python
+    code:
+      - source/tools/composer_mapper_tools/indexed_analysis.py
+      - source/tools/workspace_intake_tools/vault_validator.py
+      - source/tools/state_store_tools/map_snapshot.py
+  - id: selected-inventory
+    type: component
+    name: Selected inventory and dependency closure
+    description: Builds the selected component inventory and pins its source analysis revision.
+    parent: analyzer
+    technologies:
+      - Python
+    code:
+      - source/tools/component_inventory_tools/**
+      - source/tools/state_store_tools/component_inventory.py
+  - id: vault-import
+    type: component
+    name: Composer definition import
+    description: Imports indexed, scoped, or legacy definitions into run state.
+    parent: analyzer
+    technologies:
+      - Python
+    code:
+      - source/tools/composer_mapper_tools/vault_importer.py
+      - source/tools/composer_mapper_tools/indexed_vault_importer.py
+      - source/tools/composer_mapper_tools/scoped_vault_importer.py
+  - id: analysis-invalidation
+    type: component
+    name: Change tracking and invalidation
+    description: Records analysis summaries and invalidates affected work when source hashes change.
+    parent: analyzer
+    technologies:
+      - Python
+    code:
+      - source/agents/legacy_composer_analysis/agent.py
+      - source/tools/state_store_tools/invalidation.py
+  - id: preparation
+    type: component
+    name: 2. Prepare qualified evidence
+    description: Resolves operation evidence, dependencies, routes, and scoped generation readiness.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/scoped_conversion.py
+      - source/tools/conversion_tools/scoped_workflow/**
+      - source/tools/conversion_tools/scoped_reuse/**
+  - id: scoped-native
+    type: component
+    name: Scoped native execution
+    description: Enforces preparation mode and approved native capabilities before conversion.
+    parent: preparation
+    technologies:
+      - Python
+    code:
+      - source/runtime/scoped_native/**
+  - id: prepared-closure
+    type: component
+    name: Qualified operation closure
+    description: Resolves exact operation dependencies, source projects, and original source evidence.
+    parent: preparation
+    technologies:
+      - Python
+    code:
+      - source/tools/conversion_tools/closure_builder_tool.py
+      - source/tools/conversion_tools/scoped_workflow/preparation.py
+      - source/tools/conversion_tools/scoped_workflow/source_project.py
+  - id: prepared-contracts
+    type: component
+    name: Contracts and operation calls
+    description: Plans context contracts and binds calls to local or published operation boundaries.
+    parent: preparation
+    technologies:
+      - Python
+    code:
+      - source/tools/conversion_tools/scoped_workflow/contracts.py
+      - source/tools/conversion_tools/scoped_workflow/calls.py
+  - id: prepared-units
+    type: component
+    name: Configured units and evidence
+    description: Builds configured units, bindings, and complete operation request payloads.
+    parent: preparation
+    technologies:
+      - Python
+    code:
+      - source/tools/conversion_tools/scoped_workflow/units.py
+      - source/tools/conversion_tools/scoped_workflow/unit_evidence.py
+      - source/tools/conversion_tools/scoped_workflow/payloads.py
+  - id: preparation-reuse
+    type: component
+    name: Preparation freshness and reuse
+    description: Checks evidence fingerprints and reuses only eligible prepared checkpoints.
+    parent: preparation
+    technologies:
+      - Python
+    code:
+      - source/tools/conversion_tools/scoped_reuse/**
+  - id: planning
+    type: component
+    name: 3. Plan dependencies
+    description: Builds dependency-ordered operation plans for selected migration work.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/planning.py
+      - source/runtime/intake_plan.py
+      - source/agents/migration_planning/**
+  - id: dependency-order
+    type: component
+    name: Dependency ordering
+    description: Finds operation dependencies, blocks unresolved cycles, and builds execution waves.
+    parent: planning
+    technologies:
+      - Python
+    code:
+      - source/tools/operation_call_tools/preflight.py
+      - source/tools/operation_call_tools/ordering.py
+      - source/runtime/intake_plan.py
+  - id: plan-generation
+    type: component
+    name: Migration plan construction
+    description: Constructs operation batches and task packets from selected planning inputs.
+    parent: planning
+    technologies:
+      - Python
+    code:
+      - source/runtime/planning.py
+      - source/agents/migration_planning/agent.py
+  - id: plan-validation
+    type: component
+    name: Plan validation and persistence
+    description: Validates run ownership, operation coverage, and batch ordering before saving the plan.
+    parent: planning
+    technologies:
+      - Python
+    code:
+      - source/agents/migration_planning/plan_validator.py
+      - source/agents/migration_planning/agent.py
+      - source/runtime/planning.py
+  - id: services
+    type: component
+    name: 5. Create and validate services
+    description: Wraps approved operation sources in validated executable Java service projects.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/service_generation/**
+  - id: service-wrappers
+    type: component
+    name: Service wrappers and wiring
+    description: Generates service wrappers around immutable approved operation sources.
+    parent: services
+    technologies:
+      - Python
+    code:
+      - source/runtime/service_generation/runner.py
+      - source/runtime/service_generation/project_output.py
+      - source/runtime/service_generation/operation_wiring.py
+      - source/runtime/service_generation/connection_wiring.py
+  - id: service-build
+    type: component
+    name: Service build and tests
+    description: Compiles, tests, packages, and checks final service projects.
+    parent: services
+    technologies:
+      - Python
+    code:
+      - source/runtime/service_generation/validation.py
+      - source/runtime/service_generation/runner.py
+  - id: service-packaging
+    type: component
+    name: Executable and deployment artifacts
+    description: Builds executable project structure and renders configured deployment artifacts.
+    parent: services
+    technologies:
+      - Python
+    code:
+      - source/runtime/service_generation/microservice_output.py
+      - source/runtime/service_generation/maven_reactor.py
+      - source/runtime/service_generation/packaging_policy.py
+      - source/runtime/service_generation/helm_render_checks.py
+  - id: finalization
+    type: component
+    name: 6. Finalize deliverables
+    description: Verifies deliverable evidence and produces reports and deployment manifests without deployment.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/finalization/**
+      - source/tools/deployment_tools/**
+  - id: final-evidence
+    type: component
+    name: Final evidence freshness
+    description: Checks accepted operation evidence, project fingerprints, and required prior approvals.
+    parent: finalization
+    technologies:
+      - Python
+    code:
+      - source/runtime/finalization/runner.py
+      - source/runtime/operation_review/evidence.py
+  - id: final-artifacts
+    type: component
+    name: Documentation and manifests
+    description: Creates operation documentation and deployment deliverables.
+    parent: finalization
+    technologies:
+      - Python
+    code:
+      - source/agents/documentation_report/**
+      - source/agents/java_deployment_manifest/**
+      - source/tools/deployment_tools/**
+  - id: final-approval
+    type: component
+    name: Final report and Gate 5
+    description: Collects final validation evidence and records migration approval without deployment.
+    parent: finalization
+    technologies:
+      - Python
+    code:
+      - source/runtime/finalization/runner.py
+  - id: conversion-stage
+    type: component
+    name: 4. Convert and assemble
+    description: Converts reusable components and behavior units into reviewed operation implementations.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/runner.py
+      - source/runtime/component_conversion/**
+      - source/runtime/managed_projects.py
+  - id: components
+    type: component
+    name: Component-first conversion
+    description: Converts reusable basic components when component-first mode is selected.
+    parent: conversion-stage
+    technologies:
+      - Python
+    code:
+      - source/runtime/component_conversion/**
+  - id: behavior-runner
+    type: component
+    name: Behavior conversion and assembly
+    description: Converts dependency-ordered units and assembles reviewed operation implementations.
+    parent: conversion-stage
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/runner.py
+      - source/runtime/behavior_conversion/operation_calls.py
+      - source/runtime/behavior_conversion/review.py
+      - source/runtime/behavior_conversion/revisions.py
+  - id: unit-conversion
+    type: component
+    name: Unit conversion and acceptance
+    description: Converts units in dependency order and accepts only validated reviewed bundles.
+    parent: behavior-runner
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/runner.py
+      - source/runtime/behavior_conversion/revisions.py
+      - source/runtime/behavior_conversion/bundle_output.py
+  - id: operation-composition
+    type: component
+    name: Operation assembly and review
+    description: Assembles accepted units into operation implementations and reviews them before service generation.
+    parent: behavior-runner
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/runner.py
+      - source/runtime/behavior_conversion/operation_calls.py
+      - source/runtime/behavior_conversion/review.py
+  - id: managed-conversion
+    type: component
+    name: Managed source conversion
+    description: Converts source tasks through the existing managed project workflow.
+    parent: conversion-stage
+    technologies:
+      - Python
+    code:
+      - source/runtime/managed_projects.py
+      - source/runtime/component_review/**
+      - source/runtime/operation_assembly/**
+      - source/runtime/operation_review/**
+  - id: generation
+    type: component
+    name: Bounded generation
+    description: Validates structured model responses and retains bounded attempts and correction feedback.
+    parent: conversion-stage
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/generation.py
+      - source/runtime/behavior_conversion/compatibility.py
+      - source/runtime/behavior_conversion/resume_budget.py
+  - id: staged-generation
+    type: component
+    name: Staged conversion
+    description: Separates implementation, compile checks, metadata, bindings, and test generation.
+    parent: generation
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/staged_pipeline.py
+      - source/runtime/behavior_conversion/staged_conversion.py
+      - source/runtime/behavior_conversion/stage_tasks.py
+  - id: production-stage
+    type: component
+    name: Production implementation
+    description: Generates production Java against original evidence and typed boundary contracts.
+    parent: staged-generation
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/staged_pipeline.py
+      - source/runtime/behavior_conversion/staged_conversion.py
+      - source/runtime/behavior_conversion/typed_boundaries.py
+  - id: metadata-stage
+    type: component
+    name: API metadata and bindings
+    description: Inspects native APIs and resolves dependencies, mappings, and verification bindings.
+    parent: staged-generation
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/native_metadata.py
+      - source/runtime/behavior_conversion/native_binding_builder.py
+      - source/runtime/behavior_conversion/staged_adapters.py
+  - id: tests-stage
+    type: component
+    name: Tests and staged acceptance
+    description: Generates focused tests and submits the assembled result to the owning acceptance validator.
+    parent: staged-generation
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/staged_pipeline.py
+      - source/runtime/behavior_conversion/staged_conversion.py
+      - source/runtime/behavior_conversion/stage_tasks.py
+  - id: side-road
+    type: component
+    name: Optional side-road recovery
+    description: Checks an isolated baseline and simplification after eligible framework-dependency failures.
+    parent: generation
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/side_road_conversion.py
+      - source/runtime/behavior_conversion/side_road_policy.py
+  - id: workflow-support
+    type: component
+    name: Workflow controls and shared capabilities
+    description: Provides resume coordination, approvals, model access, and validation across stages.
+    parent: conversion-cli
+    technologies:
+      - Python
+    code:
+      - source/runtime/checkpoints.py
+      - source/runtime/operation_coordinator.py
+      - source/runtime/human_gates.py
+      - source/runtime/model_execution/**
+  - id: checkpoints
+    type: component
+    name: Resume and checkpoints
+    description: Restores persisted phases and routes work through current preparation and acceptance checks.
+    parent: workflow-support
+    technologies:
+      - Python
+    code:
+      - source/runtime/checkpoints.py
+      - source/runtime/migration_start.py
+      - source/runtime/gate_numbering.py
+  - id: coordinator
+    type: component
+    name: Operation coordinator
+    description: Runs selected operations with scoped gates and verified dependency publication.
+    parent: workflow-support
+    technologies:
+      - Python
+    code:
+      - source/runtime/operation_coordinator.py
+      - source/runtime/service_publication.py
+  - id: verification
+    type: component
+    name: Build and behavior validation
+    description: Checks native bundles, typed boundaries, builds, tests, and applicable behavioral evidence.
+    parent: workflow-support
+    technologies:
+      - Python
+    code:
+      - source/runtime/behavior_conversion/bundle_output.py
+      - source/runtime/behavior_conversion/stage_compilation.py
+      - source/runtime/behavior_conversion/verification_ladder.py
+      - source/tools/behavior_verification/**
+      - source/runtime/runtime_validation/**
+  - id: model-executor
+    type: component
+    name: Model execution
+    description: Calls the configured model with readiness checks, timeouts, and transport retries.
+    parent: workflow-support
+    technologies:
+      - Python
+    code:
+      - source/runtime/model_execution/**
+  - id: gates
+    type: component
+    name: Approval gates
+    description: Binds approval decisions to exact reports and blocks failed checks.
+    parent: workflow-support
+    technologies:
+      - Python
+    code:
+      - source/runtime/human_gates.py
+      - source/runtime/scoped_native/plan_approval.py
+      - source/runtime/service_generation/gate.py
   - id: composer-mapper
     type: app
     name: Composer Mapper
@@ -40,6 +499,73 @@ objects:
       - Java
     code:
       - source/composer-mapper/src/main/java/**
+  - id: mapper-entry
+    type: component
+    name: Mapper mode selection
+    description: Chooses indexed analysis, scoped vault generation, or legacy vault generation.
+    parent: composer-mapper
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/Main.java
+  - id: mapper-discovery
+    type: component
+    name: Composer file discovery
+    description: Discovers source files and channel selection for mapping.
+    parent: composer-mapper
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/FileDiscoveryService.java
+  - id: mapper-index
+    type: component
+    name: Definition and source indexing
+    description: Indexes source definitions and Java declarations for map generation.
+    parent: composer-mapper
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/**
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedDefinitionCatalog.java
+  - id: mapper-xml-index
+    type: component
+    name: XML and channel definitions
+    description: Indexes Composer XML definitions and channel mapping.
+    parent: mapper-index
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/XmlDefinitionIndexer.java
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/IniMappingIndexer.java
+  - id: mapper-java-index
+    type: component
+    name: Java declaration index
+    description: Indexes Java class ownership and declarations.
+    parent: mapper-index
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/JavaClassIndexer.java
+  - id: mapper-analysis
+    type: component
+    name: Reusable indexed analysis
+    description: Persists indexed facts and supports fingerprint-based reuse and recovery.
+    parent: composer-mapper
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/storage/**
+  - id: mapper-vault
+    type: component
+    name: Vault generation
+    description: Writes qualified scoped evidence or legacy Markdown notes and manifests.
+    parent: composer-mapper
+    technologies:
+      - Java
+    code:
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedVaultGenerationService.java
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/StreamingGenerationService.java
+      - source/composer-mapper/src/main/java/il/co/dcd/composermapper/render/**
   - id: verification-java
     type: app
     name: Java behavior verification tool
@@ -78,191 +604,20 @@ objects:
     parent: snapir
     technologies:
       - Filesystem
-  - id: intake
-    type: component
-    name: Workspace intake
-    description: Builds selected inventory through indexed map-first or legacy discovery paths.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/pipeline_runner.py
-      - source/runtime/indexed_intake.py
-      - source/tools/component_inventory_tools/**
-      - source/tools/composer_mapper_tools/**
-  - id: preparation
-    type: component
-    name: Qualified preparation
-    description: Resolves operation evidence, dependencies, routes, and scoped generation readiness.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/scoped_conversion.py
-      - source/tools/conversion_tools/scoped_workflow/**
-      - source/tools/conversion_tools/scoped_reuse/**
-  - id: planning
-    type: component
-    name: Dependency planning
-    description: Builds dependency-ordered operation plans for selected migration work.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/planning.py
-      - source/runtime/intake_plan.py
-      - source/agents/migration_planning/**
-  - id: checkpoints
-    type: component
-    name: Resume and checkpoints
-    description: Restores persisted phases and routes work through current preparation and acceptance checks.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/checkpoints.py
-      - source/runtime/migration_start.py
-      - source/runtime/gate_numbering.py
-  - id: coordinator
-    type: component
-    name: Operation coordinator
-    description: Runs selected operations with scoped gates and verified dependency publication.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/operation_coordinator.py
-      - source/runtime/service_publication.py
-  - id: scoped-native
-    type: component
-    name: Scoped native execution
-    description: Enforces preparation mode and approved native capabilities before conversion.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/scoped_native/**
-  - id: components
-    type: component
-    name: Component-first conversion
-    description: Converts reusable basic components when component-first mode is selected.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/component_conversion/**
-  - id: behavior-runner
-    type: component
-    name: Behavior conversion and assembly
-    description: Converts dependency-ordered units and assembles reviewed operation implementations.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/runner.py
-      - source/runtime/behavior_conversion/operation_calls.py
-      - source/runtime/behavior_conversion/review.py
-      - source/runtime/behavior_conversion/revisions.py
-  - id: managed-conversion
-    type: component
-    name: Managed source conversion
-    description: Converts source tasks through the existing managed project workflow.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/managed_projects.py
-      - source/runtime/component_review/**
-      - source/runtime/operation_assembly/**
-      - source/runtime/operation_review/**
-  - id: generation
-    type: component
-    name: Bounded generation
-    description: Validates structured model responses and retains bounded attempts and correction feedback.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/generation.py
-      - source/runtime/behavior_conversion/compatibility.py
-      - source/runtime/behavior_conversion/resume_budget.py
-  - id: staged-generation
-    type: component
-    name: Staged conversion
-    description: Separates implementation, compile checks, metadata, bindings, and test generation.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/staged_pipeline.py
-      - source/runtime/behavior_conversion/staged_conversion.py
-      - source/runtime/behavior_conversion/stage_tasks.py
-  - id: side-road
-    type: component
-    name: Optional side-road recovery
-    description: Checks an isolated baseline and simplification after eligible framework-dependency failures.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/side_road_conversion.py
-      - source/runtime/behavior_conversion/side_road_policy.py
-  - id: verification
-    type: component
-    name: Build and behavior validation
-    description: Checks native bundles, typed boundaries, builds, tests, and applicable behavioral evidence.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/bundle_output.py
-      - source/runtime/behavior_conversion/stage_compilation.py
-      - source/runtime/behavior_conversion/verification_ladder.py
-      - source/tools/behavior_verification/**
-      - source/runtime/runtime_validation/**
-  - id: model-executor
-    type: component
-    name: Model execution
-    description: Calls the configured model with readiness checks, timeouts, and transport retries.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/model_execution/**
-  - id: gates
-    type: component
-    name: Approval gates
-    description: Binds approval decisions to exact reports and blocks failed checks.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/human_gates.py
-      - source/runtime/scoped_native/plan_approval.py
-      - source/runtime/service_generation/gate.py
-  - id: services
-    type: component
-    name: Service generation
-    description: Wraps approved operation sources in validated executable Java service projects.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/service_generation/**
-  - id: finalization
-    type: component
-    name: Finalization
-    description: Verifies deliverable evidence and produces reports and deployment manifests without deployment.
-    parent: conversion-cli
-    technologies:
-      - Python
-    code:
-      - source/runtime/finalization/**
-      - source/tools/deployment_tools/**
+  - id: legacy-workspace
+    type: system
+    name: Legacy Composer workspace
+    description: Provides original XML configuration, Java implementations, and classpath dependencies.
+    external: true
+  - id: model-provider
+    type: system
+    name: Configured model provider
+    description: Generates structured conversion results and reviews through Gemini or a compatible endpoint.
+    external: true
 connections:
   - id: operator-intake
     from: operator
-    to: intake
+    to: intake-control
     description: Starts a selected migration run
     technology: CLI
   - id: operator-resume
@@ -276,43 +631,43 @@ connections:
     description: Records explicit approval or rejection
     technology: CLI
   - id: intake-source
-    from: intake
+    from: source-discovery
     to: legacy-workspace
     description: Discovers sources, classpath, and source fingerprints
     technology: Filesystem
   - id: intake-mapper
-    from: intake
-    to: composer-mapper
+    from: intake-control
+    to: mapper-entry
     description: Runs mapping unless an existing map is supplied
     technology: Java subprocess
   - id: mapper-source
-    from: composer-mapper
+    from: mapper-discovery
     to: legacy-workspace
     description: Reads Composer definitions and Java sources
     technology: Filesystem
   - id: mapper-map
-    from: composer-mapper
+    from: mapper-vault
     to: composer-map
     description: Publishes indexed analysis and vault evidence
     technology: SQLite / Filesystem
   - id: intake-map
-    from: intake
+    from: map-validation
     to: composer-map
     description: Validates and imports selected map evidence
     technology: SQLite / Filesystem
   - id: intake-cache
-    from: intake
+    from: source-discovery
     to: workspace-cache
     description: Reuses fingerprinted facts in legacy analysis
     technology: SQLite
   - id: intake-state
-    from: intake
+    from: vault-import
     to: run-state
     description: Persists pinned selection and inventory
     technology: SQLite
   - id: intake-plan
-    from: intake
-    to: planning
+    from: intake-control
+    to: plan-generation
     description: Prepares planning inputs on eligible legacy paths
     technology: function call
   - id: resume-state
@@ -351,27 +706,27 @@ connections:
     description: Prepares selected evidence before any generation
     technology: function call
   - id: preparation-map
-    from: preparation
+    from: prepared-closure
     to: composer-map
     description: Resolves and checks pinned source-linked evidence
     technology: Filesystem / SQLite
   - id: preparation-source
-    from: preparation
+    from: preparation-reuse
     to: legacy-workspace
     description: Checks current original source evidence
     technology: Filesystem
   - id: preparation-state
-    from: preparation
+    from: preparation-reuse
     to: run-state
     description: Validates reusable preparation checkpoints
     technology: SQLite
   - id: scoped-plan
     from: scoped-native
-    to: planning
+    to: plan-generation
     description: Resolves an execution plan for prepared operations
     technology: function call
   - id: planning-state
-    from: planning
+    from: plan-validation
     to: run-state
     description: Persists and restores dependency-ordered plans
     technology: SQLite
@@ -387,7 +742,7 @@ connections:
     technology: function call
   - id: scoped-behavior
     from: scoped-native
-    to: behavior-runner
+    to: unit-conversion
     description: Converts qualified units after readiness and approval
     technology: function call
   - id: components-generation
@@ -396,7 +751,7 @@ connections:
     description: Requests scoped component implementations
     technology: function call
   - id: behavior-generation
-    from: behavior-runner
+    from: unit-conversion
     to: generation
     description: Requests unit and operation bundles with original evidence
     technology: function call
@@ -406,7 +761,7 @@ connections:
     description: Routes registered code tasks through staging when enabled
     technology: function call
   - id: staged-model
-    from: staged-generation
+    from: production-stage
     to: model-executor
     description: Requests narrow implementation, metadata, and test results
     technology: function call
@@ -421,7 +776,7 @@ connections:
     description: Submits bounded model requests
     technology: HTTPS / ADK
   - id: staged-verification
-    from: staged-generation
+    from: production-stage
     to: verification
     description: Compiles production and validates staged results
     technology: function call
@@ -446,7 +801,7 @@ connections:
     description: Retains attempts, compatibility fingerprints, and accepted results
     technology: SQLite
   - id: staged-state
-    from: staged-generation
+    from: tests-stage
     to: run-state
     description: Retains stage revisions, feedback, and readiness
     technology: SQLite
@@ -466,7 +821,7 @@ connections:
     description: Requires matched baseline and simplification evidence
     technology: function call
   - id: behavior-gates
-    from: behavior-runner
+    from: operation-composition
     to: gates
     description: Checks Gates 1, 2, and 3 against current plan and reviews
     technology: function call
@@ -476,8 +831,8 @@ connections:
     description: Persists decisions keyed by report hash and operation scope
     technology: SQLite
   - id: behavior-services
-    from: behavior-runner
-    to: services
+    from: operation-composition
+    to: service-wrappers
     description: Generates services after approved operation reviews
     technology: function call
   - id: managed-model
@@ -491,32 +846,32 @@ connections:
     description: Continues reviewed managed operations into service generation
     technology: function call
   - id: services-model
-    from: services
+    from: service-wrappers
     to: model-executor
     description: Requests wrappers around approved sources
     technology: function call
   - id: services-verification
-    from: services
+    from: service-build
     to: verification
     description: Builds and tests final service projects
     technology: function call
   - id: services-output
-    from: services
+    from: service-packaging
     to: deliverables
     description: Stages approved sources and packaged service artifacts
     technology: Filesystem
   - id: behavior-finalization
-    from: behavior-runner
-    to: finalization
+    from: operation-composition
+    to: final-evidence
     description: Finalizes only after service generation returns validation evidence readiness
     technology: function call
   - id: finalization-output
-    from: finalization
+    from: final-artifacts
     to: deliverables
     description: Checks evidence and writes reports and manifests
     technology: Filesystem
   - id: finalization-gates
-    from: finalization
+    from: final-approval
     to: gates
     description: Requires complete accepted evidence at Gate 5 and checks prior approvals
     technology: function call
@@ -526,7 +881,7 @@ connections:
     description: Verifies publication artifacts for dependent operations
     technology: Filesystem
   - id: services-gates
-    from: services
+    from: service-wrappers
     to: gates
     description: Requires Gate 3 and, when microservices are enabled, Gate 4 creation approval
     technology: function call
@@ -535,3 +890,188 @@ connections:
     to: finalization
     description: Resumes finalization when validation evidence is ready
     technology: function call
+  - id: intake-discovery
+    from: intake-control
+    to: source-discovery
+    description: Resolves sources and classpath on the applicable intake path
+    technology: function call
+  - id: intake-analyzer
+    from: intake-control
+    to: analyzer
+    description: Analyzes and imports selected mapped evidence
+    technology: function call
+  - id: analyzer-validation
+    from: analyzer
+    to: map-validation
+    description: Checks selected map and source evidence
+    technology: function call
+  - id: analyzer-inventory
+    from: analyzer
+    to: selected-inventory
+    description: Builds selected inventory from indexed facts or discovered sources
+    technology: function call
+  - id: analyzer-import
+    from: analyzer
+    to: vault-import
+    description: Imports selected Composer definitions
+    technology: function call
+  - id: analyzer-invalidation
+    from: analyzer
+    to: analysis-invalidation
+    description: Records imported evidence and applicable hash changes
+    technology: function call
+  - id: inventory-state
+    from: selected-inventory
+    to: run-state
+    description: Pins selected inventory and analysis revision
+    technology: SQLite
+  - id: mapper-entry-discovery
+    from: mapper-entry
+    to: mapper-discovery
+    description: Discovers Composer source files
+    technology: function call
+  - id: mapper-entry-index
+    from: mapper-entry
+    to: mapper-index
+    description: Builds legacy definition indexes on the legacy path
+    technology: function call
+  - id: mapper-entry-analysis
+    from: mapper-entry
+    to: mapper-analysis
+    description: Opens reusable analysis for indexed mode
+    technology: function call
+  - id: mapper-entry-vault
+    from: mapper-entry
+    to: mapper-vault
+    description: Generates the selected vault layout
+    technology: function call
+  - id: mapper-vault-index
+    from: mapper-vault
+    to: mapper-index
+    description: Builds qualified definitions for scoped generation
+    technology: function call
+  - id: mapper-index-xml
+    from: mapper-index
+    to: mapper-xml-index
+    description: Indexes XML and channel declarations
+    technology: function call
+  - id: mapper-index-java
+    from: mapper-index
+    to: mapper-java-index
+    description: Indexes Java declarations
+    technology: function call
+  - id: mapper-analysis-store
+    from: mapper-analysis
+    to: composer-map
+    description: Persists reusable analysis and recovery checkpoints
+    technology: SQLite
+  - id: preparation-closure
+    from: scoped-native
+    to: prepared-closure
+    description: Builds qualified selected operation closures
+    technology: function call
+  - id: closure-contracts
+    from: prepared-closure
+    to: prepared-contracts
+    description: Supplies closures for context contracts and call binding
+    technology: In-memory evidence
+  - id: contracts-units
+    from: prepared-contracts
+    to: prepared-units
+    description: Supplies resolved contracts and bindings to configured unit preparation
+    technology: In-memory evidence
+  - id: preparation-reuse-check
+    from: scoped-native
+    to: preparation-reuse
+    description: Checks freshness before reusing prepared contexts
+    technology: function call
+  - id: plan-order
+    from: plan-generation
+    to: dependency-order
+    description: Uses dependency preflight and mandatory operation order
+    technology: function call
+  - id: plan-validate
+    from: plan-generation
+    to: plan-validation
+    description: Validates the constructed migration plan
+    technology: function call
+  - id: plan-model
+    from: plan-generation
+    to: model-executor
+    description: Requests the migration plan when the selected path uses model planning
+    technology: function call
+  - id: unit-composition
+    from: unit-conversion
+    to: operation-composition
+    description: Supplies accepted unit APIs and artifacts for operation assembly
+    technology: Accepted unit bundles
+  - id: operation-generation
+    from: operation-composition
+    to: generation
+    description: Generates operation implementations and scenario tests
+    technology: function call
+  - id: staged-production
+    from: staged-generation
+    to: production-stage
+    description: Generates production code separately from tests
+    technology: function call
+  - id: production-metadata
+    from: production-stage
+    to: metadata-stage
+    description: Inspects generated production APIs before binding and test requests
+    technology: Parsed Java metadata
+  - id: metadata-tests
+    from: metadata-stage
+    to: tests-stage
+    description: Supplies accepted APIs and bindings for focused tests
+    technology: Typed task payload
+  - id: metadata-model
+    from: metadata-stage
+    to: model-executor
+    description: Requests dependency or mapping decisions when ambiguous
+    technology: function call
+  - id: tests-model
+    from: tests-stage
+    to: model-executor
+    description: Requests focused test sources
+    technology: function call
+  - id: tests-validation
+    from: tests-stage
+    to: verification
+    description: Submits assembled candidates to current acceptance checks
+    technology: function call
+  - id: wrappers-build
+    from: service-wrappers
+    to: service-build
+    description: Submits generated service sources for build and test validation
+    technology: Generated service project
+  - id: wrappers-packaging
+    from: service-wrappers
+    to: service-packaging
+    description: Configures executable and deployment artifacts
+    technology: function call
+  - id: final-evidence-artifacts
+    from: final-evidence
+    to: final-artifacts
+    description: Supplies current evidence for documentation and deployment deliverables
+    technology: Validated artifact evidence
+  - id: final-artifacts-approval
+    from: final-artifacts
+    to: final-approval
+    description: Supplies deliverable inventory for the final validation report
+    technology: Deliverable inventory
+  - id: intake-prepared-handoff
+    from: vault-import
+    to: prepared-closure
+    description: Provides imported selected definitions for qualified preparation
+    technology: Persisted run evidence
+  - id: plan-conversion-handoff
+    from: plan-validation
+    to: unit-conversion
+    description: Provides approved task selection and dependency order
+    technology: Persisted migration plan
+  - id: service-final-handoff
+    from: service-build
+    to: final-evidence
+    description: Provides successful service receipts for final freshness checks
+    technology: Service validation evidence

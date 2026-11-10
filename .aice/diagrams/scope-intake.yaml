@@ -1,0 +1,36 @@
+id: scope-intake
+scope: intake
+layout:
+  analyzer:
+    x: 741
+    y: 306
+  composer-map:
+    x: 1075
+    y: 519
+  composer-mapper:
+    x: 1155
+    y: 221
+  intake-control:
+    x: 320
+    y: 202
+  legacy-workspace:
+    x: 1643
+    y: 83
+  operator:
+    x: -75
+    y: 182
+  planning:
+    x: 1599
+    y: 386
+  preparation:
+    x: 1075
+    y: 811
+  run-state:
+    x: 1715
+    y: 622
+  source-discovery:
+    x: 701
+    y: 81
+  workspace-cache:
+    x: 1076
+    y: -40
