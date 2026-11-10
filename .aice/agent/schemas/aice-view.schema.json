@@ -1,0 +1,30 @@
+{
+  "title": "a-ice view request",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "diagram": {
+      "type": "string"
+    },
+    "object": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "focus": {
+      "type": "boolean"
+    },
+    "flow": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

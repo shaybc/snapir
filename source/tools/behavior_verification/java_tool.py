@@ -68,7 +68,7 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         try:
             result = run_with_progress(
                 ['java', '-jar', str(tool), str(folder / 'input.xml'), str(folder / 'output.xml')],
-                folder / 'progress.log', run_java)
+                folder / 'progress.log', run_java, output_path=folder / 'output.xml')
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise ValueError('Converter boundary analysis could not finish: ' + str(exc)) from exc
         if result.returncode:

@@ -1,0 +1,108 @@
+id: conversion
+name: Conversion workflow
+objects:
+  - operator
+  - intake
+  - composer-mapper
+  - composer-map
+  - checkpoints
+  - coordinator
+  - planning
+  - scoped-native
+  - preparation
+  - components
+  - behavior-runner
+  - generation
+  - staged-generation
+  - verification
+  - verification-java
+  - model-executor
+  - model-provider
+  - gates
+  - services
+  - finalization
+  - run-state
+  - deliverables
+  - side-road
+  - managed-conversion
+  - legacy-workspace
+  - workspace-cache
+layout:
+  behavior-runner:
+    x: 1024
+    y: 599
+  checkpoints:
+    x: 368
+    y: 599
+  components:
+    x: 1680
+    y: 756
+  composer-map:
+    x: 1667
+    y: -185
+  composer-mapper:
+    x: 1683
+    y: -436
+  coordinator:
+    x: 696
+    y: 599
+  deliverables:
+    x: 2992
+    y: 1075
+  finalization:
+    x: 2008
+    y: 919
+  gates:
+    x: 2336
+    y: 612
+  generation:
+    x: 2008
+    y: 771
+  intake:
+    x: 1190
+    y: -439
+  legacy-workspace:
+    x: 1650
+    y: -798
+  managed-conversion:
+    x: 1352
+    y: 980
+  model-executor:
+    x: 2664
+    y: 995
+  model-provider:
+    x: 2992
+    y: 927
+  operator:
+    x: 40
+    y: 591
+  planning:
+    x: 1680
+    y: 577
+  preparation:
+    x: 2026
+    y: -452
+  run-state:
+    x: 1678
+    y: 108
+  scoped-native:
+    x: 1331
+    y: 384
+  services:
+    x: 1680
+    y: 950
+  side-road:
+    x: 2336
+    y: 917
+  staged-generation:
+    x: 2336
+    y: 760
+  verification:
+    x: 2664
+    y: 847
+  verification-java:
+    x: 2992
+    y: 779
+  workspace-cache:
+    x: 839
+    y: -229

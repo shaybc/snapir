@@ -12,7 +12,7 @@ from tools.maven_dependency_tools.command import maven_executable
 
 
 ANALYZER_CAPABILITY = 'il/co/dcd/verification/ProjectTypeSolvers.class'
-ANALYZER_PROGRESS_CAPABILITY = 'il/co/dcd/verification/NodeProcessingProgress.class'
+ANALYZER_PROGRESS_CAPABILITY = 'il/co/dcd/verification/BufferedAnalysisOutput.class'
 
 
 def analyzer_ready(path):

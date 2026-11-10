@@ -17,7 +17,7 @@ public final class BoundaryAnalysis {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         Element input = factory.newDocumentBuilder().parse(Path.of(args[0]).toFile()).getDocumentElement();
-        try (var stream = Files.newOutputStream(Path.of(args[1]))) {
+        try (var stream = new BufferedAnalysisOutput(Files.newOutputStream(Path.of(args[1])))) {
             XMLStreamWriter output = XMLOutputFactory.newFactory().createXMLStreamWriter(stream, "UTF-8");
             output.writeStartDocument();
             output.writeStartElement("analysis");

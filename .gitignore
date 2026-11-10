@@ -12,3 +12,5 @@
 /source/jdbc-fixture-java/**/target/
 /source/resources/fixture-jdbc/releases/
 /source/resources/fixture-jdbc/installations/
+# a-ice: what the canvas should show (written by agents)
+.aice/view.yaml

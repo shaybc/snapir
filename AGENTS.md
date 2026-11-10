@@ -43,3 +43,15 @@ Whenever fixing behavior in one stage or phase, trace where that behavior is res
 Update all applicable paths within the requested behavior's scope, preferably by reusing the same authoritative rule or resolved evidence rather than duplicating decisions. Add focused regression coverage for affected handoffs where appropriate. Before declaring the fix complete, report which other paths were checked and whether they required changes. Leave unrelated behavior untouched.
 
 Apply a rule to another stage or phase only when it is applicable and correct for that stage's purpose and semantics. Checking consistency does not require identical behavior everywhere. Do not force a rule into stages where it does not belong; preserve intentional differences and explain why a checked stage needs no change.
+
+<!-- a-ice:start -->
+## Architecture model (a-ice)
+
+This repository keeps a C4 architecture model in `.aice/`, drawn by the a-ice VS Code extension.
+Before you create or edit anything in `.aice/`, read `.aice/agent/SKILL.md` and follow it.
+
+- **Keep the model in step with the code.** When a change adds, removes or renames a service, app, data store, queue, external integration, major module, or a call between them, update `.aice/model.yaml` (and any affected flow in `.aice/flows/`) in the same task. Pure refactors inside one module need no model change.
+- **Check your work.** After editing the model, run `node .aice/agent/validate.cjs` and fix every error it reports.
+- **Show what the user asks for.** When the user asks to see, show or open part of the architecture, write `.aice/view.yaml` as described in the skill; the a-ice canvas jumps there.
+- Never edit layout positions in `.aice/diagrams/*.yaml`; a-ice owns them.
+<!-- a-ice:end -->

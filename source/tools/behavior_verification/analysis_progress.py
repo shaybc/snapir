@@ -6,17 +6,24 @@ from threading import Event, Thread
 from time import monotonic
 
 
-def run_with_progress(command, progress_path, runner):
+def run_with_progress(command, progress_path, runner, *, output_path=None):
     """Capture stderr on disk, log live stages, and retain the last stage on timeout."""
     logger = logging.getLogger(__name__)
     stopped = Event()
     started = monotonic()
     last_progress = 'waiting for Java analyzer startup'
 
+    def output_size():
+        try:
+            return output_path.stat().st_size if output_path is not None else 0
+        except OSError:
+            return 0
+
     def monitor():
         nonlocal last_progress
         heartbeat = started
         last_stage_time = started
+        previous_size = 0
         with progress_path.open(encoding='utf-8', errors='replace') as stream:
             while True:
                 for line in stream:
@@ -29,6 +36,10 @@ def run_with_progress(command, progress_path, runner):
                 if monotonic() - heartbeat >= 10:
                     logger.info('Boundary analyzer running: %.1fs elapsed; %.1fs since last stage; last progress: %s',
                                 monotonic() - started, monotonic() - last_stage_time, last_progress)
+                    size = output_size()
+                    logger.info('Boundary XML output: %s bytes; growth since previous sample: %s bytes',
+                                size, size - previous_size)
+                    previous_size = size
                     heartbeat = monotonic()
                 stopped.wait(0.2)
 
@@ -43,11 +54,12 @@ def run_with_progress(command, progress_path, runner):
             stopped.set()
             watcher.join()
             raise ValueError('Converter boundary analysis timed out after 300 seconds; '
-                             'last progress: ' + last_progress) from error
+                             'XML output bytes=' + str(output_size()) + '; last progress: ' + last_progress) from error
         finally:
             stopped.set()
             watcher.join()
     result.stderr = progress_path.read_text(encoding='utf-8', errors='replace')
     logger.info('Boundary analyzer exited after %.1fs; exit code: %s',
                 monotonic() - started, result.returncode)
+    logger.info('Boundary XML output final size: %s bytes', output_size())
     return result
