@@ -18,6 +18,14 @@ the supplied service/helper source. Different pools are different resources even
 types match. Do not embed credentials, URLs or canned external replies. Deployment values are
 supplied separately. Unresolved facts must be reported, never filled by plausible guesses.'''
 
+SERVICE_CONNECTION_INSTRUCTION += '''
+For a connection with configuration_contract, dseConnector deployment contents are deliberately
+unavailable. Convert using the supplied code and documented Composer behavior. Generate native
+configuration bindings and an empty template for evidenced parameter names and types. Preserve
+those names; do not invent defaults, resource vendors, or values. Unknown deployment values and
+dynamic bindings are deployment requirements, not conversion failures. Report specific missing
+implementation behavior separately; do not claim the bounded parameter list is complete.'''
+
 
 def connection_evidence(conn, config, channel, unit_key, sources, xml, profile=None, *,
                         source_index=None, classpath_index=None, persist=True):

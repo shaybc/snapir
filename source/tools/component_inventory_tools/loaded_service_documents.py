@@ -63,6 +63,12 @@ def load_service_documents(workspace, channel):
                             value = entry.get('id')
                             if not value:
                                 continue
+                            from tools.component_inventory_tools.connection_configuration_contract import is_deployment_connector
+                            if is_deployment_connector(value):
+                                # Deployment connector values are neither read nor hydrated from the map.
+                                documents['deployment-connector:' + name + ':' + value] = dict(
+                                    deployment_connector=True, channel=name)
+                                continue
                             path = Path(value)
                             candidates = [path] if path.is_absolute() else [workspace / path, registry.parent / path]
                             # Eclipse project-local references are commonly relative to its source root.

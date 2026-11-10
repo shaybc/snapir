@@ -22,9 +22,11 @@ def resolve_service_connections(workspace, channel, sources, parameters, source_
     try:
         mappings, documents = load_service_documents(workspace, channel)
         services, connectors = index_service_definitions(workspace, channel, mappings, documents)
+        external_connector = any(document.get('deployment_connector') for document in documents.values())
         registry_issue = None
     except (OSError, ValueError, ElementTree.ParseError) as exc:
         services, connectors, registry_issue = {}, {}, str(exc)
+        external_connector = False
     records = {}
     for lookup in lookups:
         name = lookup['service_name'] or '<dynamic:' + lookup['caller'] + ':' + str(lookup['line']) + '>'
@@ -40,6 +42,12 @@ def resolve_service_connections(workspace, channel, sources, parameters, source_
             continue
         definitions = services.get(name, [])
         if len(definitions) != 1:
+            if not definitions and external_connector:
+                from tools.component_inventory_tools.connection_configuration_contract import configuration_contract
+                result.configuration_contract = configuration_contract(sources)
+                result.deployment_requirements = ['Supply the external resource binding for this service; connector values were not inspected.']
+                result.ownership = dict(status='derive acquisition, transactions and release from supplied source and documented behavior')
+                continue
             result.issues.append('Dynamic service lookup needs a configured binding' if not lookup['service_name'] else
                                  'Missing or ambiguous service instance: ' + name + ' in channel ' + channel)
             continue
@@ -80,7 +88,17 @@ def resolve_service_connections(workspace, channel, sources, parameters, source_
             # Framework classes may be documented replacement boundaries; missing
             # application sources are checked by the existing closure resolver.
         pool = result.configuration.get('poolName')
-        if pool:
+        external_pool = external_connector and (not pool or not connectors.get(pool))
+        if external_pool:
+            from tools.component_inventory_tools.connection_configuration_contract import configuration_contract
+            evidence_sources = dict(sources)
+            evidence_sources.update({str(Path(path).relative_to(workspace)): Path(path).read_text(encoding='utf-8-sig')
+                                     for path in result.supporting_sources})
+            result.configuration_contract = configuration_contract(evidence_sources)
+            result.connector_id = pool or ''
+            result.deployment_requirements = ['Supply external connection values and any dynamic parameter bindings at deployment.']
+            result.ownership = dict(status='derive acquisition, transactions and release from supplied source and documented behavior')
+        if pool and not external_pool:
             candidates = connectors.get(pool, [])
             result.connector_id = pool
             if len(candidates) != 1:

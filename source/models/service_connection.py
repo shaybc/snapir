@@ -19,6 +19,8 @@ class ServiceConnection(BaseModel):
     driver_candidates: list[dict] = Field(default_factory=list)
     configuration: dict = Field(default_factory=dict)
     connector_configuration: dict = Field(default_factory=dict)
+    configuration_contract: dict = Field(default_factory=dict)
+    deployment_requirements: list[str] = Field(default_factory=list)
     source_evidence: list[dict] = Field(default_factory=list)
     supporting_sources: list[str] = Field(default_factory=list)
     supporting_hashes: dict[str, str] = Field(default_factory=dict)

@@ -22,6 +22,8 @@ def index_service_definitions(workspace, channel, mappings, documents):
     """Retain distinct instances and their configured pool references by channel."""
     services, connectors = {}, {}
     for document in documents.values():
+        if document.get('deployment_connector'):
+            continue
         parents = {id(child): parent for parent in document['root'].iter() for child in parent}
         for node, selector in walk_nodes(document['root']):
             identity = node.get('id')

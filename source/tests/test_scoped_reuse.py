@@ -70,6 +70,61 @@ def test_prepared_evidence_under_old_import_policy_is_not_reused(tmp_path, scope
         conn.close()
 
 
+def test_prepared_connector_values_policy_requires_fresh_preparation(tmp_path, scoped_mapper, monkeypatch):
+    from tools.conversion_tools.scoped_reuse import checkpoint
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper)
+    config, profile = settings(root, vault)
+    try:
+        with monkeypatch.context() as old:
+            old.setattr(checkpoint, 'POLICY_VERSION', 'scoped-v3-unit-evidence-v8-actual-java-references')
+            prepare(conn, config, profile)
+        with pytest.raises(ScopedCheckpointStale, match='Changed common'):
+            prepare(conn, config, profile)
+    finally:
+        conn.close()
+
+
+def test_blocked_connector_run_resumes_with_contract_without_repeating_intake(tmp_path, scoped_mapper, monkeypatch):
+    from tools.component_inventory_tools import service_connections
+    from tools.conversion_tools.scoped_reuse import checkpoint
+    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
+    def change(root):
+        registry = root / 'Channel/SME/dse.ini'
+        registry.write_text(registry.read_text().replace('<kColl id="files">',
+            '<kColl id="files"><kColl id="defaultFile"><operDef id="defaultFile/dseConnector.tmp"/></kColl>'))
+        folder = registry.parent / 'defaultFile'
+        folder.mkdir()
+        (folder / 'dseConnector.tmp').write_text('<unavailable secret="privateConnectorValue"')
+        (root / 'src/example/Work.java').write_text('package example;\npublic class Work {\n'
+            'public int execute(){ getService("externalService"); return 0; }\n}\n')
+    conn, root, vault = import_workspace(tmp_path, scoped_mapper, change=change)
+    config, profile = settings(root, vault)
+    manifest_hash = file_digest(vault / 'vault-manifest.json')
+    try:
+        def old_loader(*args):
+            raise ValueError('XML occurrence was not captured by the map: defaultFile/dseConnector.tmp')
+        with monkeypatch.context() as old:
+            old.setattr(checkpoint, 'POLICY_VERSION', 'scoped-v3-unit-evidence-v8-actual-java-references')
+            old.setattr(service_connections, 'load_service_documents', old_loader)
+            first = prepare(conn, config, profile, selected={'SME/Flow'})
+        assert first['operations']['SME/Flow']['status'] == 'blocked'
+        assert any('XML occurrence was not captured' in issue for issue in first['operations']['SME/Flow']['blockers'])
+        monkeypatch.setattr('tools.composer_mapper_tools.vault_importer.import_vault',
+            lambda *args, **kwargs: pytest.fail('Resume repeated intake'))
+        second = prepare(conn, config, profile, selected={'SME/Flow'})
+        operation = second['operations']['SME/Flow']
+        assert operation['status'] == 'prepared', operation['blockers']
+        connections = [record for unit in operation['units'] for record in unit.get('service_connections', [])]
+        assert connections and all(record['configuration_contract'] for record in connections)
+        assert 'privateConnectorValue' not in json.dumps(operation)
+        assert file_digest(vault / 'vault-manifest.json') == manifest_hash
+        (root / 'Channel/SME/defaultFile/dseConnector.tmp').write_text('<XML secret="changedPrivateConnectorValue"/>')
+        third = prepare(conn, config, profile, selected={'SME/Flow'})
+        assert 'SME/Flow' in third['reused_contexts']
+    finally:
+        conn.close()
+
+
 def test_blocked_unused_import_run_resumes_without_remapping_or_importing_extra_records(tmp_path, scoped_mapper, monkeypatch):
     from xml.etree import ElementTree
     from tools.conversion_tools.scoped_closure import java_dependencies

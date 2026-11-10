@@ -5,6 +5,10 @@ from runtime.behavior_conversion.service_connection_evidence import SERVICE_CONN
 
 def attach_connections(payload, connections):
     """Add relevant resource records and reject inconsistent current dependency pins."""
+    from tools.component_inventory_tools.connection_configuration_contract import is_deployment_connector
+    for record in connections:
+        if any(is_deployment_connector(item.get('path', '')) for item in record.get('source_evidence', [])):
+            raise ValueError('Saved dseConnector evidence must be refreshed before sending a model request')
     records = {item['connection_id']: item for item in connections}
     payload['service_connections'] = sorted(records.values(), key=lambda item: item['connection_id'])
     payload['service_connection_requirement'] = dict(version=1, description=SERVICE_CONNECTION_INSTRUCTION)

@@ -8,7 +8,7 @@ from tools.source_discovery_tools.classpath_scope import discover_conversion_cla
 
 
 def verify_connection_sources(config, profile, connections):
-    """Reject changed connector mappings/driver files without exposing credentials."""
+    """Check service/source evidence; external connector values are not conversion inputs."""
     if not connections:
         return
     index = discover_java_sources(config.source_root)
@@ -19,6 +19,10 @@ def verify_connection_sources(config, profile, connections):
         if len(current) != 1:
             raise ValueError('Service evidence changed since acceptance: ' + record['service_id'])
         found = current[0].model_dump()
+        # Unit/source fingerprints cover the contract's caller code. This probe only
+        # recreates the service lookup, so it cannot reconstruct all caller keys.
+        if record.get('configuration_contract') and not found['configuration_contract']:
+            raise ValueError('External connection contract changed; refresh the affected operation')
         for key in ('implementation', 'configuration', 'connector_id', 'connector_configuration', 'driver_class', 'driver_candidates', 'supporting_hashes'):
             if found[key] != record[key]:
                 raise ValueError('Service/connector evidence changed since acceptance: ' + record['channel'] + '/' + record['service_id'] +

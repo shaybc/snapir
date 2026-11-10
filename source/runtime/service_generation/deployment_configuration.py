@@ -64,6 +64,16 @@ def load_deployment(item, *, persist=True, profile=None):
             write_deployment(path,result)
     if result.operation.identity != identity:
         raise ValueError('Deployment configuration belongs to another operation')
+    connections = [record for record in item['payload'].get('service_connections', []) if record.get('configuration_contract')]
+    template = project / 'connection-configuration.yaml'
+    if persist and connections and not template.exists():
+        # This is a deployment handoff, never values read from dseConnector.
+        resources = [dict(channel=record['channel'], service=record['service_id'],
+            parameters={parameter['name']: None for parameter in record['configuration_contract']['parameters']},
+            parameterTypes={parameter['name']: parameter['type'] for parameter in record['configuration_contract']['parameters']},
+            requirements=record.get('deployment_requirements', []),
+            completeness=record['configuration_contract']['completeness']) for record in connections]
+        template.write_text(yaml.safe_dump(dict(resources=resources), sort_keys=False, allow_unicode=True), encoding='utf-8')
     return result
 
 

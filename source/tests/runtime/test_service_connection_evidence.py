@@ -142,3 +142,85 @@ def test_production_cannot_change_driver_or_version_and_request_attachment_is_co
     with pytest.raises(ValueError, match='URL scheme'):
         validate_connection_wiring({'src/main/resources/application.properties':
             'spring.datasource.url=${DB_URL:jdbc:other:host}'}, [expected.model_copy(update={'scope': 'compile'})], [connection])
+
+
+@pytest.mark.parametrize('filename', ['dseConnector.tmp', 'dseConnector.xml'])
+@pytest.mark.parametrize('contents', [None, '<malformed privatePassword', '<XML secret="privatePassword" endpoint="privateEndpoint"/>'])
+def test_deployment_connector_is_never_opened_or_required_for_conversion(tmp_path, monkeypatch, filename, contents):
+    conn, config, settings, closure, original = setup_unit(tmp_path)
+    root = Path(config.source_root)
+    channel = root / 'Project/src/Xml Definition/Channel/INTERNET'
+    registry = channel / 'dse.ini'
+    registry.write_text(registry.read_text().replace('connectors.tmp', filename))
+    connector = channel / 'defaultFile' / filename
+    if contents is not None:
+        connector.write_text(contents)
+    service = root / 'Project/src/example/RegularService.java'
+    service.write_text('package example; public class RegularService { '
+        'public void configure(){ config.getInt("timeout"); config.getProperty("databaseURL"); '
+        'config.getValueAt("dynamicSetting"); } }')
+    original_open = Path.open
+    def guarded_open(path, *args, **kwargs):
+        if path.name.lower() in {'dseconnector.tmp', 'dseconnector.xml'}:
+            pytest.fail('Deployment connector was opened')
+        return original_open(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'open', guarded_open)
+    try:
+        unit = attach_unit_connections(conn, config, closure, original, settings)
+        record, = unit.service_connections
+        assert not record['issues']
+        assert record['deployment_requirements']
+        assert record['connector_configuration'] == {}
+        assert record['driver_class'] is None
+        parameters = {item['name']: item for item in record['configuration_contract']['parameters']}
+        assert parameters['timeout']['type'] == 'int'
+        assert parameters['databaseURL']['type'] == 'String'
+        assert parameters['dynamicSetting']['type'] is None
+        assert all(item['required'] is None for item in parameters.values())
+        payload = {}
+        attach_connections(payload, unit.service_connections)
+        assert 'privatePassword' not in json.dumps(payload)
+        assert 'privateEndpoint' not in json.dumps(payload)
+        assert 'dseConnector' not in json.dumps(payload['service_connections'])
+        assert 'external_deployment_only' in json.dumps(payload)
+        assert pending_questions(conn, config.run_id) == []
+        verify_connection_sources(config, settings, unit.service_connections)
+        with original_open(connector, 'w') as stream:
+            stream.write('<XML secret="changedPrivateValue"/>')
+        unchanged = attach_unit_connections(conn, config, closure, original, settings)
+        assert unchanged.fingerprint == unit.fingerprint
+        verify_connection_sources(config, settings, unit.service_connections)
+        from runtime.service_generation.deployment_configuration import load_deployment
+        project = tmp_path / 'generated'
+        project.mkdir()
+        item = dict(project=str(project), channel='INTERNET', operation_id='Transfer', payload=payload)
+        load_deployment(item)
+        import yaml
+        template = project / 'connection-configuration.yaml'
+        resource, = yaml.safe_load(template.read_text())['resources']
+        assert resource['parameters'] == dict(timeout=None, databaseURL=None, dynamicSetting=None)
+        assert resource['parameterTypes']['timeout'] == 'int'
+        template.write_text('user-edited template')
+        load_deployment(item)
+        assert template.read_text() == 'user-edited template'
+    finally:
+        conn.close()
+
+
+def test_connector_only_service_becomes_an_external_binding_without_guessing_implementation(tmp_path):
+    root, _, channel, definitions = workspace(tmp_path)
+    registry = channel / 'dse.ini'
+    registry.write_text(registry.read_text().replace('connectors.tmp', 'dseConnector.tmp'))
+    record, = resolve(root, 'getService("deployedOnly");')
+    assert not record.issues
+    assert not record.implementation and not record.driver_class
+    assert record.deployment_requirements and record.configuration_contract
+    (definitions / 'services.tmp').unlink()
+    broken, = resolve(root, 'getService("regular");')
+    assert any('loaded service document' in issue for issue in broken.issues)
+
+
+def test_old_connector_evidence_is_rejected_before_model_attachment():
+    with pytest.raises(ValueError, match='must be refreshed'):
+        attach_connections({}, [dict(source_evidence=[dict(path='Channel/INTERNET/defaultFile/dseConnector.tmp',
+            attributes=dict(privateKey='privatePassword'))])])
