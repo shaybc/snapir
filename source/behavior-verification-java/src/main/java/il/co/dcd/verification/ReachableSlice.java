@@ -61,6 +61,7 @@ final class ReachableSlice {
         CallBindings calls = new CallBindings(this);
         while (!pending.isEmpty()) {
             CodeNode node = pending.remove();
+            AnalysisProgress.report("reachable node " + node.id + "; discovered=" + nodes.size() + "; pending=" + pending.size());
             initialization.statics(node.owner, node.id);
             if (node.kind.equals("constructor") || node.kind.equals("implicit_constructor")) initialization.constructor(node);
             if (node.body != null) {

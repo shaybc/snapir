@@ -42,6 +42,7 @@ final class SourceScope implements AutoCloseable {
             Map<String, String> owners = new HashMap<>(), identities = new HashMap<>();
             for (org.w3c.dom.Node node = scope.getFirstChild(); node != null; node = node.getNextSibling()) {
                 if (!(node instanceof Element source) || !source.getTagName().equals("source")) continue;
+                AnalysisProgress.report("parsing source " + source.getAttribute("identity"));
                 var parsed = parser.parse(source.getTextContent());
                 if (!parsed.isSuccessful()) throw new IllegalArgumentException("Invalid Java source " + source.getAttribute("identity") + ": " + parsed.getProblems());
                 CompilationUnit unit = parsed.getResult().orElseThrow();

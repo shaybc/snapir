@@ -43,6 +43,7 @@ final class ProjectTypeSolvers {
             for (var child = project.getFirstChild(); child != null; child = child.getNextSibling()) {
                 if (!(child instanceof Element library) || !library.getTagName().equals("library")) continue;
                 Path path = Path.of(library.getAttribute("path"));
+                AnalysisProgress.report("project " + name + " verifying JAR " + path.getFileName());
                 if (!path.isAbsolute() || !Files.isRegularFile(path) || !Files.isReadable(path))
                     throw new IllegalArgumentException("Invalid JAR path for project " + name + ": " + path);
                 try {
@@ -56,7 +57,9 @@ final class ProjectTypeSolvers {
                     throw new IllegalStateException(impossible);
                 }
                 // CombinedTypeSolver retains this order; JAR contents are inspected, never executed.
+                AnalysisProgress.report("project " + name + " loading JAR " + path.getFileName());
                 solver.add(new JarTypeSolver(path));
+                AnalysisProgress.report("project " + name + " loaded JAR " + path.getFileName());
             }
         }
     }

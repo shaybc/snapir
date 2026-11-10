@@ -6,6 +6,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from runtime.java_toolchain import run_java
+from tools.behavior_verification.analysis_progress import run_with_progress
 
 
 def default_tool_path():
@@ -65,8 +66,9 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         (folder / 'input.xml').write_bytes(ElementTree.tostring(manifest, encoding='utf-8',
             xml_declaration=True).replace(b'\r', b'&#13;'))
         try:
-            result = run_java(['java', '-jar', str(tool), str(folder / 'input.xml'), str(folder / 'output.xml')],
-                              capture_output=True, text=True, timeout=180, check=False)
+            result = run_with_progress(
+                ['java', '-jar', str(tool), str(folder / 'input.xml'), str(folder / 'output.xml')],
+                folder / 'progress.log', run_java)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise ValueError('Converter boundary analysis could not finish: ' + str(exc)) from exc
         if result.returncode:

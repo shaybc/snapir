@@ -36,6 +36,8 @@ def issue_summary(issues):
     if text.startswith(('Boundary JAR ', 'Boundary source has no verified owning project',
                         'Boundary implementation has no unique owning project')):
         return text[:240]
+    if 'boundary analysis timed out after' in text:
+        return 'Java analyzer exceeded its total runtime limit; see last progress below'
     if 'could not finish' in text:
         return 'Java analyzer could not finish (launch failure or timeout)'
     if 'Invalid Java source' in text:
@@ -55,7 +57,7 @@ def issue_summary(issues):
         return 'Analyzer returned a method outside the supplied source revision'
     if not issues:
         return 'No boundary issue saved; inspect component-level evidence'
-    return 'Other analyzer error; raw details withheld to avoid exposing source or settings'
+    return 'Other analyzer error; see saved issue details below'
 
 
 def class_evidence(run_db, analysis_db, class_name):
@@ -172,6 +174,9 @@ def diagnose(directory):
         else:
             conclusion = issue_summary(boundary.get('issues', []))
         lines.append('   Finding: ' + conclusion)
+        for issue in boundary.get('issues', []):
+            lines.append('   Saved issue:')
+            lines.extend('      ' + line for line in str(issue).splitlines())
     if len(failed) > 6:
         lines.append(f'Additional failed boundaries: {len(failed) - 6}')
     if not failed:

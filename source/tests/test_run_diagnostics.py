@@ -85,12 +85,31 @@ def test_map_attribute_can_identify_a_missing_preparation_binding(saved):
     assert 'Map captured implClass but prepared binding is missing: example.Work' in '\n'.join(diagnose(run))
 
 
+def test_diagnostic_prints_complete_saved_analyzer_issues(saved):
+    run, stage, _ = saved
+    path = stage / 'behavior_verification_boundaries.json'
+    document = json.loads(path.read_text())
+    boundary = document['boundaries']['unit-1']
+    boundary['implementation_class'] = 'example.Work'
+    boundary['issues'] = [
+        'Converter boundary analysis could not finish: timed out after 180 seconds\nJava command details',
+        'Additional analyzer detail ' + 'x' * 500,
+    ]
+    write_json(path, document)
+    output = '\n'.join(diagnose(run))
+    assert 'Finding: Java analyzer could not finish (launch failure or timeout)' in output
+    for issue in boundary['issues']:
+        for line in issue.splitlines():
+            assert '      ' + line in output
+
+
 @pytest.mark.parametrize('issue, expected', [
     ('Build the converter analysis tool: mvn package', 'analysis JAR is missing'),
     ('UnsolvedSymbolException: Unsolved symbol : vendor.Context', 'vendor.Context'),
     ('Entry method must resolve uniquely: example.Work.execute (matches=0)', 'No unique method'),
     ('Invalid Java source privateSourceValue', 'rejected supplied Java syntax'),
-    ('Unknown problem password=privateSettingValue', 'raw details withheld'),
+    ('Unknown problem password=privateSettingValue', 'see saved issue details'),
+    ('Converter boundary analysis timed out after 300 seconds; last progress: loading JAR', 'exceeded its total runtime limit'),
     ('Boundary analyzer JAR lacks project classpath support; rebuild analyzer', 'Analyzer JAR is outdated'),
     ('Boundary JAR missing, unreadable or invalid for project BANK: C:/libs/driver.jar', 'C:/libs/driver.jar'),
 ])
