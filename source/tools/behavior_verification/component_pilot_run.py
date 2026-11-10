@@ -83,7 +83,7 @@ def run_fresh(profile_path, base, run_id, *, warm_reuse=True, resume=False):
     profile.java_home = resolve_java_home(profile.java_version,profile.java_home)
     profile.scoped_native_mode = 'component_first_v1'
     profile.staged_unit_conversion = True
-    profile.behavior_context_chars = 900000
+    profile.behavior_context_chars = 2700000
     profile.max_model_attempts = profile.max_agent_task_retries = 4
     profile.plan_approval_policy = 'automatic'
     profile.gate_policies = {str(number):'automatic' for number in range(1,5)}

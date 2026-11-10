@@ -28,10 +28,10 @@ class PipelineConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_default=True)
     conversion_strategy: Literal["legacy_components", "behavior_units"] = "legacy_components"
     conversion_requirements: list[ConversionRequirement] = Field(default_factory=list)
-    behavior_context_chars: int = Field(default=900000, ge=60000, le=1000000)
+    behavior_context_chars: int = Field(default=2700000, ge=60000, le=2700000)
     metadata_checklist_batching: bool = True
     metadata_checklist_batch_items: int = Field(default=15,ge=1,le=50)
-    metadata_checklist_request_chars: int = Field(default=900000,ge=8000,le=1000000)
+    metadata_checklist_request_chars: int = Field(default=2700000,ge=8000,le=2700000)
     metadata_checklist_response_chars: int = Field(default=16000,ge=1000,le=200000)
     metadata_checklist_max_calls: int | None = Field(default=None,ge=1)
     metadata_checklist_max_transport_calls: int | None = Field(default=None,ge=1)

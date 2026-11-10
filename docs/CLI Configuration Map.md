@@ -754,7 +754,7 @@ Other format-diagnostic controls are:
 | --- | --- | --- |
 | `max_cases` | `64` * | Maximum comparison cases for this diagnostic; valid range 1–512. A cap is not proof of exhaustive coverage. |
 | `case_timeout_seconds` | `15` * | Time limit for an individual diagnostic case; valid range greater than 0 through 120. A timeout is not a match. |
-| `discovery_request_chars` | `900000` * | Character budget for context/binding discovery requests; valid range 1000–900000. It is not a guarantee that the selected model accepts a request of that size. |
+| `discovery_request_chars` | `2700000` * | Character budget for context/binding discovery requests; valid range 1000–2700000. It is not a guarantee that the selected model accepts a request of that size. |
 | `compare_exception_messages` | `false` * | When enabled, include exception-message comparison; when disabled, exact message-text equality is not required by that comparison option. Other exception/failure semantics remain subject to the comparison implementation. |
 
 ### Comparison mutation diagnostics

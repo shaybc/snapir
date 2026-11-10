@@ -73,10 +73,10 @@ def test_oversized_single_item_never_truncates_source():
         PipelineConfiguration(metadata_checklist_request_chars=20000,metadata_checklist_response_chars=2000),'r','p')
 
 
-def test_default_checklist_budget_reserves_16000_from_900000():
+def test_default_checklist_budget_reserves_16000_from_2700000():
     profile=PipelineConfiguration()
-    assert profile.metadata_checklist_request_chars==900000
-    assert min(profile.behavior_context_chars,profile.metadata_checklist_request_chars)-profile.metadata_checklist_response_chars==884000
+    assert profile.metadata_checklist_request_chars==2700000
+    assert min(profile.behavior_context_chars,profile.metadata_checklist_request_chars)-profile.metadata_checklist_response_chars==2684000
 
 
 def test_rejection_reports_effective_limit_and_measured_size_without_source(caplog):

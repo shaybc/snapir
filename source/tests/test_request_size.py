@@ -52,12 +52,12 @@ def test_compacted_request_is_measured_again_before_it_is_allowed(caplog,monkeyp
     assert logged[-1]['total']['characters']==len(encoded)+7 and actual=={'source':'retained'}
 
 
-def test_new_default_allows_900k_characters_and_counts_bytes_separately(caplog,monkeypatch):
-    assert PipelineConfiguration().behavior_context_chars==900000
+def test_new_default_allows_2700k_characters_and_counts_bytes_separately(caplog,monkeypatch):
+    assert PipelineConfiguration().behavior_context_chars==2700000
     assert PipelineConfiguration(behavior_context_chars=300000).behavior_context_chars==300000
     monkeypatch.setattr('runtime.behavior_conversion.request_context.attach_composer_behavior',lambda value:dict(value))
-    payload={'content':'🙂'*400000}
-    with caplog.at_level(logging.INFO): encode_request(payload,'Convert',900000)
+    payload={'content':'🙂'*1000000}
+    with caplog.at_level(logging.INFO): encode_request(payload,'Convert',PipelineConfiguration().behavior_context_chars)
     report=events(caplog)[-1]
     assert report['decision']=='fits_budget' and report['total']['bytes']>1000000 and report['total']['characters']>300000
     with pytest.raises(ValueError,match='budget'): encode_request(payload,'Convert',300000)
@@ -66,3 +66,14 @@ def test_new_default_allows_900k_characters_and_counts_bytes_separately(caplog,m
 def test_legacy_surrogate_evidence_does_not_break_diagnostics(caplog):
     with caplog.at_level(logging.INFO): report=log_request_size({'value':'\ud800'},'{"value":"\\ud800"}','Convert',1000,stage='test')
     assert report['decision']=='fits_budget'
+
+
+def test_request_budget_defaults_and_explicit_saved_limits():
+    profile = PipelineConfiguration()
+    assert profile.metadata_checklist_request_chars == 2700000
+    assert profile.format_comparison.discovery_request_chars == 2700000
+    assert profile.test_preparation.request_chars == 2700000
+    assert PipelineConfiguration(behavior_context_chars=2700000).behavior_context_chars == 2700000
+    assert PipelineConfiguration(behavior_context_chars=900000).behavior_context_chars == 900000
+    with pytest.raises(ValueError):
+        PipelineConfiguration(behavior_context_chars=2700001)
