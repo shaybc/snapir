@@ -53,7 +53,11 @@ public final class BoundaryAnalysis {
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " traversing reachable calls");
                     try { graph.analyze(entry); }
                     catch (RuntimeException exception) { graph.issues.add("Reachability did not finish: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()); }
-                    graph.write(output);
+                    AnalysisProgress.report("entry " + entry.getAttribute("id") + " writing reachable graph");
+                    try (var operation = NodeProcessingProgress.operation("entry " + entry.getAttribute("id") + " writing reachable graph")) {
+                        graph.write(output);
+                    }
+                    AnalysisProgress.report("entry " + entry.getAttribute("id") + " reachable graph written");
                     if (!entry.getAttribute("checklist").equals("false")) {
                         AnalysisProgress.report("entry " + entry.getAttribute("id") + " extracting parser checklist");
                         ParserChecklist checklist = new ParserChecklist(graph);

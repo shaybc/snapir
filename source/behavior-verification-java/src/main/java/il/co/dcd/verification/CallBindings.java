@@ -21,42 +21,47 @@ final class CallBindings {
             opaque(site, from);
             return;
         }
-        implicit.scan(site, from);
-        if (site instanceof MethodCallExpr call) {
-            try {
-                method(call.resolve(), call, from, call.getScope().map(Expression::isSuperExpr).orElse(false));
-            } catch (RuntimeException exception) {
-                graph.edge(from.id, "unresolved_call", call.getNameAsString(), graph.catalog.named(call.getNameAsString(), call.getArguments().size()),
-                    true, true, "Unresolved call; supplied name/arity candidates may not bound the runtime target", site);
+        String location = site.getClass().getSimpleName() + " line=" + site.getBegin().map(value -> value.line).orElse(-1);
+        try (var operation = NodeProcessingProgress.operation("implicit calls " + location)) {
+            implicit.scan(site, from);
+        }
+        try (var operation = NodeProcessingProgress.operation("explicit binding " + location)) {
+            if (site instanceof MethodCallExpr call) {
+                try {
+                    method(call.resolve(), call, from, call.getScope().map(Expression::isSuperExpr).orElse(false));
+                } catch (RuntimeException exception) {
+                    graph.edge(from.id, "unresolved_call", call.getNameAsString(), graph.catalog.named(call.getNameAsString(), call.getArguments().size()),
+                        true, true, "Unresolved call; supplied name/arity candidates may not bound the runtime target", site);
+                }
+            } else if (site instanceof ObjectCreationExpr creation) {
+                try { constructor(creation.resolve(), creation, from); }
+                catch (RuntimeException exception) {
+                    List<CodeNode> candidates = graph.catalog.nodes.values().stream().filter(node ->
+                        node.anchor instanceof ConstructorDeclaration value && value.getParameters().size() == creation.getArguments().size()
+                        || node.kind.equals("implicit_constructor") && creation.getArguments().isEmpty()).toList();
+                    graph.edge(from.id, "unresolved_construction", creation.getType().toString(), candidates, true, true,
+                        "Unresolved construction; all supplied arity candidates retained", site);
+                }
+                if (creation.getAnonymousClassBody().isPresent()) opaque(creation, from);
+            } else if (site instanceof ExplicitConstructorInvocationStmt invocation) {
+                try { constructor(invocation.resolve(), invocation, from); }
+                catch (RuntimeException exception) {
+                    graph.edge(from.id, "unresolved_construction", invocation.toString(),
+                        graph.catalog.nodes.values().stream().filter(node -> node.kind.equals("constructor") || node.kind.equals("implicit_constructor")).toList(),
+                        true, true, "Explicit this/super construction could not be resolved", site);
+                }
+            } else if (site instanceof MethodReferenceExpr reference) {
+                try { method(reference.resolve(), reference, from, reference.getScope().isSuperExpr()); }
+                catch (RuntimeException exception) {
+                    List<CodeNode> candidates = reference.getIdentifier().equals("new")
+                        ? graph.catalog.nodes.values().stream().filter(node -> node.kind.equals("constructor") || node.kind.equals("implicit_constructor")).toList()
+                        : graph.catalog.named(reference.getIdentifier(), -1);
+                    graph.edge(from.id, "unresolved_reference", reference.toString(), candidates, true, true,
+                        "Method/constructor reference requires runtime binding", site);
+                }
+            } else if (site instanceof FieldAccessExpr || site instanceof NameExpr) {
+                field(site, from);
             }
-        } else if (site instanceof ObjectCreationExpr creation) {
-            try { constructor(creation.resolve(), creation, from); }
-            catch (RuntimeException exception) {
-                List<CodeNode> candidates = graph.catalog.nodes.values().stream().filter(node ->
-                    node.anchor instanceof ConstructorDeclaration value && value.getParameters().size() == creation.getArguments().size()
-                    || node.kind.equals("implicit_constructor") && creation.getArguments().isEmpty()).toList();
-                graph.edge(from.id, "unresolved_construction", creation.getType().toString(), candidates, true, true,
-                    "Unresolved construction; all supplied arity candidates retained", site);
-            }
-            if (creation.getAnonymousClassBody().isPresent()) opaque(creation, from);
-        } else if (site instanceof ExplicitConstructorInvocationStmt invocation) {
-            try { constructor(invocation.resolve(), invocation, from); }
-            catch (RuntimeException exception) {
-                graph.edge(from.id, "unresolved_construction", invocation.toString(),
-                    graph.catalog.nodes.values().stream().filter(node -> node.kind.equals("constructor") || node.kind.equals("implicit_constructor")).toList(),
-                    true, true, "Explicit this/super construction could not be resolved", site);
-            }
-        } else if (site instanceof MethodReferenceExpr reference) {
-            try { method(reference.resolve(), reference, from, reference.getScope().isSuperExpr()); }
-            catch (RuntimeException exception) {
-                List<CodeNode> candidates = reference.getIdentifier().equals("new")
-                    ? graph.catalog.nodes.values().stream().filter(node -> node.kind.equals("constructor") || node.kind.equals("implicit_constructor")).toList()
-                    : graph.catalog.named(reference.getIdentifier(), -1);
-                graph.edge(from.id, "unresolved_reference", reference.toString(), candidates, true, true,
-                    "Method/constructor reference requires runtime binding", site);
-            }
-        } else if (site instanceof FieldAccessExpr || site instanceof NameExpr) {
-            field(site, from);
         }
         for (Node child : site.getChildNodes()) scan(child, from);
     }

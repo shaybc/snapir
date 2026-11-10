@@ -61,14 +61,31 @@ final class ReachableSlice {
         CallBindings calls = new CallBindings(this);
         while (!pending.isEmpty()) {
             CodeNode node = pending.remove();
-            AnalysisProgress.report("reachable node " + node.id + "; discovered=" + nodes.size() + "; pending=" + pending.size());
-            initialization.statics(node.owner, node.id);
-            if (node.kind.equals("constructor") || node.kind.equals("implicit_constructor")) initialization.constructor(node);
-            if (node.body != null) {
-                catalog.scope.bind(node.body);
-                calls.scan(node.body, node);
+            String description = "reachable node " + node.id + "; class=" + node.owner + "; method=" + node.signature
+                + "; kind=" + node.kind + "; source=" + node.source.getAttribute("identity")
+                + "; line=" + node.anchor.getBegin().orElseThrow().line;
+            AnalysisProgress.report(description + "; discovered=" + nodes.size() + "; pending=" + pending.size());
+            try (var processing = NodeProcessingProgress.operation(description)) {
+                try (var operation = NodeProcessingProgress.operation("static initialization")) {
+                    initialization.statics(node.owner, node.id);
+                }
+                if (node.kind.equals("constructor") || node.kind.equals("implicit_constructor")) {
+                    try (var operation = NodeProcessingProgress.operation("constructor initialization")) {
+                        initialization.constructor(node);
+                    }
+                }
+                if (node.body != null) {
+                    try (var operation = NodeProcessingProgress.operation("binding source body")) {
+                        catalog.scope.bind(node.body);
+                    }
+                    try (var operation = NodeProcessingProgress.operation("scanning body calls")) {
+                        calls.scan(node.body, node);
+                    }
+                }
             }
+            AnalysisProgress.report("node complete " + node.id);
         }
+        AnalysisProgress.report("reachability traversal complete; nodes=" + nodes.size() + "; edges=" + edges.size());
         issues.addAll(catalog.problems);
     }
 
