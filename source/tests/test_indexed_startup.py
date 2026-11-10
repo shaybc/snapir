@@ -118,6 +118,27 @@ def test_pipeline_uses_saved_facts_and_preserves_resume_gate(tmp_path,indexed_ma
     try:
         assert conn.execute('SELECT current_phase FROM runs WHERE run_id=?',('indexed',)).fetchone()[0]=='conversion_scoped_gated'
     finally:conn.close()
+    from cli.discovery import discover_runs
+    from models.common_models import RunConfig
+    from tools.state_store_tools.runs import get_run, update_run_status
+    from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
+    with get_connection(str(run_database_path(directory))) as conn:
+        saved_config = RunConfig.model_validate(get_run(conn, 'indexed')['run_config_json'])
+        definitions = conn.execute("SELECT count(*) FROM scoped_source_definitions WHERE run_id='indexed'").fetchone()[0]
+    manifest = Path(saved_config.vault_root) / 'vault-manifest.json'
+    before = file_digest(manifest)
+    monkeypatch.setattr('tools.composer_mapper_tools.vault_importer.import_vault', forbidden)
+    monkeypatch.setattr('tools.workspace_intake_tools.mapper_generation.mapper_command', forbidden)
+    for phase in ('conversion_components_incomplete', 'conversion_components_failed',
+                  'conversion_components_ready_for_composition', 'conversion_units_verifying'):
+        with get_connection(str(run_database_path(directory))) as conn:
+            update_run_status(conn, 'indexed', 'blocked', phase)
+        assert 'indexed' in [run_id for run_id, _ in discover_runs(profile.output_root, resumable_only=True)]
+        assert resume_pipeline(profile.output_root, 'indexed') == directory
+        with get_connection(str(run_database_path(directory))) as conn:
+            assert get_run(conn, 'indexed')['current_phase'] == 'conversion_scoped_gated'
+            assert conn.execute("SELECT count(*) FROM scoped_source_definitions WHERE run_id='indexed'").fetchone()[0] == definitions
+        assert file_digest(manifest) == before
 
 
 def test_indexed_mapper_settings_and_reuse_command(tmp_path,indexed_mapper_jar):

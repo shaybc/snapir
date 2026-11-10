@@ -53,6 +53,17 @@ def test_microservice_gate_is_available_to_resume(project,phase):
     assert [path for path,_ in options]==[str(directory)]
 
 
+@pytest.mark.parametrize('phase', ['conversion_components_incomplete', 'conversion_components_failed',
+    'conversion_components_ready_for_composition', 'conversion_units_verifying'])
+def test_component_checkpoint_is_available_to_resume_with_saved_profile(project, phase):
+    from cli.discovery import discover_runs
+    root = project / 'work/migration_runs'
+    directory = saved_run(root, phase=phase)
+    saved_run(root, 'missing-profile', phase, profile=False)
+    assert [path for path, _ in discover_status_runs(project, resumable_only=True)] == [str(directory)]
+    assert [run_id for run_id, _ in discover_runs(str(root), resumable_only=True)] == ['existing']
+
+
 def test_resume_uses_selected_saved_run_and_shows_updated_checkpoint(project, monkeypatch, capsys):
     configs = project / "configs"
     configs.mkdir()
