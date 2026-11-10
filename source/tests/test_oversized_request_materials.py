@@ -1,6 +1,7 @@
 """Verify exact oversized payload capture and local, inspectable diagnostic exports."""
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,8 @@ def test_budget_rejection_exports_exact_materials_and_duplicate_occurrences(tmp_
         assert len({item['sha256'] for item in sources}) == 1
         assert manifest['embedded_occurrences'] > manifest['unique_content_hashes']
         for item in manifest['materials']:
-            assert Path(item['file']).name == item['file']
+            assert not Path(item['file']).is_absolute()
+            assert '..' not in Path(item['file']).parts
         for item in sources:
             assert (folder / item['file']).read_text() == 'class Work {}'
         assert json.loads((folder / 'metadata.json').read_text())['delivery_status'] == 'not_sent_budget_check'
@@ -69,3 +71,46 @@ def test_capture_write_failure_preserves_original_budget_error(tmp_path, monkeyp
         with pytest.raises(ValueError, match='exceeds its context budget'):
             encode_request(dict(group_id='example', sources=[]), 'instruction', 1)
     assert 'Unable to save oversized request materials' in caplog.text
+
+
+@pytest.mark.parametrize('origin', ['request', 'map'])
+def test_export_resolves_original_java_filename_and_package_folders(tmp_path, origin):
+    run = tmp_path / 'run'
+    identity = 'a' * 64
+    payload = dict(sources=[dict(identity=identity, content='package com.example; class Work {}'),
+                            dict(identity='unknown', content='unresolved text')])
+    if origin == 'request':
+        payload['components'] = dict(work=dict(provenance=dict(definition_id=identity,
+            source_file='C:/legacy/PROJECT/src/com/example/Work.java')))
+    else:
+        (run / 'vault/analysis').mkdir(parents=True)
+        with sqlite3.connect(run / 'vault/analysis/analysis.sqlite') as conn:
+            conn.execute('CREATE TABLE notes(definition,source_relative_path)')
+            conn.execute('INSERT INTO notes VALUES (?,?)', (identity, 'PROJECT/src/com/example/Work.java'))
+    with run_model_diagnostics(run):
+        with pytest.raises(ValueError, match='context budget'):
+            encode_request(payload, 'instruction', 1)
+    export_request_materials(run, tmp_path / 'project')
+    for folder in (tmp_path / 'project/work/diagnostics/run').iterdir():
+        manifest = json.loads((folder / 'materials.json').read_text())
+        item = next(item for item in manifest['materials'] if item['original_identity'] == identity)
+        assert item['file'].endswith('com/example/Work.java')
+        assert item['name_resolution'] == 'resolved'
+        assert (folder / item['file']).read_text() == payload['sources'][0]['content']
+        unknown = next(item for item in manifest['materials'] if item['original_identity'] == 'unknown')
+        assert unknown['file'].endswith('.txt')
+        assert unknown['name_resolution'] == 'unresolved'
+
+
+def test_different_content_at_same_filename_keeps_both_occurrences(tmp_path):
+    run = tmp_path / 'run'
+    with run_model_diagnostics(run):
+        with pytest.raises(ValueError, match='context budget'):
+            encode_request(dict(sources=[dict(path='com/example/Work.java', content='first'),
+                                         dict(path='com/example/Work.java', content='second')]), 'instruction', 1)
+    export_request_materials(run, tmp_path / 'project')
+    for folder in (tmp_path / 'project/work/diagnostics/run').iterdir():
+        items = json.loads((folder / 'materials.json').read_text())['materials'][:2]
+        assert len({item['file'] for item in items}) == 2
+        assert all(item['file'].endswith('/Work.java') for item in items)
+        assert [(folder / item['file']).read_text() for item in items] == ['first', 'second']
