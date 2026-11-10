@@ -69,13 +69,10 @@ def classpath_for_project(index, project):
 
 
 def ordered_library_paths(index, project):
-    """Supply executable classpaths only when all member ordering is established."""
+    """Use the existing expanded sequence, including unspecified container-internal order."""
     if not index.project_classpaths:
         return list(index.libraries)
     if project not in index.project_classpaths:
         raise ValueError('Original comparison needs an unambiguous source project')
     entries = [entry for entry in index.project_classpaths[project].entries if entry.kind == 'library']
-    ranks = [tuple(entry.rank) for entry in entries]
-    if len(ranks) != len(set(ranks)):
-        raise ValueError('Original comparison needs an ordered container binding for project: ' + project)
     return [entry.path for entry in entries]

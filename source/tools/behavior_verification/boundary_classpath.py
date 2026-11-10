@@ -28,8 +28,6 @@ def project_context(unit, boundary, origins, classpath):
     projects = {}
     for project in sorted(set(source_projects.values())):
         entries = classpath.project_classpaths[project].entries
-        if any(not entry.order_known for entry in entries if entry.kind == 'library'):
-            raise ValueError('Boundary JAR ordering is not established for project: ' + project)
         libraries = []
         for value in ordered_library_paths(classpath, project):
             path = Path(value)

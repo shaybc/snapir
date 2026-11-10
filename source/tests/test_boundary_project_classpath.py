@@ -55,12 +55,14 @@ def context_jar(tmp_path):
     return archive(tmp_path / 'context', {'com/ibm/api/Context.java': 'package com.ibm.api; public class Context {}'})
 
 
-def test_parameter_type_supplied_only_by_project_jar_is_resolved(tmp_path, boundary_tool, context_jar):
+@pytest.mark.parametrize('known_order', [True, False])
+def test_parameter_type_supplied_only_by_project_jar_is_resolved(tmp_path, boundary_tool, context_jar, known_order):
     text = 'package example; public class Formatter { public String format(com.ibm.api.Context context){ return ""; } }'
     value = unit('response_format', 'example.Formatter', [source('formatter', text)])
     value['effective_configuration']['children'][0]['decorators'] = []
     preparation = dict(operations={'BANK/Op': operation(value, [('example.Formatter', 'BANK', tmp_path / 'BANK/Formatter.java')])})
     index = JavaClasspathIndex(project_classpaths={'BANK': view('BANK', [context_jar])})
+    index.project_classpaths['BANK'].entries[0].order_known = known_order
     before = deepcopy(preparation)
     report = build_boundary_report(preparation, tool_jar=boundary_tool, classpath_index=index)
     boundary = next(iter(report['boundaries'].values()))
@@ -91,6 +93,10 @@ def test_opposite_jar_order_stays_separate_for_identical_source_scopes(tmp_path,
         value['unit_id'] = project
         operations[project + '/Op'] = operation(value, [('example.Work', project, tmp_path / project / 'Work.java')])
     index = JavaClasspathIndex(project_classpaths={'A': view('A', [good, bad]), 'B': view('B', [bad, good])})
+    for project in index.project_classpaths.values():
+        for entry in project.entries:
+            entry.rank = [0]
+            entry.order_known = False
     report = build_boundary_report(dict(operations=operations), tool_jar=boundary_tool, classpath_index=index)
     assert any('no supplied Java source' in issue for issue in report['boundaries']['A']['issues'])
     assert any('matches=0' in issue for issue in report['boundaries']['B']['issues'])
@@ -121,7 +127,7 @@ def test_referenced_source_uses_its_own_nonexported_library(tmp_path, boundary_t
     assert hidden['counts']['identified'] == 0
 
 
-@pytest.mark.parametrize('problem', ['missing', 'corrupt', 'relative', 'unordered', 'unknown-owner', 'unreadable'])
+@pytest.mark.parametrize('problem', ['missing', 'corrupt', 'relative', 'unknown-owner', 'unreadable'])
 def test_invalid_project_evidence_is_rejected_before_analyzer(tmp_path, context_jar, problem, monkeypatch):
     value = unit()
     metadata = operation(value, [('example.Work', 'A', tmp_path / 'Work.java')])
@@ -132,7 +138,6 @@ def test_invalid_project_evidence_is_rejected_before_analyzer(tmp_path, context_
         path.write_bytes(b'not a jar')
     if problem == 'relative': path = Path('relative.jar')
     index = JavaClasspathIndex(project_classpaths={'A': view('A', [path])})
-    if problem == 'unordered': index.project_classpaths['A'].entries[0].order_known = False
     if problem == 'unknown-owner': metadata['behavior_request']['java_origins'][0].pop('source_project')
     if problem == 'unreadable':
         def denied(*args): raise PermissionError('unreadable JAR')

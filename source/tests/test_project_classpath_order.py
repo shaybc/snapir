@@ -141,7 +141,7 @@ def test_metadata_supplement_and_serialized_index_keep_order(ordered, monkeypatc
     assert any(item['project'] == 'B' and item['locations'] == ['jar:' + second] for item in data['binary_resolutions'])
 
 
-def test_original_comparison_uses_order_and_refuses_unestablished_provider(ordered, monkeypatch):
+def test_original_comparison_uses_existing_sequence_for_unspecified_container_order(ordered, monkeypatch):
     from types import SimpleNamespace
     from models.pipeline_configuration import PipelineConfiguration
     from runtime.behavior_conversion.original_classpath import original_classpath
@@ -152,8 +152,11 @@ def test_original_comparison_uses_order_and_refuses_unestablished_provider(order
     assert original_classpath(profile, {}) == [second, first]
     project(root, 'B', [dict(kind='con', path='org.eclipse.jst.server.core.container/com.ibm.ws.ast.st.runtime.runtimeTarget.v85/was.base.v85')])
     profile.eclipse_classpath_variables = {'APP_SERVER_PATH': str(root)}
-    with pytest.raises(ValueError, match='ordered container'):
-        original_classpath(profile, {})
+    resolved = original_classpath(profile, {})
+    index = discover_java_classpath(str(root), profile.classpath_jars, profile.eclipse_classpath_variables)
+    expected = [entry.path for entry in index.project_classpaths['B'].entries if entry.kind == 'library']
+    assert resolved == expected
+    assert resolved
 
 
 def test_old_flat_index_remains_conservative_and_explicit_empty_container_is_valid(tmp_path):
