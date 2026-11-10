@@ -41,7 +41,7 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     elif facts_disabled(profile):
         report.update(experimental_only=True,fact_collection=False,fact_validation='disabled_for_test',fact_validation_blocking=False)
     write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
-    with component_execution(conn, config, profile, classpath, preparation, include_steps=include_steps,include_formats=include_formats):
+    with component_execution(conn, config, profile, classpath, preparation, include_steps=include_steps,include_formats=include_formats,boundaries=boundaries):
         try:
             for position, group in enumerate(plan.groups, 1):
                 if external_group(plan, group):

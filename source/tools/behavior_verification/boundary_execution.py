@@ -100,6 +100,13 @@ def execute_boundary_case(compiled, unit, boundary, binding, case, timeout=15,de
     directory.mkdir(parents=True, exist_ok=False)
     job = ET.Element('job', adapter_class=binding.adapter_class, kind=unit['kind'], implementation=boundary.implementation_class,
         **{name: getattr(binding, name) for name in ('context_class', 'tag_class', 'context_writer', 'context_remover', 'context_snapshot', 'step_context_setter')})
+    job.set('context_reader', binding.context_reader)
+    if boundary.format_lifecycle and side_is_legacy(binding):
+        lifecycle = ET.SubElement(job, 'format_lifecycle', version=boundary.format_lifecycle.version)
+        for invocation in boundary.format_lifecycle.invocations:
+            call = ET.SubElement(lifecycle, 'invocation', method=invocation.method, declaring_class=invocation.declaring_class)
+            for parameter in invocation.parameters:
+                ET.SubElement(call, 'parameter', type=parameter)
     if binding.original_action:job.set('original_action',binding.original_action)
     values = case.model_dump(mode='json')
     if case.original_inputs and unit['kind']=='configured_step':raise ValueError('Original object recipes are limited to formats/decorators')
@@ -158,3 +165,8 @@ def _settings(settings, binding):
                        'method': destination.get('method', setting['method'])})
     return result
 
+
+
+def side_is_legacy(binding):
+    """Keep original lifecycle invocation data out of native API execution."""
+    return binding.adapter_class == 'il.co.dcd.verification.harness.LegacyBoundaryAdapter'

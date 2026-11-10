@@ -19,7 +19,7 @@ class ComponentUnitProvider:
         from tools.behavior_verification.boundaries import build_boundary_report
         from runtime.component_conversion.steps import default_step_mappings
         from runtime.behavior_conversion.verification_mode import facts_disabled
-        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan), collect_checklists=not facts_disabled(profile))
+        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan), collect_checklists=not facts_disabled(profile), classpath_index=self.classpath)
         self.units = {unit['unit_id']:unit for item in preparation['operations'].values() for unit in item['units']}
 
     def __call__(self, unit, payload, validator):
@@ -103,6 +103,6 @@ class ComponentUnitProvider:
         save(self.conn,self.config.run_id,'component_unit_feedback',group.group_id,
             digest(error.verification_feedback),error.verification_feedback,status='failed')
         records.invalidate(self.conn,self.config.run_id,[group.group_id])
-        with component_execution(self.conn,self.config,self.profile,self.classpath,self.preparation,include_steps=True,include_formats=True):
+        with component_execution(self.conn,self.config,self.profile,self.classpath,self.preparation,include_steps=True,include_formats=True,boundaries=self.boundaries):
             _convert_group(self.conn,self.config,self.profile,self.plan,group,self.boundaries,
                 Path(self.config.output_root)/'components',self.factory,self.model_call,units=self.units)

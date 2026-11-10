@@ -412,6 +412,53 @@ context[dataName] value
   → result is the complete XML output string
 ```
 
+### Source-Resolved Basic Format Lifecycles
+
+Whole-XML orchestration and basic-field conversion are different boundaries. Resolve each
+configured implementation from the effective registry, then inspect its actual inheritance,
+interfaces, holder fields and delegated objects. A method need not be declared on CCString
+itself. For example, an enterprise implementation may use CCString -> StringFormatHolder ->
+StringFormat, with an internal ccBase object supplying hooks and error behavior. This is a
+source-dependent example, not a hierarchy every implementation must have.
+
+For the selected direction, identify the actual instance method, parameter/return types,
+original declaring class, source revision and required initialization. Candidate field APIs
+include formatField(DataField), unformat(String, DataField), and unformatField(String, DataField).
+Candidate lifecycle hooks include beforeFormatDo(DataElement, Context) and
+beforeUnformatDo(DataElement, FormatElement, Context). Whole-format APIs may use Context,
+KeyedCollection or Operation; these types are not interchangeable. Names alone do not establish
+an entry point. Resolve overloads and the actual source implementation. Delegated calls remain
+part of the supplied behavioral evidence. Missing source, ambiguous receivers or unproven hook
+ordering must be reported explicitly.
+
+A hook that already performs conversion must not be followed by a second invocation of the
+same conversion. Where hooks and field conversion are separate, establish their order from
+original orchestration source. Initialization, defaults, validation, null/missing/empty
+semantics, errors, fallback behavior, context effects and external effects all belong to the
+business contract. Configured child assembly and decorators belong to composition.
+
+**Native conversion preserves business behavior, not legacy structure.** Do not reproduce
+Composer inheritance, interfaces, holder classes, ccBase architecture or a dynamic tag runtime.
+Implement the behavior with appropriate plain Java APIs, typed configuration and collaborators,
+and Jackson where needed. Native method names and signatures need not mirror the original.
+
+Standalone tests initialize the original component using explicit configuration and typed
+fixture inputs, execute the source-resolved lifecycle, and compare with the native API for the
+same direction. Use source-defined normal, missing/null/empty, invalid, default and fallback
+cases. Compare output values/types, relevant state, exceptions and external effects. Required
+Operation, DataField or other framework objects must come from explicit fixture recipes rather
+than guessed construction. Test format and unformat separately; round trips are supplementary.
+Keep configured chain/sub-format and complete XML tests as separate integration boundaries.
+
+For the standalone harness, supply field objects through `original_inputs` under the configured
+`dataName` key or `lifecycle:<fully-qualified-parameter-type>`. Non-context framework inputs such
+as Operation require the latter explicit typed input. Parameterless constructors and public
+setters may be described by existing fixture recipes; the harness does not invent an Operation,
+DataField or its initialization. Use `original_output_getters` and `original_context_getters`
+for explicit observations of original objects. For a basic unformat API that returns a value
+and also projects state, set the native binding's `output` explicitly to `result` when both are
+to be observed. Native outputs remain values or typed DTO projections, not Composer objects.
+
 ### Decorator Chain Direction
 
 **During unformat (parsing incoming XML):**

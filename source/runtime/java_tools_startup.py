@@ -13,14 +13,17 @@ from tools.maven_dependency_tools.command import maven_executable
 
 ANALYZER_CAPABILITY = 'il/co/dcd/verification/ProjectTypeSolvers.class'
 ANALYZER_PROGRESS_CAPABILITY = 'il/co/dcd/verification/BufferedAnalysisOutput.class'
+ANALYZER_LIFECYCLE_CAPABILITY = 'il/co/dcd/verification/FormatLifecycle.class'
+ANALYZER_LIFECYCLE_ADAPTER = 'il/co/dcd/verification/harness/LegacyFormatLifecycle.class'
 
 
 def analyzer_ready(path):
-    """Reject old or incomplete analyzer artifacts lacking analysis progress reporting."""
+    """Reject analyzer artifacts lacking buffered progress output or format lifecycle support."""
     try:
         with ZipFile(path) as archive:
             return all(name in archive.namelist() for name in
-                       (ANALYZER_CAPABILITY, ANALYZER_PROGRESS_CAPABILITY))
+                       (ANALYZER_CAPABILITY, ANALYZER_PROGRESS_CAPABILITY,
+                        ANALYZER_LIFECYCLE_CAPABILITY, ANALYZER_LIFECYCLE_ADAPTER))
     except (OSError, BadZipFile):
         return False
 
@@ -63,7 +66,7 @@ def ensure_java_tools(project):
         if not artifact.is_file():
             raise ValueError(name + ' build finished without producing the expected JAR: ' + str(artifact))
         if name == 'Boundary analyzer' and not analyzer_ready(artifact):
-            raise ValueError('Built boundary analyzer lacks analysis progress reporting; check the tool sources and Maven output')
+            raise ValueError('Built boundary analyzer lacks buffered progress output or format lifecycle support; check the tool sources and Maven output')
     print('Java prerequisites ready: Composer mapper and boundary analyzer.', flush=True)
 
 

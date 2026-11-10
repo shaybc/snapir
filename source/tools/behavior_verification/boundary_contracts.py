@@ -68,7 +68,7 @@ def boundary_contract(unit, mappings=None):
                     analysis_content_hash=hashlib.sha256(item['content'].encode('utf-8')).hexdigest())
                for item in unit['sources']]
     boundary = UnitVerificationBoundary(unit_id=unit['unit_id'], unit_fingerprint=unit['fingerprint'],
-        operation_identity=unit['operation_identity'], kind=unit['kind'], **contract,
+        operation_identity=unit['operation_identity'], kind=unit['kind'], format_scope=unit.get('format_scope', 'configured'), **contract,
         observable_results=['return_value', 'context_writes', 'context_removals', 'exceptions', 'external_calls'],
         configuration_hash=digest(dict(effective=configuration, xml=unit['configuration_xml'],
                                       referenced_definitions=unit.get('referenced_definitions', []))),

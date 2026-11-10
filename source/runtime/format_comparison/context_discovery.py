@@ -64,7 +64,9 @@ def discover_context(unit, model_call, settings, directory, *, directions=None):
     if not selected or set(selected)-{'format','unformat'}:
         raise ValueError('Discovery requires explicit format/unformat directions')
     payload = dict(execution=dict(unit_kind=unit.get('kind'),selected_directions=selected,
-        entry_points=[dict(direction=direction,method_name=direction) for direction in selected]),
+        entry_points=[dict(direction=direction,resolution='resolve_from_source',
+            candidate_names=['format','beforeFormatDo','formatField'] if direction=='format' else
+                ['unformat','beforeUnformatDo','unformatField']) for direction in selected]),
         evidence=evidence_catalog(unit), schema=FormatContextDiscovery.model_json_schema())
     encoded = json.dumps(payload, ensure_ascii=True)
     if len(DISCOVERY) + len(encoded) > settings.discovery_request_chars:

@@ -45,3 +45,18 @@ a runtime that loads Composer tags or dynamically interprets configuration. The 
 composition owns concrete structure/fields; provide the evidenced reusable behavior through explicit
 native arguments/collaborators. Keep source initialization, inherited behavior and runtime conditions.
 '''
+
+
+FORMAT_LIFECYCLE_INSTRUCTION = """
+format_lifecycles describes source-resolved ORIGINAL methods and ordered lifecycle calls for
+format and/or unformat. Convert the supplied directions and business behavior, not this legacy
+architecture. Inheritance, interfaces, holders, ccBase fields and delegation are evidence to
+understand; do not recreate that hierarchy, Composer runtime, dynamic tags or compatibility
+facades. Use independent plain native APIs, typed configuration and collaborators; use Jackson
+where appropriate for XML. Preserve value conversion, validation, defaults, null/missing/empty
+behavior, initialization effects, errors/fallbacks and observable effect ordering. Required hooks
+may be in ancestors or delegates. Do not omit their behavior or invoke them twice. Decorator
+chains and child structure remain owned by configured composition, reusing frozen native APIs.
+Test each supplied direction and its source-defined edge cases through the native API. Native
+method names, signatures, class relationships and architecture need not match original methods.
+"""

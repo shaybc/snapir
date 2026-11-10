@@ -26,6 +26,7 @@ def unit_for_case(plan, case):
         if hashlib.sha256(source['content'].encode('utf-8')).hexdigest() != source['content_hash']:
             raise ValueError('Original source hash does not match supplied bytes')
     if plan.scope == 'basic':
+        unit['format_scope'] = 'basic'
         node = unit['effective_configuration']
         if node.get('children') or node.get('decorators') or not node.get('java_class'):
             raise ValueError('Basic comparison requires an explicit undecorated implementing root')

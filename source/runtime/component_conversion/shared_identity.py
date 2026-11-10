@@ -24,6 +24,7 @@ def implementation_identity(plan, group, profile):
     return content_hash(dict(roots=sorted(plan.components[key].label for key in group.members),
                              resolution=sorted(seen.values(), key=lambda item: (item['kind'], item['label'])),
                              java_version=profile.java_version, policy=COMPONENT_POLICY_VERSION,
+                             **({'format_lifecycle_policy': 'format-lifecycle-v1'} if any({'format_leaf','format_wrapper','decorator'}.intersection(plan.components[key].roles) for key in group.members) else {}),
                              allowed_classes=sorted(profile.allowed_ibm_classes), allowed_artifacts=sorted(profile.allowed_ibm_artifacts)))
 
 

@@ -569,7 +569,7 @@ objects:
   - id: verification-java
     type: app
     name: Java behavior verification tool
-    description: Inspects Java APIs and executes original and native behavior comparisons.
+    description: Resolves source-backed inherited and delegated format lifecycles and compares original behavior with independent native APIs.
     parent: snapir
     technologies:
       - Java

@@ -50,6 +50,13 @@ final class ReachableSlice {
         CodeNode entryNode = catalog.find(ast);
         if (entryNode == null) throw new IllegalStateException("Entry body was not indexed");
         root("entry", entryNode);
+        if (FormatLifecycle.format(entry)) {
+            for (var method : FormatLifecycle.sequence(entry, catalog.scope, declaration)) {
+                var node = catalog.find(method.toAst(MethodDeclaration.class).orElseThrow());
+                if (node == null) throw new IllegalStateException("Lifecycle body was not indexed");
+                root("entry", node);
+            }
+        }
         var setup = entry.getElementsByTagName("setup");
         for (int index = 0; index < setup.getLength(); index++) {
             initialization.configured(((Element) setup.item(index)).getAttribute("implementation"));

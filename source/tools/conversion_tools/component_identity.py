@@ -3,8 +3,8 @@ from models.component_conversion_plan import ComponentConversionPlan
 from tools.conversion_tools.scoped_reuse.fingerprints import digest,conversion_policy
 
 COMPONENT_POLICY_VERSION='component-contracts-format-step-v2'
-FORMAT_CHAIN_POLICY_VERSION='configured-format-chains-v1'
-FORMAT_COMPOSITION_POLICY_VERSION='configured-format-tests-v2'
+FORMAT_CHAIN_POLICY_VERSION='configured-format-lifecycles-v2'
+FORMAT_COMPOSITION_POLICY_VERSION='configured-format-lifecycles-v3'
 
 
 def checked_plan(value):

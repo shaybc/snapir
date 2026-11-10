@@ -66,3 +66,29 @@ def decorator_scope(types,owner):
     if resolve_method(types,owner,'formatXmlAttributes'):return 'xml_attributes'
     if resolve_method(types,owner,'addDecoration') and resolve_method(types,owner,'removeDecoration'):return 'value'
     raise ValueError('Decorator scope lacks complete original API evidence: '+owner)
+
+
+def resolved_lifecycle_hooks(types, boundary, direction):
+    """Read hook bodies from verified lifecycle graph provenance, including delegated owners."""
+    found = {}
+    lifecycle = boundary.get('format_lifecycle') or {}
+    names = {call['method'] for call in lifecycle.get('invocations', [])}
+    names.update({'applyDecorators', 'removeDecorators', 'formatXmlAttributes'})
+    for node in (boundary.get('reachable_slice') or {}).get('nodes', []):
+        if node['kind'] != 'method':
+            continue
+        name = node['signature'].split('(', 1)[0].rsplit('.', 1)[-1]
+        if name not in names:
+            continue
+        candidates = types.get(node['declaring_class'], {}).get('overloads', {}).get(name, [])
+        candidates = [method for method in candidates if method['source_identity'] == node['source_identity']
+                      and method['source_hash'] == node['source_hash'] and method['excerpt'].strip() == node['excerpt'].strip()]
+        if len(candidates) != 1:
+            raise ValueError('Format hook body is absent or ambiguous in resolved lifecycle: ' + node['signature'])
+        if name in found and found[name] != candidates[0]:
+            raise ValueError('Multiple delegated format hook bodies require explicit resolution: ' + name)
+        found[name] = candidates[0]
+    invocations = lifecycle.get('invocations', [])
+    if invocations and invocations[-1]['method'] in found:
+        found[direction] = found[invocations[-1]['method']]
+    return found

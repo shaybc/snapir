@@ -36,6 +36,12 @@ when asked to plan - give a detailed plan with code changes expected, add a sect
 
 When asked a question do not change code just answer and keep answers focused, concise, and directly responsive. Lead with the conclusion, then include only the essential supporting points. Avoid repetition, extensive background, diagrams, long task lists, and adjacent information unless explicitly requested. For general questions, stay under 50 lines whenever possible. If the subject requires a longer explanation, provide a short answer first and ask whether I want more detail. When researching, summarize the findings instead of reproducing the research.
 
+## Ground code answers in reviewed evidence
+
+When answering a question about this codebase's behavior, architecture, or execution flow, review the relevant code before drawing conclusions. You may rely on a code review already performed in the conversation when it directly covers the question and remains applicable to the current code. If that review is incomplete or may be outdated, inspect the missing or changed paths first.
+
+Do not substitute guesses, generic expectations, statistical estimates, or assumptions for reviewing the implementation. Distinguish what the reviewed code establishes from what run-specific evidence proves. State any remaining uncertainty explicitly rather than presenting an unverified explanation as fact. Before claiming a capability or flow is absent, trace its implementation and callers, including applicable alternate and reuse paths.
+
 ## Check behavior across stages and phases
 
 Whenever fixing behavior in one stage or phase, trace where that behavior is resolved, passed between stages, and consumed elsewhere. Check whether the same fix must also apply to other stages or phases, including preparation, analysis, conversion, validation, and resume/reuse paths. Do not assume that fixing one path fixes the others.

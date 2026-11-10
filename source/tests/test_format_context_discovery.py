@@ -36,6 +36,8 @@ def test_source_backed_and_exploratory_fixtures_keep_provenance(tmp_path):
     assert result.requirements[0].context_key == 'runtime.channel'
     assert 'native_sources' not in called[0]
     assert called[0]['execution']['selected_directions']==['format']
+    assert called[0]['execution']['entry_points']==[dict(direction='format',resolution='resolve_from_source',
+        candidate_names=['format','beforeFormatDo','formatField'])]
     cases = expand_fixtures(plan, FormatComparisonSettings())
     assert len(cases) == 3
     assert cases[1].origin == 'source_backed' and cases[1].targeted_branch_ids == ['internet']
@@ -76,7 +78,8 @@ def test_unformat_discovery_receives_entry_direction_and_does_not_require_xml_ou
     def model(instruction,encoded):
         payload=json.loads(encoded)
         assert payload['execution']==dict(unit_kind='request_unformat',selected_directions=['unformat'],
-            entry_points=[dict(direction='unformat',method_name='unformat')])
+            entry_points=[dict(direction='unformat',resolution='resolve_from_source',
+                candidate_names=['unformat','beforeUnformatDo','unformatField'])])
         assert 'XML fields' in instruction and 'context writes are not initial-context requirements' in instruction
         return FormatContextDiscovery().model_dump_json()
     discovery=discover_context(plan.original_unit,model,FormatComparisonSettings(),tmp_path)

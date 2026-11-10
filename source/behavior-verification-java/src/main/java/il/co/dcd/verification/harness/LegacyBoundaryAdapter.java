@@ -22,6 +22,8 @@ public final class LegacyBoundaryAdapter implements BoundaryAdapter {
             return call(component.getClass().getMethod("execute"), component);
         }
         component = prepared(configuration);
+        if (!BoundaryValues.children(job,"format_lifecycle").isEmpty())
+            return LegacyFormatLifecycle.invoke(job,component,context,xml,configuration);
         return job.getAttribute("kind").equals("request_unformat")
             ? call(component.getClass().getMethod("unformat", String.class, context.getClass()), component, xml, context)
             : call(component.getClass().getMethod("format", context.getClass()), component, context);

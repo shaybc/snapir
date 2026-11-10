@@ -2,6 +2,9 @@
 
 DISCOVERY = '''Inspect only supplied original format source, reachable supporting sources and
 configuration for execution.selected_directions and execution.entry_points ONLY. Follow the
+source-resolved lifecycle through inheritance, holders and delegation. Entry-point candidate_names
+are search hints, not resolved signatures; do not assume every candidate executes. The source
+analyzer remains authoritative for executable bindings. Follow the
 selected entry through its reachable helpers and active decorators; do not collect reads from
 the opposite direction merely because its methods share the same source file.
 Identify context values that must exist BEFORE execution, including conditional reads, helper

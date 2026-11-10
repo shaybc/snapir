@@ -18,6 +18,7 @@ final class EntryMethod {
         MethodDeclaration method = resolved.toAst(MethodDeclaration.class)
             .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source"));
         if (method.getBody().isEmpty()) throw new IllegalStateException("Entry method has no executable body");
+        if (FormatLifecycle.format(entry)) FormatLifecycle.sequence(entry, sources, resolved);
         var unit = method.findCompilationUnit().orElseThrow();
         Element source = sources.evidence(unit);
         var range = method.getRange().orElseThrow();
@@ -34,20 +35,27 @@ final class EntryMethod {
         output.writeCharacters(method.getTokenRange().orElseThrow().toString());
         output.writeEndElement();
         output.writeEndElement();
+        if (FormatLifecycle.format(entry)) FormatLifecycle.write(entry, sources, resolved, output);
     }
 
     static ResolvedMethodDeclaration resolve(Element entry, SourceScope sources) {
         String implementation = entry.getAttribute("implementation");
-        var declaration = sources.solver.solveType(implementation);
+        var declaration = sources.solverFor(implementation).solveType(implementation);
         List<ResolvedMethodDeclaration> matches = new ArrayList<>();
         // Prefer the actual override before examining inherited methods.
-        for (var method : declaration.getDeclaredMethods()) {
+        if (FormatLifecycle.format(entry)) {
+            for (var method : FormatLifecycle.methods(entry,sources)) if (matches(entry,method)) matches.add(method);
+        } else for (var method : declaration.getDeclaredMethods()) {
             if (matches(entry, method)) matches.add(method);
         }
-        if (matches.isEmpty()) {
+        if (matches.isEmpty() && !FormatLifecycle.format(entry)) {
             for (var usage : declaration.getAllMethods()) {
                 if (matches(entry, usage.getDeclaration())) matches.add(usage.getDeclaration());
             }
+        }
+        if (matches.isEmpty()) {
+            var alternative = FormatLifecycle.fallback(entry, sources);
+            if (alternative != null) matches.add(alternative);
         }
         if (matches.size() != 1) throw new IllegalStateException("Entry method must resolve uniquely: " + implementation + "." + entry.getAttribute("method") + " (matches=" + matches.size() + ")");
         return matches.get(0);

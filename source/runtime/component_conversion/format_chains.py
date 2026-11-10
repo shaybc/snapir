@@ -69,7 +69,7 @@ def checklist_chain_context(payload):
             for chain in payload.get('format_chains',[])])
 
 
-def configured_chains(configured,sources):
+def configured_chains(configured,sources,boundaries=None):
     """Derive chains from resolved occurrence ownership, original APIs and selected direction."""
     types=source_types(sources);result=[];seen=set()
     definitions={item['definition_id']:item for item in configured.get('referenced_definitions',[])}
@@ -81,6 +81,12 @@ def configured_chains(configured,sources):
         decorators=node.get('decorators',[])
         if decorators:
             owner=node.get('java_class');hooks=reachable_hooks(types,owner,direction)
+            if boundaries:
+                from tools.behavior_verification.format_lifecycle import basic_identity
+                boundary = boundaries.get('basic_boundaries', {}).get(basic_identity(configured['unit_id'], owner))
+                if boundary and boundary.get('format_lifecycle'):
+                    from runtime.component_conversion.format_chain_sources import resolved_lifecycle_hooks
+                    hooks.update(resolved_lifecycle_hooks(types,boundary,direction))
             if direction not in hooks:raise ValueError('Configured chain lacks original '+direction+' evidence: '+str(owner))
             value_hook='removeDecorators' if direction=='unformat' else 'applyDecorators'
             value=[];attributes=[]
@@ -88,7 +94,7 @@ def configured_chains(configured,sources):
                 scope=decorator_scope(types,decorator['java_class'])
                 item=dict(decorator,scope=scope)
                 if scope=='value' and value_hook in hooks:value.append(item)
-                elif scope=='xml_attributes' and any('formatXmlAttributes' in h['code'] for h in hooks.values()):attributes.append(item)
+                elif scope=='xml_attributes' and ('formatXmlAttributes' in hooks or any('formatXmlAttributes' in h['code'] for h in hooks.values())):attributes.append(item)
             if value:
                 body=hooks[value_hook]['code']
                 if direction=='unformat':
@@ -115,13 +121,13 @@ def configured_chains(configured,sources):
     return result
 
 
-def attach_format_chains(request,plan,group,units):
+def attach_format_chains(request,plan,group,units,*,boundaries=None):
     """Retain delegated obligations explicitly; complete units still check every original ID."""
     roles={role for key in group.members for role in plan.components[key].roles}
     if request.get('configured_format'):
         configured=request['configured_format'];unit=units[configured['unit_id']]
         request['format_chain_policy']=FORMAT_COMPOSITION_POLICY_VERSION
-        request['format_chains']=configured_chains(configured,unit['sources'])
+        request['format_chains']=configured_chains(configured,unit['sources'],boundaries)
         for chain in request['format_chains']:
             for operation in chain['operations']:
                 matches=[key for key,node in plan.components.items() if node.kind=='java_implementation' and node.label==operation['source_class']]

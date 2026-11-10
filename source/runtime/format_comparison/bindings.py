@@ -78,7 +78,7 @@ def resolved_binding(entry, unit, native_sources, *, constructor_entry=False):
         raise ValueError('Duplicate output projection key')
     if not all(_member(name) for name in binding.output_getters):
         raise ValueError('Invalid output accessor')
-    if entry.direction == 'unformat' and binding.context_writes:
+    if entry.direction == 'unformat' and binding.context_writes and not (unit.get('format_scope') == 'basic' and 'output' in entry.binding.model_fields_set):
         binding.output = 'none'
         binding.output_getters = []
     return binding

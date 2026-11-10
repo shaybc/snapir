@@ -34,7 +34,7 @@ def partition_task(identity, request, original):
 
 
 @contextmanager
-def component_execution(conn, config, profile, classpath, preparation, *, include_steps=False, include_formats=False):
+def component_execution(conn, config, profile, classpath, preparation, *, include_steps=False, include_formats=False, boundaries=None):
     """Bind an explicit CF3 invocation; configured-unit generation remains gated separately."""
     if profile.scoped_native_mode != 'component_first_v1' or profile.conversion_strategy != 'behavior_units':
         raise ValueError('Basic components require the explicit component_first_v1 behavior mode')
@@ -42,7 +42,7 @@ def component_execution(conn, config, profile, classpath, preparation, *, includ
     selected = set(preparation['operations'])
     validate_checkpoints(conn, config, profile, classpath, selected)
     token = _execution.set(dict(conn=conn, config=config, profile=profile, classpath=classpath,
-        selected=selected, plan=plan, target=component_target(profile), include_steps=include_steps, include_formats=include_formats,
+        selected=selected, plan=plan, boundaries=boundaries, target=component_target(profile), include_steps=include_steps, include_formats=include_formats,
         units={unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}))
     try:
         yield
@@ -92,7 +92,7 @@ def require_component_task(conn, config, profile, identity, payload=None):
         if composed is not None:
             from runtime.component_conversion.format_chains import attach_format_chains
             trusted=dict(configured_format=composed,requirements={})
-            attach_format_chains(trusted,execution['plan'],group,execution['units'])
+            attach_format_chains(trusted,execution['plan'],group,execution['units'],boundaries=execution.get('boundaries'))
             if any(payload.get(key)!=trusted[key] for key in ('format_chains','format_chain_policy')):
                 raise ValueError('Component request changed original decorator order/scope obligations')
     validate_checkpoints(conn, config, profile, execution['classpath'], execution['selected'])

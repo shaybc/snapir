@@ -9,6 +9,8 @@ from tools.behavior_verification.parser_checklist import read_parser_checklist
 
 def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None):
     """Identify entry methods and conservative slices; no behavioral pass is claimed."""
+    from tools.behavior_verification.format_lifecycle import expanded_preparation, read_lifecycle
+    preparation, basic_ids = expanded_preparation(preparation)
     boundaries, scopes, unit_sources, source_paths = {}, {}, {}, {}
     for operation, item in sorted(preparation.get('operations', {}).items()):
         origins = {origin['definition_id']: origin['source_file']
@@ -61,6 +63,12 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     raise ValueError('Boundary method is outside its supplied source revision')
                 boundary.legacy_method = LegacyBoundaryMethod(**method.attrib, excerpt=excerpt,
                     source_file=source_paths[identity].get(source['identity']))
+                boundary.format_lifecycle = read_lifecycle(entry.find('lifecycle'), unit_sources[identity])
+                if boundary.format_lifecycle:
+                    primary = boundary.format_lifecycle.invocations[-1]
+                    boundary.method_name = primary.method
+                    boundary.parameter_contract = primary.parameters
+                    boundary.return_contract = primary.returns
                 boundary.analysis_status = 'identified'
                 boundary.reachable_slice = read_reachable_slice(entry.find('reachability'), boundary,
                     unit_sources[identity], source_paths[identity])
@@ -79,6 +87,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     boundary.analysis_status = 'verification_incomplete'
                     boundary.legacy_method = None
                     boundary.issues.append(str(exc))
+    basic_boundaries = {key: boundaries.pop(key).model_dump(mode='json') for key in sorted(basic_ids)}
     identified = sum(item.analysis_status == 'identified' for item in boundaries.values())
     slices = [item.reachable_slice for item in boundaries.values() if item.reachable_slice is not None]
     analyzed = sum(item.status == 'analyzed' for item in slices)
@@ -93,7 +102,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
         not_run=len(boundaries) - len(checklists), items=sum(len(item.items) for item in checklists))
     from tools.conversion_tools.scoped_reuse.fingerprints import digest
     classpaths = {key: scope['classpath'] for key, scope in scopes.items() if scope.get('classpath')}
-    return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'),
+    return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'), basic_boundaries=basic_boundaries,
         analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpaths) if classpaths else None,
         analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,
