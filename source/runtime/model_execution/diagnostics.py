@@ -9,6 +9,14 @@ from runtime.model_execution.error_details import SafeDiagnosticFormatter
 
 @contextmanager
 def run_model_diagnostics(directory):
+    """Attach run logging and retain oversized application request materials."""
+    from runtime.behavior_conversion.oversized_request_capture import capture_for_run
+    with capture_for_run(directory), _run_model_diagnostics(directory):
+        yield
+
+
+@contextmanager
+def _run_model_diagnostics(directory):
     """Attach a run file sink temporarily without changing logger levels or retries."""
     try:
         path = directory / "logs" / "model_execution.log"

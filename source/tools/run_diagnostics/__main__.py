@@ -1,4 +1,4 @@
-"""Select an existing migration for offline, read-only diagnosis."""
+"""Diagnose saved migration state and export captured oversized request materials."""
 
 from pathlib import Path
 import sys
@@ -37,6 +37,8 @@ def main():
         else:
             directory = Path(input('No runs found. Paste the full existing run folder: ').strip().strip('"'))
     print('\n'.join(diagnose(directory)))
+    from tools.run_diagnostics.request_materials import export_request_materials
+    print('\n'.join(export_request_materials(directory, Path(__file__).resolve().parents[3])))
 
 
 if __name__ == '__main__':

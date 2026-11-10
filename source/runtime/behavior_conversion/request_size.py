@@ -27,7 +27,7 @@ def log_request_size(request, encoded, instruction, limit, *, stage):
         elif isinstance(value, list):
             for child in value: count(child)
     count(request)
-    report = dict(stage=stage, request_id=request.get('unit_id') or request.get('subject_id') or request.get('operation_identity'),
+    report = dict(stage=stage, request_id=request.get('unit_id') or request.get('subject_id') or request.get('operation_identity') or request.get('group_id'),
         decision='too_large' if total['characters']>limit else 'fits_budget', character_limit=limit,
         total=total, json_payload=_weight(encoded), instructions=_weight(instruction), components=components,
         json_envelope=dict(characters=len(encoded)-sum(item['characters'] for item in components.values()),
@@ -37,6 +37,8 @@ def log_request_size(request, encoded, instruction, limit, *, stage):
         scope='application JSON plus instructions; excludes provider transport envelope and tokenization')
     logger.log(logging.WARNING if total['characters']>limit else logging.INFO,
                'Model request size: %s', json.dumps(report, ensure_ascii=True, separators=(',',':')))
+    from runtime.behavior_conversion.oversized_request_capture import save_oversized_request
+    save_oversized_request(encoded, instruction, report)
     return report
 
 
