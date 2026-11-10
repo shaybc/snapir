@@ -19,7 +19,7 @@ final class SourceCatalog {
         this.scope = scope;
         for (String name : scope.typeNames) {
             try {
-                ClassOrInterfaceDeclaration type = scope.solver.solveType(name).toAst(ClassOrInterfaceDeclaration.class).orElseThrow();
+                ClassOrInterfaceDeclaration type = scope.solverFor(name).solveType(name).toAst(ClassOrInterfaceDeclaration.class).orElseThrow();
                 scope.bind(type);
                 types.put(name, type);
                 List<CodeNode> bodies = new ArrayList<>();
@@ -88,7 +88,7 @@ final class SourceCatalog {
         String key = candidate + "->" + parent;
         if (subtypes.containsKey(key)) return subtypes.get(key);
         try {
-            boolean result = scope.solver.solveType(candidate).getAllAncestors().stream().anyMatch(type -> type.getQualifiedName().equals(parent));
+            boolean result = scope.solverFor(candidate).solveType(candidate).getAllAncestors().stream().anyMatch(type -> type.getQualifiedName().equals(parent));
             subtypes.put(key, result);
             return result;
         } catch (RuntimeException exception) { subtypes.put(key, true); return true; }

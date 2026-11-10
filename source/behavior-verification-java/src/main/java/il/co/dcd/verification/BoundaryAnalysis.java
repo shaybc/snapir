@@ -20,6 +20,7 @@ public final class BoundaryAnalysis {
             XMLStreamWriter output = XMLOutputFactory.newFactory().createXMLStreamWriter(stream, "UTF-8");
             output.writeStartDocument();
             output.writeStartElement("analysis");
+            output.writeAttribute("classpath_protocol", "project-classpath-v1");
             for (Node node = input.getFirstChild(); node != null; node = node.getNextSibling()) {
                 if (!(node instanceof Element scope) || !scope.getTagName().equals("scope")) continue;
                 try (SourceScope sources = new SourceScope(scope)) {

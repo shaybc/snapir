@@ -20,13 +20,31 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         raise ValueError('Build the converter analysis tool: mvn -q -f source/behavior-verification-java/pom.xml package')
     from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
     tool_hash = file_digest(tool)
+    libraries = {item['path']: item['sha256'] for scope in scopes.values()
+                 for project in scope.get('classpath', {}).get('projects', {}).values() for item in project['libraries']}
+    def verify_libraries():
+        for path, expected in libraries.items():
+            if file_digest(path) != expected:
+                raise ValueError('Boundary analysis JAR changed after verification: ' + path)
+    verify_libraries()
     with tempfile.TemporaryDirectory(prefix='snapir-boundaries-') as temporary:
         folder = Path(temporary)
         manifest = ElementTree.Element('analysis')
         for key, scope in sorted(scopes.items()):
             node = ElementTree.SubElement(manifest, 'scope', id=key)
+            context = scope.get('classpath', {})
+            if context:
+                node.set('project', context['project'])
+                for name, project in context['projects'].items():
+                    project_node = ElementTree.SubElement(node, 'project', id=name)
+                    for identity in project['visible_sources']:
+                        ElementTree.SubElement(project_node, 'visible-source', identity=identity)
+                    for library in project['libraries']:
+                        ElementTree.SubElement(project_node, 'library', **library)
             for source in scope['sources']:
                 child = ElementTree.SubElement(node, 'source', identity=source['identity'], hash=source['content_hash'])
+                if context:
+                    child.set('project', context['source_projects'][source['identity']])
                 child.text = source['content']
             for boundary in scope['boundaries']:
                 entry = ElementTree.SubElement(node, 'entry', id=boundary.unit_id,
@@ -55,5 +73,9 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
             raise ValueError('Converter boundary analysis failed: ' + result.stderr[-2000:])
         if file_digest(tool) != tool_hash:
             raise ValueError('Converter analysis tool changed during boundary discovery')
+        verify_libraries()
         report = ElementTree.fromstring((folder / 'output.xml').read_bytes().replace(b'\r', b'&#13;'))
+        if any(scope.get('classpath') for scope in scopes.values()):
+            if report.get('classpath_protocol') != 'project-classpath-v1':
+                raise ValueError('Boundary analyzer JAR lacks project classpath support; rebuild source/behavior-verification-java/pom.xml')
         return report, tool_hash

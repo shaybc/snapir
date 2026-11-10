@@ -91,6 +91,8 @@ def test_map_attribute_can_identify_a_missing_preparation_binding(saved):
     ('Entry method must resolve uniquely: example.Work.execute (matches=0)', 'No unique method'),
     ('Invalid Java source privateSourceValue', 'rejected supplied Java syntax'),
     ('Unknown problem password=privateSettingValue', 'raw details withheld'),
+    ('Boundary analyzer JAR lacks project classpath support; rebuild analyzer', 'Analyzer JAR is outdated'),
+    ('Boundary JAR missing, unreadable or invalid for project BANK: C:/libs/driver.jar', 'C:/libs/driver.jar'),
 ])
 def test_analyzer_findings_are_classified_without_raw_private_details(issue, expected):
     summary = issue_summary([issue])

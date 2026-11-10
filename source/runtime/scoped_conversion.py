@@ -38,7 +38,7 @@ def prepare_scoped_runtime(conn, config, profile, directory, *, plan=None):
     write_run_report(directory, 'scoped_acceptance.json', json.dumps(acceptance, indent=2))
     from runtime.behavior_verification_boundaries import write_boundary_report
     from runtime.behavior_conversion.verification_mode import facts_disabled
-    write_boundary_report(conn, config, report, directory, collect_checklists=not facts_disabled(profile))
+    write_boundary_report(conn, config, report, directory, collect_checklists=not facts_disabled(profile), profile=profile)
     logging.getLogger(__name__).info('Scoped preparation %s: %s/%s contexts prepared in %.3fs; native acceptance remains pending',
         acceptance['preparation_status'], acceptance['counts']['prepared_contexts'],
         acceptance['counts']['attempted_contexts'], acceptance['elapsed_seconds'])

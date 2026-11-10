@@ -93,6 +93,8 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         validation_scope='build_and_tests', behavioral_equivalence='not_established',
         comparison_limitations=['No independent component invocation adapter; whole configured-unit comparison remains required.'])
     from runtime.retained_libraries.catalog import plan_libraries
+    if boundaries.get('analysis_classpath_hash'):
+        request['analysis_classpath_hash'] = boundaries['analysis_classpath_hash']
     request['retained_libraries'] = plan_libraries(plan, group)
     if basic_format:
         request['composition_obligations']=[dict(checklist_id=key,source_identity=composition_obligations[key]['source_identity'],

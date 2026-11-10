@@ -7,7 +7,7 @@ from tools.behavior_verification.reachable_slice import read_reachable_slice
 from tools.behavior_verification.parser_checklist import read_parser_checklist
 
 
-def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True):
+def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None):
     """Identify entry methods and conservative slices; no behavioral pass is claimed."""
     boundaries, scopes, unit_sources, source_paths = {}, {}, {}, {}
     for operation, item in sorted(preparation.get('operations', {}).items()):
@@ -26,8 +26,16 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                         raise ValueError('Conflicting unit source evidence identity: ' + source['identity'])
             source_paths[boundary.unit_id] = origins
             if not boundary.issues:
-                scope = scopes.setdefault(boundary.source_manifest_hash,
-                    dict(sources=list(unit_sources[boundary.unit_id].values()), boundaries=[]))
+                from tools.behavior_verification.boundary_classpath import project_context
+                try:
+                    context = project_context(unit, boundary,
+                        item.get('behavior_request', {}).get('java_origins', []), classpath_index)
+                except ValueError as error:
+                    boundary.issues.append(str(error))
+                    continue
+                key = boundary.source_manifest_hash + ':' + context['fingerprint'] if context else boundary.source_manifest_hash
+                scope = scopes.setdefault(key,
+                    dict(sources=list(unit_sources[boundary.unit_id].values()), boundaries=[], classpath=context))
                 scope['boundaries'].append(boundary)
     tool_hash = None
     if scopes:
@@ -83,7 +91,10 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
     checklist_counts = dict(total=len(boundaries), extracted=sum(item.status == 'extracted' for item in checklists),
         incomplete=sum(item.status == 'verification_incomplete' for item in checklists),
         not_run=len(boundaries) - len(checklists), items=sum(len(item.items) for item in checklists))
+    from tools.conversion_tools.scoped_reuse.fingerprints import digest
+    classpaths = {key: scope['classpath'] for key, scope in scopes.items() if scope.get('classpath')}
     return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'),
+        analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpaths) if classpaths else None,
         analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,
         verification_status='not_run', reachability_status=('not_run' if not slices else

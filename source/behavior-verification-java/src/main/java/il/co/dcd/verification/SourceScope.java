@@ -6,6 +6,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.CallableDeclaration;
+import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
@@ -28,6 +29,7 @@ final class SourceScope implements AutoCloseable {
     private final Map<Path, Element> evidence = new HashMap<>();
     final Set<String> typeNames = new TreeSet<>();
     final CombinedTypeSolver solver;
+    private ProjectTypeSolvers projectSolvers;
 
     SourceScope(Element scope) throws IOException {
         root = Files.createTempDirectory("snapir-unit-source-");
@@ -36,14 +38,25 @@ final class SourceScope implements AutoCloseable {
                 .setLanguageLevel(ParserConfiguration.LanguageLevel.BLEEDING_EDGE)
                 .setCharacterEncoding(StandardCharsets.UTF_8);
             JavaParser parser = new JavaParser(configuration);
+            Map<String, Path> projectRoots = new HashMap<>();
+            Map<String, String> owners = new HashMap<>(), identities = new HashMap<>();
             for (org.w3c.dom.Node node = scope.getFirstChild(); node != null; node = node.getNextSibling()) {
                 if (!(node instanceof Element source) || !source.getTagName().equals("source")) continue;
                 var parsed = parser.parse(source.getTextContent());
                 if (!parsed.isSuccessful()) throw new IllegalArgumentException("Invalid Java source " + source.getAttribute("identity") + ": " + parsed.getProblems());
                 CompilationUnit unit = parsed.getResult().orElseThrow();
-                for (ClassOrInterfaceDeclaration type : unit.findAll(ClassOrInterfaceDeclaration.class)) {
-                    if (type.findAncestor(CallableDeclaration.class).isEmpty()) type.getFullyQualifiedName().ifPresent(typeNames::add);
+                String project = source.getAttribute("project");
+                Path sourceRoot = scope.hasAttribute("project")
+                    ? projectRoots.computeIfAbsent(project, key -> root.resolve("project-" + projectRoots.size())) : root;
+                Files.createDirectories(sourceRoot);
+                for (TypeDeclaration<?> type : unit.findAll(TypeDeclaration.class)) {
+                    if (type.findAncestor(CallableDeclaration.class).isEmpty()) type.getFullyQualifiedName().ifPresent(name -> {
+                        if (owners.putIfAbsent(name, project) != null) throw new IllegalArgumentException("Conflicting supplied source type: " + name);
+                        identities.put(name, source.getAttribute("identity"));
+                    });
                 }
+                for (ClassOrInterfaceDeclaration type : unit.findAll(ClassOrInterfaceDeclaration.class))
+                    if (type.findAncestor(CallableDeclaration.class).isEmpty()) type.getFullyQualifiedName().ifPresent(typeNames::add);
                 if (unit.getTypes().isEmpty()) continue;
                 String packageName = unit.getPackageDeclaration().map(value -> value.getNameAsString()).orElse("");
                 String filename = unit.getTypes().stream().filter(value -> value.isPublic()).findFirst()
@@ -51,7 +64,7 @@ final class SourceScope implements AutoCloseable {
                 if ((!packageName.isEmpty() && !SourceVersion.isName(packageName)) || !SourceVersion.isIdentifier(filename)) {
                     throw new IllegalArgumentException("Invalid Java source package or type name");
                 }
-                Path path = root.resolve(packageName.replace('.', '/')).resolve(filename + ".java").normalize();
+                Path path = sourceRoot.resolve(packageName.replace('.', '/')).resolve(filename + ".java").normalize();
                 if (!path.startsWith(root) || evidence.putIfAbsent(path, source) != null) {
                     throw new IllegalArgumentException("Conflicting Java evidence for " + packageName + "." + filename);
                 }
@@ -59,7 +72,12 @@ final class SourceScope implements AutoCloseable {
                 Files.writeString(path, source.getTextContent(), StandardCharsets.UTF_8);
             }
             // The platform loader sees JDK modules (including DOM/SAX), never tool or workspace classes.
-            solver = new CombinedTypeSolver(new ClassLoaderTypeSolver(ClassLoader.getPlatformClassLoader()), new JavaParserTypeSolver(root, configuration));
+            if (scope.hasAttribute("project")) {
+                projectSolvers = new ProjectTypeSolvers(scope, projectRoots, owners, identities);
+                solver = projectSolvers.forProject(scope.getAttribute("project"));
+            } else {
+                solver = new CombinedTypeSolver(new ClassLoaderTypeSolver(ClassLoader.getPlatformClassLoader()), new JavaParserTypeSolver(root, configuration));
+            }
         } catch (IOException | RuntimeException exception) {
             close();
             throw exception;
@@ -67,8 +85,11 @@ final class SourceScope implements AutoCloseable {
     }
 
     void bind(Node node) {
-        node.findCompilationUnit().ifPresent(unit -> new JavaSymbolSolver(solver).inject(unit));
+        node.findCompilationUnit().ifPresent(unit -> new JavaSymbolSolver(projectSolvers == null ? solver
+            : projectSolvers.forProject(evidence(unit).getAttribute("project"))).inject(unit));
     }
+
+    CombinedTypeSolver solverFor(String owner) { return projectSolvers == null ? solver : projectSolvers.forType(owner); }
 
     Element evidence(CompilationUnit unit) {
         Path path = unit.getStorage().orElseThrow(() -> new IllegalStateException("Method has no original source storage")).getPath();

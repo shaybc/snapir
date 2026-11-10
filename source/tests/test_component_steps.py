@@ -98,6 +98,19 @@ def test_step_implementation_request_is_parameterized_and_contains_no_occurrence
     assert 'parameter' in instruction and 'enclosing operation' in instruction
 
 
+def test_analysis_classpath_identity_reaches_component_request_and_shared_reuse(steps_case):
+    from runtime.component_conversion.shared_identity import request_identity
+    _,_,profile,_,plan,boundaries,units=steps_case
+    boundaries=deepcopy(boundaries)
+    boundaries['analysis_classpath_hash']='verified-order-and-bytes'
+    group=component_group(plan,plan.unit_roots['first'])
+    request,_=build_component_request(plan,group,boundaries,[],profile,units=units)
+    assert request['analysis_classpath_hash']=='verified-order-and-bytes'
+    first=request_identity(request,profile)
+    request['analysis_classpath_hash']='changed-order-or-bytes'
+    assert request_identity(request,profile)!=first
+
+
 def test_saved_step_specific_binding_reaches_component_request_without_impl_class(steps_case):
     _,_,profile,preparation,_,_,_=steps_case
     operations=deepcopy(preparation['operations'])

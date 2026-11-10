@@ -24,7 +24,7 @@ final class InitializationPaths {
         graph.edge("", "configured_construction", owner, constructors, constructors.size() != 1,
             constructors.isEmpty(), "All supplied constructor alternatives retained for configured setup", null);
         try {
-            var declaration = graph.catalog.scope.solver.solveType(owner);
+            var declaration = graph.catalog.scope.solverFor(owner).solveType(owner);
             var methods = declaration.getAllMethods();
             List<CodeNode> setup = new ArrayList<>();
             boolean own = declaration.getDeclaredMethods().stream().anyMatch(method -> method.getName().equals("initializeFrom")
@@ -72,7 +72,7 @@ final class InitializationPaths {
         else setters.addAll(List.of("addchild", "adddecorator", "addattributedecorator"));
         try {
             List<CodeNode> candidates = new ArrayList<>();
-            for (var usage : graph.catalog.scope.solver.solveType(owner).getAllMethods()) {
+            for (var usage : graph.catalog.scope.solverFor(owner).solveType(owner).getAllMethods()) {
                 var method = usage.getDeclaration();
                 if (method.isStatic() || method.getNumberOfParams() != 1
                         || method.accessSpecifier() != com.github.javaparser.ast.AccessSpecifier.PUBLIC

@@ -194,6 +194,8 @@ class ComponentCandidateValidator:
                 checklist_implementations={item: [location.model_dump() for location in locations] for item, locations in bundle.checklist_implementations.items()},
                 source_entry_points=self.request['source_entry_points'], comparison_limitations=self.request['comparison_limitations'])
             from runtime.test_assets.preparation import current
+            if self.request.get('analysis_classpath_hash'):
+                report['analysis_classpath_hash'] = self.request['analysis_classpath_hash']
             assets=current()
             if assets:report['test_assets']=dict(manifest_hash=assets['manifest_hash'],
                 resource_path='src/test/resources/shared-test-assets/'+assets['manifest_hash'],

@@ -126,6 +126,7 @@ def test_reused_preparation_rebuilds_boundary_with_saved_implementation(inventor
         lambda *args, **kwargs: pytest.fail('Resume must not repeat intake'))
     calls = []
     def discover(conn, config, report, directory, **options):
+        options.pop('profile', None)
         boundary = build_boundary_report(report, tool_jar=boundary_tool, **options)
         calls.append(boundary)
         write_run_report(directory, 'behavior_verification_boundaries.json', json.dumps(boundary))

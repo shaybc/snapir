@@ -29,7 +29,7 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     if not output.resolve().is_relative_to(Path(config.output_root).resolve()):
         raise ValueError('Component output is outside the run root')
     from runtime.behavior_conversion.verification_mode import facts_disabled, test_based_mode
-    boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile))
+    boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile), classpath_index=classpath)
     units = {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}
     from tools.state_store_tools.component_reuse import record_consumers
     record_consumers(conn, config.run_id, plan, units, source_root=config.source_root)
@@ -106,6 +106,8 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
             saved = json.loads((Path(result.artifact_root) / result.validation_report).read_text(encoding='utf-8'))
             changed = [name for name in ('parser_checklist', 'source_entry_points', 'analysis_tool_hash', 'component_generation_policy')
                        if saved.get(name) != obligations[name]]
+            if saved.get('analysis_classpath_hash') != obligations.get('analysis_classpath_hash'):
+                changed.append('analysis_classpath_hash')
             if changed:
                 raise ValueError('Component parser obligations or validation policy changed: '+', '.join(changed))
             if saved.get('configured_unit') != obligations.get('configured_unit'):

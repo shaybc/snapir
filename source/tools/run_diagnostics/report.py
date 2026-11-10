@@ -31,6 +31,11 @@ def issue_summary(issues):
         return 'Explicit class conflicts with saved implementation binding'
     if 'Build the converter analysis tool' in text:
         return 'Converter analysis JAR is missing; it must be built or supplied offline'
+    if 'Boundary analyzer JAR lacks project classpath support' in text:
+        return 'Analyzer JAR is outdated; rebuild it for project-classpath support'
+    if text.startswith(('Boundary JAR ', 'Boundary source has no verified owning project',
+                        'Boundary implementation has no unique owning project')):
+        return text[:240]
     if 'could not finish' in text:
         return 'Java analyzer could not finish (launch failure or timeout)'
     if 'Invalid Java source' in text:

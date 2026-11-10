@@ -21,6 +21,14 @@ if errorlevel 1 (
     set "exit_code=1"
     goto finish
 )
+"%~dp0.venv\Scripts\python.exe" -B -m runtime.java_tools_startup
+set "exit_code=%errorlevel%"
+if not "%exit_code%"=="0" (
+    echo Startup stopped before launching the converter.
+    pause
+    popd
+    goto finish
+)
 "%~dp0.venv\Scripts\python.exe" -m cli %*
 set "exit_code=%errorlevel%"
 popd
