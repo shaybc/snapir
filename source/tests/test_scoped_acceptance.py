@@ -10,6 +10,7 @@ from runtime.scoped_acceptance import preparation_acceptance, process_peak_memor
 from runtime.workspace_paths import run_report_path
 from tools.composer_mapper_tools.scoped_context_state import SCOPED_CONTEXT_SCHEMA
 from tools.composer_mapper_tools.scoped_vault_importer import SCOPED_SCHEMA
+from test_behavior_verification_boundaries import boundary_tool
 
 
 @pytest.fixture
@@ -107,3 +108,33 @@ def test_stale_runtime_preserves_stale_status_in_acceptance_report(inventory, tm
     assert report['preparation_status'] == 'blocked'
     assert report['preparation_error']
     assert statuses == [('blocked', 'conversion_scoped_stale')]
+
+
+def test_reused_preparation_rebuilds_boundary_with_saved_implementation(inventory, tmp_path, monkeypatch, boundary_tool):
+    import runtime.scoped_conversion as runtime
+    from test_behavior_verification_boundaries import unit, prepared
+    from tools.behavior_verification.boundaries import build_boundary_report
+    from runtime.workspace_paths import write_run_report
+    value = unit()
+    value['effective_configuration'] = dict(attributes={'id': 'OperationFailed', 'onOtherDo': 'end'},
+        resolved_implementation='example.Work', implementation_mapping_key='OperationFailed')
+    preparation = prepared(value)
+    preparation['reused_contexts'] = ['XML/Flow']
+    monkeypatch.setattr(runtime, 'prepare_scoped_workflow', lambda *args, **kwargs: preparation)
+    monkeypatch.setattr(runtime, 'update_run_status', lambda *args: None)
+    monkeypatch.setattr('tools.composer_mapper_tools.vault_importer.import_vault',
+        lambda *args, **kwargs: pytest.fail('Resume must not repeat intake'))
+    calls = []
+    def discover(conn, config, report, directory, **options):
+        boundary = build_boundary_report(report, tool_jar=boundary_tool, **options)
+        calls.append(boundary)
+        write_run_report(directory, 'behavior_verification_boundaries.json', json.dumps(boundary))
+    monkeypatch.setattr('runtime.behavior_verification_boundaries.write_boundary_report', discover)
+    write_run_report(tmp_path, 'behavior_verification_boundaries.json', json.dumps(dict(counts=dict(identified=0))))
+    for _ in range(2):
+        runtime.prepare_scoped_runtime(inventory, SimpleNamespace(run_id='run'), None, tmp_path)
+        report = json.loads(run_report_path(tmp_path, 'behavior_verification_boundaries.json').read_text())
+        assert report['counts']['identified'] == 1
+        boundary = next(iter(report['boundaries'].values()))
+        assert boundary['implementation_class'] == 'example.Work'
+    assert len(calls) == 2

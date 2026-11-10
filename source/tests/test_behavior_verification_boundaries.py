@@ -158,6 +158,45 @@ def test_default_step_mapping_and_referenced_format_are_explicit():
     assert boundary_contract(value).issues
 
 
+@pytest.mark.parametrize('saved', [False, True])
+def test_step_specific_binding_precedes_generic_default(saved):
+    value = unit()
+    value['effective_configuration']['attributes'] = {'id': 'OperationFailed', 'onOtherDo': 'end'}
+    if saved:
+        value['effective_configuration'].update(resolved_implementation='example.Work', implementation_mapping_key='OperationFailed')
+    before = deepcopy(value)
+    boundary = boundary_contract(value, {'OperationFailed': 'example.Work', 'opStep': 'example.Other'})
+    assert not boundary.issues
+    assert boundary.implementation_class == 'example.Work'
+    assert boundary.setup_class_roots == ['example.Work']
+    assert boundary.setup_bindings[0].attributes == value['effective_configuration']['attributes']
+    assert value == before
+    if saved:
+        assert boundary_contract(value).implementation_class == 'example.Work'
+        assert boundary_contract(value, {'OperationFailed': 'example.Other'}).implementation_class == 'example.Work'
+
+
+def test_conflicting_explicit_and_resolved_bindings_are_not_silently_selected():
+    value = unit()
+    value['effective_configuration']['resolved_implementation'] = 'example.Other'
+    boundary = boundary_contract(value)
+    assert boundary.implementation_class is None
+    assert any('conflicts with explicit implClass' in issue for issue in boundary.issues)
+
+
+def test_saved_step_binding_reaches_inherited_execute_without_an_explicit_class(boundary_tool):
+    value = unit(name='example.OperationFailed', sources=[
+        source('child', 'package example; public class OperationFailed extends Parent {}'),
+        source('parent', 'package example; public class Parent { public int execute(){ return 0; } }')])
+    value['effective_configuration'] = dict(attributes={'id': 'OperationFailed', 'onOtherDo': 'end'},
+        resolved_implementation='example.OperationFailed', implementation_mapping_key='OperationFailed')
+    report = build_boundary_report(prepared(value), tool_jar=boundary_tool)
+    boundary = first(report)
+    assert report['counts']['identified'] == 1, boundary['issues']
+    assert boundary['legacy_method']['declaring_class'] == 'example.Parent'
+    assert boundary['legacy_method']['signature'] == 'example.Parent.execute()'
+
+
 def test_effective_configuration_and_evidence_revisions_change_boundaries():
     original = unit()
     changed = deepcopy(original)

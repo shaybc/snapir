@@ -98,6 +98,27 @@ def test_step_implementation_request_is_parameterized_and_contains_no_occurrence
     assert 'parameter' in instruction and 'enclosing operation' in instruction
 
 
+def test_saved_step_specific_binding_reaches_component_request_without_impl_class(steps_case):
+    _,_,profile,preparation,_,_,_=steps_case
+    operations=deepcopy(preparation['operations'])
+    for unit in operations['SME/Flow']['units']:
+        configuration=unit['effective_configuration']
+        configuration['attributes'].pop('implClass')
+        configuration['attributes']['id']='OperationFailed'
+        configuration.update(resolved_implementation='example.Work',implementation_mapping_key='OperationFailed')
+    plan=build_component_plan(operations)
+    mappings=default_step_mappings(plan)
+    assert mappings=={'SME/Flow':{'OperationFailed':'example.Work'}}
+    boundaries=build_boundary_report(dict(operations=operations),mappings=mappings)
+    assert boundaries['counts']['identified']==2,boundaries
+    units={unit['unit_id']:unit for unit in operations['SME/Flow']['units']}
+    group=component_group(plan,plan.unit_roots['first'])
+    request,_=build_component_request(plan,group,boundaries,[],profile,units=units)
+    assert request['configured_unit']['resolved_implementation']=='example.Work'
+    assert 'example.Work.execute()' in json.dumps(request['source_entry_points'])
+    assert 'implClass' not in request['configured_unit']['effective_configuration']['attributes']
+
+
 def test_complex_call_uses_only_its_qualified_contract_and_external_resource_evidence(steps_case):
     _,_,_,preparation,_,_,units=steps_case
     changed=deepcopy(preparation['operations']); current=deepcopy(units)

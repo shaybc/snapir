@@ -75,7 +75,11 @@ def boundary_contract(unit, mappings=None):
         source_manifest_hash=digest(sorted(sources, key=lambda item: item['identity'])))
     try:
         if unit['kind'] == 'configured_step':
-            implementation = configuration['attributes'].get('implClass') or (mappings or {}).get('opStep')
+            explicit = configuration['attributes'].get('implClass')
+            resolved = configuration.get('resolved_implementation')
+            if explicit and resolved and explicit != resolved:
+                raise ValueError('Configured step implementation binding conflicts with explicit implClass')
+            implementation = resolved or explicit or (mappings or {}).get(configuration['attributes'].get('id')) or (mappings or {}).get('opStep')
             if not implementation:
                 raise ValueError('Configured step has no evidenced implementation binding')
             roots = [implementation]
