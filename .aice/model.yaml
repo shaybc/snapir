@@ -708,12 +708,15 @@ objects:
       - source/runtime/behavior_conversion/request_context.py
       - source/runtime/behavior_conversion/request_size.py
       - source/runtime/behavior_conversion/oversized_request_capture.py
+      - source/runtime/model_execution/attempt_diagnostics.py
     details: |
       Before a request is sent, this part counts the characters in its JSON data and instructions. If the shared budget check finds it too large, active-run diagnostics can save the exact request for inspection.
 
       ## What is measured and saved
 
       The shared check counts the application JSON and instructions against the configured character limit, including after correction text is compacted when applicable. Active-run capture stores the exact text, instructions, and size metadata for oversized requests at the named check stage. It excludes provider transport settings; separate context-discovery requests keep their own size checks.
+
+      Correlated attempt capture also records application requests, instructions and responses by content hash, with separate generation, delivery, budget and validation events. It does not change retry or acceptance decisions. HTTP status is recorded only where exposed by the adapter.
   - id: diagnostics-cli
     type: app
     name: Saved run diagnostics CLI
@@ -730,6 +733,8 @@ objects:
       ## Inspecting without resuming
 
       The command reads stored SQLite state and reports without advancing the migration. Request export copies captured JSON, instructions, and metadata, then extracts embedded source text into files with an occurrence manifest. It does not read the original workspace sources to recreate a request that was never captured.
+
+      During conversion, stage-aware diagnostics report target histories for formats, decorators, OP steps, shared components and units, including consuming operations. Earlier-stage boundary investigation is skipped. Saved database attempts, component results, journal events and unambiguously labelled legacy logs are correlated without inventing HTTP success. Text/JSON summaries and saved materials are exported under work/diagnostics for inspection, with missing historical evidence explicit.
   - id: diagnostic-exports
     type: store
     name: Diagnostic request exports
@@ -1040,6 +1045,8 @@ connections:
     tags: [diagnostics, ai, run-evidence]
     details: |
       An oversized request is saved with its instructions and size report in the run folder. The capture says which budget check stopped it and leaves out provider transport settings.
+
+      Attempt journals retain other application materials by checksum with correlation IDs. Delivery retries and validation outcomes remain distinct; capture failure cannot change conversion behavior.
   - id: operator-diagnostics
     from: operator
     to: diagnostics-cli

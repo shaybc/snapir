@@ -31,44 +31,7 @@ def export_request_materials(directory, project):
             if target.is_symlink():
                 raise ValueError('Diagnostic file must not be a symbolic link')
             target.write_bytes((capture / name).read_bytes())
-        materials = []
-        resolved_names = source_names(directory, payload)
-        exported = {}
-        def extract(value, pointer=''):
-            if isinstance(value, dict):
-                for key in ('content', 'excerpt'):
-                    if not isinstance(value.get(key), str):
-                        continue
-                    content = value[key].encode('utf-8', errors='surrogatepass')
-                    relative, resolved = export_source_path(value, resolved_names, len(materials) + 1)
-                    original = str(value.get('original_identity') or value.get('identity') or value.get('path') or 'embedded')
-                    relative = Path('sources') / relative
-                    content_hash = hashlib.sha256(content).hexdigest()
-                    collision = relative.as_posix().casefold()
-                    if collision in exported and exported[collision] != content_hash:
-                        relative = Path('occurrences') / f'{len(materials) + 1:05d}' / relative
-                    exported[relative.as_posix().casefold()] = content_hash
-                    name = relative.as_posix()
-                    target = folder / relative
-                    if not target.resolve().is_relative_to(folder.resolve()) or target.is_symlink():
-                        raise ValueError('Diagnostic source path must stay inside the capture folder')
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(content)
-                    materials.append(dict(file=name, original_identity=original, original_path=resolved,
-                                          name_resolution="resolved" if resolved else "unresolved", json_pointer=pointer + '/' + key,
-                                          bytes=len(content), sha256=hashlib.sha256(content).hexdigest()))
-                for key, child in value.items():
-                    extract(child, pointer + '/' + str(key).replace('~', '~0').replace('/', '~1'))
-            elif isinstance(value, list):
-                for index, child in enumerate(value):
-                    extract(child, pointer + '/' + str(index))
-        extract(payload)
-        manifest = folder / 'materials.json'
-        if manifest.is_symlink():
-            raise ValueError('Diagnostic file must not be a symbolic link')
-        manifest.write_text(json.dumps(dict(materials=materials,
-            embedded_occurrences=len(materials), unique_content_hashes=len({item['sha256'] for item in materials})),
-            indent=2, ensure_ascii=True), encoding='utf-8')
+        export_embedded_materials(directory, payload, folder)
         count += 1
     if count:
         return [f'Oversized request captures exported: {count}', 'Request materials folder: ' + str(destination),
@@ -76,3 +39,45 @@ def export_request_materials(directory, project):
                 'Unresolved names use sources/unresolved/*.txt; conflicting content is retained under occurrences/.',
                 'Budget-check captures were intended requests, not sent model calls. Repeated content remains visible in the manifest.']
     return ['No exact oversized request captures are available for this run. Resume with capture support to retain future oversized requests; historical payloads were not reconstructed.']
+
+
+def export_embedded_materials(directory, payload, folder):
+    """Extract already captured source content with the same naming and collision rules."""
+    resolved_names = source_names(directory, payload)
+    materials = []
+    exported = {}
+    def extract(value, pointer=''):
+        if isinstance(value, dict):
+            for key in ('content', 'excerpt'):
+                if not isinstance(value.get(key), str):
+                    continue
+                content = value[key].encode('utf-8', errors='surrogatepass')
+                relative, resolved = export_source_path(value, resolved_names, len(materials) + 1)
+                original = str(value.get('original_identity') or value.get('identity') or value.get('path') or 'embedded')
+                relative = Path('sources') / relative
+                content_hash = hashlib.sha256(content).hexdigest()
+                collision = relative.as_posix().casefold()
+                if collision in exported and exported[collision] != content_hash:
+                    relative = Path('occurrences') / f'{len(materials) + 1:05d}' / relative
+                exported[relative.as_posix().casefold()] = content_hash
+                name = relative.as_posix()
+                target = folder / relative
+                if not target.resolve().is_relative_to(folder.resolve()) or target.is_symlink():
+                    raise ValueError('Diagnostic source path must stay inside the capture folder')
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+                materials.append(dict(file=name, original_identity=original, original_path=resolved,
+                                      name_resolution="resolved" if resolved else "unresolved", json_pointer=pointer + '/' + key,
+                                      bytes=len(content), sha256=hashlib.sha256(content).hexdigest()))
+            for key, child in value.items():
+                extract(child, pointer + '/' + str(key).replace('~', '~0').replace('/', '~1'))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                extract(child, pointer + '/' + str(index))
+    extract(payload)
+    manifest = folder / 'materials.json'
+    if manifest.is_symlink():
+        raise ValueError('Diagnostic file must not be a symbolic link')
+    manifest.write_text(json.dumps(dict(materials=materials,
+        embedded_occurrences=len(materials), unique_content_hashes=len({item['sha256'] for item in materials})),
+        indent=2, ensure_ascii=True), encoding='utf-8')

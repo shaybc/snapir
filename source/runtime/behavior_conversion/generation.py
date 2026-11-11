@@ -216,13 +216,18 @@ def _generate(conn, config, profile, category, identity, instruction, payload, s
         response = None
         output = None
         progress_token = None
+        diagnostic_trace = None
         try:
             if component_task:
                 require_component_task(conn, config, profile, identity, payload)
             if scoped_binding:
                 from runtime.scoped_native.scope import require_task
                 require_task(conn, config, profile, category, identity, payload)
-            response = model_call(instruction, encoded)
+            from runtime.model_execution.attempt_diagnostics import attempt_scope, emit
+            with attempt_scope(category, identity, fingerprint, attempts, executor.component_label) as diagnostic_trace:
+                emit('application_request', request=encoded, instructions=instruction)
+                response = model_call(instruction, encoded)
+                emit('generation_response', response=response)
             progress_token = begin_progress(executor.component_label)
             with progress_step("Validating JSON, testing policy and behavior coverage"):
                 output = schema.model_validate_json(clean_structural_escapes(_remove_response_fence(response)))
@@ -257,10 +262,14 @@ def _generate(conn, config, profile, category, identity, instruction, payload, s
                 save_compatibility(conn, config.run_id, category, identity, fingerprint, compatibility, requirements)
             record("completed", attempts - start, output.model_dump(mode="json"),
                    compatibility_fingerprint=compatibility)
+            emit('validation_passed', trace=diagnostic_trace)
             return output, fingerprint
         except Exception as exc:
             from runtime.behavior_conversion.verification_feedback import VerificationIncomplete
             error = str(exc)
+            from runtime.model_execution.attempt_diagnostics import emit
+            emit('validation_failed', trace=diagnostic_trace, error=exc,
+                 response=response, validation_phase='schema' if output is None else 'candidate')
             if getattr(exc, 'verification_feedback', None):
                 actual['failed_verification_context'] = exc.verification_feedback
                 conn.execute("UPDATE behavior_attempts SET request_json=? WHERE run_id=? AND category=? AND identity=? AND fingerprint=? AND attempt=?",

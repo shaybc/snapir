@@ -27,7 +27,7 @@ def saved(tmp_path):
     with sqlite3.connect(state / 'migration.db') as conn:
         conn.executescript('CREATE TABLE runs(run_id,status,current_phase,run_config_json);'
             'CREATE TABLE scoped_source_definitions(run_id,kind,logical_id);')
-        conn.execute('INSERT INTO runs VALUES (?,?,?,?)', ('run', 'blocked', 'conversion_components_incomplete',
+        conn.execute('INSERT INTO runs VALUES (?,?,?,?)', ('run', 'blocked', 'conversion_scoped_prepared',
             json.dumps(dict(vault_root=str(vault)))))
         conn.execute('INSERT INTO scoped_source_definitions VALUES (?,?,?)', ('run', 'java_class', 'example.Work'))
     with sqlite3.connect(analysis) as conn:
@@ -179,4 +179,4 @@ def test_numbered_selection_uses_existing_roots_without_filtering_failed_checkpo
     monkeypatch.setattr('cli.status_discovery.discover_run_roots', lambda project: [run.parent])
     monkeypatch.setattr('builtins.input', lambda message: '')
     main()
-    assert 'conversion_components_incomplete' in capsys.readouterr().out
+    assert 'conversion_scoped_prepared' in capsys.readouterr().out

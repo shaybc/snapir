@@ -119,6 +119,17 @@ def diagnose(directory):
                     pass
     except sqlite3.Error:
         return lines + ['Run database missing, unreadable, locked, or incompatible.']
+    from tools.run_diagnostics.conversion_ai import is_conversion_phase, build_report, format_report
+    if is_conversion_phase(row[1]):
+        try:
+            return format_report(build_report(directory))
+        except (OSError, ValueError, sqlite3.Error):
+            return lines + ['Conversion AI evidence is unavailable or incompatible; no earlier-stage investigation performed.']
+    if not str(row[1] or '').startswith(('conversion_', 'closure', 'dependency_closure')):
+        from runtime.workflow_stages import workflow_stage_label
+        known = str(row[1] or '').startswith(('planning', 'gate_', 'intake', 'scoped_', 'component_', 'assembly_', 'operation_', 'service_', 'finalization'))
+        return lines + ['Stage: ' + (workflow_stage_label(row[1]) if known else 'Unknown checkpoint'),
+                        'Conversion AI diagnosis is not applicable at this checkpoint; no previous-stage investigation performed.']
     stage = directory / 'reports/3_dependency_closure_and_component_conversion'
     try:
         boundaries = read_json(stage / 'behavior_verification_boundaries.json').get('boundaries', {})

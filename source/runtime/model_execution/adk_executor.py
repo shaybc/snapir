@@ -27,7 +27,9 @@ class AdkExecutor:
         logger = logging.getLogger(__name__)
         logger.info("Model interaction started", extra={"model_interaction_boundary": "start"})
         try:
-            return self._execute_with_retries(instruction, payload)
+            from runtime.model_execution.attempt_diagnostics import model_scope
+            with model_scope(payload, instruction, self.component_label):
+                return self._execute_with_retries(instruction, payload)
         finally:
             logger.info("Model interaction ended", extra={"model_interaction_boundary": "end"})
             COMPONENT_LABEL.reset(token)
@@ -45,9 +47,17 @@ class AdkExecutor:
             logger.info("Model execution attempt %s/%s using %s (%s).%s", attempt,
                         self.profile.max_model_attempts, self.profile.model_name, self.profile.model_provider, component_suffix())
             try:
-                response = asyncio.run(wait_with_progress(
-                    self._execute(instruction, payload), self.profile.model_timeout_seconds
-                ))
+                from runtime.model_execution.attempt_diagnostics import delivery_scope, emit
+                with delivery_scope(attempt):
+                    try:
+                        response = asyncio.run(wait_with_progress(
+                            self._execute(instruction, payload), self.profile.model_timeout_seconds
+                        ))
+                        emit('response_received', response=response)
+                    except Exception as exc:
+                        status = getattr(exc, 'status_code', None)
+                        emit('delivery_failed', error=exc, http_status=status if isinstance(status, int) else None)
+                        raise
                 logger.info("Model execution completed in %.1f seconds (%s response characters).%s",
                             monotonic() - started, len(response), component_suffix())
                 return response

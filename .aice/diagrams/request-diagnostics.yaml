@@ -43,15 +43,14 @@ layout:
     x: 880
     y: 830
 narration:
-  intro: Sometimes an AI request is too large and the converter stops before sending it. This view first shows how
-    the operator inspects a saved run, then shows how the request was measured and captured during that run.
+  intro: Conversion diagnostics distinguishes oversized checks, delivery failures, unusable responses and saved
+    validation results. This view shows read-only investigation and capture of evidence during the run.
   o:operator: The operator chooses which Composer operations to convert and approves the reports at the review points.
     The operator can also continue a saved run or inspect why it stopped.
   e:operator->diagnostics-cli: The operator selects a saved run for inspection. This reads what happened without
     starting another conversion attempt.
-  o:diagnostics-cli: Saved run diagnostics CLI reads a saved run and reports what happened without continuing the
-    conversion. It can also export an oversized AI request and extract the source text embedded in it into separate
-    files.
+  o:diagnostics-cli: The diagnostics CLI selects the saved stage. During conversion it groups attempts by format,
+    step, shared component or unit and exports available materials without rerunning earlier-stage investigations.
   e:diagnostics-cli->deliverables: The diagnostics command reads the saved reports and captured requests. If an
     old request was never captured, the tool does not try to rebuild it from today's source files.
   o:deliverables: Generated projects and reports is where the run keeps generated Java files, build and test results,
@@ -67,10 +66,10 @@ narration:
   o:model-executor: Model execution sends requests to the configured AI provider and handles timeouts and temporary
     connection failures. It returns the response to the conversion job, which then checks whether the result is
     usable.
-  e:model-executor->request-diagnostics: While run diagnostics is active, it tells the capture code which run folder
-    to use. An oversized request found by the shared budget check can then be saved with that run.
-  o:request-diagnostics: Before a request is sent, this part counts the characters in its JSON data and instructions.
-    If the shared budget check finds it too large, active-run diagnostics can save the exact request for inspection.
+  e:model-executor->request-diagnostics: Active-run capture binds application materials and correlated delivery
+    events to the run. It records HTTP status only when exposed by the adapter.
+  o:request-diagnostics: Budget checks distinguish oversized intended requests from dispatched calls. Correlated
+    event records separate generation attempts, delivery retries, responses and validation outcomes.
   e:request-diagnostics->deliverables: An oversized request is saved with its instructions and size report in the
     run folder. The capture says which budget check stopped it and leaves out provider transport settings.
   o:generation: Bounded generation sends the AI a conversion job together with the original source and instructions.
@@ -78,5 +77,5 @@ narration:
     staged mode it handles production code, method information, and tests separately.
   e:generation->request-diagnostics: Before sending a request, the shared check counts its JSON data and instructions.
     It measures again after correction text is shortened when that correction path is used.
-  outro: The saved request contains the actual source text and instructions being checked. The export makes those
-    materials easier to read and helps explain what made the request so large.
+  outro: Summaries and linked materials explain each target without treating HTTP success or valid JSON as conversion
+    acceptance. Missing historical instructions or transport details remain unknown instead of being reconstructed.

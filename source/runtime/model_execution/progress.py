@@ -37,6 +37,9 @@ async def response_headers(response):
     """Log SDK HTTP response metadata without consuming its body."""
     logger.debug("HTTP response: status=%s; headers=%s", response.status_code,
                  sanitize_diagnostic(str(dict(response.headers))))
+    from runtime.model_execution.attempt_diagnostics import emit
+    emit('http_response', http_status=response.status_code,
+         gateway_request_id=sanitize_diagnostic(response.headers.get('x-request-id', ''))[:256] or None)
 
 
 async def wait_with_progress(awaitable, timeout):

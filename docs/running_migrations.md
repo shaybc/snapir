@@ -375,6 +375,47 @@ created in reuse mode.
 
 ## Operation without public website access
 
+### Conversion AI diagnostics
+
+Run `diagnose-run.cmd` and choose a saved run, or supply its folder as an argument.
+At conversion checkpoints the command reports AI activity per conversion target
+(basic format, decorator, configured format, OP step, shared component or unit),
+including consuming operations. It skips earlier boundary/indexing investigations.
+Pre-conversion preparation checkpoints retain the boundary diagnostic. Other stages
+are identified without running an unrelated earlier-stage investigation.
+
+The report separates request budget checks, generation/correction attempts, delivery
+retries, and saved validation/reuse results. An oversized check is not a transmitted
+request. Received text, HTTP 200, valid JSON, component build/tests and whole-unit
+acceptance are separate facts. Missing HTTP status stays `not captured`; unfinished
+attempts stay `in_progress_or_unknown`. Saved receipts are evidence of the recorded
+outcome, not a new verification of source freshness or whole-operation equivalence.
+
+Console output and `work/diagnostics/<run-name>/conversion-ai-summary.txt` summarize
+the history. `conversion-ai-summary.json` and readable target files under `targets/`
+retain attempt references. `materials/<content-hash>/` holds available `request.json`,
+`instructions.txt`, `response.txt`, redacted `error.txt` and extracted sources with original filenames
+where provenance resolves them. Identical application material is shared by hash;
+the request itself is not deduplicated or changed. Existing oversized exports remain
+available alongside the report. Exports do not change the saved run or retry budgets.
+
+Future runs retain correlated events in `reports/model_attempts/events.jsonl` and
+exact application text in its checksum-addressed `blobs/` folder while model
+diagnostics are active. API credentials and transport headers are not captured.
+Native adapter HTTP hooks capture status and request identifiers when exposed;
+LiteLLM/provider versions that do not expose them leave status unknown. Capture
+failures warn without changing model execution. Full prompts and source/response
+text stay in local materials, not the console summary.
+
+Historical runs are diagnosed from existing database rows, reports, captures and
+incrementally read logs. Historical request rows may include later validation
+feedback. Missing instructions or exact transport details are not reconstructed.
+Staged reservations and generation rows are not counted as separate requests;
+ambiguous legacy log lines are reported as uncorrelated rather than assigned by
+guesswork. The diagnostic can run during conversion; its observation time is shown,
+and later activity may not yet be present. It performs no AI calls, Java builds,
+original-source parsing, connector reads, or migration-state writes.
+
 `run.cmd` and `run-verbose.cmd` default `LITELLM_LOCAL_MODEL_COST_MAP=True`,
 which makes LiteLLM use its bundled model pricing metadata. An explicitly set
 environment value takes precedence. When launching Python directly, set this

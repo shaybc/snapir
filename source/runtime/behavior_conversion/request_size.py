@@ -39,6 +39,8 @@ def log_request_size(request, encoded, instruction, limit, *, stage):
                'Model request size: %s', json.dumps(report, ensure_ascii=True, separators=(',',':')))
     from runtime.behavior_conversion.oversized_request_capture import save_oversized_request
     save_oversized_request(encoded, instruction, report)
+    from runtime.model_execution.attempt_diagnostics import record_budget
+    record_budget(request, encoded, instruction, report)
     return report
 
 
