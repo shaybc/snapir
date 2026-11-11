@@ -1,0 +1,47 @@
+id: request-diagnostics
+name: Oversized request capture and export
+description: Captures and exports oversized request evidence.
+diagram: request-diagnostics
+steps:
+- connection: model-diagnostic-scope
+  description: Bind captures to the active run while model diagnostics are attached.
+- connection: generation-request-budget
+  description: Measure application JSON and instructions against the configured character budget, including after
+    correction compaction when applicable.
+- connection: request-capture-output
+  description: Save oversized requests as not sent at the named budget-check stage, excluding provider transport
+    settings.
+- connection: operator-diagnostics
+  description: Select the saved run through the diagnostics CLI.
+- connection: diagnostics-state
+  description: Inspect saved migration state read-only.
+- connection: diagnostics-captures
+  description: Read exact saved captures without reconstructing historical requests or reading original workspace
+    sources.
+- connection: diagnostics-export
+  description: Copy captures and extract embedded sources with resolved names, collision handling, and occurrence
+    manifests.
+details: 'Retains oversized application requests during an active run and later exports their embedded evidence.
+
+
+  Capture happens only inside an active run diagnostic scope and only for oversized requests at the shared budget-check
+  stages. Later export is a separate operator action; the CLI reads stored evidence and preserves source naming
+  and occurrence provenance. No historical request reconstruction or original-source reading is performed by export.'
+narration:
+  intro: During a conversion run, the shared request check can find that an AI request is too large to send. This
+    flow shows how the request is saved and how the operator later opens and exports it.
+  s:0: Run diagnostics tells the capture code which run folder to use. Oversized requests found while that diagnostic
+    scope is active can be saved with the run.
+  s:1: The shared check counts the request's JSON data and instructions and compares the total with the character
+    limit. It measures again after correction text is shortened when that path is used.
+  s:2: If the request is too large, the capture can save the request, instructions, and size report before submission.
+    It records the budget-check stage and leaves out provider transport settings.
+  s:3: Later, the operator selects the saved run in Saved run diagnostics CLI. Reading that run does not start a
+    new conversion attempt.
+  s:4: The tool opens the run database for reading only. It uses the saved progress records to explain what happened.
+  s:5: The tool reads the exact captured request and its reports. It does not rebuild an uncaptured request from
+    the current original project.
+  s:6: The tool copies the request and extracts the source text inside it into separate files. A manifest keeps
+    track of original names, repeated pieces, and conflicting content.
+  outro: The export shows the captured request and the source text inside it. It can help explain the size problem,
+    but it cannot reconstruct requests that were never captured.

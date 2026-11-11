@@ -1,0 +1,42 @@
+id: scope-conversion-stage
+name: L4 - Conversion execution paths
+scope: conversion-stage
+objects:
+- components
+- behavior-runner
+- managed-conversion
+- generation
+layout:
+  components:
+    x: 0
+    y: 0
+  behavior-runner:
+    x: 0
+    y: 300
+  managed-conversion:
+    x: 0
+    y: 600
+  generation:
+    x: 440
+    y: 150
+narration:
+  intro: These are the supported ways to turn the original behavior into Java code. One path converts reusable components
+    first, another combines converted units into operations, and managed conversion has its own task and review
+    process.
+  o:components: Component-first conversion builds reusable Java implementations of basic components such as formats
+    and steps. When several operations use the same component, they can use the accepted implementation rather than
+    convert it separately each time.
+  e:components->generation: Component conversion sends the AI the original component code, configuration, and conversion
+    instructions. The shared generator handles its attempts and correction feedback.
+  o:generation: Bounded generation sends the AI a conversion job together with the original source and instructions.
+    It checks the returned code and can send errors back for another attempt, within the allowed retry limit. In
+    staged mode it handles production code, method information, and tests separately.
+  o:behavior-runner: This part converts the smaller units an operation needs, then joins their accepted code into
+    an operation implementation. It reviews the result and checks the required approvals before passing it to service
+    creation.
+  e:behavior-runner->generation: The operation workflow asks the generator to convert units and assemble operation
+    code. Already accepted unit code and method information guide the operation-building jobs.
+  o:managed-conversion: Managed source conversion is another supported way to convert source tasks. It has its own
+    component and operation review steps, which resume follows when a saved run uses this path.
+  outro: The shared generator sends work to AI and handles attempts and corrections. Read Bounded generation Details
+    to see how production code and tests are handled, or follow the generation reuse flow to understand saved work.

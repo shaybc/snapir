@@ -1,0 +1,33 @@
+id: scope-finalization
+name: L4 - Evidence, deliverables, and approval
+scope: finalization
+objects:
+- final-evidence
+- final-artifacts
+- final-approval
+layout:
+  final-evidence:
+    x: 0
+    y: 0
+  final-artifacts:
+    x: 440
+    y: 0
+  final-approval:
+    x: 880
+    y: 0
+narration:
+  intro: Finalization checks whether the current projects have the required results and approvals. It then prepares
+    the documentation and deployment files and builds the report for the final decision.
+  o:final-evidence: Before finishing, this part checks that the build and review results still belong to the current
+    generated files. If a project changed or a required approval is missing, it prevents the run from being marked
+    complete.
+  e:final-evidence->final-artifacts: After checking the current results, finalization supplies the operation information
+    needed to write documentation and deployment files. It stops if required results are missing or outdated.
+  o:final-artifacts: Documentation and manifests writes the operation documentation and the configured deployment
+    files. These become part of the final output alongside the generated projects and validation reports.
+  e:final-artifacts->final-approval: The list of completed output files is added to the final report. The operator
+    reviews that report at Gate 5.
+  o:final-approval: The final report lists the completed output and the checks behind it. Gate 5 records the human
+    decision about that report, after checking the earlier approvals that still apply.
+  outro: The operator approves the final report at Gate 5. That completes the reviewed output package; it does not
+    start or deploy the generated services.

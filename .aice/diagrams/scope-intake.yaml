@@ -1,36 +1,33 @@
 id: scope-intake
+name: L4 - Intake routing and analysis
 scope: intake
+objects:
+- intake-control
+- source-discovery
+- analyzer
 layout:
-  analyzer:
-    x: 741
-    y: 306
-  composer-map:
-    x: 1075
-    y: 519
-  composer-mapper:
-    x: 1155
-    y: 221
   intake-control:
-    x: 320
-    y: 202
-  legacy-workspace:
-    x: 1643
-    y: 83
-  operator:
-    x: -75
-    y: 182
-  planning:
-    x: 1599
-    y: 386
-  preparation:
-    x: 1075
-    y: 811
-  run-state:
-    x: 1715
-    y: 622
+    x: 0
+    y: 130
   source-discovery:
-    x: 701
-    y: 81
-  workspace-cache:
-    x: 1076
-    y: -40
+    x: 440
+    y: 0
+  analyzer:
+    x: 440
+    y: 300
+narration:
+  intro: Intake starts by deciding whether to use an existing map or discover the original project first. It then
+    reads the selected component descriptions and loads the information needed by the run.
+  o:intake-control: Intake routing decides whether to read an existing Composer map or build one first. Older runs
+    can use a separate discovery path, so every run does not start with the same scan.
+  e:intake-control->source-discovery: Intake asks discovery to locate source files and the libraries their Java
+    projects need. The returned project information is used when analyzing the code.
+  o:source-discovery: This part finds the Java source files and the library JAR files their projects need. It records
+    which project owns each file so the Java analyzer can look up classes in the right place.
+  e:intake-control->analyzer: Intake passes the chosen map to Composer analyzer. The analyzer checks it and loads
+    the selected components and dependencies into the run.
+  o:analyzer: Composer analyzer reads the map and checks that it matches the original files. It loads the selected
+    component descriptions and their dependencies into the run database, and marks earlier work as outdated when
+    its source files have changed.
+  outro: The result is a recorded selection of original components and their dependencies. Preparation uses that
+    information to gather the code needed for each selected operation.

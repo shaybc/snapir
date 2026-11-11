@@ -1,0 +1,42 @@
+id: preparation-reuse
+name: Preparation evidence reuse
+description: Rechecks prepared evidence before conversion.
+details: Scoped execution prepares qualified contexts before conversion. This view focuses on the freshness checks,
+  conditional checkpoint reuse, and current approvals needed on resume. A stale checkpoint or incomplete context
+  does not become acceptable merely because it was saved. Contracts and configured-unit construction are shown in
+  the Preparation flow.
+diagram: preparation-reuse
+steps:
+- connection: preparation-closure
+  description: Resolve qualified closures for the selected operations.
+- connection: preparation-reuse-check
+  description: Check prepared checkpoint eligibility against current evidence.
+- connection: preparation-map
+  description: Resolve pinned map and source-linked evidence.
+- connection: preparation-source
+  description: Check current original source fingerprints.
+- connection: preparation-state
+  description: Validate saved preparation checkpoints.
+- connection: scoped-gates
+  description: Recheck report-bound plan and generation approvals.
+- connection: scoped-behavior
+  description: Continue only when native mode and prepared contexts permit conversion.
+narration:
+  intro: A saved run may already contain the operation inputs prepared earlier. This flow checks the map, original
+    files, saved records, and approvals before using that work again.
+  s:0: The converter gathers the selected operations and the components they need. It identifies the source files
+    and projects behind that work.
+  s:1: The converter checks whether a preparation result was saved for these inputs. Finding a saved record is only
+    the start of deciding whether it can be used again.
+  s:2: Preparation reads the component links from the selected map. It checks that those records still describe
+    the source version imported by this run.
+  s:3: The reuse check compares the current original files with the versions recorded earlier. Changed files can
+    make the saved preparation outdated.
+  s:4: The saved preparation records are compared with the current inputs and settings. Only matching records are
+    used again.
+  s:5: The converter checks plan approval and the initial generation approval against the current reports. An approval
+    of an older report does not approve changed work.
+  s:6: Once the selected mode, prepared inputs, and approvals allow it, native conversion can continue. If an input
+    is unresolved or the mode is unsupported, the converter stops here.
+  outro: If those inputs still match, the converter can continue with the prepared jobs. If they do not, the old
+    preparation cannot be treated as current.

@@ -1,34 +1,62 @@
 id: conversion
-name: Conversion overview - drill into each stage
+name: Flow - Six-stage migration overview
 objects:
-  - intake
-  - preparation
-  - planning
-  - conversion-stage
-  - services
-  - finalization
+- intake
+- preparation
+- planning
+- conversion-stage
+- services
+- finalization
 connections:
-  - intake-prepared-handoff
-  - scoped-plan
-  - plan-conversion-handoff
-  - behavior-services
-  - service-final-handoff
+- intake-prepared-handoff
+- scoped-plan
+- plan-conversion-handoff
+- behavior-services
+- service-final-handoff
 layout:
-  conversion-stage:
-    x: 874
-    y: 69
-  finalization:
-    x: 863
-    y: -485
   intake:
-    x: 299
-    y: -488
-  planning:
-    x: 317
-    y: 64
+    x: 0
+    y: 0
   preparation:
-    x: 293
-    y: -191
+    x: 440
+    y: 0
+  planning:
+    x: 880
+    y: 0
+  conversion-stage:
+    x: 1320
+    y: 0
   services:
-    x: 867
-    y: -208
+    x: 1760
+    y: 0
+  finalization:
+    x: 2200
+    y: 0
+narration:
+  intro: Start with the Composer operations you want to convert. This tour follows the main path from reading the
+    old project through generating, checking, and packaging the new Java services.
+  o:intake: This stage finds the original files for the operations you selected and loads their descriptions into
+    the run. Later stages use that selection to avoid converting unrelated parts of the project.
+  e:intake->preparation: Intake passes the selected component records and their recorded source versions to preparation.
+    Preparation uses them to collect the operation and the code it depends on.
+  o:preparation: This stage gathers everything needed to convert the selected operations. It checks that the source
+    files, dependencies, settings, and links between operations can be resolved before code generation starts.
+  e:preparation->planning: Once the operation inputs have been resolved, the scoped path works out the execution
+    plan. The plan uses the selected operations and their dependencies.
+  o:planning: This stage decides which operations need to be converted first. For example, an operation needed by
+    another operation must be handled before its caller can depend on it.
+  e:planning->conversion-stage: The checked plan tells conversion which tasks to run and in what order. Conversion
+    follows that selection rather than choosing unrelated operations.
+  o:conversion-stage: This stage turns the selected Composer behavior into Java code. Depending on the mode, it
+    converts reusable components first, builds operations from smaller converted units, or uses the managed source
+    conversion path.
+  e:conversion-stage->services: After the operation code has been reviewed and approved, it is passed to service
+    creation. The next stage adds the code needed to use that operation in a service project.
+  o:services: This stage takes approved operation code and builds Java service projects around it. It adds the surrounding
+    service code, then builds, tests, and packages the projects.
+  e:services->finalization: The service build passes its saved results to finalization. Finalization checks that
+    those results belong to the current project files before marking the output complete.
+  o:finalization: This stage checks the latest build results and approvals, then collects the final documentation
+    and deployment files. It prepares a final report for approval without deploying the services.
+  outro: Every stage passes its output to the next, and the converter checks the required results before completing
+    the run. Open any stage for its internal steps, or the resume flow to see what happens after a stop.

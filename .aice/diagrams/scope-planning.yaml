@@ -1,0 +1,33 @@
+id: scope-planning
+name: L4 - Dependency planning
+scope: planning
+objects:
+- dependency-order
+- plan-generation
+- plan-validation
+layout:
+  dependency-order:
+    x: 440
+    y: 0
+  plan-generation:
+    x: 0
+    y: 130
+  plan-validation:
+    x: 440
+    y: 300
+narration:
+  intro: Planning works out the order for converting the selected operations. Start at Migration plan construction
+    and follow its checks for dependencies and complete coverage of the selected work.
+  o:plan-generation: Migration plan construction turns the selected operations into batches and conversion tasks.
+    Some paths ask AI to help create the plan, but code still checks that it includes the right work in the right
+    order.
+  e:plan-generation->dependency-order: Plan construction asks which operations call other operations and must therefore
+    wait for them. The returned order keeps dependent work from starting too early.
+  o:dependency-order: Dependency ordering follows calls between operations to work out their execution order. If
+    a dependency cycle cannot be resolved, it blocks the plan instead of choosing an arbitrary order.
+  e:plan-generation->plan-validation: The proposed plan is checked against the selected operations and required
+    order. Only a plan that passes those checks is saved for execution.
+  o:plan-validation: This part checks that the plan belongs to the current run, covers the selected operations,
+    and respects their dependencies. It then saves the checked plan for conversion and later resume.
+  outro: The saved plan tells the converter what to run first and what must wait. It still needs the required approval
+    before generation starts.

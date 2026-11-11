@@ -1,0 +1,31 @@
+id: generation-reuse
+name: Resumed generation acceptance
+description: Reuses compatible work with current validation.
+details: Generation checks durable attempts and task compatibility before reuse. Staged revision reuse applies only
+  when staging is enabled. The owning acceptance validator still checks resumed candidates, and the operation coordinator
+  verifies publication artifacts before dependent work consumes them. These are related conditional handoffs, not
+  an unconditional model-call sequence.
+diagram: generation-reuse
+steps:
+- connection: behavior-generation
+  description: Resume the owning unit generation task.
+- connection: generation-state
+  description: Check task compatibility and remaining durable attempts before reuse. Reuse eligible stage revisions;
+    production changes invalidate downstream readiness.
+- connection: generation-verification
+  description: Apply current acceptance checks to the resumed candidate.
+- connection: publication-output
+  description: Verify dependency publication artifacts before other operations consume them.
+narration:
+  intro: A resumed operation may already have generated code and earlier AI attempts. The converter checks whether
+    it can use that work again before asking the AI to repeat it.
+  s:0: The operation workflow continues the saved generation task. It uses the current job inputs to decide which
+    earlier results belong to that task.
+  s:1: The converter checks the saved attempts and how many retries remain. If production code changed, saved results
+    from later generation stages cannot simply be accepted again.
+  s:2: The current generated code goes through its required validation. A result saved before the stop does not
+    skip these checks.
+  s:3: Before another operation uses published output, the coordinator checks the files and their recorded version.
+    This prevents it from depending on the wrong or unaccepted output.
+  outro: Reusing a matching result can save another attempt. The current code still goes through its required checks
+    and review, and published output is checked before another operation uses it.

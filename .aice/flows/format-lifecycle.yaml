@@ -1,0 +1,26 @@
+id: format-lifecycle
+name: Format lifecycle evidence reuse
+description: Shares original lifecycle evidence across consumers.
+details: The first two steps describe alternative consumers; the last step shows shared Java analysis and legacy-side execution. Invocation
+  and ordering provenance must match supplied source revisions. Native APIs remain independent of the original lifecycle
+  structure, and standalone comparisons do not replace whole-unit acceptance.
+diagram: format-lifecycle
+steps:
+- connection: components-lifecycle
+  description: Component-first conversion consumes verified basic lifecycle evidence and original hook sources.
+- connection: generation-verification
+  description: Generation attaches current original boundary obligations.
+- connection: verification-java-call
+  description: The Java analyzer resolves original inherited/delegated calls; comparison executes them on the legacy
+    side.
+narration:
+  intro: A format can inherit a method or call another object to do part of its work. This flow shows how two conversion
+    paths use the original method information and the Java analyzer.
+  s:0: Component-first conversion reads the original format method information found by the analyzer. This helps
+    it include work done in inherited methods or helper objects.
+  s:1: Code generation is another user of the same original method information. Its proposed code goes through the
+    checks required by the conversion job.
+  s:2: The Java tool follows inherited and delegated calls in the original code. During a supported comparison it
+    uses those calls on the old-code side, while the generated code can have a different class layout.
+  outro: The analyzer follows the original method calls instead of assuming all the work is in one class. Separate
+    format comparisons help diagnose behavior, but do not replace all the checks for a complete configured unit.

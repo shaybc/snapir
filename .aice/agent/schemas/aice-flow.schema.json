@@ -13,6 +13,9 @@
     "description": {
       "type": "string"
     },
+    "details": {
+      "type": "string"
+    },
     "diagram": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
@@ -41,6 +44,21 @@
           "connection"
         ],
         "additionalProperties": false
+      }
+    },
+    "narration": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "narrationEdited": {
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     }
   },

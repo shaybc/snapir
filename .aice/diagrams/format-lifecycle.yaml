@@ -1,0 +1,52 @@
+id: format-lifecycle
+name: Flow - Original format lifecycle evidence
+objects:
+- components
+- generation
+- verification
+- verification-java
+connections:
+- components-lifecycle
+- generation-verification
+- verification-java-call
+layout:
+  components:
+    x: 0
+    y: 0
+  generation:
+    x: 0
+    y: 260
+  format-comparison:
+    x: 0
+    y: 520
+  format-lifecycle:
+    x: 440
+    y: 260
+  verification-java:
+    x: 880
+    y: 260
+narration:
+  intro: A format may do part of its work in a parent class or by calling another object. This view shows how component
+    conversion and code generation use the Java analyzer to find those original method calls.
+  o:components: Component-first conversion builds reusable Java implementations of basic components such as formats
+    and steps. When several operations use the same component, they can use the accepted implementation rather than
+    convert it separately each time.
+  e:components->verification: Format component conversion reads the original method information found by the Java
+    analyzer. This helps it include inherited or delegated format methods instead of assuming they are declared
+    directly on the component class.
+  o:verification: Build and behavior validation checks generated code using the rules of the current conversion
+    job. For formats, it can find which original methods are called, including inherited and delegated methods,
+    and compare original and generated behavior where supported.
+  e:verification->verification-java: The Java analyzer finds the original methods and the calls they make, including
+    inherited and delegated format calls. Its comparison harness uses those original calls on the old-code side,
+    while the new code can expose its own API.
+  o:verification-java: Java behavior verification tool reads the original and generated Java code to find methods
+    and follow the calls they make. Where comparison is supported, its test harness can run both versions and compare
+    their behavior without requiring the generated classes to copy the old class structure.
+  o:generation: Bounded generation sends the AI a conversion job together with the original source and instructions.
+    It checks the returned code and can send errors back for another attempt, within the allowed retry limit. In
+    staged mode it handles production code, method information, and tests separately.
+  e:generation->verification: The proposed code is passed to the checks required by its conversion job. If those
+    checks fail, their errors can be used to request a corrected attempt.
+  outro: Knowing the original calls helps conversion and comparison use the right behavior. The generated code can
+    organize its classes differently; the old method sequence is used when running the original side of a comparison.

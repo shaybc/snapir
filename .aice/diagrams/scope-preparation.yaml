@@ -1,0 +1,50 @@
+id: scope-preparation
+name: L4 - Qualified evidence preparation
+scope: preparation
+objects:
+- scoped-native
+- prepared-closure
+- prepared-contracts
+- prepared-units
+- preparation-reuse
+layout:
+  scoped-native:
+    x: 0
+    y: 130
+  prepared-closure:
+    x: 440
+    y: 0
+  prepared-contracts:
+    x: 880
+    y: 0
+  prepared-units:
+    x: 1320
+    y: 0
+  preparation-reuse:
+    x: 440
+    y: 300
+narration:
+  intro: Preparation turns the selected operations into jobs the converter can work on. It gathers their dependencies,
+    resolves calls between operations, and packages source files and settings for generation.
+  o:scoped-native: Scoped native execution checks which conversion mode was selected and whether the required inputs
+    and approvals are ready. In prepare-only mode it writes the preparation results and stops before generating
+    code.
+  e:scoped-native->prepared-closure: The scoped runner asks for the complete set of components needed by the selected
+    operations. It cannot proceed if required sources or dependencies are unresolved.
+  o:prepared-closure: Starting from one selected operation, this part gathers the components and other operations
+    it needs. It also finds the Java files and projects behind them, so conversion gets the whole required set rather
+    than just the operation name.
+  e:prepared-closure->prepared-contracts: The collected operation sources and dependencies are used to work out
+    data contracts and calls between operations. This keeps the call decisions tied to the original project.
+  o:prepared-contracts: This part works out what data passes between operations and how one operation calls another.
+    It decides whether to call code being built in this run or use an already published operation.
+  e:prepared-contracts->prepared-units: The resolved data contracts and call targets are added to the smaller conversion
+    jobs. Each job then carries the settings and original code its generator will need.
+  o:prepared-units: This part groups original source files, XML settings, and resolved call information into smaller
+    jobs for conversion. Each job tells the generator exactly which configured behavior it needs to implement.
+  e:scoped-native->preparation-reuse: The runner checks whether a previous preparation result can be used again.
+    The stored result must still match the current source files and settings.
+  o:preparation-reuse: Before using saved preparation work, this part compares its recorded inputs with the current
+    files and settings. If they have changed, the old preparation cannot be used as if it were still current.
+  outro: The converter now knows which code belongs to each job and how the operations connect. The separate reuse
+    check decides whether previously prepared jobs still match the current project.

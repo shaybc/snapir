@@ -1,0 +1,20 @@
+id: finalization
+name: Final deliverables and approval
+description: Checks deliverables before final approval.
+details: Freshness checks and applicable prior approvals precede deliverable completion. The final report is approved
+  at Gate 5. Documentation and deployment manifests are generated without deploying services.
+diagram: scope-finalization
+steps:
+- connection: final-evidence-artifacts
+  description: Use current accepted operation and service evidence to create deliverables.
+- connection: final-artifacts-approval
+  description: Collect the deliverable inventory for the final validation report.
+narration:
+  intro: The code has been generated and the service build has returned its results. Finalization checks those results
+    against the current files before preparing the final report.
+  s:0: The converter checks the accepted operation results and service build records against the current files.
+    If required results are missing, outdated, or unapproved, it stops before completing the output.
+  s:1: The documentation and deployment files are collected into the final report. Gate 5 records the operator's
+    decision about that report.
+  outro: The final report goes to the operator for Gate 5 approval. The completed output includes documentation
+    and deployment files, while actual deployment remains outside this process.

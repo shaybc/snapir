@@ -1,0 +1,33 @@
+id: scope-services
+name: L4 - Service creation and validation
+scope: services
+objects:
+- service-wrappers
+- service-build
+- service-packaging
+layout:
+  service-wrappers:
+    x: 0
+    y: 130
+  service-build:
+    x: 440
+    y: 0
+  service-packaging:
+    x: 440
+    y: 300
+narration:
+  intro: This stage starts with operation code that has already been approved. It adds the surrounding service code,
+    sets up executable and deployment files, and builds and tests the resulting project.
+  o:service-wrappers: Service wrappers and wiring adds the surrounding code needed to use approved operations as
+    services. It connects operations and their external connections without rewriting the operation source files
+    that were already approved.
+  e:service-wrappers->service-build: The generated service sources are passed to the build and test step. Its saved
+    results show whether the current project compiles, passes its required tests, and can be packaged.
+  o:service-build: This part builds the generated service project, runs its tests, and checks its package. It saves
+    the results so finalization can tell whether the current project actually passed.
+  e:service-wrappers->service-packaging: Service creation configures the executable project layout and the deployment
+    files requested in the settings. This prepares files for delivery without deploying them.
+  o:service-packaging: This part creates the executable project layout and the configured deployment files. It prepares
+    the service for delivery, but does not deploy or start it.
+  outro: The output is a service project with recorded build results, ready for the final checks. Deployment files
+    are created here, but the converter does not deploy the service.

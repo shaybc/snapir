@@ -78,7 +78,17 @@ def main(argv: list[str] | None = None) -> int:
                     run_id = args.run_id or (choose_run_name(args.config, profile.output_root) if is_interactive()
                                              else suggested_run_name(args.config))
                     validate_run_name(profile.output_root, run_id)
-                directory = run_pipeline(profile, run_id, args.config)
+                try:
+                    directory = run_pipeline(profile, run_id, args.config)
+                except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+                    if not command_selected_from_menu:
+                        raise
+                    print(f"Migration error: {sanitize_diagnostic(str(exc))}")
+                    if args.verbose:
+                        print("Detailed diagnostics are saved in the run's logs folder when a run was opened.")
+                    args.run_id = None
+                    args.command = None
+                    continue
                 preferred_run = str(directory)
                 if command_selected_from_menu:
                     print(f"Run created: {run_id}")

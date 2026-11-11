@@ -1,0 +1,64 @@
+id: generation-reuse
+name: Flow - Resumed generation acceptance
+objects:
+- behavior-runner
+- generation
+- run-state
+- verification
+- coordinator
+- deliverables
+connections:
+- behavior-generation
+- generation-state
+- generation-verification
+- publication-output
+layout:
+  unit-conversion:
+    x: 0
+    y: 130
+  generation:
+    x: 440
+    y: 130
+  tests-stage:
+    x: 440
+    y: 520
+  run-state:
+    x: 880
+    y: 390
+  verification:
+    x: 880
+    y: 0
+  coordinator:
+    x: 0
+    y: 800
+  deliverables:
+    x: 880
+    y: 800
+narration:
+  intro: A stopped run may already have AI responses and generated files. This view shows how the converter checks
+    those saved attempts, validates the current code, and checks output that another operation wants to use.
+  o:behavior-runner: This part converts the smaller units an operation needs, then joins their accepted code into
+    an operation implementation. It reviews the result and checks the required approvals before passing it to service
+    creation.
+  e:behavior-runner->generation: The operation workflow asks the generator to convert units and assemble operation
+    code. Already accepted unit code and method information guide the operation-building jobs.
+  o:generation: Bounded generation sends the AI a conversion job together with the original source and instructions.
+    It checks the returned code and can send errors back for another attempt, within the allowed retry limit. In
+    staged mode it handles production code, method information, and tests separately.
+  e:generation->verification: The proposed code is passed to the checks required by its conversion job. If those
+    checks fail, their errors can be used to request a corrected attempt.
+  o:verification: Build and behavior validation checks generated code using the rules of the current conversion
+    job. For formats, it can find which original methods are called, including inherited and delegated methods,
+    and compare original and generated behavior where supported.
+  e:generation->run-state: The generator saves attempts, accepted results, and the separate results of staged generation.
+    When production code changes, later staged results must be checked again instead of reused unchanged.
+  o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
+    attempts, test results, and approvals so the converter knows what has happened and where to continue.
+  o:coordinator: Operation coordinator works through the selected operations in dependency order. Before an operation
+    uses another converted operation, it checks that the required published files are available and valid.
+  e:coordinator->deliverables: Before another operation uses published output, the coordinator checks the files
+    and the records describing them. A file being present is not enough to prove it is the right accepted version.
+  o:deliverables: Generated projects and reports is where the run keeps generated Java files, build and test results,
+    and other reports. Later stages read these files to check what passed and collect the final output.
+  outro: Saved work can avoid another AI request, but only when it still matches the current job. The operation
+    still needs its required checks and review before service creation can use it.

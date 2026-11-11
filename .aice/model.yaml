@@ -1,1077 +1,1658 @@
 # a-ice model — objects and connections. Layout lives in diagrams/, flows in flows/.
 version: 1
 name: Snapir conversion
-tagGroups: []
+tagGroups:
+- id: responsibility
+  name: Responsibility
+  tags:
+  - id: ai
+    name: AI / model
+    color: purple
+  - id: validation
+    name: Validation
+    color: green
+  - id: orchestration
+    name: Workflow controls
+    color: orange
+  - id: diagnostics
+    name: Diagnostics
+    color: yellow
+- id: evidence
+  name: Artifacts and evidence
+  tags:
+  - id: original-source
+    name: Original source
+    color: cyan
+  - id: generated-code
+    name: Generated code
+    color: green
+  - id: map-evidence
+    name: Map evidence
+    color: teal
+  - id: run-evidence
+    name: Run evidence
+    color: blue
+  - id: approvals
+    name: Approvals
+    color: orange
 objects:
   - id: operator
     type: actor
     name: Migration operator
-    description: Selects operations, approves gates, and resumes migration runs.
+    description: Selects work and approves migration gates.
+    tags: [approvals]
+    details: |
+      The operator chooses which Composer operations to convert and approves the reports at the review points. The operator can also continue a saved run or inspect why it stopped.
+
+      ## Using the converter
+
+      The selected operations define the work for the run. At an approval point, the operator reads the current report and accepts or rejects it; a decision about an earlier report does not approve changed output. Saved-run diagnostics can be used separately to inspect a failure.
   - id: snapir
     type: system
     name: Snapir conversion
-    description: Converts Composer behavior into reviewed Java services.
+    description: Migrates Composer behavior to Java services.
+    tags: []
+    details: |
+      Snapir conversion reads an existing Composer project and helps turn its operations into Java services. It first maps the original code, then uses AI to generate code and runs checks before asking for approval.
+
+      ## From old project to new service
+
+      The main path reads the project, prepares the selected operations, plans their order, converts their code, creates service projects, and collects the final output. Java tools parse the original project and support code checks, while Python coordinates the work and calls the configured AI provider. Each stage saves results that the next stage can check.
   - id: conversion-cli
     type: app
     name: Conversion CLI
-    description: Coordinates intake, preparation, gated conversion, and final deliverables.
+    description: Runs the gated migration pipeline.
     parent: snapir
     technologies:
       - Python
+    tags: [orchestration]
     code:
       - source/workspace_intake.py
       - source/runtime/**
+    details: |
+      Conversion CLI is the Python program that runs the conversion process. It starts the Java analysis tools, sends work to the AI, and saves progress so the run can continue after it stops.
+
+      ## Coordinating the run
+
+      The CLI routes work to the selected intake and conversion paths. It uses the run database to save operation selection, the execution plan, attempts, and approval decisions. On resume, it returns to the saved phase and checks whether earlier work is still usable before continuing.
   - id: intake
     type: component
     name: 1. Intake and analyze
-    description: Builds selected inventory through indexed map-first or legacy discovery paths.
+    description: Maps sources and selects migration evidence.
     parent: conversion-cli
     technologies:
       - Python
+    tags: [orchestration]
     code:
       - source/runtime/pipeline_runner.py
       - source/runtime/indexed_intake.py
       - source/tools/component_inventory_tools/**
       - source/tools/composer_mapper_tools/**
+    details: |
+      This stage finds the original files for the operations you selected and loads their descriptions into the run. Later stages use that selection to avoid converting unrelated parts of the project.
+
+      ## Inputs and output
+
+      Input comes from the original workspace and either an existing map or a mapper run started by intake. Intake records which operations and components were selected and which source versions the records describe. Preparation reads those imported records rather than treating every file in the workspace as selected work.
   - id: intake-control
     type: component
     name: Intake routing
-    description: Selects indexed map-first or legacy discovery intake and manages the run lifecycle.
+    description: Chooses the intake path and run scope.
     parent: intake
     technologies:
       - Python
+    tags: [orchestration]
     code:
       - source/runtime/pipeline_runner.py
       - source/runtime/indexed_intake.py
+    details: |
+      Intake routing decides whether to read an existing Composer map or build one first. Older runs can use a separate discovery path, so every run does not start with the same scan.
+
+      ## Choosing the path
+
+      Indexed map-first intake starts from map records and their source fingerprints. The older discovery path gathers workspace information separately and can also prepare planning inputs. Routing keeps these paths distinct and starts mapping only when the selected path needs it.
   - id: source-discovery
     type: component
     name: Source and classpath discovery
-    description: Resolves Java sources, project classpaths, and legacy workspace inventory facts.
+    description: Finds sources and project classpaths.
     parent: intake
     technologies:
       - Python
+    tags: [original-source]
     code:
       - source/tools/source_discovery_tools/**
       - source/tools/state_store_tools/workspace_analysis.py
+    details: |
+      This part finds the Java source files and the library JAR files their projects need. It records which project owns each file so the Java analyzer can look up classes in the right place.
+
+      ## Why project ownership matters
+
+      Two Java projects can use different versions or sets of libraries. Discovery keeps source ownership and project classpaths together, so later analysis does not resolve a class against an unrelated project. The older discovery path can reuse saved workspace facts when their file fingerprints still match.
   - id: analyzer
     type: component
     name: Composer analyzer
-    description: Validates mapped evidence, selects inventory, imports definitions, and records source changes.
+    description: Validates and imports selected map evidence.
     parent: intake
     technologies:
       - Python
+    tags: [validation, map-evidence]
     code:
       - source/agents/legacy_composer_analysis/**
       - source/tools/composer_mapper_tools/**
       - source/tools/component_inventory_tools/**
-  - id: map-validation
-    type: component
-    name: Map validation and source freshness
-    description: Checks existing vault structure and indexed map publication and source fingerprints.
-    parent: analyzer
-    technologies:
-      - Python
-    code:
       - source/tools/composer_mapper_tools/indexed_analysis.py
       - source/tools/workspace_intake_tools/vault_validator.py
       - source/tools/state_store_tools/map_snapshot.py
-  - id: selected-inventory
-    type: component
-    name: Selected inventory and dependency closure
-    description: Builds the selected component inventory and pins its source analysis revision.
-    parent: analyzer
-    technologies:
-      - Python
-    code:
-      - source/tools/component_inventory_tools/**
       - source/tools/state_store_tools/component_inventory.py
-  - id: vault-import
-    type: component
-    name: Composer definition import
-    description: Imports indexed, scoped, or legacy definitions into run state.
-    parent: analyzer
-    technologies:
-      - Python
-    code:
       - source/tools/composer_mapper_tools/vault_importer.py
       - source/tools/composer_mapper_tools/indexed_vault_importer.py
       - source/tools/composer_mapper_tools/scoped_vault_importer.py
-  - id: analysis-invalidation
-    type: component
-    name: Change tracking and invalidation
-    description: Records analysis summaries and invalidates affected work when source hashes change.
-    parent: analyzer
-    technologies:
-      - Python
-    code:
       - source/agents/legacy_composer_analysis/agent.py
       - source/tools/state_store_tools/invalidation.py
+    details: |
+      Composer analyzer reads the map and checks that it matches the original files. It loads the selected component descriptions and their dependencies into the run database, and marks earlier work as outdated when its source files have changed.
+
+      ## Reading the map
+
+      Composer analyzer checks that the selected map is complete and uses the representation expected by the chosen intake path. It checks the original source fingerprints before relying on mapped information.
+
+      ## Selecting and importing components
+
+      The requested operations are expanded to include the dependencies required by the applicable selection rules. The analyzer records that inventory and its source analysis revision, so preparation knows exactly which original work was selected. The importer supports indexed, scoped, and legacy definition formats and saves the selected records in the run database.
+
+      ## Handling changed sources
+
+      The analyzer records a summary of the imported analysis and compares source hashes. If the original code changed, it marks affected prior work as outdated instead of silently reusing preparation or conversion results for different inputs. These steps describe and check the old project; they do not prove that new executable code behaves the same way.
   - id: preparation
     type: component
     name: 2. Prepare qualified evidence
-    description: Resolves operation evidence, dependencies, routes, and scoped generation readiness.
+    description: Qualifies evidence for native conversion.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/scoped_conversion.py
       - source/tools/conversion_tools/scoped_workflow/**
       - source/tools/conversion_tools/scoped_reuse/**
+    details: |
+      This stage gathers everything needed to convert the selected operations. It checks that the source files, dependencies, settings, and links between operations can be resolved before code generation starts.
+
+      ## Inputs and output
+
+      Preparation starts with imported operation records, original sources, and conversion settings. It follows dependencies, resolves data contracts and calls, and prepares smaller jobs that include their XML configuration and Java sources. It can stop with a blocked result when a required source, project, or call target cannot be resolved.
   - id: scoped-native
     type: component
     name: Scoped native execution
-    description: Enforces preparation mode and approved native capabilities before conversion.
+    description: Enforces execution modes and readiness.
     parent: preparation
     technologies:
       - Python
+    tags: [orchestration, approvals]
     code:
       - source/runtime/scoped_native/**
+    details: |
+      Scoped native execution checks which conversion mode was selected and whether the required inputs and approvals are ready. In prepare-only mode it writes the preparation results and stops before generating code.
+
+      ## Choosing how to continue
+
+      The supported modes either prepare inputs only, convert configured behavior units, or first convert reusable basic components. Generation needs prepared operation inputs, a checked plan, and the required approvals. If preparation fails, a mode is unsupported, or a required approval is missing, the runner stops before proceeding with that work.
   - id: prepared-closure
     type: component
     name: Qualified operation closure
-    description: Resolves exact operation dependencies, source projects, and original source evidence.
+    description: Resolves operation sources and dependencies.
     parent: preparation
     technologies:
       - Python
+    tags: [original-source, map-evidence]
     code:
       - source/tools/conversion_tools/closure_builder_tool.py
       - source/tools/conversion_tools/scoped_workflow/preparation.py
       - source/tools/conversion_tools/scoped_workflow/source_project.py
+    details: |
+      Starting from one selected operation, this part gathers the components and other operations it needs. It also finds the Java files and projects behind them, so conversion gets the whole required set rather than just the operation name.
+
+      ## Following dependencies
+
+      The selected operation is the starting point, not the complete input. The dependency rules determine which other operations and components need source conversion and which can use already published services. The result records the original source files and owning projects needed by contract planning and unit preparation.
   - id: prepared-contracts
     type: component
     name: Contracts and operation calls
-    description: Plans context contracts and binds calls to local or published operation boundaries.
+    description: Defines contracts and operation call bindings.
     parent: preparation
     technologies:
       - Python
+    tags: []
     code:
       - source/tools/conversion_tools/scoped_workflow/contracts.py
       - source/tools/conversion_tools/scoped_workflow/calls.py
+    details: |
+      This part works out what data passes between operations and how one operation calls another. It decides whether to call code being built in this run or use an already published operation.
+
+      ## Resolving calls and data
+
+      Contract planning uses the collected original operation information to describe the data passed between operations. Call binding associates each call with a local or published target. The resulting contracts and call choices are passed to unit preparation and included in the generation inputs.
   - id: prepared-units
     type: component
     name: Configured units and evidence
-    description: Builds configured units, bindings, and complete operation request payloads.
+    description: Builds configured units and request evidence.
     parent: preparation
     technologies:
       - Python
+    tags: [original-source]
     code:
       - source/tools/conversion_tools/scoped_workflow/units.py
       - source/tools/conversion_tools/scoped_workflow/unit_evidence.py
       - source/tools/conversion_tools/scoped_workflow/payloads.py
+    details: |
+      This part groups original source files, XML settings, and resolved call information into smaller jobs for conversion. Each job tells the generator exactly which configured behavior it needs to implement.
+
+      ## Building a conversion job
+
+      A job includes its resolved configuration, source identities, original text, and relevant operation-call information. Preparation builds the complete request material used later by generation. Having prepared a job means the required inputs are available; it does not mean the generated result has passed its checks.
   - id: preparation-reuse
     type: component
     name: Preparation freshness and reuse
-    description: Checks evidence fingerprints and reuses only eligible prepared checkpoints.
+    description: Checks prepared checkpoint freshness.
     parent: preparation
     technologies:
       - Python
+    tags: [validation, run-evidence]
     code:
       - source/tools/conversion_tools/scoped_reuse/**
+    details: |
+      Before using saved preparation work, this part compares its recorded inputs with the current files and settings. If they have changed, the old preparation cannot be used as if it were still current.
+
+      ## Checking saved inputs
+
+      The saved preparation record includes fingerprints of the source material and settings it used. Reuse checks compare those with the current operation inputs before reading cached prepared results. A changed dependency or source file can make an otherwise intact saved record unusable.
   - id: planning
     type: component
     name: 3. Plan dependencies
-    description: Builds dependency-ordered operation plans for selected migration work.
+    description: Orders selected migration work.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/planning.py
       - source/runtime/intake_plan.py
       - source/agents/migration_planning/**
+    details: |
+      This stage decides which operations need to be converted first. For example, an operation needed by another operation must be handled before its caller can depend on it.
+
+      ## Inputs and output
+
+      The selected operations and their call relationships determine the work order. Plan construction groups the work into batches and tasks, while validation checks ownership, coverage, and ordering before the plan is saved. Resume can load that plan again, but applicable approvals still control whether execution can continue.
   - id: dependency-order
     type: component
     name: Dependency ordering
-    description: Finds operation dependencies, blocks unresolved cycles, and builds execution waves.
+    description: Orders dependencies and blocks cycles.
     parent: planning
     technologies:
       - Python
+    tags: [validation]
     code:
       - source/tools/operation_call_tools/preflight.py
       - source/tools/operation_call_tools/ordering.py
       - source/runtime/intake_plan.py
+    details: |
+      Dependency ordering follows calls between operations to work out their execution order. If a dependency cycle cannot be resolved, it blocks the plan instead of choosing an arbitrary order.
+
+      ## When planning stops
+
+      Preflight checks inspect calls between the selected operations and determine mandatory execution waves. A caller cannot simply be placed ahead of work it requires. Unresolved cycles are reported as blockers so a generated plan cannot hide them.
   - id: plan-generation
     type: component
     name: Migration plan construction
-    description: Constructs operation batches and task packets from selected planning inputs.
+    description: Builds migration batches and task packets.
     parent: planning
     technologies:
       - Python
+    tags: [ai]
     code:
       - source/runtime/planning.py
       - source/agents/migration_planning/agent.py
+    details: |
+      Migration plan construction turns the selected operations into batches and conversion tasks. Some paths ask AI to help create the plan, but code still checks that it includes the right work in the right order.
+
+      ## Constructing tasks
+
+      The applicable intake or scoped preparation path supplies the planning inputs. Construction turns them into operation batches and task packets, using model planning only on the paths that call for it. Dependency ordering and plan validation still check the proposed result before it is used.
   - id: plan-validation
     type: component
     name: Plan validation and persistence
-    description: Validates run ownership, operation coverage, and batch ordering before saving the plan.
+    description: Validates and saves migration plans.
     parent: planning
     technologies:
       - Python
+    tags: [validation, run-evidence]
     code:
       - source/agents/migration_planning/plan_validator.py
       - source/agents/migration_planning/agent.py
       - source/runtime/planning.py
+    details: |
+      This part checks that the plan belongs to the current run, covers the selected operations, and respects their dependencies. It then saves the checked plan for conversion and later resume.
+
+      ## Checks before saving
+
+      The plan must refer to the current run, include the required selected operations, and keep dependent batches in a valid order. A plan that fails these checks is not accepted as the execution plan. The saved plan is later read by operation coordination and checked against the applicable gates.
   - id: services
     type: component
     name: 5. Create and validate services
-    description: Wraps approved operation sources in validated executable Java service projects.
+    description: Creates and validates Java services.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/service_generation/**
+    details: |
+      This stage takes approved operation code and builds Java service projects around it. It adds the surrounding service code, then builds, tests, and packages the projects.
+
+      ## From operation code to service project
+
+      Approved operation files are inputs to this stage and are not rewritten as part of wrapper generation. The stage adds wiring and executable structure, then runs the service checks and records their results. When microservice creation is enabled, the applicable Gate 4 approval is required before creation proceeds.
   - id: service-wrappers
     type: component
     name: Service wrappers and wiring
-    description: Generates service wrappers around immutable approved operation sources.
+    description: Wraps approved operation sources.
     parent: services
     technologies:
       - Python
+    tags: [ai, generated-code, approvals]
     code:
       - source/runtime/service_generation/runner.py
       - source/runtime/service_generation/project_output.py
       - source/runtime/service_generation/operation_wiring.py
       - source/runtime/service_generation/connection_wiring.py
+    details: |
+      Service wrappers and wiring adds the surrounding code needed to use approved operations as services. It connects operations and their external connections without rewriting the operation source files that were already approved.
+
+      ## Inputs and output
+
+      The generator receives approved operation sources and the required operation and connection wiring. It produces the surrounding service project code, which is then passed to packaging and build validation. Gate 3 and, when applicable, Gate 4 are checked before the service work is allowed to proceed.
   - id: service-build
     type: component
     name: Service build and tests
-    description: Compiles, tests, packages, and checks final service projects.
+    description: Builds, tests, and packages services.
     parent: services
     technologies:
       - Python
+    tags: [validation, generated-code]
     code:
       - source/runtime/service_generation/validation.py
       - source/runtime/service_generation/runner.py
+    details: |
+      This part builds the generated service project, runs its tests, and checks its package. It saves the results so finalization can tell whether the current project actually passed.
+
+      ## Recording what passed
+
+      Build validation checks the final service project rather than relying on results from its smaller converted components. The recorded results include the required build, test, and packaging checks for the selected mode. Finalization reads these records and checks that they still belong to the current project files.
   - id: service-packaging
     type: component
     name: Executable and deployment artifacts
-    description: Builds executable project structure and renders configured deployment artifacts.
+    description: Creates executable and deployment artifacts.
     parent: services
     technologies:
       - Python
+    tags: [generated-code]
     code:
       - source/runtime/service_generation/microservice_output.py
       - source/runtime/service_generation/maven_reactor.py
       - source/runtime/service_generation/packaging_policy.py
       - source/runtime/service_generation/helm_render_checks.py
+    details: |
+      This part creates the executable project layout and the configured deployment files. It prepares the service for delivery, but does not deploy or start it.
+
+      ## Preparing delivery files
+
+      Packaging policy controls the executable project structure and Maven reactor output. Configured deployment templates are rendered and checked, including applicable Helm rendering checks. These files are written to the output for later use; this component does not perform deployment.
   - id: finalization
     type: component
     name: 6. Finalize deliverables
-    description: Verifies deliverable evidence and produces reports and deployment manifests without deployment.
+    description: Checks evidence and prepares deliverables.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/finalization/**
       - source/tools/deployment_tools/**
+    details: |
+      This stage checks the latest build results and approvals, then collects the final documentation and deployment files. It prepares a final report for approval without deploying the services.
+
+      ## Completing the run
+
+      Finalization compares accepted operation records, service checkpoints, and current project fingerprints. It collects documentation and deployment files only with the required results and earlier approvals in place. Gate 5 records the final decision about the current report.
   - id: final-evidence
     type: component
     name: Final evidence freshness
-    description: Checks accepted operation evidence, project fingerprints, and required prior approvals.
+    description: Checks accepted evidence and approvals.
     parent: finalization
     technologies:
       - Python
+    tags: [validation, run-evidence]
     code:
       - source/runtime/finalization/runner.py
       - source/runtime/operation_review/evidence.py
+    details: |
+      Before finishing, this part checks that the build and review results still belong to the current generated files. If a project changed or a required approval is missing, it prevents the run from being marked complete.
+
+      ## Finding outdated results
+
+      This check collects accepted operation information and looks up the saved service generation and validation records. It compares project hashes and settings with those records and verifies the earlier approvals that apply. Missing, failed, or outdated results become blockers in the final report.
   - id: final-artifacts
     type: component
     name: Documentation and manifests
-    description: Creates operation documentation and deployment deliverables.
+    description: Produces documentation and manifests.
     parent: finalization
     technologies:
       - Python
+    tags: [ai]
     code:
       - source/agents/documentation_report/**
       - source/agents/java_deployment_manifest/**
       - source/tools/deployment_tools/**
+    details: |
+      Documentation and manifests writes the operation documentation and the configured deployment files. These become part of the final output alongside the generated projects and validation reports.
+
+      ## Writing the final files
+
+      Operation information is used to generate documentation and a deployment description, and configured templates produce deployment files. Finalization records the output inventory so the final report can show what was produced. A manifest describes how an application could be deployed; it is not a record that deployment happened.
   - id: final-approval
     type: component
     name: Final report and Gate 5
-    description: Collects final validation evidence and records migration approval without deployment.
+    description: Records final approval at Gate 5.
     parent: finalization
     technologies:
       - Python
+    tags: [approvals, run-evidence]
     code:
       - source/runtime/finalization/runner.py
+    details: |
+      The final report lists the completed output and the checks behind it. Gate 5 records the human decision about that report, after checking the earlier approvals that still apply.
+
+      ## Recording the final decision
+
+      The final report combines the deliverable inventory with current validation results and any blockers. The gate mechanism records the operator decision against that report. A final approval does not replace missing earlier approvals or make an outdated build result current.
   - id: conversion-stage
     type: component
     name: 4. Convert and assemble
-    description: Converts reusable components and behavior units into reviewed operation implementations.
+    description: Converts components and assembles operations.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/behavior_conversion/runner.py
       - source/runtime/component_conversion/**
       - source/runtime/managed_projects.py
+    details: |
+      This stage turns the selected Composer behavior into Java code. Depending on the mode, it converts reusable components first, builds operations from smaller converted units, or uses the managed source conversion path.
+
+      ## Supported execution paths
+
+      Component-first mode starts by building reusable basic components. Behavior-unit conversion converts smaller configured jobs and assembles operations from accepted results. Managed source conversion has its own task and review sequence; these are supported paths, not three mandatory steps every run executes.
   - id: components
     type: component
     name: Component-first conversion
-    description: Converts reusable basic components when component-first mode is selected.
+    description: Converts reusable basic components.
     parent: conversion-stage
     technologies:
       - Python
+    tags: [ai, original-source, generated-code]
     code:
       - source/runtime/component_conversion/**
+    details: |
+      Component-first conversion builds reusable Java implementations of basic components such as formats and steps. When several operations use the same component, they can use the accepted implementation rather than convert it separately each time.
+
+      ## Using original behavior
+
+      Format conversion uses source-backed method information to include inherited and delegated work. Requests include the relevant original method bodies and configuration, and the resulting component code is checked before it is reused. Component build and test success does not replace the checks for a whole configured unit.
   - id: behavior-runner
     type: component
     name: Behavior conversion and assembly
-    description: Converts dependency-ordered units and assembles reviewed operation implementations.
+    description: Converts units and assembles operations.
     parent: conversion-stage
     technologies:
       - Python
+    tags: [orchestration, generated-code]
     code:
       - source/runtime/behavior_conversion/runner.py
       - source/runtime/behavior_conversion/operation_calls.py
       - source/runtime/behavior_conversion/review.py
-      - source/runtime/behavior_conversion/revisions.py
-  - id: unit-conversion
-    type: component
-    name: Unit conversion and acceptance
-    description: Converts units in dependency order and accepts only validated reviewed bundles.
-    parent: behavior-runner
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/runner.py
       - source/runtime/behavior_conversion/revisions.py
       - source/runtime/behavior_conversion/bundle_output.py
-  - id: operation-composition
-    type: component
-    name: Operation assembly and review
-    description: Assembles accepted units into operation implementations and reviews them before service generation.
-    parent: behavior-runner
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/runner.py
-      - source/runtime/behavior_conversion/operation_calls.py
-      - source/runtime/behavior_conversion/review.py
+    details: |
+      This part converts the smaller units an operation needs, then joins their accepted code into an operation implementation. It reviews the result and checks the required approvals before passing it to service creation.
+
+      ## Converting smaller units
+
+      The runner works through units in dependency order and sends their original code and settings to the generator. Each result must pass the checks and review required by its job before it becomes an accepted bundle of files and public method information.
+
+      ## Building an operation
+
+      Operation assembly uses those accepted unit methods and files together with the resolved calls to other operations. It can request operation implementation code and scenario tests, then review the assembled operation. This handoff uses accepted unit results rather than treating every AI response as usable code.
+
+      ## Passing work to service creation
+
+      The required operation reviews and current gate decisions are checked before service wrappers use the operation sources. Generating operation files alone does not publish an accepted operation for another operation or service to use.
   - id: managed-conversion
     type: component
     name: Managed source conversion
-    description: Converts source tasks through the existing managed project workflow.
+    description: Runs managed source conversion.
     parent: conversion-stage
     technologies:
       - Python
+    tags: [ai, generated-code]
     code:
       - source/runtime/managed_projects.py
       - source/runtime/component_review/**
       - source/runtime/operation_assembly/**
       - source/runtime/operation_review/**
+    details: |
+      Managed source conversion is another supported way to convert source tasks. It has its own component and operation review steps, which resume follows when a saved run uses this path.
+
+      ## Conversion and review
+
+      The managed workflow sends source tasks through generation, component review, operation assembly, and operation review as applicable. Its saved phase determines which part resume continues. This path remains separate from the scoped runner rather than being treated as another unconditional step in a behavior-unit run.
   - id: generation
     type: component
     name: Bounded generation
-    description: Validates structured model responses and retains bounded attempts and correction feedback.
+    description: Generates candidates with bounded retries.
     parent: conversion-stage
     technologies:
       - Python
+    tags: [ai, generated-code, run-evidence]
     code:
       - source/runtime/behavior_conversion/generation.py
       - source/runtime/behavior_conversion/compatibility.py
       - source/runtime/behavior_conversion/resume_budget.py
-  - id: staged-generation
-    type: component
-    name: Staged conversion
-    description: Separates implementation, compile checks, metadata, bindings, and test generation.
-    parent: generation
-    technologies:
-      - Python
-    code:
       - source/runtime/behavior_conversion/staged_pipeline.py
       - source/runtime/behavior_conversion/staged_conversion.py
       - source/runtime/behavior_conversion/stage_tasks.py
-  - id: production-stage
-    type: component
-    name: Production implementation
-    description: Generates production Java against original evidence and typed boundary contracts.
-    parent: staged-generation
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/staged_pipeline.py
-      - source/runtime/behavior_conversion/staged_conversion.py
       - source/runtime/behavior_conversion/typed_boundaries.py
-  - id: metadata-stage
-    type: component
-    name: API metadata and bindings
-    description: Inspects native APIs and resolves dependencies, mappings, and verification bindings.
-    parent: staged-generation
-    technologies:
-      - Python
-    code:
       - source/runtime/behavior_conversion/native_metadata.py
       - source/runtime/behavior_conversion/native_binding_builder.py
       - source/runtime/behavior_conversion/staged_adapters.py
-  - id: tests-stage
-    type: component
-    name: Tests and staged acceptance
-    description: Generates focused tests and submits the assembled result to the owning acceptance validator.
-    parent: staged-generation
-    technologies:
-      - Python
-    code:
-      - source/runtime/behavior_conversion/staged_pipeline.py
-      - source/runtime/behavior_conversion/staged_conversion.py
-      - source/runtime/behavior_conversion/stage_tasks.py
-  - id: side-road
-    type: component
-    name: Optional side-road recovery
-    description: Checks an isolated baseline and simplification after eligible framework-dependency failures.
-    parent: generation
-    technologies:
-      - Python
-    code:
       - source/runtime/behavior_conversion/side_road_conversion.py
       - source/runtime/behavior_conversion/side_road_policy.py
+    details: |
+      Bounded generation sends the AI a conversion job together with the original source and instructions. It checks the returned code and can send errors back for another attempt, within the allowed retry limit. In staged mode it handles production code, method information, and tests separately.
+
+      ## Sending a conversion job
+
+      The generator builds a request from the original code, configuration, required method contracts, and instructions. It checks the structured response and passes the returned candidate to the checks required by the calling workflow. Failed checks can produce feedback for another attempt within the applicable attempt budget.
+
+      ## Generating in stages
+
+      When staging is enabled for a supported task, the work is separated into smaller steps:
+
+      1. Ask for the production Java implementation using the original source and required input and output types.
+      2. Compile and inspect that implementation. Read its public methods and resolve the libraries and method bindings needed by later steps.
+      3. Ask the model for dependency or mapping decisions when the deterministic inspection leaves an applicable ambiguity.
+      4. Generate focused tests using the actual production methods and resolved bindings, then submit the complete candidate to the calling workflow's acceptance checks.
+
+      Compilation and interface checks happen before later stages rely on the generated methods. Completing one stage does not mean the entire job has been accepted.
+
+      ## Saved attempts and changed code
+
+      The run database retains attempts, stage revisions, feedback, and accepted results. Reuse compares the current job with the inputs, requirements, used library versions, and target settings that produced the saved work. If production code changes, later staged results lose their ready status and cannot simply be reused as accepted results.
+
+      ## Optional recovery from dependency failures
+
+      When enabled for an eligible framework-dependency failure, side-road recovery tries an isolated baseline and then a simplified implementation. Both must provide the required build, test, and observed-case comparison results. The simplified version must preserve the verified public methods and comparison binding; the baseline alone is not an accepted fallback.
+
+      These recovery calls cannot recursively start another recovery attempt. Their separate attempt records and validation checks remain in force, and normal conversion checks are restored after the isolated stage finishes.
   - id: workflow-support
     type: component
     name: Workflow controls and shared capabilities
-    description: Provides resume coordination, approvals, model access, and validation across stages.
+    description: Shares gates, resume, models, and validation.
     parent: conversion-cli
     technologies:
       - Python
+    tags: []
     code:
       - source/runtime/checkpoints.py
       - source/runtime/operation_coordinator.py
       - source/runtime/human_gates.py
       - source/runtime/model_execution/**
+    details: |
+      These parts provide services used throughout the converter, such as calling the AI, recording approvals, and continuing saved runs. Keeping them shared lets each conversion stage use the same rules for progress and checks.
+
+      ## Shared services for the stages
+
+      The stages call these modules for model requests, approvals, validation, saved progress, and operation coordination. For example, a generation attempt can use the shared AI caller, request-size checks, and validation code before writing its result. These services support the numbered stages without forming an additional stage of their own.
   - id: checkpoints
     type: component
     name: Resume and checkpoints
-    description: Restores persisted phases and routes work through current preparation and acceptance checks.
+    description: Restores runs and resumes the current phase.
     parent: workflow-support
     technologies:
       - Python
+    tags: [orchestration, run-evidence]
     code:
       - source/runtime/checkpoints.py
       - source/runtime/migration_start.py
       - source/runtime/gate_numbering.py
+    details: |
+      Resume and checkpoints reads where a saved run stopped and chooses which part should continue. It reloads the saved settings and results, but the next stage still checks whether they match the current files.
+
+      ## Choosing a continuation
+
+      The saved phase can route the run through operation coordination, managed conversion, service creation, or finalization. The continuation checks the inputs and approvals required by that phase. Saved approval records from the older Gate 4 and Gate 5 numbering must not be interpreted as current approval when their meaning is ambiguous.
   - id: coordinator
     type: component
     name: Operation coordinator
-    description: Runs selected operations with scoped gates and verified dependency publication.
+    description: Coordinates scoped operation execution.
     parent: workflow-support
     technologies:
       - Python
+    tags: [orchestration]
     code:
       - source/runtime/operation_coordinator.py
       - source/runtime/service_publication.py
+    details: |
+      Operation coordinator works through the selected operations in dependency order. Before an operation uses another converted operation, it checks that the required published files are available and valid.
+
+      ## Working through operations
+
+      The coordinator follows the operation plan and keeps each operation inside its selected work and gate decisions. It checks publication records and files before another operation consumes a dependency. A generated file is not enough unless the required accepted publication information also matches.
   - id: verification
     type: component
     name: Build and behavior validation
-    description: Checks native bundles, typed boundaries, builds, tests, and applicable behavioral evidence.
+    description: Checks builds and behavioral evidence.
     parent: workflow-support
     technologies:
       - Python
+    tags: [validation, generated-code]
     code:
       - source/runtime/behavior_conversion/bundle_output.py
       - source/runtime/behavior_conversion/stage_compilation.py
       - source/runtime/behavior_conversion/verification_ladder.py
       - source/tools/behavior_verification/**
       - source/runtime/runtime_validation/**
+      - source/models/format_lifecycle.py
+      - source/tools/behavior_verification/format_lifecycle.py
+      - source/tools/behavior_verification/boundaries.py
+      - source/tools/behavior_verification/boundary_execution.py
+      - source/runtime/behavior_verification_boundaries.py
+      - source/runtime/behavior_conversion/verification_request.py
+      - source/runtime/format_comparison/**
+    details: |
+      Build and behavior validation checks generated code using the rules of the current conversion job. For formats, it can find which original methods are called, including inherited and delegated methods, and compare original and generated behavior where supported.
+
+      ## Checking a candidate
+
+      Validation is used by code generation, staged production and tests, and final service builds. The calling workflow determines the required checks, such as source rules, public method contracts, compilation, tests, and applicable behavior comparisons. Finding an entry method or compiling a class is not the same as proving an entire operation behaves correctly.
+
+      ## Finding original format calls
+
+      For a basic or configured format, the Java analyzer finds the original calls even when work is inherited from a parent class or delegated to another object. Python checks the returned source identities, hashes, and locations that establish the call order. The method sequence must be supported by the supplied original source version.
+
+      During a comparison, original lifecycle invocation information is sent only to the legacy execution side. The generated code can expose a different public API and does not have to reproduce the original class hierarchy.
+
+      ## Comparing a format separately
+
+      Standalone diagnostics use the same boundary and reachable-call analysis for explicitly selected basic or configured format cases. Context discovery checks quoted source references and the selected execution directions before relying on proposed inputs. These diagnostic comparisons help explain individual cases; they do not replace acceptance checks for the whole configured unit.
+  - id: request-diagnostics
+    type: component
+    name: Request budget diagnostics
+    description: Measures budgets and captures oversized requests.
+    parent: workflow-support
+    technologies:
+      - Python
+    tags: [diagnostics, ai, run-evidence]
+    code:
+      - source/runtime/behavior_conversion/request_context.py
+      - source/runtime/behavior_conversion/request_size.py
+      - source/runtime/behavior_conversion/oversized_request_capture.py
+    details: |
+      Before a request is sent, this part counts the characters in its JSON data and instructions. If the shared budget check finds it too large, active-run diagnostics can save the exact request for inspection.
+
+      ## What is measured and saved
+
+      The shared check counts the application JSON and instructions against the configured character limit, including after correction text is compacted when applicable. Active-run capture stores the exact text, instructions, and size metadata for oversized requests at the named check stage. It excludes provider transport settings; separate context-discovery requests keep their own size checks.
+  - id: diagnostics-cli
+    type: app
+    name: Saved run diagnostics CLI
+    description: Inspects runs and exports request materials.
+    parent: snapir
+    technologies:
+      - Python
+    tags: [diagnostics, run-evidence]
+    code:
+      - source/tools/run_diagnostics/**
+    details: |
+      Saved run diagnostics CLI reads a saved run and reports what happened without continuing the conversion. It can also export an oversized AI request and extract the source text embedded in it into separate files.
+
+      ## Inspecting without resuming
+
+      The command reads stored SQLite state and reports without advancing the migration. Request export copies captured JSON, instructions, and metadata, then extracts embedded source text into files with an occurrence manifest. It does not read the original workspace sources to recreate a request that was never captured.
+  - id: diagnostic-exports
+    type: store
+    name: Diagnostic request exports
+    description: Stores extracted diagnostic request materials.
+    parent: snapir
+    technologies:
+      - Filesystem
+    tags: [diagnostics]
+    details: |
+      This folder contains exported AI requests and the source text extracted from them. A manifest records where each piece came from, including repeated pieces or files whose original names could not be resolved.
+
+      ## Files in an export
+
+      Each capture includes the request, instructions, metadata, extracted source files, and a materials manifest. Resolved source folders and names are retained; unresolved names use a separate folder. Conflicting content is kept under separate occurrence paths, and repeated content remains visible in the manifest.
   - id: model-executor
     type: component
     name: Model execution
-    description: Calls the configured model with readiness checks, timeouts, and transport retries.
+    description: Calls the configured model with retries.
     parent: workflow-support
     technologies:
       - Python
+    tags: [ai]
     code:
       - source/runtime/model_execution/**
+    details: |
+      Model execution sends requests to the configured AI provider and handles timeouts and temporary connection failures. It returns the response to the conversion job, which then checks whether the result is usable.
+
+      ## Handling a request
+
+      The executor checks that the configured provider can be used, sends the request, and applies its timeout and transport retry rules. Run diagnostics adds a redacted logging sink and tells oversized-request capture which run folder to use. The calling workflow, not the transport code, decides whether the returned result meets its requirements.
   - id: gates
     type: component
     name: Approval gates
-    description: Binds approval decisions to exact reports and blocks failed checks.
+    description: Binds human approvals to current reports.
     parent: workflow-support
     technologies:
       - Python
+    tags: [approvals]
     code:
       - source/runtime/human_gates.py
       - source/runtime/scoped_native/plan_approval.py
       - source/runtime/service_generation/gate.py
+    details: |
+      Approval gates records a human decision together with the report that was reviewed. If the report changes, the converter cannot treat an approval of the old report as approval of the new one.
+
+      ## Keeping approval tied to the report
+
+      A decision is stored with the report hash and operation scope. Resume and later stages check that the decision still applies to the report and operation now being used. This prevents an approval of an earlier report from silently authorizing changed work.
   - id: composer-mapper
     type: app
     name: Composer Mapper
-    description: Indexes Composer definitions and Java evidence into a reusable map.
+    description: Indexes Composer sources into reusable maps.
     parent: snapir
     technologies:
       - Java
+    tags: []
     code:
       - source/composer-mapper/src/main/java/**
+    details: |
+      Composer Mapper is a Java sub-project inside the converter that reads Composer XML and Java using fixed parsing rules, without AI. It writes Markdown descriptions of operations, steps, formats, and decorators, and in indexed mode stores parsed XML, Java method information, and dependencies in its own SQLite database. The converter uses this map to collect an operation and the components it needs before asking AI to convert it.
+
+      ## Building the component map
+
+      The mapper finds Composer files and parses XML definitions, channel registrations, and Java declarations using deterministic Java code. It connects components such as operations, steps, formats, and decorators to their implementations and dependencies, and writes their Markdown descriptions. In indexed mode, parsed XML and Java syntax-analysis facts are stored in analysis/analysis.sqlite inside the map output folder, separate from the migration run database.
   - id: mapper-entry
     type: component
     name: Mapper mode selection
-    description: Chooses indexed analysis, scoped vault generation, or legacy vault generation.
+    description: Selects mapping and analysis modes.
     parent: composer-mapper
     technologies:
       - Java
+    tags: [orchestration]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/Main.java
+    details: |
+      Mapper mode selection reads the mapping options and starts the chosen path. It can build an indexed map, produce the older map layout, or reuse eligible analysis from an earlier map.
+
+      ## Selecting a map format
+
+      The indexed analysis path requires the scoped vault layout. It treats reuse of a previous analysis and recovery from a completed checkpoint as separate options. The legacy path builds indexes before streaming the Markdown vault, while scoped generation resolves qualified definitions during map construction.
   - id: mapper-discovery
     type: component
     name: Composer file discovery
-    description: Discovers source files and channel selection for mapping.
+    description: Finds Composer files and channel scope.
     parent: composer-mapper
     technologies:
       - Java
+    tags: [original-source]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/FileDiscoveryService.java
+    details: |
+      Composer file discovery searches the original workspace for the files used by the requested channels. It passes that file list to the parsers so mapping knows which sources to read.
+
+      ## Choosing source files
+
+      Discovery starts with the requested workspace and optional channel selection. It returns the Composer source files and channel information used by the chosen mapper path. The parsers and map writer then operate on that discovered file set.
   - id: mapper-index
     type: component
     name: Definition and source indexing
-    description: Indexes source definitions and Java declarations for map generation.
+    description: Indexes definitions and Java declarations.
     parent: composer-mapper
     technologies:
       - Java
+    tags: [original-source]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/**
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedDefinitionCatalog.java
+    details: |
+      Definition and source indexing reads the Composer definitions and the Java classes behind them. It builds lookup information that connects component names to their source files and declarations.
+
+      ## Two kinds of lookups
+
+      XML and channel indexing records configured component definitions and registrations. Java indexing records class declarations and ownership. The combined catalog lets mapping resolve a named operation or component to its original source definition without asking AI to guess the relationship.
   - id: mapper-xml-index
     type: component
     name: XML and channel definitions
-    description: Indexes Composer XML definitions and channel mapping.
+    description: Indexes XML definitions and channel mappings.
     parent: mapper-index
     technologies:
       - Java
+    tags: [original-source]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/XmlDefinitionIndexer.java
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/IniMappingIndexer.java
+    details: |
+      This parser reads Composer XML and channel configuration to find operations, steps, formats, and their registrations. Those records let the mapper find a named component and understand how it is configured.
+
+      ## Reading configuration
+
+      The XML indexer finds Composer definitions and the INI indexer reads channel registrations. Their results let later mapping distinguish similarly named components in the appropriate source and channel context. This is parsing and lookup work, not code generation or a runtime behavior test.
   - id: mapper-java-index
     type: component
     name: Java declaration index
-    description: Indexes Java class ownership and declarations.
+    description: Indexes Java declarations and ownership.
     parent: mapper-index
     technologies:
       - Java
+    tags: [original-source]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/index/JavaClassIndexer.java
+    details: |
+      This parser reads Java declarations to find classes and the source files they belong to. The mapper uses that information to connect a Composer component to its Java implementation.
+
+      ## Connecting configuration to classes
+
+      The Java index reads source declarations and records which classes belong to which files. Mapping uses that information when a Composer definition names a Java implementation. Indexing identifies the code but does not run it or convert it.
   - id: mapper-analysis
     type: component
     name: Reusable indexed analysis
-    description: Persists indexed facts and supports fingerprint-based reuse and recovery.
+    description: Reuses indexed analysis and checkpoints.
     parent: composer-mapper
     technologies:
       - Java
+    tags: [map-evidence]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/storage/**
+    details: |
+      In indexed mode, this part saves parsed XML and Java analysis results in a SQLite database inside the map output folder. It compares file hashes when reusing earlier results, so unchanged files do not have to be analyzed again.
+
+      ## Saving and reusing parsed results
+
+      The analysis session captures original file hashes, reads XML into ordered database rows, and stores facts produced by Java syntax analysis. It also records Java ownership and dependencies. Reuse checks file hashes, while recovery can restore a completed compatible source index before map rendering restarts.
   - id: mapper-vault
     type: component
     name: Vault generation
-    description: Writes qualified scoped evidence or legacy Markdown notes and manifests.
+    description: Publishes scoped or legacy vault evidence.
     parent: composer-mapper
     technologies:
       - Java
+    tags: [map-evidence]
     code:
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/ScopedVaultGenerationService.java
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/service/StreamingGenerationService.java
       - source/composer-mapper/src/main/java/il/co/dcd/composermapper/render/**
+    details: |
+      Vault generation writes the map output that the converter will read later. This includes Markdown component descriptions and, depending on the mode, database records or manifest files that connect operations to their dependencies.
+
+      ## Output used by intake
+
+      The scoped writer resolves operation definitions, configuration, component references, and operation calls, then writes the related descriptions. Indexed output includes database records and a manifest pointing to the analysis store; older layouts use their own manifest and note representation. Intake later validates and imports the selected output.
   - id: verification-java
     type: app
     name: Java behavior verification tool
-    description: Resolves source-backed inherited and delegated format lifecycles and compares original behavior with independent native APIs.
+    description: Analyzes boundaries and compares behavior.
     parent: snapir
     technologies:
       - Java
+    tags: [validation, original-source]
     code:
       - source/behavior-verification-java/src/**
+    details: |
+      Java behavior verification tool reads the original and generated Java code to find methods and follow the calls they make. Where comparison is supported, its test harness can run both versions and compare their behavior without requiring the generated classes to copy the old class structure.
+
+      ## Original and generated code
+
+      The analyzer identifies entry methods and follows reachable method calls from the supplied source files and project libraries. Format analysis also resolves inherited and delegated calls with their source locations. The comparison harness uses original lifecycle calls on the legacy side while the generated side can use an independent public API; the Python caller checks tool compatibility before use.
   - id: run-state
     type: store
     name: Run state
-    description: Persists selected inventory, plans, attempts, approvals, and acceptance evidence.
+    description: Stores run progress and accepted evidence.
     parent: snapir
     technologies:
       - SQLite
+    tags: [run-evidence]
+    details: |
+      Run state is the SQLite database for a particular conversion run. It stores the selected work, plan, attempts, test results, and approvals so the converter knows what has happened and where to continue.
+
+      ## Saving progress
+
+      The database belongs to a conversion run and records selection, plans, attempts, reviews, approval decisions, and accepted results. Resume uses those records together with current source and project checks to decide what can continue. Saved-run diagnostics opens the database read-only.
   - id: composer-map
     type: store
     name: Reusable Composer map
-    description: Holds indexed analysis and scoped or legacy vault evidence.
+    description: Stores indexed facts and vault evidence.
     parent: snapir
     technologies:
       - SQLite
       - Markdown
+    tags: [map-evidence]
+    details: |
+      Reusable Composer map is the output of Composer Mapper. It holds component descriptions and dependency information, with a separate analysis database in indexed mode, so preparation can gather what each selected operation needs.
+
+      ## How the converter uses it
+
+      Intake validates the chosen map and imports the selected operation and component records into run state. Preparation follows the map links to gather the operation sources and dependencies. The indexed map database is part of the map output, not the database that records migration attempts and approvals.
   - id: workspace-cache
     type: store
     name: Workspace analysis cache
-    description: Reuses fingerprinted workspace facts for legacy inventory analysis.
+    description: Caches fingerprinted workspace analysis.
     parent: snapir
     technologies:
       - SQLite
+    tags: [original-source]
+    details: |
+      Workspace analysis cache stores results of earlier workspace scans used by the older discovery path. File fingerprints help the converter decide whether those scan results can still be used.
+
+      ## When it can be reused
+
+      The older inventory discovery path can reuse workspace facts when their fingerprints match the current inputs. These are scan results, not accepted conversion results. The cache is separate from both the map output and the run database.
   - id: deliverables
     type: store
     name: Generated projects and reports
-    description: Holds generated Java projects, build receipts, reports, and deployment artifacts.
+    description: Stores generated projects and run reports.
     parent: snapir
     technologies:
       - Filesystem
+    tags: [generated-code, run-evidence]
+    details: |
+      Generated projects and reports is where the run keeps generated Java files, build and test results, and other reports. Later stages read these files to check what passed and collect the final output.
+
+      ## How later stages use these files
+
+      Build and review stages write reports and receipts here, while generation and packaging produce projects and deployment materials. Active-run diagnostics can also write oversized request captures under the run reports. Finalization checks current files and required records before collecting the final output.
   - id: legacy-workspace
     type: system
     name: Legacy Composer workspace
-    description: Provides original XML configuration, Java implementations, and classpath dependencies.
+    description: Supplies original Composer source evidence.
     external: true
+    tags: [original-source]
+    details: |
+      Legacy Composer workspace is the original project being converted. It contains the XML definitions, Java implementations, and libraries that the converter reads to understand how the old operations work.
+
+      ## Keeping track of the originals
+
+      The mapper reads configuration and implementations from this workspace, and preparation checks the original source files it needs. Source identities and content hashes connect saved analysis to the file versions that produced it. A later source change can invalidate saved preparation or conversion work.
   - id: model-provider
     type: system
     name: Configured model provider
-    description: Generates structured conversion results and reviews through Gemini or a compatible endpoint.
+    description: Generates structured results and reviews.
     external: true
+    tags: [ai]
+    details: |
+      Configured model provider is the AI service chosen for this run. It receives source material and instructions and returns proposed code or review results, which the converter checks before using.
+
+      ## What the provider supplies
+
+      The configured endpoint can be Gemini or a compatible provider. It returns proposed code, plans, metadata decisions, or reviews for the job that called it. The converter still checks the response format, applicable build and behavior results, and required human decisions before accepting the work.
 connections:
+  - id: components-lifecycle
+    from: components
+    to: verification
+    description: Uses verified format lifecycle evidence
+    technology: Source-backed boundary evidence
+    tags: [ai, original-source, generated-code]
+    details: |
+      Format component conversion reads the original method information found by the Java analyzer. This helps it include inherited or delegated format methods instead of assuming they are declared directly on the component class.
+  - id: generation-request-budget
+    from: generation
+    to: request-diagnostics
+    description: Checks request character budgets
+    technology: function call
+    tags: [ai, generated-code, run-evidence]
+    details: |
+      Before sending a request, the shared check counts its JSON data and instructions. It measures again after correction text is shortened when that correction path is used.
+  - id: model-diagnostic-scope
+    from: model-executor
+    to: request-diagnostics
+    description: Scopes captures to the active run
+    technology: Context manager
+    tags: [ai, diagnostics, run-evidence]
+    details: |
+      While run diagnostics is active, it tells the capture code which run folder to use. An oversized request found by the shared budget check can then be saved with that run.
+  - id: request-capture-output
+    from: request-diagnostics
+    to: deliverables
+    description: Saves oversized requests before submission
+    technology: Filesystem
+    tags: [diagnostics, ai, run-evidence]
+    details: |
+      An oversized request is saved with its instructions and size report in the run folder. The capture says which budget check stopped it and leaves out provider transport settings.
+  - id: operator-diagnostics
+    from: operator
+    to: diagnostics-cli
+    description: Selects a saved run to inspect
+    technology: CLI
+    tags: [approvals, diagnostics, run-evidence]
+    details: |
+      The operator selects a saved run for inspection. This reads what happened without starting another conversion attempt.
+  - id: diagnostics-state
+    from: diagnostics-cli
+    to: run-state
+    description: Reads saved migration state
+    technology: Read-only SQLite
+    tags: [diagnostics, run-evidence]
+    details: |
+      The diagnostics command opens the run database for reading only. It can explain the saved state without changing the run or moving it forward.
+  - id: diagnostics-captures
+    from: diagnostics-cli
+    to: deliverables
+    description: Reads reports and request captures
+    technology: Filesystem
+    tags: [diagnostics, run-evidence, generated-code]
+    details: |
+      The diagnostics command reads the saved reports and captured requests. If an old request was never captured, the tool does not try to rebuild it from today's source files.
+  - id: diagnostics-export
+    from: diagnostics-cli
+    to: diagnostic-exports
+    description: Exports sources and occurrence manifests
+    technology: Filesystem
+    tags: [diagnostics, run-evidence]
+    details: |
+      The command copies each captured request and extracts its embedded source text into files. It also writes a manifest that shows where each extracted piece appeared in the request.
   - id: operator-intake
     from: operator
     to: intake-control
     description: Starts a selected migration run
     technology: CLI
+    tags: [approvals, orchestration]
+    details: |
+      The operator starts a run with a selected workspace, configuration, and set of operations. Intake routing chooses the corresponding discovery and mapping path and records the run as it progresses.
   - id: operator-resume
     from: operator
     to: checkpoints
     description: Resumes a persisted migration run
     technology: CLI
+    tags: [approvals, orchestration, run-evidence]
+    details: |
+      The operator chooses a saved run to continue. The converter first reads where that run stopped instead of restarting the entire process.
   - id: operator-gates
     from: operator
     to: gates
     description: Records explicit approval or rejection
     technology: CLI
+    tags: [approvals]
+    details: |
+      At a gate, the operator reads the current report and explicitly approves or rejects it. The converter records the decision against that report and the operation it applies to, so changed work cannot silently inherit an older approval.
   - id: intake-source
     from: source-discovery
     to: legacy-workspace
     description: Discovers sources, classpath, and source fingerprints
     technology: Filesystem
+    tags: [original-source]
+    details: |
+      Discovery reads the original Java files, project ownership information, and configured classpath dependencies. It records source fingerprints so later stages can tell which original file versions the discovered facts describe.
   - id: intake-mapper
     from: intake-control
     to: mapper-entry
     description: Runs mapping unless an existing map is supplied
     technology: Java subprocess
+    tags: [orchestration]
+    details: |
+      When the selected intake path needs to create a map, intake starts the Java Composer Mapper process. If the user supplied a suitable existing map, intake can validate and use it instead of rebuilding it.
   - id: mapper-source
     from: mapper-discovery
     to: legacy-workspace
     description: Reads Composer definitions and Java sources
     technology: Filesystem
+    tags: [original-source]
+    details: |
+      Composer file discovery reads source paths and channel information from the original workspace. The selected files are then supplied to the XML and Java parsing paths used by mapping.
   - id: mapper-map
     from: mapper-vault
     to: composer-map
     description: Publishes indexed analysis and vault evidence
     technology: SQLite / Filesystem
+    tags: [map-evidence]
+    details: |
+      The map writer publishes the component descriptions, operation relationships, and map metadata to the map output folder. Indexed mode also stores parsed analysis in SQLite; scoped and legacy output keep their applicable manifest and filesystem formats.
   - id: intake-map
-    from: map-validation
+    from: analyzer
     to: composer-map
     description: Validates and imports selected map evidence
     technology: SQLite / Filesystem
+    tags: [validation, map-evidence]
+    details: |
+      Composer analyzer checks that the selected map is complete and uses the expected format. It reads the original source references and fingerprints before importing the selected component and operation records into the run.
   - id: intake-cache
     from: source-discovery
     to: workspace-cache
     description: Reuses fingerprinted facts in legacy analysis
     technology: SQLite
+    tags: [original-source]
+    details: |
+      The older workspace discovery path reads and saves fingerprinted analysis facts in the workspace cache. Matching cached facts can avoid repeating work, but they do not replace the current run selection or the checks required for an imported map.
   - id: intake-state
-    from: vault-import
+    from: analyzer
     to: run-state
     description: Persists pinned selection and inventory
     technology: SQLite
+    tags: [validation, map-evidence, run-evidence]
+    details: |
+      The analyzer saves imported definitions and the selected component inventory in the run database. It also records the source analysis revision associated with that selection. Preparation can then tell exactly which operation records and source version belong to this run.
   - id: intake-plan
     from: intake-control
     to: plan-generation
     description: Prepares planning inputs on eligible legacy paths
     technology: function call
+    tags: [orchestration, ai]
+    details: |
+      Eligible older intake paths pass their discovered and selected work directly into plan construction. This route prepares planning inputs from intake rather than assuming every run passes through the same scoped preparation sequence.
   - id: resume-state
     from: checkpoints
     to: run-state
     description: Loads persisted configuration and current phase
     technology: SQLite
+    tags: [orchestration, run-evidence]
+    details: |
+      Resume reads the saved settings, current phase, and progress records from SQLite. It also rejects approval records that cannot be interpreted safely under the current gate numbering.
   - id: resume-coordinator
     from: checkpoints
     to: coordinator
     description: Continues selected operation execution
     technology: function call
+    tags: [orchestration, run-evidence]
+    details: |
+      When the saved phase calls for operation work, resume hands control to the operation coordinator. The coordinator then continues the selected operations in the plan.
   - id: coordinator-planning
     from: coordinator
     to: planning
     description: Resumes the approved dependency plan
     technology: function call
+    tags: [orchestration]
+    details: |
+      The coordinator reads the saved operation plan. That plan tells it which operations are selected and which dependencies must be completed first.
   - id: coordinator-behavior
     from: coordinator
     to: behavior-runner
     description: Runs the selected behavior-unit workflow
     technology: function call
+    tags: [orchestration, generated-code]
+    details: |
+      The coordinator starts or continues the behavior-unit conversion work for the selected operation. It keeps that work inside the operation order established by the plan.
   - id: resume-managed
     from: checkpoints
     to: managed-conversion
     description: Resumes applicable managed conversion phases
     technology: function call
+    tags: [orchestration, run-evidence, ai]
+    details: |
+      If the saved phase belongs to managed source conversion, resume continues that workflow. The managed path retains its component review, operation assembly, and operation review stages instead of being routed through an unrelated scoped conversion mode.
   - id: behavior-scoped
     from: behavior-runner
     to: scoped-native
     description: Routes scoped runs to qualified native execution
     technology: function call
+    tags: [orchestration, generated-code, approvals]
+    details: |
+      When the run uses scoped conversion, the behavior runner calls the scoped runner. That runner checks preparation, conversion mode, and approvals before continuing.
   - id: scoped-preparation
     from: scoped-native
     to: preparation
     description: Prepares selected evidence before any generation
     technology: function call
+    tags: [orchestration, approvals]
+    details: |
+      The scoped runner calls preparation before it attempts native conversion. Preparation resolves the selected operations and writes a report of their inputs and blockers; prepare-only mode returns after this work without starting generation.
   - id: preparation-map
     from: prepared-closure
     to: composer-map
     description: Resolves and checks pinned source-linked evidence
     technology: Filesystem / SQLite
+    tags: [original-source, map-evidence]
+    details: |
+      To gather an operation's dependencies, preparation follows the selected map's component records and links. It checks that they still belong to the imported source version.
   - id: preparation-source
     from: preparation-reuse
     to: legacy-workspace
     description: Checks current original source evidence
     technology: Filesystem
+    tags: [validation, run-evidence, original-source]
+    details: |
+      The reuse check compares the recorded sources with the current original files. A changed file can make the old preparation result unusable.
   - id: preparation-state
     from: preparation-reuse
     to: run-state
     description: Validates reusable preparation checkpoints
     technology: SQLite
+    tags: [validation, run-evidence]
+    details: |
+      The reuse check reads saved preparation records and compares them with the current inputs. Only matching records are used again.
   - id: scoped-plan
     from: scoped-native
     to: plan-generation
     description: Resolves an execution plan for prepared operations
     technology: function call
+    tags: [orchestration, approvals, ai]
+    details: |
+      The scoped runner uses the prepared operation closures to resolve its execution plan. This associates the planned work with the selected operation inputs before plan approval and generation gates are checked.
   - id: planning-state
     from: plan-validation
     to: run-state
     description: Persists and restores dependency-ordered plans
     technology: SQLite
+    tags: [validation, run-evidence]
+    details: |
+      After checking the plan, validation saves it in the run database with the selected operation scope and dependency order. Resume and operation coordination read the saved plan to determine what should run next.
   - id: scoped-gates
     from: scoped-native
     to: gates
     description: Requires plan approval and Gate 1 before generation
     technology: function call
+    tags: [orchestration, approvals]
+    details: |
+      The runner checks the approvals required before generating code. The saved decision must belong to the current report, not an older version of it.
   - id: scoped-components
     from: scoped-native
     to: components
-    description: Converts basic components only in component-first mode
+    description: Converts components in component-first mode
     technology: function call
+    tags: [orchestration, approvals, ai]
+    details: |
+      In component-first mode, the scoped runner starts conversion of reusable basic components before configured units. It checks the component results and stops when required component work remains incomplete or deferred.
   - id: scoped-behavior
     from: scoped-native
-    to: unit-conversion
-    description: Converts qualified units after readiness and approval
+    to: behavior-runner
+    description: Converts qualified native units
     technology: function call
+    tags: [orchestration, approvals, generated-code]
+    details: |
+      Once the selected mode, preparation, and approvals allow it, the runner starts converting the operation's units. Missing inputs or an unsupported mode keep this handoff from happening.
   - id: components-generation
     from: components
     to: generation
     description: Requests scoped component implementations
     technology: function call
+    tags: [ai, original-source, generated-code]
+    details: |
+      Component conversion sends the AI the original component code, configuration, and conversion instructions. The shared generator handles its attempts and correction feedback.
   - id: behavior-generation
-    from: unit-conversion
+    from: behavior-runner
     to: generation
-    description: Requests unit and operation bundles with original evidence
+    description: Requests unit and operation code
     technology: function call
-  - id: generation-staged
-    from: generation
-    to: staged-generation
-    description: Routes registered code tasks through staging when enabled
-    technology: function call
-  - id: staged-model
-    from: production-stage
-    to: model-executor
-    description: Requests narrow implementation, metadata, and test results
-    technology: function call
+    tags: [orchestration, generated-code, ai]
+    details: |
+      The operation workflow asks the generator to convert units and assemble operation code. Already accepted unit code and method information guide the operation-building jobs.
+
+      The requests include original source material. Unit results provide accepted public methods and files for operation assembly, which can also generate operation scenario tests.
   - id: generation-model
     from: generation
     to: model-executor
     description: Requests structured generation or review results
     technology: function call
+    tags: [ai, generated-code, run-evidence]
+    details: |
+      The generator passes its instructions and serialized job data to the shared AI executor. In staged mode, requests are split between production implementation, applicable dependency or mapping decisions, and focused test generation. The returned response still goes through the schema and checks required by that job.
   - id: model-provider-call
     from: model-executor
     to: model-provider
     description: Submits bounded model requests
     technology: HTTPS / ADK
-  - id: staged-verification
-    from: production-stage
-    to: verification
-    description: Compiles production and validates staged results
-    technology: function call
+    tags: [ai]
+    details: |
+      The executor submits the request to the configured provider through its supported HTTPS or ADK transport. It handles configured timeouts and temporary transport retries, then returns the response for the owning workflow to validate.
   - id: generation-verification
     from: generation
     to: verification
     description: Validates candidates before acceptance
     technology: function call
+    tags: [ai, generated-code, run-evidence]
+    details: |
+      The proposed code is passed to the checks required by its conversion job. If those checks fail, their errors can be used to request a corrected attempt.
+
+      The shared path includes original method obligations, production compilation, and the final checks for an assembled staged candidate. When optional side-road recovery is used, both its baseline and simplified candidate require the applicable build, test, and observed-case comparison results.
   - id: verification-java-call
     from: verification
     to: verification-java
     description: Inspects APIs and compares executable behavior when applicable
     technology: Java subprocess
+    tags: [validation, generated-code, original-source]
+    details: |
+      The Java analyzer finds the original methods and the calls they make, including inherited and delegated format calls. Its comparison harness uses those original calls on the old-code side, while the new code can expose its own API.
+
+      The Python code starts a Java subprocess and exchanges analysis or comparison jobs and results through XML. Source-backed original lifecycle calls are used only on the legacy side of execution, while generated method bindings remain independent.
   - id: verification-deliverables
     from: verification
     to: deliverables
     description: Writes build, test, and comparison evidence
     technology: Filesystem
+    tags: [validation, generated-code, run-evidence]
+    details: |
+      Validation writes build, test, and applicable behavior comparison results to the run output. Review and finalization use those saved results together with current project checks to decide what has passed.
   - id: generation-state
     from: generation
     to: run-state
-    description: Retains attempts, compatibility fingerprints, and accepted results
+    description: Stores attempts and accepted results
     technology: SQLite
-  - id: staged-state
-    from: tests-stage
-    to: run-state
-    description: Retains stage revisions, feedback, and readiness
-    technology: SQLite
-  - id: generation-recovery
-    from: generation
-    to: side-road
-    description: Recovers eligible failures only when side-road mode is enabled
-    technology: function call
-  - id: recovery-generation
-    from: side-road
-    to: generation
-    description: Generates baseline and simplified candidates with recursive recovery disabled
-    technology: function call
-  - id: recovery-verification
-    from: side-road
-    to: verification
-    description: Requires matched baseline and simplification evidence
-    technology: function call
+    tags: [ai, generated-code, run-evidence]
+    details: |
+      The generator saves attempts, accepted results, and the separate results of staged generation. When production code changes, later staged results must be checked again instead of reused unchanged.
+
+      Saved records also include compatibility fingerprints, stage revisions, feedback, and whether later stages are ready. Reuse must match the current task and its remaining attempt rules; a saved candidate is still subject to the current checks.
   - id: behavior-gates
-    from: operation-composition
+    from: behavior-runner
     to: gates
-    description: Checks Gates 1, 2, and 3 against current plan and reviews
+    description: Checks current operation approvals
     technology: function call
+    tags: [orchestration, generated-code, approvals]
+    details: |
+      The behavior workflow checks the applicable operation reports at Gates 1, 2, and 3. A decision must still match the current plan, report, and operation before the workflow uses it to continue.
   - id: gates-state
     from: gates
     to: run-state
     description: Persists decisions keyed by report hash and operation scope
     technology: SQLite
+    tags: [approvals, run-evidence]
+    details: |
+      Approval decisions are stored in the run database with the report hash and operation scope. Later stages look up those values to determine whether an existing decision still applies to the work now being performed.
   - id: behavior-services
-    from: operation-composition
+    from: behavior-runner
     to: service-wrappers
-    description: Generates services after approved operation reviews
+    description: Creates services after operation approval
     technology: function call
+    tags: [orchestration, generated-code, ai]
+    details: |
+      After the operation implementation has passed its required review and gates, the behavior workflow calls service wrapper generation. The approved operation sources become inputs to the service project rather than being rewritten during wrapper creation.
   - id: managed-model
     from: managed-conversion
     to: model-executor
     description: Requests managed source conversion results
     technology: function call
+    tags: [ai, generated-code]
+    details: |
+      Managed conversion sends its source-task instructions and original material to the shared model executor. The response returns to the managed workflow for its own source validation and review steps.
   - id: resume-services
     from: checkpoints
     to: services
-    description: Continues reviewed managed operations into service generation
+    description: Resumes reviewed service creation
     technology: function call
+    tags: [orchestration, run-evidence]
+    details: |
+      When a saved run is ready for service creation, resume continues from the reviewed operation sources. Service generation still checks the applicable approvals and produces current build and validation results before it can be treated as complete.
   - id: services-model
     from: service-wrappers
     to: model-executor
     description: Requests wrappers around approved sources
     technology: function call
+    tags: [ai, generated-code, approvals]
+    details: |
+      Service wrapper generation asks the AI for the surrounding service code using the approved operation sources and required wiring. The generated files must preserve those operation sources and pass the service project checks.
   - id: services-verification
     from: service-build
     to: verification
     description: Builds and tests final service projects
     technology: function call
+    tags: [validation, generated-code]
+    details: |
+      The service build submits the final generated project to the shared validation tools. These checks produce results for the actual service project, rather than assuming that passing tests for smaller converted components is enough.
   - id: services-output
     from: service-packaging
     to: deliverables
-    description: Stages approved sources and packaged service artifacts
+    description: Writes packaged service artifacts
     technology: Filesystem
+    tags: [generated-code, run-evidence]
+    details: |
+      Packaging writes executable project structure, accepted operation sources, and configured delivery artifacts into the output folders. The produced files are available for finalization and later deployment use; writing them does not deploy the service.
   - id: behavior-finalization
-    from: operation-composition
+    from: behavior-runner
     to: final-evidence
-    description: Finalizes only after service generation returns validation evidence readiness
+    description: Starts final evidence checks
     technology: function call
+    tags: [orchestration, generated-code, validation]
+    details: |
+      The behavior workflow starts final evidence checking only after service generation returns the required validation readiness. Finalization then verifies current operation and service results before creating the final output report.
   - id: finalization-output
     from: final-artifacts
     to: deliverables
     description: Checks evidence and writes reports and manifests
     technology: Filesystem
+    tags: [ai, generated-code, run-evidence]
+    details: |
+      After the required evidence checks, the documentation and manifest work writes its output to the deliverable folders. The final report records that file inventory so the operator can see what was produced.
   - id: finalization-gates
     from: final-approval
     to: gates
-    description: Requires complete accepted evidence at Gate 5 and checks prior approvals
+    description: Requires final and prior approvals
     technology: function call
+    tags: [approvals, run-evidence]
+    details: |
+      Final approval checks the current validation report at Gate 5 and verifies the earlier approvals that apply to the run. Missing accepted results or required prior decisions remain blockers rather than being waived by a final approval.
   - id: publication-output
     from: coordinator
     to: deliverables
-    description: Verifies publication artifacts for dependent operations
+    description: Checks dependency publication artifacts
     technology: Filesystem
+    tags: [orchestration, generated-code, run-evidence]
+    details: |
+      Before another operation uses published output, the coordinator checks the files and the records describing them. A file being present is not enough to prove it is the right accepted version.
   - id: services-gates
     from: service-wrappers
     to: gates
-    description: Requires Gate 3 and, when microservices are enabled, Gate 4 creation approval
+    description: Requires applicable service approvals
     technology: function call
+    tags: [ai, generated-code, approvals]
+    details: |
+      Service generation requires the current operation approval at Gate 3. When microservice creation is enabled, it also requires the applicable Gate 4 creation approval before proceeding.
   - id: resume-finalization
     from: checkpoints
     to: finalization
-    description: Resumes finalization when validation evidence is ready
+    description: Resumes ready finalization
     technology: function call
+    tags: [orchestration, run-evidence]
+    details: |
+      If the saved phase is finalization and the required validation results are available, resume continues the final output work. The final stage still checks current project fingerprints, missing results, and applicable approvals.
   - id: intake-discovery
     from: intake-control
     to: source-discovery
     description: Resolves sources and classpath on the applicable intake path
     technology: function call
+    tags: [orchestration, original-source]
+    details: |
+      Intake asks discovery to locate source files and the libraries their Java projects need. The returned project information is used when analyzing the code.
   - id: intake-analyzer
     from: intake-control
     to: analyzer
     description: Analyzes and imports selected mapped evidence
     technology: function call
-  - id: analyzer-validation
-    from: analyzer
-    to: map-validation
-    description: Checks selected map and source evidence
-    technology: function call
-  - id: analyzer-inventory
-    from: analyzer
-    to: selected-inventory
-    description: Builds selected inventory from indexed facts or discovered sources
-    technology: function call
-  - id: analyzer-import
-    from: analyzer
-    to: vault-import
-    description: Imports selected Composer definitions
-    technology: function call
-  - id: analyzer-invalidation
-    from: analyzer
-    to: analysis-invalidation
-    description: Records imported evidence and applicable hash changes
-    technology: function call
-  - id: inventory-state
-    from: selected-inventory
-    to: run-state
-    description: Pins selected inventory and analysis revision
-    technology: SQLite
+    tags: [orchestration, validation, map-evidence]
+    details: |
+      Intake passes the chosen map to Composer analyzer. The analyzer checks it and loads the selected components and dependencies into the run.
   - id: mapper-entry-discovery
     from: mapper-entry
     to: mapper-discovery
     description: Discovers Composer source files
     technology: function call
+    tags: [orchestration, original-source]
+    details: |
+      The mapper asks discovery for the Composer files in the selected workspace and channels. The returned file list tells the mapping path what to read.
   - id: mapper-entry-index
     from: mapper-entry
     to: mapper-index
     description: Builds legacy definition indexes on the legacy path
     technology: function call
+    tags: [orchestration, original-source]
+    details: |
+      The older mapping path builds its source indexes before writing the Markdown files. The scoped path shown separately requests its catalog while building the map.
   - id: mapper-entry-analysis
     from: mapper-entry
     to: mapper-analysis
-    description: Opens reusable analysis for indexed mode
+    description: Opens indexed analysis and reuse
     technology: function call
+    tags: [orchestration, map-evidence]
+    details: |
+      Indexed mode starts an analysis session backed by a SQLite database in the map folder. It can reuse unchanged file analysis or restore a supported completed index.
   - id: mapper-entry-vault
     from: mapper-entry
     to: mapper-vault
     description: Generates the selected vault layout
     technology: function call
+    tags: [orchestration, map-evidence]
+    details: |
+      The chosen mapping mode starts the writer that produces the map folder. The writer creates component descriptions and the links later used by the converter.
   - id: mapper-vault-index
     from: mapper-vault
     to: mapper-index
-    description: Builds qualified definitions for scoped generation
+    description: Builds qualified scoped definitions
     technology: function call
+    tags: [map-evidence, original-source]
+    details: |
+      The scoped map writer builds a catalog of component definitions from the source indexes. It uses that catalog to resolve an operation and the components it refers to.
   - id: mapper-index-xml
     from: mapper-index
     to: mapper-xml-index
     description: Indexes XML and channel declarations
     technology: function call
+    tags: [original-source]
+    details: |
+      The definition index calls the XML and INI indexers to read Composer definitions and channel registrations. Their results associate configured component names with the original declarations used by the map catalog.
   - id: mapper-index-java
     from: mapper-index
     to: mapper-java-index
     description: Indexes Java declarations
     technology: function call
+    tags: [original-source]
+    details: |
+      The definition index calls Java declaration indexing to associate class names with their owning source files. These lookups help the map connect configured implementations to the actual Java source.
   - id: mapper-analysis-store
     from: mapper-analysis
     to: composer-map
     description: Persists reusable analysis and recovery checkpoints
     technology: SQLite
+    tags: [map-evidence]
+    details: |
+      The indexed analysis session saves parsed file facts, source fingerprints, and supported recovery checkpoints in the map SQLite database. Reuse compares the recorded inputs so unchanged facts can be used without reparsing those files.
   - id: preparation-closure
     from: scoped-native
     to: prepared-closure
-    description: Builds qualified selected operation closures
+    description: Builds selected operation closures
     technology: function call
+    tags: [orchestration, approvals, original-source]
+    details: |
+      The scoped runner asks for the complete set of components needed by the selected operations. It cannot proceed if required sources or dependencies are unresolved.
   - id: closure-contracts
     from: prepared-closure
     to: prepared-contracts
-    description: Supplies closures for context contracts and call binding
+    description: Supplies closure evidence
     technology: In-memory evidence
+    tags: [original-source, map-evidence]
+    details: |
+      The collected operation sources and dependencies are used to work out data contracts and calls between operations. This keeps the call decisions tied to the original project.
   - id: contracts-units
     from: prepared-contracts
     to: prepared-units
-    description: Supplies resolved contracts and bindings to configured unit preparation
+    description: Supplies contracts and call bindings
     technology: In-memory evidence
+    tags: [original-source]
+    details: |
+      The resolved data contracts and call targets are added to the smaller conversion jobs. Each job then carries the settings and original code its generator will need.
   - id: preparation-reuse-check
     from: scoped-native
     to: preparation-reuse
-    description: Checks freshness before reusing prepared contexts
+    description: Checks prepared evidence freshness
     technology: function call
+    tags: [orchestration, approvals, validation]
+    details: |
+      The runner checks whether a previous preparation result can be used again. The stored result must still match the current source files and settings.
   - id: plan-order
     from: plan-generation
     to: dependency-order
-    description: Uses dependency preflight and mandatory operation order
+    description: Orders operation dependencies
     technology: function call
+    tags: [ai, validation]
+    details: |
+      Plan construction asks which operations call other operations and must therefore wait for them. The returned order keeps dependent work from starting too early.
   - id: plan-validate
     from: plan-generation
     to: plan-validation
     description: Validates the constructed migration plan
     technology: function call
+    tags: [ai, validation, run-evidence]
+    details: |
+      The proposed plan is checked against the selected operations and required order. Only a plan that passes those checks is saved for execution.
   - id: plan-model
     from: plan-generation
     to: model-executor
-    description: Requests the migration plan when the selected path uses model planning
+    description: Requests the migration plan when the selected
     technology: function call
-  - id: unit-composition
-    from: unit-conversion
-    to: operation-composition
-    description: Supplies accepted unit APIs and artifacts for operation assembly
-    technology: Accepted unit bundles
-  - id: operation-generation
-    from: operation-composition
-    to: generation
-    description: Generates operation implementations and scenario tests
-    technology: function call
-  - id: staged-production
-    from: staged-generation
-    to: production-stage
-    description: Generates production code separately from tests
-    technology: function call
-  - id: production-metadata
-    from: production-stage
-    to: metadata-stage
-    description: Inspects generated production APIs before binding and test requests
-    technology: Parsed Java metadata
-  - id: metadata-tests
-    from: metadata-stage
-    to: tests-stage
-    description: Supplies accepted APIs and bindings for focused tests
-    technology: Typed task payload
-  - id: metadata-model
-    from: metadata-stage
-    to: model-executor
-    description: Requests dependency or mapping decisions when ambiguous
-    technology: function call
-  - id: tests-model
-    from: tests-stage
-    to: model-executor
-    description: Requests focused test sources
-    technology: function call
-  - id: tests-validation
-    from: tests-stage
-    to: verification
-    description: Submits assembled candidates to current acceptance checks
-    technology: function call
+    tags: [ai]
+    details: |
+      On paths that use model planning, plan construction sends the selected work and planning instructions through the shared model executor. The returned proposal still has to satisfy mandatory dependency ordering and plan validation before it is saved.
   - id: wrappers-build
     from: service-wrappers
     to: service-build
-    description: Submits generated service sources for build and test validation
+    description: Builds and tests generated services
     technology: Generated service project
+    tags: [ai, generated-code, approvals]
+    details: |
+      The generated service sources are passed to the build and test step. Its saved results show whether the current project compiles, passes its required tests, and can be packaged.
   - id: wrappers-packaging
     from: service-wrappers
     to: service-packaging
-    description: Configures executable and deployment artifacts
+    description: Configures executable artifacts
     technology: function call
+    tags: [ai, generated-code, approvals]
+    details: |
+      Service creation configures the executable project layout and the deployment files requested in the settings. This prepares files for delivery without deploying them.
   - id: final-evidence-artifacts
     from: final-evidence
     to: final-artifacts
-    description: Supplies current evidence for documentation and deployment deliverables
+    description: Supplies current deliverable evidence
     technology: Validated artifact evidence
+    tags: [validation, run-evidence, ai]
+    details: |
+      After checking the current results, finalization supplies the operation information needed to write documentation and deployment files. It stops if required results are missing or outdated.
   - id: final-artifacts-approval
     from: final-artifacts
     to: final-approval
-    description: Supplies deliverable inventory for the final validation report
+    description: Supplies the final deliverable inventory
     technology: Deliverable inventory
+    tags: [ai, approvals, run-evidence]
+    details: |
+      The list of completed output files is added to the final report. The operator reviews that report at Gate 5.
   - id: intake-prepared-handoff
-    from: vault-import
+    from: analyzer
     to: prepared-closure
-    description: Provides imported selected definitions for qualified preparation
+    description: Hands off pinned source evidence
     technology: Persisted run evidence
+    tags: [validation, map-evidence, original-source]
+    details: |
+      After analysis and import, preparation reads the selected operation and component definitions from run state. Those records identify the source versions used by intake, so preparation can gather the matching original files and dependencies.
   - id: plan-conversion-handoff
     from: plan-validation
-    to: unit-conversion
-    description: Provides approved task selection and dependency order
+    to: behavior-runner
+    description: Hands off validated task order
     technology: Persisted migration plan
+    tags: [validation, run-evidence, orchestration]
+    details: |
+      The validated migration plan supplies the selected tasks and required dependency order to the behavior workflow. Execution stays within that plan and still checks the current approvals before generating code.
   - id: service-final-handoff
     from: service-build
     to: final-evidence
-    description: Provides successful service receipts for final freshness checks
+    description: Hands off service validation receipts
     technology: Service validation evidence
+    tags: [validation, generated-code, run-evidence]
+    details: |
+      Successful service build results are passed to the final evidence checks. Finalization compares the saved receipts and project fingerprints with the current service output before completing the deliverables.

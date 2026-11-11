@@ -1,8 +1,7 @@
 id: conversion-resume
 name: Resume and evidence reuse
-description: Resume rechecks preparation and task compatibility rather than treating saved results as unconditional
-  acceptance.
-diagram: scope-conversion-cli
+description: Resumes work with current evidence checks.
+diagram: conversion-resume
 steps:
 - connection: operator-resume
   description: Resume the selected persisted run.
@@ -17,25 +16,69 @@ steps:
   description: Resume behavior-unit execution for the selected operation.
 - connection: behavior-scoped
   description: Use scoped native execution for scoped runs.
-- connection: scoped-preparation
-  description: Reprepare qualified contexts from pinned evidence.
-- connection: preparation-map
-  description: Check reusable map evidence and checkpoint freshness.
-- connection: preparation-source
-  description: Check current source evidence; stale contexts block conversion.
-- connection: preparation-state
-  description: Validate stored preparation checkpoints against current evidence.
-- connection: scoped-gates
-  description: Recheck report-bound approval decisions.
-- connection: scoped-behavior
-  description: Continue only when the selected native mode and prepared contexts allow it.
-- connection: behavior-generation
-  description: Resume the owning generation task.
-- connection: generation-state
-  description: Check task compatibility and remaining durable attempt budgets before reuse.
-- connection: staged-state
-  description: Reuse eligible stage revisions and invalidate readiness when production changes.
-- connection: generation-verification
-  description: Apply current acceptance checks to resumed candidates.
-- connection: publication-output
-  description: Verify publication artifacts before dependent operations consume them.
+details: 'Resume rechecks preparation and task compatibility rather than treating saved results as unconditional
+  acceptance.
+
+
+  The steps cover the applicable scoped behavior-unit resume path and its conditional reuse checks. Managed conversion,
+  service creation, and finalization have their own phase routes. Saved results require current preparation, compatibility,
+  budget, and acceptance evidence.
+
+
+  **Continue drilling down:** use Preparation evidence reuse for freshness and gates, then Resumed generation acceptance
+  for compatible attempts and current validation. The routing flow stops at scoped execution so each step stays
+  visible.
+
+
+  ### Full scoped resume sequence
+
+
+  1. Resume the selected persisted run.
+
+  2. Read current phase and persisted configuration; reject ambiguous approvals from the previous Gate 4/5 numbering.
+
+  3. Continue the applicable operation workflow.
+
+  4. Load the dependency plan and its operation scope.
+
+  5. Resume behavior-unit execution for the selected operation.
+
+  6. Use scoped native execution for scoped runs.
+
+  7. Reprepare qualified contexts from pinned evidence.
+
+  8. Check reusable map evidence and checkpoint freshness.
+
+  9. Check current source evidence; stale contexts block conversion.
+
+  10. Validate stored preparation checkpoints against current evidence.
+
+  11. Recheck report-bound approval decisions.
+
+  12. Continue only when the selected native mode and prepared contexts allow it.
+
+  13. Resume the owning generation task.
+
+  14. Check task compatibility and remaining durable attempt budgets before reuse.
+
+  15. Reuse eligible stage revisions and invalidate readiness when production changes.
+
+  16. Apply current acceptance checks to resumed candidates.
+
+  17. Verify publication artifacts before dependent operations consume them.'
+narration:
+  intro: The operator chooses a saved run to continue. The converter reads where it stopped, reloads its plan, and
+    routes the work to the appropriate conversion path.
+  s:0: The operator selects the saved run. The converter uses its recorded progress to decide where to start again.
+  s:1: The converter reads the saved settings and the phase where it stopped. It also rejects approval records whose
+    old gate numbers would make their meaning ambiguous.
+  s:2: When the saved phase requires operation work, control passes to Operation coordinator. Other saved phases
+    have their own continuation paths.
+  s:3: The coordinator loads the selected operations and their dependency order from the plan. This tells it which
+    work can run next.
+  s:4: The coordinator continues the behavior-unit conversion work for the selected operation. That work will still
+    check its required inputs and results.
+  s:5: For a scoped run, the workflow calls Scoped native execution. This checks the selected mode, preparation
+    results, and approvals before conversion proceeds.
+  outro: The converter now knows where to continue. Next it checks that the saved preparation and generated results
+    still match the current inputs.

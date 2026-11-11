@@ -1,0 +1,21 @@
+id: service-generation
+name: Service creation and validation
+description: Wraps approved code and validates services.
+details: Approved operation sources are immutable wrapper inputs. Applicable microservice creation approval precedes
+  generation. Packaging and validation are cooperating responsibilities, not proof of deployment. Successful receipts
+  feed final evidence checks.
+diagram: scope-services
+steps:
+- connection: wrappers-packaging
+  description: Configure executable project structure and applicable deployment artifacts.
+- connection: wrappers-build
+  description: Build, test, and package the generated service project.
+narration:
+  intro: This flow starts with operation source files that have already passed review and approval. The converter
+    builds the surrounding service project and checks whether it can be built and packaged.
+  s:0: The converter adds the executable project structure and the requested deployment files around the approved
+    operation code. These files prepare the project for delivery without deploying it.
+  s:1: The generated service project is built, tested, and packaged, and the results are saved. Failed or missing
+    required results prevent finalization from accepting the service as complete.
+  outro: The saved build and test results are passed to finalization. Deployment files are part of the output, but
+    no service is deployed by this flow.

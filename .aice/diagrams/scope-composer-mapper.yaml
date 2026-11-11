@@ -1,27 +1,54 @@
 id: scope-composer-mapper
+name: L3 - Composer mapping pipeline
 scope: composer-mapper
+objects:
+- mapper-entry
+- mapper-discovery
+- mapper-index
+- mapper-analysis
+- mapper-vault
 layout:
-  composer-map:
-    x: 1412
-    y: 551
-  conversion-cli:
-    x: -54
-    y: 355
-  legacy-workspace:
-    x: 1436
-    y: 245
-  mapper-analysis:
-    x: 308
-    y: 548
-  mapper-discovery:
-    x: 1090
-    y: 47
   mapper-entry:
-    x: 293
-    y: 42
+    x: 0
+    y: 260
+  mapper-discovery:
+    x: 440
+    y: 0
   mapper-index:
-    x: 883
-    y: 129
+    x: 1320
+    y: 260
+  mapper-analysis:
+    x: 440
+    y: 260
   mapper-vault:
-    x: 1009
-    y: 388
+    x: 880
+    y: 260
+narration:
+  intro: Composer Mapper is the Java tool that reads the original project without asking AI to interpret it. This
+    view shows how it finds source files, builds component lookups, saves parsed information, and writes the map
+    output.
+  o:mapper-entry: Mapper mode selection reads the mapping options and starts the chosen path. It can build an indexed
+    map, produce the older map layout, or reuse eligible analysis from an earlier map.
+  e:mapper-entry->mapper-discovery: The mapper asks discovery for the Composer files in the selected workspace and
+    channels. The returned file list tells the mapping path what to read.
+  o:mapper-discovery: Composer file discovery searches the original workspace for the files used by the requested
+    channels. It passes that file list to the parsers so mapping knows which sources to read.
+  e:mapper-entry->mapper-analysis: Indexed mode starts an analysis session backed by a SQLite database in the map
+    folder. It can reuse unchanged file analysis or restore a supported completed index.
+  o:mapper-analysis: In indexed mode, this part saves parsed XML and Java analysis results in a SQLite database
+    inside the map output folder. It compares file hashes when reusing earlier results, so unchanged files do not
+    have to be analyzed again.
+  e:mapper-entry->mapper-vault: The chosen mapping mode starts the writer that produces the map folder. The writer
+    creates component descriptions and the links later used by the converter.
+  o:mapper-vault: Vault generation writes the map output that the converter will read later. This includes Markdown
+    component descriptions and, depending on the mode, database records or manifest files that connect operations
+    to their dependencies.
+  e:mapper-vault->mapper-index: The scoped map writer builds a catalog of component definitions from the source
+    indexes. It uses that catalog to resolve an operation and the components it refers to.
+  o:mapper-index: Definition and source indexing reads the Composer definitions and the Java classes behind them.
+    It builds lookup information that connects component names to their source files and declarations.
+  e:mapper-entry->mapper-index: The older mapping path builds its source indexes before writing the Markdown files.
+    The scoped path shown separately requests its catalog while building the map.
+  outro: The resulting component descriptions and dependency links let the converter collect an operation and the
+    code it needs. Open Definition and source indexing for the parsers, or return to intake to see how the map enters
+    a conversion run.

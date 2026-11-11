@@ -1,0 +1,20 @@
+id: intake
+name: Intake and selected evidence
+description: Maps and imports selected source evidence.
+details: Indexed map-first and legacy discovery are alternative intake paths. An existing map can avoid regeneration.
+  Open Composer analyzer for map checks, inventory, import, and invalidation.
+diagram: scope-intake
+steps:
+- connection: intake-discovery
+  description: Resolve workspace sources and project classpaths on the applicable path.
+- connection: intake-analyzer
+  description: Validate and import the selected mapped evidence.
+narration:
+  intro: The operator has selected some operations from the original Composer project. Intake locates their source
+    information and imports the component descriptions used by the rest of the run.
+  s:0: The applicable intake path locates original source files and their Java project libraries. An indexed map-first
+    run can take a different route from the older workspace discovery path.
+  s:1: Composer analyzer checks the selected map and imports its component records into the run database. It records
+    the selected dependencies and source changes for preparation to use.
+  outro: Preparation can now read the selected operation records and gather their dependencies. At this point the
+    converter has described the old project; it has not yet produced or accepted new code.

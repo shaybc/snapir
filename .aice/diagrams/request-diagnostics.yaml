@@ -1,0 +1,82 @@
+id: request-diagnostics
+name: Flow - Request capture and diagnostic export
+objects:
+- model-executor
+- generation
+- operator
+- request-diagnostics
+- diagnostics-cli
+- deliverables
+- run-state
+- diagnostic-exports
+connections:
+- model-diagnostic-scope
+- generation-request-budget
+- request-capture-output
+- operator-diagnostics
+- diagnostics-state
+- diagnostics-captures
+- diagnostics-export
+layout:
+  model-executor:
+    x: 0
+    y: 0
+  generation:
+    x: 0
+    y: 260
+  operator:
+    x: 0
+    y: 650
+  request-diagnostics:
+    x: 440
+    y: 130
+  diagnostics-cli:
+    x: 440
+    y: 650
+  deliverables:
+    x: 880
+    y: 130
+  run-state:
+    x: 880
+    y: 520
+  diagnostic-exports:
+    x: 880
+    y: 830
+narration:
+  intro: Sometimes an AI request is too large and the converter stops before sending it. This view first shows how
+    the operator inspects a saved run, then shows how the request was measured and captured during that run.
+  o:operator: The operator chooses which Composer operations to convert and approves the reports at the review points.
+    The operator can also continue a saved run or inspect why it stopped.
+  e:operator->diagnostics-cli: The operator selects a saved run for inspection. This reads what happened without
+    starting another conversion attempt.
+  o:diagnostics-cli: Saved run diagnostics CLI reads a saved run and reports what happened without continuing the
+    conversion. It can also export an oversized AI request and extract the source text embedded in it into separate
+    files.
+  e:diagnostics-cli->deliverables: The diagnostics command reads the saved reports and captured requests. If an
+    old request was never captured, the tool does not try to rebuild it from today's source files.
+  o:deliverables: Generated projects and reports is where the run keeps generated Java files, build and test results,
+    and other reports. Later stages read these files to check what passed and collect the final output.
+  e:diagnostics-cli->run-state: The diagnostics command opens the run database for reading only. It can explain
+    the saved state without changing the run or moving it forward.
+  o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
+    attempts, test results, and approvals so the converter knows what has happened and where to continue.
+  e:diagnostics-cli->diagnostic-exports: The command copies each captured request and extracts its embedded source
+    text into files. It also writes a manifest that shows where each extracted piece appeared in the request.
+  o:diagnostic-exports: This folder contains exported AI requests and the source text extracted from them. A manifest
+    records where each piece came from, including repeated pieces or files whose original names could not be resolved.
+  o:model-executor: Model execution sends requests to the configured AI provider and handles timeouts and temporary
+    connection failures. It returns the response to the conversion job, which then checks whether the result is
+    usable.
+  e:model-executor->request-diagnostics: While run diagnostics is active, it tells the capture code which run folder
+    to use. An oversized request found by the shared budget check can then be saved with that run.
+  o:request-diagnostics: Before a request is sent, this part counts the characters in its JSON data and instructions.
+    If the shared budget check finds it too large, active-run diagnostics can save the exact request for inspection.
+  e:request-diagnostics->deliverables: An oversized request is saved with its instructions and size report in the
+    run folder. The capture says which budget check stopped it and leaves out provider transport settings.
+  o:generation: Bounded generation sends the AI a conversion job together with the original source and instructions.
+    It checks the returned code and can send errors back for another attempt, within the allowed retry limit. In
+    staged mode it handles production code, method information, and tests separately.
+  e:generation->request-diagnostics: Before sending a request, the shared check counts its JSON data and instructions.
+    It measures again after correction text is shortened when that correction path is used.
+  outro: The saved request contains the actual source text and instructions being checked. The export makes those
+    materials easier to read and helps explain what made the request so large.

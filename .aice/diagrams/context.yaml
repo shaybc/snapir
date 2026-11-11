@@ -1,15 +1,39 @@
 id: context
-scope: null
+name: L1 - System context
+objects:
+- operator
+- snapir
+- legacy-workspace
+- model-provider
 layout:
-  legacy-workspace:
-    x: 741
-    y: -87
-  model-provider:
-    x: 756
-    y: 197
   operator:
-    x: -66
-    y: 27
+    x: 0
+    y: 0
   snapir:
-    x: 360
-    y: 41
+    x: 440
+    y: 0
+  legacy-workspace:
+    x: 880
+    y: 0
+  model-provider:
+    x: 880
+    y: 300
+narration:
+  intro: This is the converter as a whole. A person chooses Composer operations to migrate, the converter reads
+    the old project, and an AI service helps produce the new Java code.
+  o:operator: The operator chooses which Composer operations to convert and approves the reports at the review points.
+    The operator can also continue a saved run or inspect why it stopped.
+  e:operator->snapir: The operator uses commands to choose operations, start or continue a run, and approve its
+    reports. Those choices tell the converter what work it is allowed to perform.
+  o:snapir: Snapir conversion reads an existing Composer project and helps turn its operations into Java services.
+    It first maps the original code, then uses AI to generate code and runs checks before asking for approval.
+  e:snapir->legacy-workspace: The converter reads the original XML, Java code, and project libraries. It also checks
+    whether those source files changed since the saved analysis was made.
+  o:legacy-workspace: Legacy Composer workspace is the original project being converted. It contains the XML definitions,
+    Java implementations, and libraries that the converter reads to understand how the old operations work.
+  e:snapir->model-provider: The converter sends the AI a job with source material and instructions. The answer comes
+    back as a proposal that still needs checking.
+  o:model-provider: Configured model provider is the AI service chosen for this run. It receives source material
+    and instructions and returns proposed code or review results, which the converter checks before using.
+  outro: The converter checks and reviews the generated code before treating it as usable output. Open Snapir conversion
+    next to see the Python program, Java tools, and databases involved.

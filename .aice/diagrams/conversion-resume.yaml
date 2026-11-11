@@ -1,0 +1,72 @@
+id: conversion-resume
+name: Flow - Resume routing
+objects:
+- operator
+- checkpoints
+- coordinator
+- run-state
+- planning
+- behavior-runner
+- scoped-native
+connections:
+- operator-resume
+- resume-state
+- resume-coordinator
+- coordinator-planning
+- coordinator-behavior
+- behavior-scoped
+layout:
+  operator:
+    x: 0
+    y: 260
+  checkpoints:
+    x: 440
+    y: 260
+  coordinator:
+    x: 880
+    y: 390
+  run-state:
+    x: 880
+    y: 0
+  planning:
+    x: 1320
+    y: 260
+  behavior-runner:
+    x: 1320
+    y: 650
+  scoped-native:
+    x: 1760
+    y: 650
+narration:
+  intro: The operator has a saved run and wants to continue it. Follow the saved progress from the database to the
+    plan and the conversion code that should run next.
+  o:operator: The operator chooses which Composer operations to convert and approves the reports at the review points.
+    The operator can also continue a saved run or inspect why it stopped.
+  e:operator->checkpoints: The operator chooses a saved run to continue. The converter first reads where that run
+    stopped instead of restarting the entire process.
+  o:checkpoints: Resume and checkpoints reads where a saved run stopped and chooses which part should continue.
+    It reloads the saved settings and results, but the next stage still checks whether they match the current files.
+  e:checkpoints->run-state: Resume reads the saved settings, current phase, and progress records from SQLite. It
+    also rejects approval records that cannot be interpreted safely under the current gate numbering.
+  o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
+    attempts, test results, and approvals so the converter knows what has happened and where to continue.
+  e:checkpoints->coordinator: When the saved phase calls for operation work, resume hands control to the operation
+    coordinator. The coordinator then continues the selected operations in the plan.
+  o:coordinator: Operation coordinator works through the selected operations in dependency order. Before an operation
+    uses another converted operation, it checks that the required published files are available and valid.
+  e:coordinator->planning: The coordinator reads the saved operation plan. That plan tells it which operations are
+    selected and which dependencies must be completed first.
+  o:planning: This stage decides which operations need to be converted first. For example, an operation needed by
+    another operation must be handled before its caller can depend on it.
+  e:coordinator->behavior-runner: The coordinator starts or continues the behavior-unit conversion work for the
+    selected operation. It keeps that work inside the operation order established by the plan.
+  o:behavior-runner: This part converts the smaller units an operation needs, then joins their accepted code into
+    an operation implementation. It reviews the result and checks the required approvals before passing it to service
+    creation.
+  e:behavior-runner->scoped-native: When the run uses scoped conversion, the behavior runner calls the scoped runner.
+    That runner checks preparation, conversion mode, and approvals before continuing.
+  o:scoped-native: Scoped native execution checks which conversion mode was selected and whether the required inputs
+    and approvals are ready. In prepare-only mode it writes the preparation results and stops before generating
+    code.
+  outro: Resume has now chosen where to continue, but it has not accepted the old results automatically. The preparation
+    reuse and generation reuse flows show the checks that follow.

@@ -1,0 +1,84 @@
+id: preparation-reuse
+name: Flow - Preparation evidence reuse
+objects:
+- scoped-native
+- prepared-closure
+- preparation-reuse
+- composer-map
+- legacy-workspace
+- run-state
+- gates
+- behavior-runner
+connections:
+- preparation-closure
+- preparation-reuse-check
+- preparation-map
+- preparation-source
+- preparation-state
+- scoped-gates
+- scoped-behavior
+layout:
+  scoped-native:
+    x: 0
+    y: 450
+  prepared-closure:
+    x: 440
+    y: 0
+  preparation-reuse:
+    x: 440
+    y: 320
+  composer-map:
+    x: 880
+    y: 0
+  legacy-workspace:
+    x: 880
+    y: 260
+  run-state:
+    x: 880
+    y: 520
+  gates:
+    x: 440
+    y: 700
+  unit-conversion:
+    x: 440
+    y: 960
+narration:
+  intro: This view shows what must be checked before saved preparation can lead back into conversion. The tour first
+    shows the approvals and continuation, then returns to the map, source files, and database records that support
+    that decision.
+  o:scoped-native: Scoped native execution checks which conversion mode was selected and whether the required inputs
+    and approvals are ready. In prepare-only mode it writes the preparation results and stops before generating
+    code.
+  e:scoped-native->gates: The runner checks the approvals required before generating code. The saved decision must
+    belong to the current report, not an older version of it.
+  o:gates: Approval gates records a human decision together with the report that was reviewed. If the report changes,
+    the converter cannot treat an approval of the old report as approval of the new one.
+  e:scoped-native->behavior-runner: Once the selected mode, preparation, and approvals allow it, the runner starts
+    converting the operation's units. Missing inputs or an unsupported mode keep this handoff from happening.
+  o:behavior-runner: This part converts the smaller units an operation needs, then joins their accepted code into
+    an operation implementation. It reviews the result and checks the required approvals before passing it to service
+    creation.
+  e:scoped-native->prepared-closure: The scoped runner asks for the complete set of components needed by the selected
+    operations. It cannot proceed if required sources or dependencies are unresolved.
+  o:prepared-closure: Starting from one selected operation, this part gathers the components and other operations
+    it needs. It also finds the Java files and projects behind them, so conversion gets the whole required set rather
+    than just the operation name.
+  e:prepared-closure->composer-map: To gather an operation's dependencies, preparation follows the selected map's
+    component records and links. It checks that they still belong to the imported source version.
+  o:composer-map: Reusable Composer map is the output of Composer Mapper. It holds component descriptions and dependency
+    information, with a separate analysis database in indexed mode, so preparation can gather what each selected
+    operation needs.
+  e:scoped-native->preparation-reuse: The runner checks whether a previous preparation result can be used again.
+    The stored result must still match the current source files and settings.
+  o:preparation-reuse: Before using saved preparation work, this part compares its recorded inputs with the current
+    files and settings. If they have changed, the old preparation cannot be used as if it were still current.
+  e:preparation-reuse->legacy-workspace: The reuse check compares the recorded sources with the current original
+    files. A changed file can make the old preparation result unusable.
+  o:legacy-workspace: Legacy Composer workspace is the original project being converted. It contains the XML definitions,
+    Java implementations, and libraries that the converter reads to understand how the old operations work.
+  e:preparation-reuse->run-state: The reuse check reads saved preparation records and compares them with the current
+    inputs. Only matching records are used again.
+  o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
+    attempts, test results, and approvals so the converter knows what has happened and where to continue.
+  outro: The saved preparation must still describe the current operation and its dependencies. Use the Preparation
+    evidence reuse flow to hear the checks in their working order.

@@ -1,0 +1,53 @@
+id: scope-workflow-support
+name: L4 - Shared workflow capabilities
+scope: workflow-support
+objects:
+- checkpoints
+- coordinator
+- verification
+- request-diagnostics
+- model-executor
+- gates
+layout:
+  checkpoints:
+    x: 0
+    y: 0
+  coordinator:
+    x: 440
+    y: 0
+  verification:
+    x: 880
+    y: 300
+  request-diagnostics:
+    x: 440
+    y: 300
+  model-executor:
+    x: 0
+    y: 300
+  gates:
+    x: 880
+    y: 0
+narration:
+  intro: These shared parts help every stage call the AI, save progress, check results, and ask for approval. The
+    tour starts with how a saved run continues, then shows the common helpers.
+  o:checkpoints: Resume and checkpoints reads where a saved run stopped and chooses which part should continue.
+    It reloads the saved settings and results, but the next stage still checks whether they match the current files.
+  e:checkpoints->coordinator: When the saved phase calls for operation work, resume hands control to the operation
+    coordinator. The coordinator then continues the selected operations in the plan.
+  o:coordinator: Operation coordinator works through the selected operations in dependency order. Before an operation
+    uses another converted operation, it checks that the required published files are available and valid.
+  o:model-executor: Model execution sends requests to the configured AI provider and handles timeouts and temporary
+    connection failures. It returns the response to the conversion job, which then checks whether the result is
+    usable.
+  e:model-executor->request-diagnostics: While run diagnostics is active, it tells the capture code which run folder
+    to use. An oversized request found by the shared budget check can then be saved with that run.
+  o:request-diagnostics: Before a request is sent, this part counts the characters in its JSON data and instructions.
+    If the shared budget check finds it too large, active-run diagnostics can save the exact request for inspection.
+  o:gates: Approval gates records a human decision together with the report that was reviewed. If the report changes,
+    the converter cannot treat an approval of the old report as approval of the new one.
+  o:verification: Build and behavior validation checks generated code using the rules of the current conversion
+    job. For formats, it can find which original methods are called, including inherited and delegated methods,
+    and compare original and generated behavior where supported.
+  outro: The stages use these shared helpers instead of recording progress and approvals in different ways. Follow
+    the resume flow to see how work continues after a stop, or the request diagnostics flow to inspect an oversized
+    AI request.

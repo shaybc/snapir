@@ -290,21 +290,61 @@ def test_second_menu_start_generates_fresh_run_id(tmp_path, monkeypatch, termina
     assert ids[1].startswith("supplied-") and ids[1] != ids[0]
 
 
-def test_menu_start_failure_does_not_report_success_or_loop(tmp_path, monkeypatch, terminal, capsys):
+@pytest.mark.parametrize('failure', [ValueError, OSError, RuntimeError, sqlite3.Error])
+@pytest.mark.parametrize('verbose', [False, True])
+def test_menu_start_failure_shows_error_before_returning_to_menu(tmp_path, monkeypatch, terminal, capsys, failure, verbose):
     menus = []
+    choices = iter(['start', 'exit'])
     def select(title, options, **kwargs):
         menus.append(title)
-        assert len(menus) == 1
-        return "start"
+        selection = next(choices)
+        if selection == 'exit':
+            output = capsys.readouterr().out
+            assert 'Migration error: Conversion failed' in output
+            assert 'secret-value' not in output
+            assert ('Detailed diagnostics are saved' in output) == verbose
+            assert 'Run created:' not in output and 'Run workspace:' not in output
+        return selection
     monkeypatch.setattr(interactive, "select_option", select)
     monkeypatch.setattr("cli.main.load_configuration", lambda _: SimpleNamespace(output_root=str(tmp_path)))
     def fail(*args):
-        raise RuntimeError("Intake failed")
+        raise failure('Conversion failed https://host.test/v1?api_key=secret-value')
     monkeypatch.setattr("cli.main.run_pipeline", fail)
-    assert main(["--config", "supplied.yaml"]) == 1
-    output = capsys.readouterr().out
-    assert "Migration error: Intake failed" in output
-    assert "Run created:" not in output and "View run status" not in output
+    assert main(['--config', 'supplied.yaml'] + (['--verbose'] if verbose else [])) == 0
+    assert menus == ['What would you like to do?', 'What would you like to do?']
+
+
+def test_menu_start_after_failure_uses_fresh_run_id_and_preserves_saved_failure(tmp_path, monkeypatch, terminal):
+    choices = iter(['start', 'start', 'exit'])
+    monkeypatch.setattr(interactive, 'select_option', lambda *_, **kwargs: next(choices))
+    monkeypatch.setattr('cli.main.load_configuration', lambda _: SimpleNamespace(output_root=str(tmp_path)))
+    ids = []
+    def start(profile, run_id, configuration_path):
+        ids.append(run_id)
+        directory = make_run(tmp_path, run_id, phase='conversion_components_failed')
+        if len(ids) == 1:
+            with sqlite3.connect(directory / 'state/migration.db') as conn:
+                conn.execute("UPDATE runs SET status='failed'")
+            raise RuntimeError('Model execution failed')
+        return directory
+    monkeypatch.setattr('cli.main.run_pipeline', start)
+    assert main(['--config', 'supplied.yaml', '--run-id', 'first']) == 0
+    assert ids[0] == 'first' and ids[1].startswith('supplied-') and ids[1] != ids[0]
+    with sqlite3.connect(tmp_path / 'first/state/migration.db') as conn:
+        assert conn.execute('SELECT status,current_phase FROM runs').fetchone() == ('failed', 'conversion_components_failed')
+
+
+@pytest.mark.parametrize('interactive_terminal', [False, True])
+def test_explicit_start_failure_exits_without_main_menu(tmp_path, monkeypatch, interactive_terminal, capsys):
+    monkeypatch.setattr(interactive, 'is_interactive', lambda: interactive_terminal)
+    monkeypatch.setattr(interactive, 'select_option', lambda *_: pytest.fail('Unexpected menu'))
+    monkeypatch.setattr('cli.main.confirm_migration_start', lambda *_: pytest.fail('Unexpected confirmation'))
+    monkeypatch.setattr('cli.main.load_configuration', lambda _: SimpleNamespace(output_root=str(tmp_path)))
+    def fail(*_):
+        raise RuntimeError('Model execution failed')
+    monkeypatch.setattr('cli.main.run_pipeline', fail)
+    assert main(['start', '--config', 'supplied.yaml', '--run-id', 'scripted']) == 1
+    assert 'Migration error: Model execution failed' in capsys.readouterr().out
 
 
 def test_explicit_noninteractive_start_exits_without_prompt(tmp_path, monkeypatch):

@@ -1,33 +1,91 @@
 id: scope-snapir
+name: L2 - Applications and stores
 scope: snapir
+objects:
+  - conversion-cli
+  - diagnostics-cli
+  - diagnostic-exports
+  - composer-mapper
+  - verification-java
+  - run-state
+  - composer-map
+  - workspace-cache
+  - deliverables
 layout:
   composer-map:
-    x: 1025
-    y: 452
+    x: 880
+    y: 0
   composer-mapper:
-    x: 969
-    y: 152
+    x: 440
+    y: 0
   conversion-cli:
-    x: 413
-    y: 474
+    x: 0
+    y: 390
   deliverables:
-    x: 430
-    y: 765
-  legacy-workspace:
-    x: 1385
-    y: 293
-  model-provider:
-    x: 1377
-    y: 608
-  operator:
-    x: -13
-    y: 444
+    x: 880
+    y: 960
+  diagnostic-exports:
+    x: 880
+    y: 1280
+  diagnostics-cli:
+    x: 440
+    y: 960
   run-state:
-    x: 376
-    y: 153
+    x: 880
+    y: 320
   verification-java:
-    x: 680
-    y: 139
+    x: 635
+    y: 234
   workspace-cache:
-    x: 740
-    y: 764
+    x: 880
+    y: 640
+narration:
+  intro: Conversion CLI is the Python program that drives the process. Follow its connections to see how it starts
+    the Java tools and saves the files and database records used later.
+  o:conversion-cli: Conversion CLI is the Python program that runs the conversion process. It starts the Java analysis
+    tools, sends work to the AI, and saves progress so the run can continue after it stops.
+  e:conversion-cli->composer-mapper: When a map is needed, the Python program starts Composer Mapper as a separate
+    Java process. If a suitable map already exists, the run can use it instead.
+  o:composer-mapper: Composer Mapper is a Java sub-project inside the converter that reads Composer XML and Java
+    using fixed parsing rules, without AI. It writes Markdown descriptions of operations, steps, formats, and decorators,
+    and in indexed mode stores parsed XML, Java method information, and dependencies in its own SQLite database.
+    The converter uses this map to collect an operation and the components it needs before asking AI to convert
+    it.
+  e:composer-mapper->composer-map: Composer Mapper writes the component descriptions and dependency links into the
+    map output folder. In indexed mode it also saves the parsed source information in that folder's SQLite database.
+  o:composer-map: Reusable Composer map is the output of Composer Mapper. It holds component descriptions and dependency
+    information, with a separate analysis database in indexed mode, so preparation can gather what each selected
+    operation needs.
+  e:conversion-cli->verification-java: The Python program starts the Java analysis tool when it needs to inspect
+    methods or run supported behavior comparisons. The Java tool returns results for the current conversion job
+    to check.
+  o:verification-java: Java behavior verification tool reads the original and generated Java code to find methods
+    and follow the calls they make. Where comparison is supported, its test harness can run both versions and compare
+    their behavior without requiring the generated classes to copy the old class structure.
+  e:conversion-cli->composer-map: Intake reads the map to load the selected component descriptions. Preparation
+    later follows its dependency links to gather the sources needed for each operation.
+  e:conversion-cli->run-state: As the run progresses, the converter saves its selected work, results, and approvals
+    in SQLite. When the run resumes, it reads those records to find out what has already happened.
+  o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
+    attempts, test results, and approvals so the converter knows what has happened and where to continue.
+  e:conversion-cli->workspace-cache: The older discovery path can read previous workspace scan results from this
+    cache. It checks file fingerprints before using them again.
+  o:workspace-cache: Workspace analysis cache stores results of earlier workspace scans used by the older discovery
+    path. File fingerprints help the converter decide whether those scan results can still be used.
+  e:conversion-cli->deliverables: The converter writes generated projects and reports into the run output folders.
+    Build and test results are kept there so later stages can check the projects rather than assume generation succeeded.
+  o:deliverables: Generated projects and reports is where the run keeps generated Java files, build and test results,
+    and other reports. Later stages read these files to check what passed and collect the final output.
+  o:diagnostics-cli: Saved run diagnostics CLI reads a saved run and reports what happened without continuing the
+    conversion. It can also export an oversized AI request and extract the source text embedded in it into separate
+    files.
+  e:diagnostics-cli->run-state: The diagnostics command opens the run database for reading only. It can explain
+    the saved state without changing the run or moving it forward.
+  e:diagnostics-cli->deliverables: The diagnostics command reads the saved reports and captured requests. If an
+    old request was never captured, the tool does not try to rebuild it from today's source files.
+  e:diagnostics-cli->diagnostic-exports: The command copies each captured request and extracts its embedded source
+    text into files. It also writes a manifest that shows where each extracted piece appeared in the request.
+  o:diagnostic-exports: This folder contains exported AI requests and the source text extracted from them. A manifest
+    records where each piece came from, including repeated pieces or files whose original names could not be resolved.
+  outro: Composer Mapper explains the old project, and the other Java tool helps check original and generated behavior.
+    Open Conversion CLI for the overall process, or Composer Mapper to see how the component map is built.

@@ -1,6 +1,6 @@
 id: conversion
 name: Conversion overview
-description: Six major stages with evidence handoffs; drill into each stage for internal paths and gates.
+description: Six stages from source evidence to deliverables.
 diagram: conversion
 steps:
 - connection: intake-prepared-handoff
@@ -17,3 +17,24 @@ steps:
 - connection: service-final-handoff
   description: 5. Service creation requires applicable Gate 4 approval and produces build, test, package, and deployment
     evidence; 6. Finalization checks freshness, creates deliverables, and requires Gate 5 without deployment.
+details: 'Six major stages with evidence handoffs; drill into each stage for internal paths and gates.
+
+
+  Follow the six stage cards from left to right. Drill down into each card for its internal modules, then select
+  the corresponding focused flow for a deeper sequence. Shared controls provide approval, resume, model calls, and
+  validation across stages. Alternate conversion modes keep their existing semantics.'
+narration:
+  intro: An operator has chosen the Composer operations to convert. This flow follows those operations from reading
+    the original project to creating checked Java service projects and final documentation.
+  s:0: Intake reads or builds the Composer map and loads the selected component descriptions. It records the source
+    versions so later work can detect a changed input.
+  s:1: Preparation gathers each operation and its dependencies, including source code, XML settings, and calls to
+    other operations. These resolved inputs are then used to work out the execution plan.
+  s:2: The checked plan supplies the conversion tasks and their order. The converter checks the required approvals
+    before starting those tasks.
+  s:3: Conversion generates and checks the smaller units, joins them into operations, and reviews the result. Approved
+    operation code is then passed to service creation.
+  s:4: Service creation builds and checks the service project and saves its results. Finalization uses those results
+    to prepare the final output and report, which needs Gate 5 approval.
+  outro: The converter finishes with generated projects and the reports and approvals behind them. Open a stage
+    flow for its detailed steps; producing deployment files does not deploy the service.

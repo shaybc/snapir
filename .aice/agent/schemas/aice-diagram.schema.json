@@ -56,6 +56,21 @@
         ],
         "additionalProperties": false
       }
+    },
+    "narration": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "narrationEdited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

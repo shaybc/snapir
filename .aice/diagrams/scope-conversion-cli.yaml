@@ -1,0 +1,91 @@
+id: scope-conversion-cli
+name: L3 - Six-stage migration pipeline
+scope: conversion-cli
+objects:
+- intake
+- preparation
+- planning
+- services
+- finalization
+- conversion-stage
+- workflow-support
+layout:
+  intake:
+    x: 0
+    y: 0
+  preparation:
+    x: 440
+    y: 0
+  planning:
+    x: 880
+    y: 0
+  services:
+    x: 1760
+    y: 0
+  finalization:
+    x: 2200
+    y: 0
+  conversion-stage:
+    x: 1320
+    y: 0
+  workflow-support:
+    x: 1100
+    y: 400
+narration:
+  intro: This view shows the main stages inside the Python converter. Start with reading the old project, then follow
+    preparation, planning, conversion, service creation, and final output.
+  o:intake: This stage finds the original files for the operations you selected and loads their descriptions into
+    the run. Later stages use that selection to avoid converting unrelated parts of the project.
+  e:intake->preparation: Intake passes the selected component records and their recorded source versions to preparation.
+    Preparation uses them to collect the operation and the code it depends on.
+  o:preparation: This stage gathers everything needed to convert the selected operations. It checks that the source
+    files, dependencies, settings, and links between operations can be resolved before code generation starts.
+  e:preparation->planning: Once the operation inputs have been resolved, the scoped path works out the execution
+    plan. The plan uses the selected operations and their dependencies.
+  o:planning: This stage decides which operations need to be converted first. For example, an operation needed by
+    another operation must be handled before its caller can depend on it.
+  e:planning->workflow-support: If the selected planning path uses AI, it sends the planning request through the
+    shared model caller. The proposed plan still goes through dependency and coverage checks.
+  o:workflow-support: These parts provide services used throughout the converter, such as calling the AI, recording
+    approvals, and continuing saved runs. Keeping them shared lets each conversion stage use the same rules for
+    progress and checks.
+  e:workflow-support->planning: When continuing a saved run, the coordinator loads its operation plan. That tells
+    it which operations to run and which ones must come first.
+  e:workflow-support->conversion-stage: Resume selects the conversion path recorded for this run. It may continue
+    behavior-unit conversion or the separate managed source workflow.
+  o:conversion-stage: This stage turns the selected Composer behavior into Java code. Depending on the mode, it
+    converts reusable components first, builds operations from smaller converted units, or uses the managed source
+    conversion path.
+  e:conversion-stage->preparation: A scoped run calls preparation again before continuing conversion. This catches
+    changed or missing inputs even when the run already has saved results.
+  e:conversion-stage->workflow-support: Conversion calls shared helpers to send AI requests, check generated code,
+    save progress, and ask for approvals. These helpers apply the checks required by the current job.
+  e:conversion-stage->services: After the operation code has been reviewed and approved, it is passed to service
+    creation. The next stage adds the code needed to use that operation in a service project.
+  o:services: This stage takes approved operation code and builds Java service projects around it. It adds the surrounding
+    service code, then builds, tests, and packages the projects.
+  e:services->workflow-support: Service generation uses the same AI caller, approval records, and validation tools
+    used elsewhere in the converter. It still records build and test results for the service project itself.
+  e:services->finalization: The service build passes its saved results to finalization. Finalization checks that
+    those results belong to the current project files before marking the output complete.
+  o:finalization: This stage checks the latest build results and approvals, then collects the final documentation
+    and deployment files. It prepares a final report for approval without deploying the services.
+  e:finalization->workflow-support: The final report is sent through the approval mechanism. It records the human
+    decision and checks the earlier approvals required for this run.
+  e:conversion-stage->finalization: The operation workflow starts finalization after service generation returns
+    the required validation results. The final stage then checks and collects the output.
+  e:workflow-support->services: If a saved run stopped at service creation, resume can continue there using the
+    reviewed operation code. The service project still has to pass its current checks.
+  e:workflow-support->finalization: If the required validation results are already available, resume can continue
+    the final output stage. It checks those results again before completing the run.
+  e:planning->conversion-stage: The checked plan tells conversion which tasks to run and in what order. Conversion
+    follows that selection rather than choosing unrelated operations.
+  e:preparation->workflow-support: Before generation starts, the scoped path asks for plan approval and the required
+    initial approval. Those decisions are recorded against the reports the operator actually reviewed.
+  e:preparation->conversion-stage: The selected mode determines whether the converter starts with basic reusable
+    components or proceeds with the prepared units. Both paths use the resolved operation inputs.
+  e:intake->planning: Some older intake paths prepare the plan directly after discovery and analysis. This arrow
+    shows that alternative route rather than an extra step every run takes.
+  outro: Some arrows return to earlier checks because a saved run must check its inputs again before continuing.
+    Open an individual stage to see how it works, or use the Conversion overview flow for the simpler stage-by-stage
+    story.

@@ -1,0 +1,20 @@
+id: planning
+name: Dependency plan construction
+description: Builds and validates dependency-ordered plans.
+details: Plan construction uses the selected intake or scoped execution path. Dependency ordering is authoritative;
+  a model planner is called only when that path requires it. Current human gates still authorize execution.
+diagram: scope-planning
+steps:
+- connection: plan-order
+  description: Resolve mandatory operation dependencies and block unresolved cycles.
+- connection: plan-validate
+  description: Validate run scope, operation coverage, and batch ordering before persistence.
+narration:
+  intro: The selected operations may call one another, so they cannot always be converted in any order. Planning
+    works out those dependencies and checks the list of tasks to run.
+  s:0: The planner follows calls between operations to find which ones must come first. An unresolved dependency
+    cycle prevents it from producing a usable order.
+  s:1: The proposed plan is checked against the selected operations and their required order before it is saved.
+    Asking AI to help construct a plan does not replace those checks.
+  outro: The checked plan is saved for conversion and resume. The operator still needs to give the required approval
+    before generation starts.

@@ -1,9 +1,22 @@
 id: scope-mapper-index
+name: L4 - XML and Java indexing
 scope: mapper-index
+objects:
+- mapper-xml-index
+- mapper-java-index
 layout:
-  mapper-java-index:
-    x: 77
-    y: 309
   mapper-xml-index:
-    x: 78
-    y: 32
+    x: 0
+    y: 0
+  mapper-java-index:
+    x: 0
+    y: 260
+narration:
+  intro: The mapper reads two kinds of source information. XML and channel files describe how Composer components
+    are configured, while Java declarations identify the classes that implement them.
+  o:mapper-xml-index: This parser reads Composer XML and channel configuration to find operations, steps, formats,
+    and their registrations. Those records let the mapper find a named component and understand how it is configured.
+  o:mapper-java-index: This parser reads Java declarations to find classes and the source files they belong to.
+    The mapper uses that information to connect a Composer component to its Java implementation.
+  outro: Combining these lookups connects a configured operation or format to its source implementation. The map
+    writer uses those links when it builds the descriptions of operations and their dependencies.

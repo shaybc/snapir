@@ -1,0 +1,28 @@
+id: preparation
+name: Qualified evidence preparation
+description: Qualifies operation evidence before generation.
+details: Closure, contracts, and unit preparation carry authoritative evidence forward. Reuse is a conditional freshness
+  check rather than an unconditional final step; prepare-only mode stops before native generation.
+diagram: scope-preparation
+steps:
+- connection: preparation-closure
+  description: Build the selected operation closures.
+- connection: closure-contracts
+  description: Use exact closure evidence to plan contracts and operation calls.
+- connection: contracts-units
+  description: Prepare configured units from the resolved contracts and bindings.
+- connection: preparation-reuse-check
+  description: Check whether existing preparation evidence is eligible for reuse.
+narration:
+  intro: The converter now has selected operation descriptions from the map. Preparation follows their dependencies,
+    works out calls between operations, and bundles the source and settings into conversion jobs.
+  s:0: Starting from the selected operations, the converter gathers the components and Java sources they depend
+    on. It also identifies which project owns each source file.
+  s:1: Those inputs are used to work out the data passed between operations and the targets of their calls. A call
+    may use work being built now or an already published operation.
+  s:2: The source files, configuration, and resolved calls are grouped into smaller conversion jobs. Each job now
+    has the information its code generator needs.
+  s:3: The converter also checks whether saved preparation results can be reused. It compares their inputs instead
+    of assuming an earlier result is still valid.
+  outro: The jobs now contain the original code and configuration needed for generation. A prepare-only run stops
+    here, while a conversion run also needs a supported mode and the required approvals.
