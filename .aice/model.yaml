@@ -39,7 +39,7 @@ objects:
   - id: operator
     type: actor
     name: Migration operator
-    description: Selects work and approves migration gates.
+    description: Chooses operations and approves the work.
     tags: [approvals]
     details: |
       The operator chooses which Composer operations to convert and approves the reports at the review points. The operator can also continue a saved run or inspect why it stopped.
@@ -50,7 +50,7 @@ objects:
   - id: snapir
     type: system
     name: Snapir conversion
-    description: Migrates Composer behavior to Java services.
+    description: Converts Composer operations to Java services.
     tags: []
     details: |
       Snapir conversion reads an existing Composer project and helps turn its operations into Java services. It first maps the original code, then uses AI to generate code and runs checks before asking for approval.
@@ -61,7 +61,7 @@ objects:
   - id: conversion-cli
     type: app
     name: Conversion CLI
-    description: Runs the gated migration pipeline.
+    description: Runs and saves the conversion process.
     parent: snapir
     technologies:
       - Python
@@ -78,7 +78,7 @@ objects:
   - id: intake
     type: component
     name: 1. Intake and analyze
-    description: Maps sources and selects migration evidence.
+    description: Reads sources for the selected operations.
     parent: conversion-cli
     technologies:
       - Python
@@ -97,7 +97,7 @@ objects:
   - id: intake-control
     type: component
     name: Intake routing
-    description: Chooses the intake path and run scope.
+    description: Chooses how to load the original project.
     parent: intake
     technologies:
       - Python
@@ -114,7 +114,7 @@ objects:
   - id: source-discovery
     type: component
     name: Source and classpath discovery
-    description: Finds sources and project classpaths.
+    description: Finds source files and Java libraries.
     parent: intake
     technologies:
       - Python
@@ -131,7 +131,7 @@ objects:
   - id: analyzer
     type: component
     name: Composer analyzer
-    description: Validates and imports selected map evidence.
+    description: Checks the map and loads selected components.
     parent: intake
     technologies:
       - Python
@@ -166,7 +166,7 @@ objects:
   - id: preparation
     type: component
     name: 2. Prepare qualified evidence
-    description: Qualifies evidence for native conversion.
+    description: Gathers the inputs needed for conversion.
     parent: conversion-cli
     technologies:
       - Python
@@ -184,7 +184,7 @@ objects:
   - id: scoped-native
     type: component
     name: Scoped native execution
-    description: Enforces execution modes and readiness.
+    description: Checks the mode, inputs, and approvals.
     parent: preparation
     technologies:
       - Python
@@ -200,7 +200,7 @@ objects:
   - id: prepared-closure
     type: component
     name: Qualified operation closure
-    description: Resolves operation sources and dependencies.
+    description: Collects an operation and its dependencies.
     parent: preparation
     technologies:
       - Python
@@ -218,7 +218,7 @@ objects:
   - id: prepared-contracts
     type: component
     name: Contracts and operation calls
-    description: Defines contracts and operation call bindings.
+    description: Resolves data and calls between operations.
     parent: preparation
     technologies:
       - Python
@@ -235,7 +235,7 @@ objects:
   - id: prepared-units
     type: component
     name: Configured units and evidence
-    description: Builds configured units and request evidence.
+    description: Groups source code and settings into jobs.
     parent: preparation
     technologies:
       - Python
@@ -253,7 +253,7 @@ objects:
   - id: preparation-reuse
     type: component
     name: Preparation freshness and reuse
-    description: Checks prepared checkpoint freshness.
+    description: Checks whether saved inputs still match.
     parent: preparation
     technologies:
       - Python
@@ -269,7 +269,7 @@ objects:
   - id: planning
     type: component
     name: 3. Plan dependencies
-    description: Orders selected migration work.
+    description: Plans which operations to convert first.
     parent: conversion-cli
     technologies:
       - Python
@@ -287,7 +287,7 @@ objects:
   - id: dependency-order
     type: component
     name: Dependency ordering
-    description: Orders dependencies and blocks cycles.
+    description: Orders operations by their dependencies.
     parent: planning
     technologies:
       - Python
@@ -305,7 +305,7 @@ objects:
   - id: plan-generation
     type: component
     name: Migration plan construction
-    description: Builds migration batches and task packets.
+    description: Groups selected operations into tasks.
     parent: planning
     technologies:
       - Python
@@ -322,7 +322,7 @@ objects:
   - id: plan-validation
     type: component
     name: Plan validation and persistence
-    description: Validates and saves migration plans.
+    description: Checks and saves the conversion plan.
     parent: planning
     technologies:
       - Python
@@ -340,7 +340,7 @@ objects:
   - id: services
     type: component
     name: 5. Create and validate services
-    description: Creates and validates Java services.
+    description: Builds and checks Java service projects.
     parent: conversion-cli
     technologies:
       - Python
@@ -356,7 +356,7 @@ objects:
   - id: service-wrappers
     type: component
     name: Service wrappers and wiring
-    description: Wraps approved operation sources.
+    description: Adds service code around approved operations.
     parent: services
     technologies:
       - Python
@@ -392,7 +392,7 @@ objects:
   - id: service-packaging
     type: component
     name: Executable and deployment artifacts
-    description: Creates executable and deployment artifacts.
+    description: Creates runnable projects and deployment files.
     parent: services
     technologies:
       - Python
@@ -411,7 +411,7 @@ objects:
   - id: finalization
     type: component
     name: 6. Finalize deliverables
-    description: Checks evidence and prepares deliverables.
+    description: Checks results and collects the final output.
     parent: conversion-cli
     technologies:
       - Python
@@ -428,7 +428,7 @@ objects:
   - id: final-evidence
     type: component
     name: Final evidence freshness
-    description: Checks accepted evidence and approvals.
+    description: Checks current files, results, and approvals.
     parent: finalization
     technologies:
       - Python
@@ -445,7 +445,7 @@ objects:
   - id: final-artifacts
     type: component
     name: Documentation and manifests
-    description: Produces documentation and manifests.
+    description: Writes documentation and deployment files.
     parent: finalization
     technologies:
       - Python
@@ -463,7 +463,7 @@ objects:
   - id: final-approval
     type: component
     name: Final report and Gate 5
-    description: Records final approval at Gate 5.
+    description: Records approval of the final report.
     parent: finalization
     technologies:
       - Python
@@ -479,7 +479,7 @@ objects:
   - id: conversion-stage
     type: component
     name: 4. Convert and assemble
-    description: Converts components and assembles operations.
+    description: Converts components and builds operations.
     parent: conversion-cli
     technologies:
       - Python
@@ -497,7 +497,7 @@ objects:
   - id: components
     type: component
     name: Component-first conversion
-    description: Converts reusable basic components.
+    description: Converts basic components for reuse.
     parent: conversion-stage
     technologies:
       - Python
@@ -513,7 +513,7 @@ objects:
   - id: behavior-runner
     type: component
     name: Behavior conversion and assembly
-    description: Converts units and assembles operations.
+    description: Converts units and joins them into operations.
     parent: conversion-stage
     technologies:
       - Python
@@ -541,7 +541,7 @@ objects:
   - id: managed-conversion
     type: component
     name: Managed source conversion
-    description: Runs managed source conversion.
+    description: Converts source tasks through reviews.
     parent: conversion-stage
     technologies:
       - Python
@@ -560,7 +560,7 @@ objects:
   - id: generation
     type: component
     name: Bounded generation
-    description: Generates candidates with bounded retries.
+    description: Asks AI for code and handles corrections.
     parent: conversion-stage
     technologies:
       - Python
@@ -608,7 +608,7 @@ objects:
   - id: workflow-support
     type: component
     name: Workflow controls and shared capabilities
-    description: Shares gates, resume, models, and validation.
+    description: Shares AI calls, checks, and run controls.
     parent: conversion-cli
     technologies:
       - Python
@@ -627,7 +627,7 @@ objects:
   - id: checkpoints
     type: component
     name: Resume and checkpoints
-    description: Restores runs and resumes the current phase.
+    description: Continues a run from its saved progress.
     parent: workflow-support
     technologies:
       - Python
@@ -645,7 +645,7 @@ objects:
   - id: coordinator
     type: component
     name: Operation coordinator
-    description: Coordinates scoped operation execution.
+    description: Runs selected operations in order.
     parent: workflow-support
     technologies:
       - Python
@@ -662,7 +662,7 @@ objects:
   - id: verification
     type: component
     name: Build and behavior validation
-    description: Checks builds and behavioral evidence.
+    description: Checks generated code, tests, and behavior.
     parent: workflow-support
     technologies:
       - Python
@@ -699,7 +699,7 @@ objects:
   - id: request-diagnostics
     type: component
     name: Request budget diagnostics
-    description: Measures budgets and captures oversized requests.
+    description: Measures and saves oversized AI requests.
     parent: workflow-support
     technologies:
       - Python
@@ -717,7 +717,7 @@ objects:
   - id: diagnostics-cli
     type: app
     name: Saved run diagnostics CLI
-    description: Inspects runs and exports request materials.
+    description: Explains saved runs and exports requests.
     parent: snapir
     technologies:
       - Python
@@ -733,7 +733,7 @@ objects:
   - id: diagnostic-exports
     type: store
     name: Diagnostic request exports
-    description: Stores extracted diagnostic request materials.
+    description: Stores exported requests and source text.
     parent: snapir
     technologies:
       - Filesystem
@@ -747,7 +747,7 @@ objects:
   - id: model-executor
     type: component
     name: Model execution
-    description: Calls the configured model with retries.
+    description: Calls the AI and handles connection retries.
     parent: workflow-support
     technologies:
       - Python
@@ -763,7 +763,7 @@ objects:
   - id: gates
     type: component
     name: Approval gates
-    description: Binds human approvals to current reports.
+    description: Records approvals for the reviewed reports.
     parent: workflow-support
     technologies:
       - Python
@@ -781,7 +781,7 @@ objects:
   - id: composer-mapper
     type: app
     name: Composer Mapper
-    description: Indexes Composer sources into reusable maps.
+    description: Reads XML and Java to map dependencies.
     parent: snapir
     technologies:
       - Java
@@ -797,7 +797,7 @@ objects:
   - id: mapper-entry
     type: component
     name: Mapper mode selection
-    description: Selects mapping and analysis modes.
+    description: Chooses how to build or reuse the map.
     parent: composer-mapper
     technologies:
       - Java
@@ -813,7 +813,7 @@ objects:
   - id: mapper-discovery
     type: component
     name: Composer file discovery
-    description: Finds Composer files and channel scope.
+    description: Finds Composer files for selected channels.
     parent: composer-mapper
     technologies:
       - Java
@@ -829,7 +829,7 @@ objects:
   - id: mapper-index
     type: component
     name: Definition and source indexing
-    description: Indexes definitions and Java declarations.
+    description: Looks up XML definitions and Java classes.
     parent: composer-mapper
     technologies:
       - Java
@@ -846,7 +846,7 @@ objects:
   - id: mapper-xml-index
     type: component
     name: XML and channel definitions
-    description: Indexes XML definitions and channel mappings.
+    description: Reads XML components and channel settings.
     parent: mapper-index
     technologies:
       - Java
@@ -863,7 +863,7 @@ objects:
   - id: mapper-java-index
     type: component
     name: Java declaration index
-    description: Indexes Java declarations and ownership.
+    description: Finds Java classes and their source files.
     parent: mapper-index
     technologies:
       - Java
@@ -879,7 +879,7 @@ objects:
   - id: mapper-analysis
     type: component
     name: Reusable indexed analysis
-    description: Reuses indexed analysis and checkpoints.
+    description: Saves parsed source data for later reuse.
     parent: composer-mapper
     technologies:
       - Java
@@ -895,7 +895,7 @@ objects:
   - id: mapper-vault
     type: component
     name: Vault generation
-    description: Publishes scoped or legacy vault evidence.
+    description: Writes component descriptions and map files.
     parent: composer-mapper
     technologies:
       - Java
@@ -913,7 +913,7 @@ objects:
   - id: verification-java
     type: app
     name: Java behavior verification tool
-    description: Analyzes boundaries and compares behavior.
+    description: Follows Java calls and compares behavior.
     parent: snapir
     technologies:
       - Java
@@ -929,7 +929,7 @@ objects:
   - id: run-state
     type: store
     name: Run state
-    description: Stores run progress and accepted evidence.
+    description: Stores run progress, results, and approvals.
     parent: snapir
     technologies:
       - SQLite
@@ -943,7 +943,7 @@ objects:
   - id: composer-map
     type: store
     name: Reusable Composer map
-    description: Stores indexed facts and vault evidence.
+    description: Stores component descriptions and dependencies.
     parent: snapir
     technologies:
       - SQLite
@@ -958,7 +958,7 @@ objects:
   - id: workspace-cache
     type: store
     name: Workspace analysis cache
-    description: Caches fingerprinted workspace analysis.
+    description: Stores earlier source scan results.
     parent: snapir
     technologies:
       - SQLite
@@ -986,7 +986,7 @@ objects:
   - id: legacy-workspace
     type: system
     name: Legacy Composer workspace
-    description: Supplies original Composer source evidence.
+    description: Contains the original XML, Java, and libraries.
     external: true
     tags: [original-source]
     details: |
@@ -998,7 +998,7 @@ objects:
   - id: model-provider
     type: system
     name: Configured model provider
-    description: Generates structured results and reviews.
+    description: Generates code, plans, and review results.
     external: true
     tags: [ai]
     details: |
