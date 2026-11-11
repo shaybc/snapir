@@ -391,10 +391,37 @@ to the existing validation cache on first use; validation never downloads it.
 Other versions require a matching bundled or pre-populated cached schema.
 
 The converter measures model requests in characters and UTF-8 bytes; it does not
-call a tokenizer directly. LiteLLM may use tokenizers internally to estimate
-usage/cost when the endpoint does not return token counts. Depending on the model
-and installed LiteLLM version, tokenizer assets may need to be cached before
-moving to a restricted network; the pricing setting does not disable tokenizers.
+call a tokenizer for this budget. LiteLLM may still use tokenizers internally to
+estimate usage/cost when the endpoint does not return token counts.
+
+LiteLLM execution prepares a local tokenizer cache before importing the adapter or
+starting model retries, including when Python is launched directly. The repository
+bundles `cl100k_base` and `o200k_base` under
+`source/runtime/model_execution/tokenizer_assets`, with upstream URLs, SHA-256
+checksums, license and tested dependency versions. Pull/copy this directory with
+the code; no tokenizer download is needed on the enterprise machine.
+
+The default cache is `<Snapir root>/work/cache/tokenizers`. Set
+`TIKTOKEN_CACHE_DIR` or `CUSTOM_TIKTOKEN_CACHE_DIR` to select another directory.
+If both are set, they must resolve to the same location. `DATA_GYM_CACHE_DIR` is
+honored when neither is set. Empty paths are rejected because they disable
+caching. Preparation sets both tiktoken and LiteLLM cache variables so LiteLLM
+cannot silently replace the selected path. Missing or damaged cache entries are
+rebuilt atomically from verified bundled data.
+
+Missing/corrupt bundled data, cache permission errors, or incompatible tokenizer
+initialization stop execution with an `Offline tokenizer setup failed` message
+before a model attempt. Restore the bundled directory from the repository and
+check the selected cache permissions and installed dependency versions. Git
+attributes preserve the tokenizer bytes across Windows/Unix checkouts; do not
+edit their line endings. Public data fetching through tiktoken is disabled after
+preparation: another encoding requiring an uncached asset fails rather than
+downloading. Additional provider-specific tokenizers, such as Hugging Face
+tokenizers, require separately provisioned assets; this is not a blanket offline
+mode for every LiteLLM provider. Native Gemini and mock execution are unchanged.
+The model endpoint must still be reachable, and its transport failures retain
+the existing retry behavior. Character budgets remain estimates, not Gemini
+token counts, and are not changed by this cache preparation.
 
 Configure pip and Maven to use accessible package repositories, the model profile
 to use the on-premises AI endpoint, container images to use the internal registry,

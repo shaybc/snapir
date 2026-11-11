@@ -8,6 +8,7 @@ from time import monotonic
 
 from models.pipeline_configuration import PipelineConfiguration
 from runtime.model_execution.readiness import require_model_readiness
+from runtime.model_execution.offline_tokenizers import prepare_offline_tokenizers
 from runtime.model_execution.error_details import sanitize_diagnostic
 from runtime.model_execution.progress import before_model, after_model, request_headers, response_headers, wait_with_progress
 
@@ -35,6 +36,8 @@ class AdkExecutor:
         """Run transport retries with the current component diagnostic context."""
         from runtime.model_execution.component_progress import component_suffix
         require_model_readiness(self.profile)
+        if self.profile.model_provider == "litellm":
+            prepare_offline_tokenizers()
         error = None
         logger = logging.getLogger(__name__)
         for attempt in range(1, self.profile.max_model_attempts + 1):
@@ -64,6 +67,8 @@ class AdkExecutor:
 
     async def _execute(self, instruction: str, payload: str) -> str:
         require_model_readiness(self.profile)
+        if self.profile.model_provider == "litellm":
+            prepare_offline_tokenizers()
         from google.adk.agents import LlmAgent
         from google.adk.runners import Runner
         from google.adk.sessions import InMemorySessionService

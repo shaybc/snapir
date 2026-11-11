@@ -11,6 +11,33 @@ from runtime.model_execution.diagnostics import run_model_diagnostics
 from runtime.model_execution.error_details import sanitize_diagnostic, print_failure_traceback
 
 
+def test_offline_tokenizer_setup_failure_precedes_model_retries(monkeypatch):
+    from runtime.model_execution.offline_tokenizers import OfflineTokenizerError
+    monkeypatch.setattr('runtime.model_execution.adk_executor.require_model_readiness', lambda *_: None)
+    executor = AdkExecutor(PipelineConfiguration(model_provider='litellm', max_model_attempts=4))
+    calls = []
+    def fail():
+        calls.append('setup')
+        raise OfflineTokenizerError('Offline tokenizer setup failed: missing bundle')
+    monkeypatch.setattr('runtime.model_execution.adk_executor.prepare_offline_tokenizers', fail)
+    monkeypatch.setattr(executor, '_execute', lambda *_: pytest.fail('Started model attempt'))
+    with pytest.raises(OfflineTokenizerError, match='missing bundle'):
+        executor.execute('instruction', 'payload')
+    assert calls == ['setup']
+
+
+@pytest.mark.parametrize('provider', ['gemini', 'mock'])
+def test_other_providers_do_not_prepare_litellm_tokenizers(monkeypatch, provider):
+    monkeypatch.setattr('runtime.model_execution.adk_executor.require_model_readiness', lambda *_: None)
+    monkeypatch.setattr('runtime.model_execution.adk_executor.prepare_offline_tokenizers',
+                        lambda: pytest.fail('Changed non-LiteLLM execution'))
+    executor = AdkExecutor(PipelineConfiguration(model_provider=provider))
+    async def respond(*_):
+        return 'answer'
+    monkeypatch.setattr(executor, '_execute', respond)
+    assert executor.execute('instruction', 'payload') == 'answer'
+
+
 @pytest.mark.parametrize("message", [
     "Request failed https://user:pass-secret@host.test/v1?key=query-secret&other=value-secret",
     "headers={'Authorization': 'Bearer bearer-secret', 'x-api-key': 'header-secret'}",
