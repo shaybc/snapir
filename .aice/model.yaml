@@ -1011,7 +1011,7 @@ connections:
   - id: components-lifecycle
     from: components
     to: verification
-    description: Uses verified format lifecycle evidence
+    description: Reads original format method information
     technology: Source-backed boundary evidence
     tags: [ai, original-source, generated-code]
     details: |
@@ -1019,7 +1019,7 @@ connections:
   - id: generation-request-budget
     from: generation
     to: request-diagnostics
-    description: Checks request character budgets
+    description: Measures AI request size
     technology: function call
     tags: [ai, generated-code, run-evidence]
     details: |
@@ -1027,7 +1027,7 @@ connections:
   - id: model-diagnostic-scope
     from: model-executor
     to: request-diagnostics
-    description: Scopes captures to the active run
+    description: Sets the run folder for request captures
     technology: Context manager
     tags: [ai, diagnostics, run-evidence]
     details: |
@@ -1035,7 +1035,7 @@ connections:
   - id: request-capture-output
     from: request-diagnostics
     to: deliverables
-    description: Saves oversized requests before submission
+    description: Saves oversized requests and size reports
     technology: Filesystem
     tags: [diagnostics, ai, run-evidence]
     details: |
@@ -1043,7 +1043,7 @@ connections:
   - id: operator-diagnostics
     from: operator
     to: diagnostics-cli
-    description: Selects a saved run to inspect
+    description: Chooses a saved run to inspect
     technology: CLI
     tags: [approvals, diagnostics, run-evidence]
     details: |
@@ -1051,7 +1051,7 @@ connections:
   - id: diagnostics-state
     from: diagnostics-cli
     to: run-state
-    description: Reads saved migration state
+    description: Reads saved run progress
     technology: Read-only SQLite
     tags: [diagnostics, run-evidence]
     details: |
@@ -1059,7 +1059,7 @@ connections:
   - id: diagnostics-captures
     from: diagnostics-cli
     to: deliverables
-    description: Reads reports and request captures
+    description: Reads reports and saved requests
     technology: Filesystem
     tags: [diagnostics, run-evidence, generated-code]
     details: |
@@ -1067,7 +1067,7 @@ connections:
   - id: diagnostics-export
     from: diagnostics-cli
     to: diagnostic-exports
-    description: Exports sources and occurrence manifests
+    description: Exports requests and embedded source files
     technology: Filesystem
     tags: [diagnostics, run-evidence]
     details: |
@@ -1075,7 +1075,7 @@ connections:
   - id: operator-intake
     from: operator
     to: intake-control
-    description: Starts a selected migration run
+    description: Starts conversion of selected operations
     technology: CLI
     tags: [approvals, orchestration]
     details: |
@@ -1083,7 +1083,7 @@ connections:
   - id: operator-resume
     from: operator
     to: checkpoints
-    description: Resumes a persisted migration run
+    description: Continues the selected saved run
     technology: CLI
     tags: [approvals, orchestration, run-evidence]
     details: |
@@ -1091,7 +1091,7 @@ connections:
   - id: operator-gates
     from: operator
     to: gates
-    description: Records explicit approval or rejection
+    description: Records approval or rejection
     technology: CLI
     tags: [approvals]
     details: |
@@ -1099,7 +1099,7 @@ connections:
   - id: intake-source
     from: source-discovery
     to: legacy-workspace
-    description: Discovers sources, classpath, and source fingerprints
+    description: Reads source files and project libraries
     technology: Filesystem
     tags: [original-source]
     details: |
@@ -1107,7 +1107,7 @@ connections:
   - id: intake-mapper
     from: intake-control
     to: mapper-entry
-    description: Runs mapping unless an existing map is supplied
+    description: Starts mapping when a new map is needed
     technology: Java subprocess
     tags: [orchestration]
     details: |
@@ -1115,7 +1115,7 @@ connections:
   - id: mapper-source
     from: mapper-discovery
     to: legacy-workspace
-    description: Reads Composer definitions and Java sources
+    description: Finds XML and Java source files
     technology: Filesystem
     tags: [original-source]
     details: |
@@ -1123,7 +1123,7 @@ connections:
   - id: mapper-map
     from: mapper-vault
     to: composer-map
-    description: Publishes indexed analysis and vault evidence
+    description: Writes component descriptions and links
     technology: SQLite / Filesystem
     tags: [map-evidence]
     details: |
@@ -1131,7 +1131,7 @@ connections:
   - id: intake-map
     from: analyzer
     to: composer-map
-    description: Validates and imports selected map evidence
+    description: Checks and reads selected map records
     technology: SQLite / Filesystem
     tags: [validation, map-evidence]
     details: |
@@ -1139,7 +1139,7 @@ connections:
   - id: intake-cache
     from: source-discovery
     to: workspace-cache
-    description: Reuses fingerprinted facts in legacy analysis
+    description: Reuses matching workspace scan results
     technology: SQLite
     tags: [original-source]
     details: |
@@ -1147,7 +1147,7 @@ connections:
   - id: intake-state
     from: analyzer
     to: run-state
-    description: Persists pinned selection and inventory
+    description: Saves selected components and sources
     technology: SQLite
     tags: [validation, map-evidence, run-evidence]
     details: |
@@ -1155,7 +1155,7 @@ connections:
   - id: intake-plan
     from: intake-control
     to: plan-generation
-    description: Prepares planning inputs on eligible legacy paths
+    description: Passes planning inputs on older paths
     technology: function call
     tags: [orchestration, ai]
     details: |
@@ -1163,7 +1163,7 @@ connections:
   - id: resume-state
     from: checkpoints
     to: run-state
-    description: Loads persisted configuration and current phase
+    description: Loads saved settings and run progress
     technology: SQLite
     tags: [orchestration, run-evidence]
     details: |
@@ -1171,7 +1171,7 @@ connections:
   - id: resume-coordinator
     from: checkpoints
     to: coordinator
-    description: Continues selected operation execution
+    description: Continues the planned operation work
     technology: function call
     tags: [orchestration, run-evidence]
     details: |
@@ -1179,7 +1179,7 @@ connections:
   - id: coordinator-planning
     from: coordinator
     to: planning
-    description: Resumes the approved dependency plan
+    description: Loads the selected operation plan
     technology: function call
     tags: [orchestration]
     details: |
@@ -1187,7 +1187,7 @@ connections:
   - id: coordinator-behavior
     from: coordinator
     to: behavior-runner
-    description: Runs the selected behavior-unit workflow
+    description: Starts the selected operation workflow
     technology: function call
     tags: [orchestration, generated-code]
     details: |
@@ -1195,7 +1195,7 @@ connections:
   - id: resume-managed
     from: checkpoints
     to: managed-conversion
-    description: Resumes applicable managed conversion phases
+    description: Continues managed source conversion
     technology: function call
     tags: [orchestration, run-evidence, ai]
     details: |
@@ -1203,7 +1203,7 @@ connections:
   - id: behavior-scoped
     from: behavior-runner
     to: scoped-native
-    description: Routes scoped runs to qualified native execution
+    description: Checks scoped inputs and conversion mode
     technology: function call
     tags: [orchestration, generated-code, approvals]
     details: |
@@ -1211,7 +1211,7 @@ connections:
   - id: scoped-preparation
     from: scoped-native
     to: preparation
-    description: Prepares selected evidence before any generation
+    description: Prepares source inputs for conversion
     technology: function call
     tags: [orchestration, approvals]
     details: |
@@ -1219,7 +1219,7 @@ connections:
   - id: preparation-map
     from: prepared-closure
     to: composer-map
-    description: Resolves and checks pinned source-linked evidence
+    description: Reads mapped operation dependencies
     technology: Filesystem / SQLite
     tags: [original-source, map-evidence]
     details: |
@@ -1227,7 +1227,7 @@ connections:
   - id: preparation-source
     from: preparation-reuse
     to: legacy-workspace
-    description: Checks current original source evidence
+    description: Compares current and recorded source files
     technology: Filesystem
     tags: [validation, run-evidence, original-source]
     details: |
@@ -1235,7 +1235,7 @@ connections:
   - id: preparation-state
     from: preparation-reuse
     to: run-state
-    description: Validates reusable preparation checkpoints
+    description: Checks saved preparation records
     technology: SQLite
     tags: [validation, run-evidence]
     details: |
@@ -1243,7 +1243,7 @@ connections:
   - id: scoped-plan
     from: scoped-native
     to: plan-generation
-    description: Resolves an execution plan for prepared operations
+    description: Builds a plan from prepared operations
     technology: function call
     tags: [orchestration, approvals, ai]
     details: |
@@ -1251,7 +1251,7 @@ connections:
   - id: planning-state
     from: plan-validation
     to: run-state
-    description: Persists and restores dependency-ordered plans
+    description: Saves and loads the operation plan
     technology: SQLite
     tags: [validation, run-evidence]
     details: |
@@ -1259,7 +1259,7 @@ connections:
   - id: scoped-gates
     from: scoped-native
     to: gates
-    description: Requires plan approval and Gate 1 before generation
+    description: Checks approvals before code generation
     technology: function call
     tags: [orchestration, approvals]
     details: |
@@ -1267,7 +1267,7 @@ connections:
   - id: scoped-components
     from: scoped-native
     to: components
-    description: Converts components in component-first mode
+    description: Converts reusable components first
     technology: function call
     tags: [orchestration, approvals, ai]
     details: |
@@ -1275,7 +1275,7 @@ connections:
   - id: scoped-behavior
     from: scoped-native
     to: behavior-runner
-    description: Converts qualified native units
+    description: Starts conversion of prepared units
     technology: function call
     tags: [orchestration, approvals, generated-code]
     details: |
@@ -1283,7 +1283,7 @@ connections:
   - id: components-generation
     from: components
     to: generation
-    description: Requests scoped component implementations
+    description: Requests code for basic components
     technology: function call
     tags: [ai, original-source, generated-code]
     details: |
@@ -1301,7 +1301,7 @@ connections:
   - id: generation-model
     from: generation
     to: model-executor
-    description: Requests structured generation or review results
+    description: Sends code and review jobs to AI
     technology: function call
     tags: [ai, generated-code, run-evidence]
     details: |
@@ -1309,7 +1309,7 @@ connections:
   - id: model-provider-call
     from: model-executor
     to: model-provider
-    description: Submits bounded model requests
+    description: Sends the request to the AI service
     technology: HTTPS / ADK
     tags: [ai]
     details: |
@@ -1317,7 +1317,7 @@ connections:
   - id: generation-verification
     from: generation
     to: verification
-    description: Validates candidates before acceptance
+    description: Checks generated code and test results
     technology: function call
     tags: [ai, generated-code, run-evidence]
     details: |
@@ -1327,7 +1327,7 @@ connections:
   - id: verification-java-call
     from: verification
     to: verification-java
-    description: Inspects APIs and compares executable behavior when applicable
+    description: Analyzes Java and runs supported comparisons
     technology: Java subprocess
     tags: [validation, generated-code, original-source]
     details: |
@@ -1337,7 +1337,7 @@ connections:
   - id: verification-deliverables
     from: verification
     to: deliverables
-    description: Writes build, test, and comparison evidence
+    description: Writes build, test, and comparison results
     technology: Filesystem
     tags: [validation, generated-code, run-evidence]
     details: |
@@ -1345,7 +1345,7 @@ connections:
   - id: generation-state
     from: generation
     to: run-state
-    description: Stores attempts and accepted results
+    description: Saves attempts, stages, and accepted code
     technology: SQLite
     tags: [ai, generated-code, run-evidence]
     details: |
@@ -1363,7 +1363,7 @@ connections:
   - id: gates-state
     from: gates
     to: run-state
-    description: Persists decisions keyed by report hash and operation scope
+    description: Saves report approvals for each operation
     technology: SQLite
     tags: [approvals, run-evidence]
     details: |
@@ -1371,7 +1371,7 @@ connections:
   - id: behavior-services
     from: behavior-runner
     to: service-wrappers
-    description: Creates services after operation approval
+    description: Passes approved code to service creation
     technology: function call
     tags: [orchestration, generated-code, ai]
     details: |
@@ -1379,7 +1379,7 @@ connections:
   - id: managed-model
     from: managed-conversion
     to: model-executor
-    description: Requests managed source conversion results
+    description: Sends source conversion jobs to AI
     technology: function call
     tags: [ai, generated-code]
     details: |
@@ -1387,7 +1387,7 @@ connections:
   - id: resume-services
     from: checkpoints
     to: services
-    description: Resumes reviewed service creation
+    description: Continues building service projects
     technology: function call
     tags: [orchestration, run-evidence]
     details: |
@@ -1395,7 +1395,7 @@ connections:
   - id: services-model
     from: service-wrappers
     to: model-executor
-    description: Requests wrappers around approved sources
+    description: Requests service code for approved operations
     technology: function call
     tags: [ai, generated-code, approvals]
     details: |
@@ -1403,7 +1403,7 @@ connections:
   - id: services-verification
     from: service-build
     to: verification
-    description: Builds and tests final service projects
+    description: Checks the generated service project
     technology: function call
     tags: [validation, generated-code]
     details: |
@@ -1411,7 +1411,7 @@ connections:
   - id: services-output
     from: service-packaging
     to: deliverables
-    description: Writes packaged service artifacts
+    description: Writes packaged projects and delivery files
     technology: Filesystem
     tags: [generated-code, run-evidence]
     details: |
@@ -1419,7 +1419,7 @@ connections:
   - id: behavior-finalization
     from: behavior-runner
     to: final-evidence
-    description: Starts final evidence checks
+    description: Starts final file and result checks
     technology: function call
     tags: [orchestration, generated-code, validation]
     details: |
@@ -1427,7 +1427,7 @@ connections:
   - id: finalization-output
     from: final-artifacts
     to: deliverables
-    description: Checks evidence and writes reports and manifests
+    description: Writes documentation and deployment files
     technology: Filesystem
     tags: [ai, generated-code, run-evidence]
     details: |
@@ -1435,7 +1435,7 @@ connections:
   - id: finalization-gates
     from: final-approval
     to: gates
-    description: Requires final and prior approvals
+    description: Checks final and earlier report approvals
     technology: function call
     tags: [approvals, run-evidence]
     details: |
@@ -1443,7 +1443,7 @@ connections:
   - id: publication-output
     from: coordinator
     to: deliverables
-    description: Checks dependency publication artifacts
+    description: Checks dependency files before reuse
     technology: Filesystem
     tags: [orchestration, generated-code, run-evidence]
     details: |
@@ -1451,7 +1451,7 @@ connections:
   - id: services-gates
     from: service-wrappers
     to: gates
-    description: Requires applicable service approvals
+    description: Checks approvals for service creation
     technology: function call
     tags: [ai, generated-code, approvals]
     details: |
@@ -1459,7 +1459,7 @@ connections:
   - id: resume-finalization
     from: checkpoints
     to: finalization
-    description: Resumes ready finalization
+    description: Continues final checks and output collection
     technology: function call
     tags: [orchestration, run-evidence]
     details: |
@@ -1467,7 +1467,7 @@ connections:
   - id: intake-discovery
     from: intake-control
     to: source-discovery
-    description: Resolves sources and classpath on the applicable intake path
+    description: Finds source files and Java libraries
     technology: function call
     tags: [orchestration, original-source]
     details: |
@@ -1475,7 +1475,7 @@ connections:
   - id: intake-analyzer
     from: intake-control
     to: analyzer
-    description: Analyzes and imports selected mapped evidence
+    description: Checks and imports the selected map
     technology: function call
     tags: [orchestration, validation, map-evidence]
     details: |
@@ -1483,7 +1483,7 @@ connections:
   - id: mapper-entry-discovery
     from: mapper-entry
     to: mapper-discovery
-    description: Discovers Composer source files
+    description: Finds files for the selected channels
     technology: function call
     tags: [orchestration, original-source]
     details: |
@@ -1491,7 +1491,7 @@ connections:
   - id: mapper-entry-index
     from: mapper-entry
     to: mapper-index
-    description: Builds legacy definition indexes on the legacy path
+    description: Builds source lookups for older maps
     technology: function call
     tags: [orchestration, original-source]
     details: |
@@ -1499,7 +1499,7 @@ connections:
   - id: mapper-entry-analysis
     from: mapper-entry
     to: mapper-analysis
-    description: Opens indexed analysis and reuse
+    description: Opens saved or new source analysis
     technology: function call
     tags: [orchestration, map-evidence]
     details: |
@@ -1507,7 +1507,7 @@ connections:
   - id: mapper-entry-vault
     from: mapper-entry
     to: mapper-vault
-    description: Generates the selected vault layout
+    description: Writes the selected map format
     technology: function call
     tags: [orchestration, map-evidence]
     details: |
@@ -1515,7 +1515,7 @@ connections:
   - id: mapper-vault-index
     from: mapper-vault
     to: mapper-index
-    description: Builds qualified scoped definitions
+    description: Looks up operation and component definitions
     technology: function call
     tags: [map-evidence, original-source]
     details: |
@@ -1523,7 +1523,7 @@ connections:
   - id: mapper-index-xml
     from: mapper-index
     to: mapper-xml-index
-    description: Indexes XML and channel declarations
+    description: Reads XML definitions and channel settings
     technology: function call
     tags: [original-source]
     details: |
@@ -1531,7 +1531,7 @@ connections:
   - id: mapper-index-java
     from: mapper-index
     to: mapper-java-index
-    description: Indexes Java declarations
+    description: Looks up Java classes and source files
     technology: function call
     tags: [original-source]
     details: |
@@ -1539,7 +1539,7 @@ connections:
   - id: mapper-analysis-store
     from: mapper-analysis
     to: composer-map
-    description: Persists reusable analysis and recovery checkpoints
+    description: Saves parsed sources and recovery records
     technology: SQLite
     tags: [map-evidence]
     details: |
@@ -1547,7 +1547,7 @@ connections:
   - id: preparation-closure
     from: scoped-native
     to: prepared-closure
-    description: Builds selected operation closures
+    description: Collects operations and their dependencies
     technology: function call
     tags: [orchestration, approvals, original-source]
     details: |
@@ -1555,7 +1555,7 @@ connections:
   - id: closure-contracts
     from: prepared-closure
     to: prepared-contracts
-    description: Supplies closure evidence
+    description: Passes operation sources and dependencies
     technology: In-memory evidence
     tags: [original-source, map-evidence]
     details: |
@@ -1563,7 +1563,7 @@ connections:
   - id: contracts-units
     from: prepared-contracts
     to: prepared-units
-    description: Supplies contracts and call bindings
+    description: Passes data contracts and call targets
     technology: In-memory evidence
     tags: [original-source]
     details: |
@@ -1571,7 +1571,7 @@ connections:
   - id: preparation-reuse-check
     from: scoped-native
     to: preparation-reuse
-    description: Checks prepared evidence freshness
+    description: Checks whether saved inputs still match
     technology: function call
     tags: [orchestration, approvals, validation]
     details: |
@@ -1579,7 +1579,7 @@ connections:
   - id: plan-order
     from: plan-generation
     to: dependency-order
-    description: Orders operation dependencies
+    description: Finds which operations must run first
     technology: function call
     tags: [ai, validation]
     details: |
@@ -1587,7 +1587,7 @@ connections:
   - id: plan-validate
     from: plan-generation
     to: plan-validation
-    description: Validates the constructed migration plan
+    description: Checks selected operations and task order
     technology: function call
     tags: [ai, validation, run-evidence]
     details: |
@@ -1595,7 +1595,7 @@ connections:
   - id: plan-model
     from: plan-generation
     to: model-executor
-    description: Requests the migration plan when the selected
+    description: Asks AI to propose a conversion plan
     technology: function call
     tags: [ai]
     details: |
@@ -1603,7 +1603,7 @@ connections:
   - id: wrappers-build
     from: service-wrappers
     to: service-build
-    description: Builds and tests generated services
+    description: Passes service code for build and tests
     technology: Generated service project
     tags: [ai, generated-code, approvals]
     details: |
@@ -1611,7 +1611,7 @@ connections:
   - id: wrappers-packaging
     from: service-wrappers
     to: service-packaging
-    description: Configures executable artifacts
+    description: Sets up executable and deployment files
     technology: function call
     tags: [ai, generated-code, approvals]
     details: |
@@ -1619,7 +1619,7 @@ connections:
   - id: final-evidence-artifacts
     from: final-evidence
     to: final-artifacts
-    description: Supplies current deliverable evidence
+    description: Passes checked results for final output
     technology: Validated artifact evidence
     tags: [validation, run-evidence, ai]
     details: |
@@ -1627,7 +1627,7 @@ connections:
   - id: final-artifacts-approval
     from: final-artifacts
     to: final-approval
-    description: Supplies the final deliverable inventory
+    description: Passes the output file list for final review
     technology: Deliverable inventory
     tags: [ai, approvals, run-evidence]
     details: |
@@ -1635,7 +1635,7 @@ connections:
   - id: intake-prepared-handoff
     from: analyzer
     to: prepared-closure
-    description: Hands off pinned source evidence
+    description: Passes selected components and source versions
     technology: Persisted run evidence
     tags: [validation, map-evidence, original-source]
     details: |
@@ -1643,7 +1643,7 @@ connections:
   - id: plan-conversion-handoff
     from: plan-validation
     to: behavior-runner
-    description: Hands off validated task order
+    description: Passes checked tasks and their run order
     technology: Persisted migration plan
     tags: [validation, run-evidence, orchestration]
     details: |
@@ -1651,7 +1651,7 @@ connections:
   - id: service-final-handoff
     from: service-build
     to: final-evidence
-    description: Hands off service validation receipts
+    description: Passes service build and test results
     technology: Service validation evidence
     tags: [validation, generated-code, run-evidence]
     details: |
