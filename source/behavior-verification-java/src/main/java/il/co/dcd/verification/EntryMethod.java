@@ -16,7 +16,8 @@ final class EntryMethod {
         String implementation = entry.getAttribute("implementation");
         var resolved = resolve(entry, sources);
         MethodDeclaration method = resolved.toAst(MethodDeclaration.class)
-            .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source"));
+            .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source: declaring_class="
+                + resolved.declaringType().getQualifiedName() + "; signature=" + resolved.getQualifiedSignature()));
         if (method.getBody().isEmpty()) throw new IllegalStateException("Entry method has no executable body");
         if (FormatLifecycle.format(entry)) FormatLifecycle.sequence(entry, sources, resolved);
         var unit = method.findCompilationUnit().orElseThrow();

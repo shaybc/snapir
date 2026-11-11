@@ -55,6 +55,20 @@ def context_jar(tmp_path):
     return archive(tmp_path / 'context', {'com/ibm/api/Context.java': 'package com.ibm.api; public class Context {}'})
 
 
+def test_missing_inherited_entry_source_names_resolved_declaration(tmp_path, boundary_tool):
+    dependency = archive(tmp_path / 'base', {'vendor/Base.java':
+        'package vendor; public class Base { public int execute(){ return 0; } }'})
+    value = unit(sources=[source('work', 'package example; public class Work extends vendor.Base {}')])
+    preparation = dict(operations={'BANK/Op': operation(value,
+        [('example.Work', 'BANK', tmp_path / 'BANK/Work.java')])})
+    index = JavaClasspathIndex(project_classpaths={'BANK': view('BANK', [dependency])})
+    report = build_boundary_report(preparation, tool_jar=boundary_tool, classpath_index=index)
+    boundary = report['boundaries'][value['unit_id']]
+    assert boundary['analysis_status'] != 'identified'
+    assert boundary['issues'] == ['Entry method has no supplied Java source: '
+        'declaring_class=vendor.Base; signature=vendor.Base.execute()']
+
+
 @pytest.mark.parametrize('known_order', [True, False])
 def test_parameter_type_supplied_only_by_project_jar_is_resolved(tmp_path, boundary_tool, context_jar, known_order):
     text = 'package example; public class Formatter { public String format(com.ibm.api.Context context){ return ""; } }'

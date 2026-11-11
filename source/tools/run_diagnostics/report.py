@@ -48,6 +48,9 @@ def issue_summary(issues):
     if 'Entry method must resolve uniquely' in text:
         return 'No unique method matches the required entry signature'
     if 'no supplied Java source' in text:
+        if 'Entry method has no supplied Java source: declaring_class=' in text:
+            from runtime.model_execution.error_details import sanitize_diagnostic
+            return sanitize_diagnostic(text[text.index('Entry method has no supplied Java source: declaring_class='):])
         return 'Entry method has no supplied Java source'
     if 'no executable body' in text:
         return 'Entry method has no executable body'

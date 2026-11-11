@@ -150,6 +150,28 @@ def test_saved_index_and_analysis_are_labelled_without_reading_source_files(run,
     assert not (run / 'missing').exists()
 
 
+def test_missing_entry_source_keeps_full_signature_in_conversion_exports(run, tmp_path):
+    from tools.run_diagnostics.conversion_ai import build_report, format_report
+    owner = 'vendor.' + 'LongPackageName.' * 12 + 'StringFormat'
+    issue = ('Entry method has no supplied Java source: declaring_class=' + owner +
+        '; signature=' + owner + '.formatField(com.ibm.dse.base.DataField)')
+    reason = 'Basic format lifecycle could not be resolved: example.CCString: ' + issue
+    stage = run / 'reports/3_dependency_closure_and_component_conversion'
+    stage.mkdir(parents=True)
+    (stage / 'component-generation.json').write_text(json.dumps(dict(groups={
+        'string': dict(status='incomplete', reason=reason)})))
+    before = hashes(run)
+    result = build_report(run)
+    assert result.targets[0]['blocker_summary'].endswith(issue)
+    assert any(issue in line for line in format_report(result))
+    project = tmp_path / 'project'
+    export_conversion_report(run, project, result)
+    export_html_report(run, project, conversion=True)
+    data = dashboard_data(project / 'work/diagnostics/run')
+    assert data['targets'][0]['summary'].endswith(issue)
+    assert hashes(run) == before
+
+
 def test_preparation_does_not_falsely_mark_uncreated_plan_completed(run):
     with sqlite3.connect(run / 'state/migration.db') as conn:
         conn.execute("UPDATE runs SET current_phase='conversion_scoped_prepared'")

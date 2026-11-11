@@ -243,7 +243,8 @@ def build_report(directory):
             target['result'] = ('reused validated component' if result.get('reused') else 'component validated (build/tests)') if result.get('status') == 'component_validated' else str(result.get('status', 'unknown'))
             if result.get('reason'):
                 target['blocker'] = finding(error=result['reason'])
-                target['blocker_summary'] = sanitize_diagnostic(result['reason']).splitlines()[0][:240]
+                reason = sanitize_diagnostic(result['reason']).splitlines()[0]
+                target['blocker_summary'] = reason if 'Entry method has no supplied Java source: declaring_class=' in reason else reason[:240]
     for row in evidence['conversion_component_heads']:
         target = _target(targets, row['group_id'])
         target['component_head_status'] = row['status']
