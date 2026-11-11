@@ -146,27 +146,9 @@ def display_workflow_progress(directory):
     completed = phase in {"migration_approved", "dry_run_complete"}
     _print_progress("\n\nCurrent operation workflow progress" if progress and not completed else "\n\nMigration progress")
     _print_progress("─" * 68)
-    for index, label in enumerate(STAGES.values()):
-        if index < current or completed:
-            marker, description = "[V]", "completed"
-            if index == 1 and phase.startswith('conversion_scoped_'):
-                # Preparation can stop before a migration plan has ever been created.
-                try:
-                    with sqlite3.connect(run_database_path(directory).as_uri() + '?mode=ro', uri=True) as state:
-                        planned = state.execute('SELECT 1 FROM migration_plans WHERE run_id=? LIMIT 1', (directory.name,)).fetchone()
-                except sqlite3.Error:
-                    planned = None
-                if not planned:
-                    marker, description = '[ ]', 'not yet completed'
-        elif index > current:
-            marker, description = "[ ]", "pending"
-        else:
-            marker = "!" if status in {"blocked", "failed", "stopped"} else "→"
-            description = status if status in {"blocked", "failed", "stopped", "in_progress"} else "waiting"
-            if phase == "planning_inputs_ready" and status == "paused":
-                description = "ready to start"
-            if approved_three:
-                description = "waiting for resume"
+    from cli.workflow_progress_snapshot import stage_rows
+    for index, stage in enumerate(stage_rows(directory, status, phase or "", approved_three=approved_three)):
+        marker, label, description = stage['marker'], stage['label'], stage['status']
         _print_progress(f"{marker} {index + 1}. {label} ({description.upper()})")
         if index == current:
             if not completed:

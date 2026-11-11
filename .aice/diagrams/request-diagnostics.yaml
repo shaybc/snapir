@@ -49,8 +49,8 @@ narration:
     The operator can also continue a saved run or inspect why it stopped.
   e:operator->diagnostics-cli: The operator selects a saved run for inspection. This reads what happened without
     starting another conversion attempt.
-  o:diagnostics-cli: The diagnostics CLI selects the saved stage. During conversion it groups attempts by format,
-    step, shared component or unit and exports available materials without rerunning earlier-stage investigations.
+  o:diagnostics-cli: The diagnostics CLI selects the saved stage and exports an offline dashboard with the shared
+    progress checklist. During conversion, filtered target histories link dependencies, retries and saved materials without rerunning earlier investigations.
   e:diagnostics-cli->deliverables: The diagnostics command reads the saved reports and captured requests. If an
     old request was never captured, the tool does not try to rebuild it from today's source files.
   o:deliverables: Generated projects and reports is where the run keeps generated Java files, build and test results,
@@ -59,8 +59,8 @@ narration:
     the saved state without changing the run or moving it forward.
   o:run-state: Run state is the SQLite database for a particular conversion run. It stores the selected work, plan,
     attempts, test results, and approvals so the converter knows what has happened and where to continue.
-  e:diagnostics-cli->diagnostic-exports: The command copies each captured request and extracts its embedded source
-    text into files. It also writes a manifest that shows where each extracted piece appeared in the request.
+  e:diagnostics-cli->diagnostic-exports: The command exports local HTML, styles and navigation beside text and JSON
+    summaries. Captured materials retain source filenames and manifests; older diagnostic files remain untouched.
   o:diagnostic-exports: This folder contains exported AI requests and the source text extracted from them. A manifest
     records where each piece came from, including repeated pieces or files whose original names could not be resolved.
   o:model-executor: Model execution sends requests to the configured AI provider and handles timeouts and temporary

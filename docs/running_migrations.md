@@ -399,6 +399,32 @@ where provenance resolves them. Identical application material is shared by hash
 the request itself is not deduplicated or changed. Existing oversized exports remain
 available alongside the report. Exports do not change the saved run or retry budgets.
 
+The command also writes `work/diagnostics/<run-name>/index.html`. Open it directly
+in a browser; its styling, navigation, filters and report data are local files under
+`assets/`, so no web server or internet access is required. Keep that folder with
+the page when copying the dashboard. Rerun the diagnostic to refresh the snapshot.
+
+The dashboard starts with the same stage checklist as the menu progress display.
+During AI conversion it defaults to failures and blockers, with filters for status,
+component type, consuming operation and format/unformat direction. Component details
+link prerequisites and dependents, distinguish conversion attempts from delivery
+retries, and link captured request, instruction, response and error files. HTTP status
+and unrecorded evidence remain explicitly unknown. A saved validation result is not
+automatically whole-component or whole-operation acceptance.
+
+The collapsed saved-evidence view reads existing source-index and boundary-analysis
+reports without rerunning those stages or opening original workspace sources. Indexed
+classes and analyzed boundaries are labelled separately from native conversion results.
+Reports exceeding the 32 MiB dashboard metadata limit are explicitly skipped. Existing
+reports, captured requests and generated files can change during an active run; this is
+an observation, not an atomic snapshot of all filesystem artifacts.
+
+`Show exported files` lists materials referenced by the current snapshot. Folder links
+depend on browser support; the copyable folder path is the reliable way to open the
+directory in Explorer. Conversion diagnostics no longer invoke the legacy oversized
+exporter after the AI report. Old hash folders and other diagnostic files are retained,
+but are not included just because they already exist in the export directory.
+
 Future runs retain correlated events in `reports/model_attempts/events.jsonl` and
 exact application text in its checksum-addressed `blobs/` folder while model
 diagnostics are active. API credentials and transport headers are not captured.

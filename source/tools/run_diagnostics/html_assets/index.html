@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file:; img-src 'none'; connect-src 'none'; base-uri 'none'; object-src 'none'">
+  <title>Snapir · Run diagnostics</title>
+  <link rel="stylesheet" href="assets/dashboard.css">
+  <script defer src="assets/report-data.js"></script>
+  <script defer src="assets/dashboard.js"></script>
+</head>
+<body>
+  <header><div class="brand">SNAPIR <span>/ RUN DIAGNOSTICS</span></div><h1 id="run-name">Saved run</h1><p id="snapshot"></p><div id="run-state"></div></header>
+  <main>
+    <section aria-labelledby="progress-title"><h2 id="progress-title">Migration progress</h2><ol id="stages" class="stages"></ol><div id="guidance"></div><details><summary>Operation progress and current-stage details</summary><div id="operations"></div><div id="subsections"></div></details></section>
+    <section id="conversion-section" aria-labelledby="conversion-title"><div class="section-heading"><div><p class="eyebrow">CURRENT STAGE</p><h2 id="conversion-title">AI conversion</h2></div><a href="#files">Show exported files ↗</a></div><div id="counts" class="counts"></div>
+      <div class="filters"><label>Search components<input id="search" type="search" placeholder="Name, operation, failure…"></label><label>Status<select id="status"><option value="attention">Needs attention</option><option value="all">All statuses</option></select></label><label>Component type<select id="type"><option value="all">All types</option></select></label><label>Operation<select id="operation"><option value="all">All operations</option></select></label><label>Direction<select id="direction"><option value="all">Both directions</option><option value="format">Format</option><option value="unformat">Unformat</option></select></label></div>
+      <p id="result-count" role="status" aria-live="polite"></p><div class="table-wrap"><table><thead><tr><th>Component</th><th>Status</th><th>Attempts / deliveries</th><th>Latest result</th></tr></thead><tbody id="targets"></tbody></table></div><p id="empty"></p><nav class="pagination"><button id="previous">← Previous</button><span id="page"></span><button id="next">Next →</button></nav>
+    </section>
+    <section id="stage-diagnostic" hidden><h2>Current-stage diagnostic</h2><pre id="diagnostic-text"></pre></section>
+    <section id="detail" hidden tabindex="-1"><button id="back">← Back to component list</button><h2 id="detail-title"></h2><div id="detail-body"></div></section>
+    <section id="saved"><details id="saved-panel"><summary>Saved indexing and analysis evidence <span class="muted">Earlier-stage records · no investigations rerun</span></summary><div class="filters"><label>Find an indexed or analyzed component<input type="search" id="evidence-search" placeholder="Class or component name…"></label><label>Evidence status<select id="evidence-status"><option value="all">All saved evidence</option><option value="attention">Analysis problems</option><option value="indexed">Indexed sources</option><option value="identified">Identified boundaries</option></select></label></div><p id="evidence-count"></p><div id="evidence-list"></div><button id="more-evidence">Show more</button></details></section>
+    <section id="files"><h2>Exported files</h2><p>Only materials referenced by this snapshot are listed. Older files are left untouched.</p><p id="file-scope"></p><button id="all-files" hidden>Show all exported files</button><div class="folder"><a id="folder-link">Open folder (browser dependent)</a><button id="copy-folder">Copy folder path</button></div><input id="folder-path" readonly aria-label="Diagnostic folder path"><label>Find a file<input id="file-search" type="search" placeholder="Filename or package…"></label><div id="file-list"></div><button id="more-files">Show more files</button></section>
+    <section><details><summary>Evidence limitations</summary><ul id="limitations"></ul></details></section>
+  </main><footer>Read-only snapshot · No AI calls, builds, source parsing, or migration changes. Rerun diagnose-run.cmd to refresh.</footer>
+  <noscript>This dashboard needs local JavaScript enabled. The text and JSON diagnostic summaries remain readable without it.</noscript>
+</body></html>

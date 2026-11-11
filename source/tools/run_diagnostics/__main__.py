@@ -40,6 +40,7 @@ def main():
     from tools.run_diagnostics.ai_attempt_evidence import snapshot
     from tools.run_diagnostics.conversion_ai import is_conversion_phase, build_report, format_report
     from tools.run_diagnostics.conversion_ai_export import export_conversion_report
+    from tools.run_diagnostics.html_report import export_html_report
     try:
         evidence = snapshot(Path(directory).resolve(), include_attempts=False)
     except (OSError, ValueError, sqlite3.Error):
@@ -49,8 +50,12 @@ def main():
         report = build_report(directory)
         print('\n'.join(format_report(report)))
         print('\n'.join(export_conversion_report(directory, Path(__file__).resolve().parents[3], report)))
+        print('\n'.join(export_html_report(directory, Path(__file__).resolve().parents[3], conversion=True)))
+        return
     else:
-        print('\n'.join(diagnose(directory)))
+        lines = diagnose(directory)
+        print('\n'.join(lines))
+        print('\n'.join(export_html_report(directory, Path(__file__).resolve().parents[3], diagnostic_lines=lines)))
         if not str(evidence['run']['current_phase'] or '').startswith(('conversion_', 'closure', 'dependency_closure')):
             return
     from tools.run_diagnostics.request_materials import export_request_materials

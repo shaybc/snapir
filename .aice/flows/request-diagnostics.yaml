@@ -19,8 +19,8 @@ steps:
   description: Read exact saved captures without reconstructing historical requests or reading original workspace
     sources.
 - connection: diagnostics-export
-  description: Copy captures and extract embedded sources with resolved names, collision handling, and occurrence
-    manifests.
+  description: Export the stage-specific HTML dashboard, text/JSON summaries and captured materials with source naming
+    and occurrence manifests. During AI conversion, skip the legacy export fall-through.
 details: 'Retains application request/response evidence during an active run and later exports it by conversion target.
 
 
@@ -43,7 +43,7 @@ narration:
     target histories instead of rerunning an earlier boundary investigation.
   s:5: Saved attempts, results, captured materials and labelled log evidence distinguish budget checks, delivery,
     JSON failures and validation. Missing HTTP status or historical instructions are not guessed.
-  s:6: The tool copies the request and extracts the source text inside it into separate files. A manifest keeps
-    track of original names, repeated pieces, and conflicting content.
-  outro: Text and JSON summaries group the evidence by format, step, component or unit and list consuming operations.
-    Linked materials preserve available prompts, responses and source names without reconstructing missing history.
+  s:6: The tool exports an offline HTML dashboard with the shared stage checklist and filtered conversion histories.
+    The operator can follow dependencies, inspect retries and open captured materials without rerunning earlier investigations.
+  outro: Open the local dashboard for a compact overview and drill into component failures or saved indexing evidence.
+    Text and JSON summaries remain available, and missing historical evidence stays explicit.

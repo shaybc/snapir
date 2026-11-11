@@ -51,6 +51,9 @@ def _target(targets, identity, request=None):
     elif request.get('kind') in {'request_unformat', 'response_format', 'configured_step'}:
         target['type'] = 'OP step' if request['kind'] == 'configured_step' else 'configured format'
         target['name'] = request.get('logical_id') or request.get('name') or target['name']
+    for field in ('source_entry_points', 'format_lifecycles'):
+        if request.get(field):
+            target[field] = request[field]
     configured = request.get('configured_format') or request.get('unit') or request
     if not isinstance(configured, dict):
         configured = request
@@ -187,6 +190,7 @@ def _journal_attempts(directory, events, targets, limitations):
             if delivery is None:
                 delivery = dict(id=delivery_id, number=event.get('delivery_attempt'), outcome='dispatch_attempted', http_status=None)
                 attempt['deliveries'].append(delivery)
+            delivery.setdefault('events', []).append(dict(event=event['event'], timestamp=event.get('timestamp')))
             if event['event'] == 'http_response':
                 delivery['http_status'] = event.get('http_status') if isinstance(event.get('http_status'), int) else None
                 delivery['gateway_request_id'] = event.get('gateway_request_id')
@@ -217,7 +221,10 @@ def build_report(directory):
         plan = _request(row['plan_json'])
         for group in plan.get('groups', []):
             components = {key: plan.get('components', {}).get(key, {}) for key in group.get('members', [])}
-            _target(targets, group['group_id'], dict(components=components))
+            target = _target(targets, group['group_id'], dict(components=components))
+            target['members'] = group.get('members', [])
+            target['prerequisites'] = group.get('dependencies', [])
+            target['planned_components'] = components
     _database_attempts(directory, evidence, targets)
     events = journal(directory, limitations)
     _journal_attempts(directory, events, targets, limitations)
