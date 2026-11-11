@@ -31,11 +31,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", nargs="?", choices=["start", "status", "resume", "approve", "reject"])
     parser.add_argument("--config")
     parser.add_argument("--run-id")
+    parser.add_argument("--framework-config", help="Framework-only YAML update for an existing run; no new intake")
     parser.add_argument('--connection-answers', help='JSON list of last-resort service/driver decisions for Resume')
     parser.add_argument("--gate", type=lambda value: 'plan' if value == 'plan' else int(value), choices=[1, 2, 3, 4, 5, 'plan'])
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Enable detailed file diagnostics; keep console progress concise.")
     args = parser.parse_args(argv)
+    if args.framework_config and args.command not in {None, 'resume'}:
+        parser.error('--framework-config is only supported for resume')
     diagnostics = console_diagnostics(args.verbose)
     diagnostics.__enter__()
     preferred_run = None
@@ -135,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
                     from pathlib import Path
                     answers = json.loads(Path(args.connection_answers).read_text()) if args.connection_answers else None
                     answer_connection_questions(directory, answers=answers)
-                    resumed_directory = resume_pipeline(str(directory.parent), directory.name)
+                    resumed_directory = resume_pipeline(str(directory.parent), directory.name, **({'framework_config': args.framework_config} if args.framework_config else {}))
                     database = run_database_path(directory)
                     with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as conn:
                         result = conn.execute("SELECT status, current_phase FROM runs WHERE run_id=?",
@@ -210,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
                 from pathlib import Path
                 answers = json.loads(Path(args.connection_answers).read_text())
                 answer_connection_questions(directory, answers=answers)
-            print(f"Run workspace: {resume_pipeline(profile.output_root, args.run_id)}")
+            print(f"Run workspace: {resume_pipeline(profile.output_root, args.run_id, **({'framework_config': args.framework_config} if args.framework_config else {}))}")
         elif args.command in {"approve", "reject"}:
             if not args.run_id or not args.gate:
                 parser.error("approval commands require --run-id and --gate")

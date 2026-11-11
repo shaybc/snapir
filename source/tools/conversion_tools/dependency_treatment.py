@@ -64,6 +64,13 @@ def composer_record(name, origin):
 def dependency_record(name, rules, profile, origin, classpath, *, source_exists=False, required=False):
     """Resolve overrides and verified libraries; unavailable supporting imports remain candidates."""
     from tools.conversion_tools.external_dependency_resolver import external_dependency
+    from tools.framework_boundaries.inventory import owner
+    framework = owner(name) if not source_exists else None
+    if framework:
+        from runtime.composer_behavior_context import required_composer_behavior
+        return dict(class_name=name, treatment='replace', maven_coordinates=None, origin=origin,
+            behavior_description='Framework binary boundary: preserve business behavior using the existing Composer explanations; do not recreate the framework.',
+            behavior_evidence=required_composer_behavior(), framework_boundary=dict(class_name=name, **framework))
     explicit = external_dependency(name, rules, None, origin)
     if explicit and explicit['treatment'] == 'replace':
         return explicit

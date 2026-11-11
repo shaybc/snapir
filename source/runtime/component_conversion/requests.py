@@ -32,8 +32,9 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     else: verify_original_sources(plan, group)
     step = configured_step(plan, group, units or {})
     composed = configured_format(plan, group, units or {})
-    sources, entries, checklist = component_sources(plan, group, bindings), {}, {}
+    sources, entries, checklist = component_sources(plan, group, bindings, units=units or {}), {}, {}
     lifecycle_evidence = {}
+    framework_evidence = []
     from runtime.behavior_conversion.verification_mode import facts_disabled
     skip_facts = facts_disabled(profile)
     composition_obligations={}
@@ -41,7 +42,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     basic_format=bool(basic_members)
     for key in group.members:
         node = plan.components[bindings.get(key, key)]
-        identity = node.provenance['definition_id']
+        identity = node.provenance.get('definition_id', node.provenance.get('source_definition_id'))
         basic_element=key in basic_members
         methods = set()
         for unit_id, boundary in boundaries['boundaries'].items():
@@ -54,6 +55,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
                     if basic.get('analysis_status') != 'identified' or basic.get('issues'):
                         raise ValueError('Basic format lifecycle could not be resolved: ' + node.label + ': ' + '; '.join(basic.get('issues', [])))
                     boundary = basic
+            framework_evidence.extend(boundary.get('framework_boundaries', []))
             lifecycle = boundary.get('format_lifecycle')
             if lifecycle:
                 lifecycle_evidence.setdefault(key, []).append(lifecycle)
@@ -62,6 +64,10 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             graph = boundary.get('reachable_slice') or {}
             if lifecycle and basic_element:
                 lifecycle_sources.update(method['source_identity'] for method in graph.get('nodes', []))
+            elif boundary.get('framework_boundaries') and basic_element:
+                supplied = {source['identity'] for source in sources}
+                lifecycle_sources.update(method['source_identity'] for method in graph.get('nodes', [])
+                                         if method['source_identity'] in supplied)
             composition_nodes=set((boundary.get('basic_parser_checklist') or {}).get('composition_code_nodes',[])) if basic_element else set()
             for method in graph.get('nodes', []):
                 if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
@@ -87,8 +93,11 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             boundary=current_format_boundary(units[composed['unit_id']],boundaries)
             if boundary.get('analysis_status')!='identified' or not skip_facts and (boundary.get('parser_checklist') or {}).get('status')!='extracted':
                 raise ValueError('Complete format requires identified original boundary and parser checklist')
-            methods={boundary['legacy_method']['signature']}
+            framework_evidence.extend(boundary.get('framework_boundaries', []))
+            methods={boundary['legacy_method']['signature']} if boundary.get('legacy_method') else {item['signature'] for item in boundary.get('framework_boundaries', [])}
             checklist={} if skip_facts else {item['id']:item for item in boundary['parser_checklist']['items']}
+        if not methods and framework_evidence:
+            methods.update(item['signature'] for item in framework_evidence)
         if not methods:
             raise ValueError('Component has no parser-backed entry points: ' + node.label)
         entries[key] = sorted(methods)
@@ -107,6 +116,14 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         prerequisite_components=dependencies, java_version=profile.java_version, requirements=requirements,
         validation_scope='build_and_tests', behavioral_equivalence='not_established',
         comparison_limitations=['No independent component invocation adapter; whole configured-unit comparison remains required.'])
+    from tools.framework_boundaries.requests import dependency_boundaries
+    framework_evidence.extend(dependency_boundaries(plan, group))
+    if composed is not None:
+        from tools.framework_boundaries.composition import composition_boundaries
+        framework_evidence.extend(composition_boundaries(composed, boundaries))
+    if framework_evidence:
+        from tools.framework_boundaries.requests import attach_framework_context
+        attach_framework_context(request, framework_evidence)
     if lifecycle_evidence:
         request['format_lifecycles'] = lifecycle_evidence
         request['comparison_limitations'] = ['Standalone lifecycle comparisons are explicit diagnostics; component build/tests do not replace whole configured-unit comparison.']
@@ -160,6 +177,9 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     from runtime.behavior_conversion.typed_boundaries import attach_typed_boundary, INSTRUCTION as TYPED_BOUNDARY_INSTRUCTION
     if attach_typed_boundary(request):
         specific += '\n' + TYPED_BOUNDARY_INSTRUCTION
+    if framework_evidence:
+        from tools.framework_boundaries.requests import INSTRUCTION as FRAMEWORK_INSTRUCTION
+        specific += '\n' + FRAMEWORK_INSTRUCTION
     request['component_generation_policy'] = digest(dict(instruction=instruction_factory()+specific, schema=schema.model_json_schema()))
     from runtime.behavior_conversion.verification_mode import conversion_mode,policy_payload
     if conversion_mode(profile):

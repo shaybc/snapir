@@ -1012,7 +1012,36 @@ objects:
       ## What the provider supplies
 
       The configured endpoint can be Gemini or a compatible provider. It returns proposed code, plans, metadata decisions, or reviews for the job that called it. The converter still checks the response format, applicable build and behavior results, and required human decisions before accepting the work.
+  - id: framework-boundaries
+    type: component
+    name: Framework binary boundaries
+    parent: preparation
+    description: Separates original framework binaries from application code to convert.
+    tags: [original-source]
+    code:
+      - source/tools/framework_boundaries/**
+    details: |
+      Configured framework JARs supply exact class ownership without requiring proprietary source.
+      A framework-only resume update changes the saved profile with an audit record while preserving
+      imported source evidence, mapping, and progress. Conversion uses captured application source and
+      existing Composer explanations. Original comparisons execute real framework binaries; native
+      code must not recreate or depend on the Composer runtime.
 connections:
+  - id: resume-framework-boundaries
+    from: checkpoints
+    to: framework-boundaries
+    description: Applies optional framework-only saved-run configuration
+    technology: function call
+  - id: conversion-framework-boundaries
+    from: components
+    to: framework-boundaries
+    description: Reads exact binary ownership for non-blocking conversion
+    technology: function call
+  - id: verification-framework-boundaries
+    from: verification
+    to: framework-boundaries
+    description: Supplies original-side framework binaries without native runtime dependencies
+    technology: function call
   - id: components-lifecycle
     from: components
     to: verification

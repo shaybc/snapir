@@ -43,14 +43,17 @@ def saved_components(directory):
         if not isinstance(report, dict):
             continue
         files.append(path.relative_to(directory).as_posix())
-        for identity, boundary in report.get('boundaries', {}).items():
+        boundaries = dict(report.get('boundaries', {}))
+        boundaries.update({identity: boundary for identity, boundary in report.get('basic_boundaries', {}).items()
+                           if isinstance(boundary, dict) and boundary.get('framework_boundaries')})
+        for identity, boundary in boundaries.items():
             if not isinstance(boundary, dict):
                 continue
             metadata = {key: value for key, value in boundary.items() if key in {
-                'kind', 'implementation_class', 'analysis_status', 'issues', 'legacy_method',
+                'kind', 'implementation_class', 'analysis_status', 'issues', 'legacy_method', 'framework_boundaries',
                 'format_lifecycles', 'analysis_tool_hash', 'analysis_classpath_hash'}}
             components.append(dict(name=boundary.get('implementation_class') or identity, identity=identity,
-                kind='saved boundary analysis', status=boundary.get('analysis_status', 'not recorded'),
+                kind='saved boundary analysis', status='framework boundary (non-blocking)' if boundary.get('framework_boundaries') else boundary.get('analysis_status', 'not recorded'),
                 evidence_file=path.relative_to(directory).as_posix(), details=metadata))
     if not components:
         limitations.append('No readable saved source index or boundary analysis metadata was found; no analysis was rerun.')

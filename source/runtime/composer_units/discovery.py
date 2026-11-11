@@ -36,7 +36,7 @@ def discover(spec,profile):
         for dependency in index.project_references.get(pending.pop(),[]):
             if dependency not in visible:visible.add(dependency);pending.append(dependency)
     source_roots=[root for name in visible for root in index.source_roots.get(name,[])]
-    classpath=discover_java_classpath(profile.source_root,profile.classpath_jars,profile.eclipse_classpath_variables,visible_source_roots=source_roots,
+    classpath=discover_java_classpath(profile.source_root,list(dict.fromkeys([*profile.classpath_jars, *profile.framework_jars])),profile.eclipse_classpath_variables,visible_source_roots=source_roots,
         containers=getattr(profile,'eclipse_classpath_containers',{}),project_containers=getattr(profile,'eclipse_project_classpath_containers',{}))
     if classpath.issues:raise ValueError('; '.join(classpath.issues))
     from tools.source_discovery_tools.binary_resolution import classpath_for_project,ordered_library_paths

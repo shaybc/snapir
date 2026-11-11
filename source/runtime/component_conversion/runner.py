@@ -108,6 +108,12 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
                        if saved.get(name) != obligations[name]]
             if saved.get('analysis_classpath_hash') != obligations.get('analysis_classpath_hash'):
                 changed.append('analysis_classpath_hash')
+            if saved.get('framework_boundaries', []) != obligations.get('framework_boundaries', []):
+                changed.append('framework_boundaries')
+            if getattr(profile, 'framework_jars', []) and set(changed) <= {'analysis_tool_hash', 'analysis_classpath_hash'}:
+                # Current checkpoint checks retain application/source/classpath identity. The existing validator
+                # below rebuilds and rechecks the artifact; this is not a promotion of an old receipt.
+                changed = []
             if changed:
                 raise ValueError('Component parser obligations or validation policy changed: '+', '.join(changed))
             if saved.get('configured_unit') != obligations.get('configured_unit'):

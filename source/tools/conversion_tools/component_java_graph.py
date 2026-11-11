@@ -52,12 +52,16 @@ class ComponentJavaGraph:
             if node is None:
                 status=item['status']
                 source=status=='verified_source'
-                external=status in {'verified_platform','verified_retention','explicit_replacement','explicit_external','evidence_dependency'}
+                from tools.framework_boundaries.inventory import owner
+                framework = owner(current) if not source else None
+                external=bool(framework) or status in {'verified_platform','verified_retention','explicit_replacement','explicit_external','evidence_dependency'}
                 node=PlannedConversionComponent(component_id=key,kind='java_implementation' if source else
                     'external_dependency' if external else 'unresolved_dependency',label=current,
                     status='source_recorded' if source else 'external_recorded' if external else 'unresolved',provenance=item)
                 if source and 'required_classes' not in item: node.issues.append('Recorded Java dependency graph is missing')
                 if not source and not external: node.issues.append('Qualified Java origin is missing, competing or unresolved')
+                if framework:
+                    node.provenance = dict(item, framework_boundary=dict(class_name=current, **framework))
                 self.components[key]=node
             if current_role and current_role not in node.roles: node.roles.append(current_role)
             if unit['unit_id'] not in node.unit_ids: node.unit_ids.append(unit['unit_id'])
@@ -70,6 +74,8 @@ class ComponentJavaGraph:
                 else: node.source_characters=len(source['content'])
             if key in visited: continue
             visited.add(key)
+            if node.provenance.get('framework_boundary'):
+                continue  # The framework is an original-runtime boundary, not another source conversion closure.
             for dependency in sorted(set(item.get('required_classes',[]))):
                 target=self.identity(dependency)
                 if target not in node.dependencies: node.dependencies.append(target)

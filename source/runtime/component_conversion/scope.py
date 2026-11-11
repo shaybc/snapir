@@ -52,6 +52,8 @@ def component_execution(conn, config, profile, classpath, preparation, *, includ
 
 def require_component_task(conn, config, profile, identity, payload=None):
     """Recheck checkpoint/source/target bindings before model calls and candidate publication."""
+    from tools.framework_boundaries.inventory import verify
+    verify()
     partition = _partition_tasks.get()
     if partition and identity == partition[0] and payload is not None and payload.get('format_partition') is not None:
         if any(payload.get(key) != value for key, value in partition[1].items()):
@@ -88,7 +90,7 @@ def require_component_task(conn, config, profile, identity, payload=None):
         if step is not None and (payload.get('operation_calls') != step['operation_calls'] or payload.get('service_connections') != sorted(step['service_connections'],key=lambda item:item['connection_id'])):
             raise ValueError('Component request changed occurrence-specific external contracts')
         from runtime.component_conversion.source_evidence import validate_component_sources
-        validate_component_sources(execution['plan'], group, bindings, payload.get('sources', []))
+        validate_component_sources(execution['plan'], group, bindings, payload.get('sources', []), units=execution['units'])
         if composed is not None:
             from runtime.component_conversion.format_chains import attach_format_chains
             trusted=dict(configured_format=composed,requirements={})

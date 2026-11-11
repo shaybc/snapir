@@ -21,6 +21,8 @@ def validate_bundle(bundle, apis=(), requirements=(), evidence_ids=(), allowed_c
     """Reject unsafe paths, incomplete code, undeclared contracts and unsupported claims."""
     if bundle.unresolved_questions:
         raise ValueError("Unresolved behavior: " + "; ".join(bundle.unresolved_questions))
+    from tools.framework_boundaries.native_output import reject_framework_output
+    reject_framework_output(bundle.files)
     from runtime.retained_libraries.catalog import allowed_client_classes
     allowed_classes = allowed_client_classes(allowed_classes)
     files = {}

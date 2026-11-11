@@ -381,3 +381,18 @@ def test_runtime_reports_stale_contexts_without_rebuilding(saved, tmp_path, monk
     assert report['stale_contexts']
     assert get_run(conn, config.run_id)['current_phase'] == 'conversion_scoped_stale'
     assert not json.loads(run_report_path(tmp_path, 'scoped_workflow_preparation.json').read_text())['conversion_enabled']
+
+
+def test_additive_framework_configuration_reuses_captured_preparation(saved, monkeypatch, tmp_path):
+    from zipfile import ZipFile
+    from tools.framework_boundaries.inventory import framework_scope
+    from tools.conversion_tools.scoped_workflow import preparation
+    conn, config, profile, first = saved
+    jar=tmp_path/'framework.jar'
+    with ZipFile(jar,'w') as archive: archive.writestr('vendor/Runtime.class',b'classification only')
+    profile.framework_jars=[str(jar)]
+    monkeypatch.setattr(preparation,'build_scoped_operation_closure',lambda *a,**k:pytest.fail('Captured closure rebuilt'))
+    monkeypatch.setattr(preparation,'build_scoped_units',lambda *a,**k:pytest.fail('Captured units regenerated'))
+    with framework_scope(profile.framework_jars): second=prepare(conn,config,profile)
+    assert second['reused_contexts']==sorted(first['operations'])
+    assert second['operations']==first['operations']

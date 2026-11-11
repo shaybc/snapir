@@ -7,6 +7,7 @@ objects:
 - prepared-contracts
 - prepared-units
 - preparation-reuse
+- framework-boundaries
 layout:
   scoped-native:
     x: 0
@@ -48,3 +49,4 @@ narration:
     files and settings. If they have changed, the old preparation cannot be used as if it were still current.
   outro: The converter now knows which code belongs to each job and how the operations connect. The separate reuse
     check decides whether previously prepared jobs still match the current project.
+  o:framework-boundaries: Framework binary boundaries reads the class names in explicitly configured JARs. It identifies missing proprietary source as expected framework context, keeps application code as the conversion target, and preserves the original binaries for comparison tests.

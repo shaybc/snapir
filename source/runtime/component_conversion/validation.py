@@ -196,6 +196,8 @@ class ComponentCandidateValidator:
             from runtime.test_assets.preparation import current
             if self.request.get('analysis_classpath_hash'):
                 report['analysis_classpath_hash'] = self.request['analysis_classpath_hash']
+            if self.request.get('framework_boundaries'):
+                report['framework_boundaries'] = self.request['framework_boundaries']
             assets=current()
             if assets:report['test_assets']=dict(manifest_hash=assets['manifest_hash'],
                 resource_path='src/test/resources/shared-test-assets/'+assets['manifest_hash'],

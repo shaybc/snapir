@@ -18,6 +18,7 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
     for name in ("source_root", "mapper_jar", "output_root", "shared_store_root"):
         setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))
     config.classpath_jars = [str(((profile_path.parent if "classpath_jars" in config.model_fields_set else project_directory) / path).resolve()) for path in config.classpath_jars]
+    config.framework_jars = [str((profile_path.parent / path).resolve()) for path in config.framework_jars]
     for name in ("maven_settings_path", "maven_local_repository", "deployment_template_dir", "java_home", "service_registry_path", "mapper_analysis_reuse"):
         if getattr(config, name):
             setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))

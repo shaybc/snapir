@@ -17,6 +17,9 @@ def source_bindings(plan, group):
     key = group.members[0]; node = plan.components[key]
     candidates = [target for target in node.dependencies if plan.components[target].kind == 'java_implementation'
                   and plan.components[target].label == node.provenance.get('resolved_implementation')]
+    if not candidates:
+        from tools.framework_boundaries.inventory import owner
+        if owner(node.provenance.get('resolved_implementation')): return {key: key}
     if len(candidates) != 1:
         raise ValueError('Configured step requires exactly one qualified implementing class')
     return {key: candidates[0]}
@@ -57,7 +60,7 @@ def configured_step(plan, group, units):
     result = {name: unit[name] for name in ('unit_id', 'kind', 'logical_id', 'fingerprint', 'operation_identity',
         'occurrence_id', 'source_definition_id', 'configuration_xml', 'effective_configuration')}
     result['consumers'] = list(unit.get('consumers', node.operations))
-    result['resolved_implementation'] = plan.components[bindings[key]].label
+    result['resolved_implementation'] = node.provenance['resolved_implementation'] if bindings[key]==key else plan.components[bindings[key]].label
     result['operation_calls'] = list(unit.get('operation_calls', []))
     result['service_connections'] = list(unit.get('service_connections', []))
     for call in result['operation_calls']:

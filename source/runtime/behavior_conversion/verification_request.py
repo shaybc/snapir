@@ -50,6 +50,9 @@ def attach_verification(payload, *, collect_facts=True):
     result.update(boundary=boundary.model_dump(mode='json', exclude={'parser_checklist', 'reachable_slice'}), checklist=checklist,
                   slice_sources=_slice_sources(unit, boundary), verification_version='parser-boundary-v1')
     result['analysis_tool_hash'] = report['analysis_tool_hash']
+    if boundary.framework_boundaries:
+        from tools.framework_boundaries.requests import attach_framework_context
+        attach_framework_context(result, boundary.framework_boundaries)
     # Whole source snapshots remain on the trusted side; generation receives complete reachable declarations.
     result.pop('sources', None)
     return result, boundary, unit

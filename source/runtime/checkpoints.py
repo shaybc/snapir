@@ -21,11 +21,14 @@ from runtime.model_execution.diagnostics import run_model_diagnostics
 from runtime.java_toolchain import java_scope
 
 
-def resume_pipeline(output_root: str, run_id: str):
+def resume_pipeline(output_root: str, run_id: str, *, framework_config=None):
     """Resume planning without rerunning intake, stopping on review or blocked closure."""
     directory = resolve_run_directory(output_root, run_id)
     if not run_database_path(directory).is_file():
         raise ValueError("Run database does not exist")
+    if framework_config is not None:
+        from tools.framework_boundaries.run_update import update_run
+        update_run(directory, framework_config)
     profile = PipelineConfiguration.model_validate_json(run_profile_path(directory).read_text(encoding="utf-8"))
     conn = get_connection(str(run_database_path(directory)))
     diagnostics = run_model_diagnostics(directory)

@@ -28,6 +28,8 @@ final class SourceScope implements AutoCloseable {
     private final Path root;
     private final Map<Path, Element> evidence = new HashMap<>();
     final Set<String> typeNames = new TreeSet<>();
+    private final Set<String> sourceTypes = new TreeSet<>();
+    final Map<String, Element> frameworkTypes = new HashMap<>();
     final CombinedTypeSolver solver;
     private ProjectTypeSolvers projectSolvers;
 
@@ -41,7 +43,12 @@ final class SourceScope implements AutoCloseable {
             Map<String, Path> projectRoots = new HashMap<>();
             Map<String, String> owners = new HashMap<>(), identities = new HashMap<>();
             for (org.w3c.dom.Node node = scope.getFirstChild(); node != null; node = node.getNextSibling()) {
-                if (!(node instanceof Element source) || !source.getTagName().equals("source")) continue;
+                if (!(node instanceof Element source)) continue;
+                if (source.getTagName().equals("framework-class")) {
+                    frameworkTypes.put(source.getAttribute("name").replace('$', '.'), source);
+                    continue;
+                }
+                if (!source.getTagName().equals("source")) continue;
                 AnalysisProgress.report("parsing source " + source.getAttribute("identity"));
                 var parsed = parser.parse(source.getTextContent());
                 if (!parsed.isSuccessful()) throw new IllegalArgumentException("Invalid Java source " + source.getAttribute("identity") + ": " + parsed.getProblems());
@@ -72,8 +79,18 @@ final class SourceScope implements AutoCloseable {
                 Files.createDirectories(path.getParent());
                 Files.writeString(path, source.getTextContent(), StandardCharsets.UTF_8);
             }
+            sourceTypes.addAll(owners.keySet());
             // The platform loader sees JDK modules (including DOM/SAX), never tool or workspace classes.
             if (scope.hasAttribute("project")) {
+                for (var node = scope.getFirstChild(); node != null; node = node.getNextSibling()) {
+                    if (!(node instanceof Element project) || !project.getTagName().equals("project")) continue;
+                    String name = project.getAttribute("id");
+                    if (!projectRoots.containsKey(name)) {
+                        Path empty = root.resolve("project-" + projectRoots.size());
+                        Files.createDirectories(empty);
+                        projectRoots.put(name, empty);
+                    }
+                }
                 projectSolvers = new ProjectTypeSolvers(scope, projectRoots, owners, identities);
                 solver = projectSolvers.forProject(scope.getAttribute("project"));
             } else {
@@ -90,7 +107,10 @@ final class SourceScope implements AutoCloseable {
             : projectSolvers.forProject(evidence(unit).getAttribute("project"))).inject(unit));
     }
 
-    CombinedTypeSolver solverFor(String owner) { return projectSolvers == null ? solver : projectSolvers.forType(owner); }
+    CombinedTypeSolver solverFor(String owner) {
+        if (projectSolvers == null || frameworkTypes.containsKey(owner) && !sourceTypes.contains(owner)) return solver;
+        return projectSolvers.forType(owner);
+    }
 
     Element evidence(CompilationUnit unit) {
         Path path = unit.getStorage().orElseThrow(() -> new IllegalStateException("Method has no original source storage")).getPath();

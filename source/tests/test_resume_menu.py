@@ -187,3 +187,16 @@ def test_explicit_resume_keeps_script_exit_behavior(tmp_path, monkeypatch, failu
     monkeypatch.setattr("cli.main.resume_pipeline", resume)
     assert main(["resume", "--config", "original.yaml", "--run-id", "explicit"]) == (1 if failure else 0)
     assert calls == [(str(tmp_path), "explicit")]
+
+
+def test_resume_forwards_framework_only_update_without_loading_start_config(project, monkeypatch):
+    directory=saved_run(project/'work/migration_runs')
+    choices=iter(['resume',str(directory),'exit'])
+    monkeypatch.setattr(interactive,'select_option',lambda *a,**k:next(choices))
+    update=project/'framework.yaml';update.write_text('framework_jars: []')
+    calls=[]
+    def resume(root, run_id, *, framework_config=None):
+        calls.append((root,run_id,framework_config));return directory
+    monkeypatch.setattr('cli.main.resume_pipeline',resume)
+    assert main(['--framework-config',str(update)])==0
+    assert calls==[(str(directory.parent),directory.name,str(update))]

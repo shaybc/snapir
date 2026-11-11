@@ -24,6 +24,7 @@ def revision(path):
 
 def conversion_policy(profile):
     """Fingerprint relevant generation/origin policy without persisting credentials."""
+    # framework_jars is additive conversion metadata, not imported source/map identity.
     names = ('conversion_strategy', 'scoped_native_mode', 'source_workspace_id', 'scoped_java_project', 'scoped_java_projects', 'java_version', 'java_home', 'classpath_jars',
         'eclipse_classpath_variables', 'eclipse_classpath_containers', 'eclipse_project_classpath_containers', 'allowed_ibm_artifacts', 'allowed_ibm_classes', 'external_dependencies',
         'conversion_requirements', 'maven_settings_path', 'maven_local_repository',

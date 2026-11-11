@@ -76,6 +76,7 @@ class PipelineConfiguration(BaseModel):
     model_base_url: str = constants.LITELLM_BASE_URL
     auto_rerun_impacted_operations: bool = constants.AUTO_RERUN_IMPACTED_OPERATIONS
     model_provider: Literal["gemini", "litellm", "mock"] = constants.MODEL_PROVIDER
+    framework_jars: list[str] = Field(default_factory=list)
     classpath_jars: list[str] = Field(default_factory=lambda: deepcopy(constants.CLASSPATH_JARS))
     external_dependencies: list[ExternalDependencyRule] = Field(default_factory=list)
     composer_behavior_document: str = Field(default="docs/comp-manual/wsbcc_developer_manual_v2.md", exclude=True)

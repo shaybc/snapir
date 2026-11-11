@@ -37,6 +37,9 @@ def format_source_bindings(plan, group, units):
         seen.add(key); node=plan.components[key]
         if node.kind=='format_node': pending.extend(node.dependencies)
         elif node.kind=='java_implementation' and node.label==name: matches.append(key)
+    if not matches:
+        from tools.framework_boundaries.inventory import owner
+        if owner(name): return {}
     if len(matches)!=1: raise ValueError('Format needs one qualified body implementation')
     return {group.members[0]:matches[0]}
 

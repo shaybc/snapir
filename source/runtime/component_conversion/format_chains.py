@@ -74,12 +74,13 @@ def configured_chains(configured,sources,boundaries=None):
     types=source_types(sources);result=[];seen=set()
     definitions={item['definition_id']:item for item in configured.get('referenced_definitions',[])}
     direction='unformat' if configured['kind']=='request_unformat' else 'format'
+    from tools.framework_boundaries.composition import framework_occurrence
     def visit(node):
         occurrence=node.get('occurrence_id') or node.get('source_selector')
         if occurrence in seen:return
         seen.add(occurrence)
         decorators=node.get('decorators',[])
-        if decorators:
+        if decorators and not framework_occurrence(configured, node, boundaries):
             owner=node.get('java_class');hooks=reachable_hooks(types,owner,direction)
             if boundaries:
                 from tools.behavior_verification.format_lifecycle import basic_identity

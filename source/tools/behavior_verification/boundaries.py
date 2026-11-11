@@ -7,7 +7,7 @@ from tools.behavior_verification.reachable_slice import read_reachable_slice
 from tools.behavior_verification.parser_checklist import read_parser_checklist
 
 
-def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None):
+def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None, original_classpath=()):
     """Identify entry methods and conservative slices; no behavioral pass is claimed."""
     from tools.behavior_verification.format_lifecycle import expanded_preparation, read_lifecycle
     preparation, basic_ids = expanded_preparation(preparation)
@@ -31,7 +31,8 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                 from tools.behavior_verification.boundary_classpath import project_context
                 try:
                     context = project_context(unit, boundary,
-                        item.get('behavior_request', {}).get('java_origins', []), classpath_index)
+                        item.get('behavior_request', {}).get('java_origins', []), classpath_index,
+                        **({'original_classpath': original_classpath} if original_classpath else {}))
                 except ValueError as error:
                     boundary.issues.append(str(error))
                     continue
@@ -52,6 +53,32 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                 returned.add(identity)
                 boundary = boundaries[identity]
                 issues = [node.get('message') for node in entry.findall('issue')]
+                framework = entry.find('framework-boundary')
+                if framework is not None and not issues:
+                    from tools.framework_boundaries.inventory import owner
+                    library = owner(framework.get('declaring_class'))
+                    if library is None or library['sha256'] != framework.get('sha256') or library['path'] != framework.get('path'):
+                        raise ValueError('Unverified framework boundary ownership')
+                    boundary.framework_boundaries = [dict(framework.attrib,
+                        parameters=[item.get('type') for item in framework.findall('parameter')])]
+                    boundary.analysis_status = 'identified'
+                    boundary.method_name = framework.get('method')
+                    boundary.return_contract = framework.get('returns')
+                    boundary.parameter_contract = boundary.framework_boundaries[0]['parameters']
+                    boundary.reachable_slice = read_reachable_slice(entry.find('reachability'), boundary,
+                        unit_sources[identity], source_paths[identity])
+                    if collect_checklists and not unit_sources[identity]:
+                        from models.unit_parser_checklist import UnitParserChecklist
+                        evidence = dict(source_manifest_hash=boundary.source_manifest_hash, configuration_hash=boundary.configuration_hash,
+                            status='extracted', reachability_status='not_run')
+                        boundary.parser_checklist = UnitParserChecklist(**evidence)
+                        boundary.basic_parser_checklist = UnitParserChecklist(**evidence, fact_scope='basic_element')
+                    elif collect_checklists:
+                        boundary.parser_checklist = read_parser_checklist(entry.find('checklist'), boundary,
+                            unit_sources[identity], source_paths[identity])
+                        boundary.basic_parser_checklist = read_parser_checklist(entry.find('basic-checklist'), boundary,
+                            unit_sources[identity], source_paths[identity], fact_scope='basic_element')
+                    continue
                 methods = entry.findall('method')
                 if issues or len(methods) != 1:
                     boundary.issues.extend(issues or ['Entry method has no unique source implementation'])

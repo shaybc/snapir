@@ -43,6 +43,9 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
                         ElementTree.SubElement(project_node, 'visible-source', identity=identity)
                     for library in project['libraries']:
                         ElementTree.SubElement(project_node, 'library', **library)
+            from tools.framework_boundaries.inventory import current
+            for name, library in current().items():
+                ElementTree.SubElement(node, 'framework-class', name=name, **library)
             for source in scope['sources']:
                 child = ElementTree.SubElement(node, 'source', identity=source['identity'], hash=source['content_hash'])
                 if context:
@@ -84,4 +87,7 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         if any(boundary.kind != 'configured_step' for scope in scopes.values() for boundary in scope['boundaries']):
             if report.get('format_lifecycle_protocol') != 'format-lifecycle-v1':
                 raise ValueError('Boundary analyzer JAR lacks format lifecycle support; rebuild source/behavior-verification-java/pom.xml')
+        from tools.framework_boundaries.inventory import current
+        if current() and report.get('framework_boundary_protocol') != 'framework-binary-v1':
+            raise ValueError('Boundary analyzer JAR lacks framework boundary support; rebuild source/behavior-verification-java/pom.xml')
         return report, tool_hash

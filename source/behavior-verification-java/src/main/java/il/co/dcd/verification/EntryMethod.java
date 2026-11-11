@@ -15,6 +15,23 @@ final class EntryMethod {
     static void write(Element entry, SourceScope sources, XMLStreamWriter output) throws XMLStreamException {
         String implementation = entry.getAttribute("implementation");
         var resolved = resolve(entry, sources);
+        if (resolved.toAst(MethodDeclaration.class).isEmpty()
+                && sources.frameworkTypes.containsKey(resolved.declaringType().getQualifiedName())) {
+            Element library = sources.frameworkTypes.get(resolved.declaringType().getQualifiedName());
+            output.writeStartElement("framework-boundary");
+            output.writeAttribute("declaring_class", resolved.declaringType().getQualifiedName());
+            output.writeAttribute("signature", resolved.getQualifiedSignature());
+            output.writeAttribute("method", resolved.getName());
+            output.writeAttribute("returns", resolved.getReturnType().describe());
+            output.writeAttribute("path", library.getAttribute("path"));
+            output.writeAttribute("sha256", library.getAttribute("sha256"));
+            for (int index = 0; index < resolved.getNumberOfParams(); index++) {
+                output.writeEmptyElement("parameter");
+                output.writeAttribute("type", resolved.getParam(index).getType().describe());
+            }
+            output.writeEndElement();
+            return;
+        }
         MethodDeclaration method = resolved.toAst(MethodDeclaration.class)
             .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source: declaring_class="
                 + resolved.declaringType().getQualifiedName() + "; signature=" + resolved.getQualifiedSignature()));
@@ -53,6 +70,10 @@ final class EntryMethod {
             for (var usage : declaration.getAllMethods()) {
                 if (matches(entry, usage.getDeclaration())) matches.add(usage.getDeclaration());
             }
+        }
+        if (matches.isEmpty()) {
+            var binary = FrameworkBoundary.entry(entry, sources, declaration);
+            if (binary != null) matches.add(binary);
         }
         if (matches.isEmpty()) {
             var alternative = FormatLifecycle.fallback(entry, sources);

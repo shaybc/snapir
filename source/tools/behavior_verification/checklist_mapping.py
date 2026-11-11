@@ -36,7 +36,19 @@ def validate_revisions(unit, boundary, answers):
         raise ValueError('Boundary source or configuration revision changed')
     for field in ('unit_fingerprint', 'operation_identity', 'kind', 'implementation_class', 'method_name',
                   'parameter_contract', 'return_contract', 'inputs', 'observable_results', 'setup_class_roots', 'setup_bindings'):
-        if getattr(current, field) != getattr(boundary, field):
+        expected = getattr(current, field)
+        if boundary.framework_boundaries:
+            entry = boundary.framework_boundaries[0]
+            expected = {'method_name': entry['method'], 'parameter_contract': entry['parameters'],
+                        'return_contract': entry['returns']}.get(field, expected)
+        else:
+            from tools.framework_boundaries.inventory import current as framework_inventory
+            if framework_inventory() and boundary.format_lifecycle and boundary.legacy_method:
+                entry = boundary.format_lifecycle.invocations[-1]
+                if entry.signature == boundary.legacy_method.signature:
+                    expected = {'method_name': entry.method, 'parameter_contract': entry.parameters,
+                                'return_contract': entry.returns}.get(field, expected)
+        if expected != getattr(boundary, field):
             raise ValueError('Boundary contract/setup changed: ' + field)
     if (answers.unit_id, answers.source_manifest_hash, answers.configuration_hash) != (
         boundary.unit_id, boundary.source_manifest_hash, boundary.configuration_hash):

@@ -10,8 +10,9 @@ SCALARS = {'java.lang.String', 'java.lang.Integer', 'java.lang.Long', 'java.lang
 def project_context_only(binding, boundary):
     """A void original request exposes context writes, not its native DTO transport object."""
     original = boundary.legacy_method
-    if (boundary.kind == 'request_unformat' and original is not None and
-            original.return_type == 'void' and binding.context_writes):
+    if (boundary.kind == 'request_unformat' and binding.context_writes and
+            (original is not None and original.return_type == 'void' or
+             boundary.framework_boundaries and boundary.return_contract == 'void')):
         return binding.model_copy(update={'output': 'none', 'output_getters': []})
     return binding
 

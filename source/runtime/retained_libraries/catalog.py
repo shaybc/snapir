@@ -11,6 +11,8 @@ def record_libraries(records):
     """Deduplicate by artifact identity while preserving required class ownership."""
     result = {}
     for record in records:
+        from tools.framework_boundaries.inventory import owner
+        if owner(record.get('class_name')): continue
         data = record.get('library')
         if not data:
             continue
@@ -59,6 +61,9 @@ def library_scope(profile, payload):
         libraries = list(inherited[1].values()) + libraries
     for value in libraries:
         item = RetainedLibrary.model_validate(value)
+        from tools.framework_boundaries.inventory import current as framework_inventory
+        if item.sha256 in {record['sha256'] for record in framework_inventory().values()}:
+            continue
         key = item.dependency.coordinates
         if key in by_coordinate and by_coordinate[key]['sha256'] != item.sha256:
             raise ValueError('Retained library scope has competing artifacts: ' + key)

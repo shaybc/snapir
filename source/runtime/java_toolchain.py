@@ -90,8 +90,10 @@ def java_scope(profile):
                                                      constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS))
     from tools.source_discovery_tools.classpath_scope import container_bindings
     container_token = container_bindings.set(getattr(profile, 'eclipse_classpath_containers', {}))
+    from tools.framework_boundaries.inventory import framework_scope
     try:
-        yield
+        with framework_scope(getattr(profile, "framework_jars", [])):
+            yield
     finally:
         container_bindings.reset(container_token)
         _scan_inactivity_timeout.reset(scan_token)

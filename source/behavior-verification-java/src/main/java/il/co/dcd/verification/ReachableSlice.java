@@ -46,6 +46,23 @@ final class ReachableSlice {
 
     void analyze(Element entry) {
         var declaration = EntryMethod.resolve(entry, catalog.scope);
+        if (declaration.toAst(MethodDeclaration.class).isEmpty()
+                && catalog.scope.frameworkTypes.containsKey(declaration.declaringType().getQualifiedName())) {
+            // Binary orchestration may call application overrides/configured children, not unrelated supplied classes.
+            Set<String> configured = new TreeSet<>();
+            configured.add(entry.getAttribute("implementation"));
+            var setup = entry.getElementsByTagName("setup");
+            for (int index = 0; index < setup.getLength(); index++)
+                configured.add(((Element) setup.item(index)).getAttribute("implementation"));
+            Set<String> application = new TreeSet<>();
+            for (String name : configured) {
+                var type = catalog.scope.solverFor(name).solveType(name);
+                application.add(type.getQualifiedName());
+                for (var parent : type.getAllAncestors()) application.add(parent.getQualifiedName());
+            }
+            for (CodeNode node : catalog.nodes.values())
+                if (application.contains(node.owner)) root("entry", node);
+        } else {
         var ast = declaration.toAst(MethodDeclaration.class).orElseThrow();
         CodeNode entryNode = catalog.find(ast);
         if (entryNode == null) throw new IllegalStateException("Entry body was not indexed");
@@ -56,6 +73,7 @@ final class ReachableSlice {
                 if (node == null) throw new IllegalStateException("Lifecycle body was not indexed");
                 root("entry", node);
             }
+        }
         }
         var setup = entry.getElementsByTagName("setup");
         for (int index = 0; index < setup.getLength(); index++) {

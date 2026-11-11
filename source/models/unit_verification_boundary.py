@@ -36,6 +36,7 @@ class UnitVerificationBoundary(BaseModel):
     parser_checklist: UnitParserChecklist | None = None
     basic_parser_checklist: UnitParserChecklist | None = None
     configuration_preparation: dict = Field(default_factory=dict)
+    framework_boundaries: list[dict] = Field(default_factory=list, exclude_if=lambda value: not value)
     analysis_status: Literal['identified', 'verification_incomplete'] = 'verification_incomplete'
     verification_status: Literal['not_run'] = 'not_run'
     issues: list[str] = Field(default_factory=list)

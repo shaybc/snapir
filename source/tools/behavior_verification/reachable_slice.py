@@ -77,7 +77,7 @@ def read_reachable_slice(element, boundary, sources, paths):
                     certain.update(set(edge.candidates) & set(nodes))
             changed = len(certain) != before
         for node in result.nodes:
-            node.path_certainty = 'certain' if node.id in certain else 'uncertain'
+            node.path_certainty = 'certain' if node.id in certain and not boundary.framework_boundaries else 'uncertain'
         if result.issues or any(edge.unbounded for edge in result.edges):
             result.status = 'verification_incomplete'
         if not result.roots.get('entry'):

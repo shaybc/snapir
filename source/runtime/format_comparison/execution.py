@@ -11,6 +11,7 @@ def execute_pair(plan, unit, binding, case, directory, harness, settings, compil
     key = digest(unit)
     if key not in boundaries:
         boundaries[key] = analyze_unit(unit, harness, collect_facts=settings.collect_facts,
+            **({'original_classpath': plan.original_framework.classpath} if plan.original_framework.classpath else {}),
             **({'step_implementation':plan.original_step_implementation} if getattr(plan,'original_step_implementation',None) else {}))
     boundary = boundaries[key]
     native = BoundaryHarnessBinding(adapter_class='il.co.dcd.verification.harness.TypedBoundaryAdapter',

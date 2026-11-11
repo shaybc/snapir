@@ -555,3 +555,40 @@ After accepted Gate 3, resume stages each final service under the run's `service
 Runtime persists generation attempts and input/output fingerprints. Unchanged successful projects can be reused; changed projects require regeneration, and failed attempts remain bounded across resume. Validation runs managed compilation, Maven tests and packaging with transitive dependency checks and the IBM source guard. No test reports means tests are unavailable, not passed.
 
 Successful builds stop at `validation_evidence_pending`. XML compatibility, legacy traces and behavioral equivalence are explicitly unavailable until runtime evidence is supplied; this is not a completed migration. Runtime endpoint validation, final reporting and Gate 5 remain separate work. Structured correction routing is available, but runtime evidence producers still need integration. Mock generation requires explicit fixtures. Live model and enterprise repository execution has not been verified.
+
+
+### Binary-only Composer framework boundaries
+
+Set `framework_jars` to a list of original Composer framework JAR paths. Relative paths resolve against the YAML file containing the setting. The archives identify exact classes, not an entire IBM namespace. Do not list ordinary third-party libraries here; their existing dependency rules still apply.
+
+```yaml
+framework_jars:
+  - C:/Workspace/composer/lib/composer-runtime.jar
+  - C:/Workspace/composer/lib/composer-formats.jar
+```
+
+Unavailable source for a configured framework method is non-blocking context. Generation receives captured application code, configuration, and the existing Composer explanations; it does not receive decompiled framework implementations or convert the framework. Supplied application overrides remain conversion targets. Missing application source and actual validation failures are still reported.
+
+The real framework binaries remain available on the original-side comparison classpath. Native output must implement business behavior without Composer runtime dependencies. Build/tests and original-versus-native comparison keep their existing distinct acceptance meanings.
+
+After updating Snapir, rebuild the analyzer with Java 25 before the first framework-aware resume:
+
+```powershell
+mvn -q -f source/behavior-verification-java/pom.xml package
+```
+
+To add this setting to an existing blocked or paused migration, create a YAML file containing **only** `framework_jars`, then resume:
+
+```powershell
+python source/workspace_intake.py resume --config path/to/migration.yaml --run-id YOUR_EXISTING_RUN --framework-config path/to/framework-only.yaml
+```
+
+Alternatively, open the normal menu with the update file, choose **Resume a migration**, and select the saved run. This route does not require the original start YAML:
+
+```powershell
+python source/workspace_intake.py --framework-config path/to/framework-only.yaml
+```
+
+The migration profile selects the existing output location in the direct command; the saved run profile supplies the continuation settings. The framework-only update resolves paths against its own YAML file, validates archives, updates the saved profile, and records an audit revision in the existing run database. It does not invoke intake, capture, or the mapper. Existing preparation evidence and unaffected valid artifacts are reused; affected boundary results are refreshed and generated artifacts are revalidated or corrected where necessary. Normal source/map integrity checks remain active. Subsequent resumes need no update flag.
+
+An explicit `framework_jars: []` removes the ownership classification through the same audited update. Other settings cannot be changed using this option. Stop an active run before applying an update. Configuration errors do not clear existing progress.
