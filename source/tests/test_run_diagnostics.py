@@ -116,6 +116,7 @@ def test_diagnostic_prints_complete_saved_analyzer_issues(saved):
     ('Entry method must resolve uniquely: example.Work.execute (matches=0)', 'No unique method'),
     ('Invalid Java source privateSourceValue', 'rejected supplied Java syntax'),
     ('Unknown problem password=privateSettingValue', 'see saved issue details'),
+    ('Converter boundary analysis inactivity timeout after 300 seconds without meaningful progress', 'stopped after no meaningful progress'),
     ('Converter boundary analysis timed out after 300 seconds; last progress: loading JAR', 'exceeded its total runtime limit'),
     ('Boundary analyzer JAR lacks project classpath support; rebuild analyzer', 'Analyzer JAR is outdated'),
     ('Boundary JAR missing, unreadable or invalid for project BANK: C:/libs/driver.jar', 'C:/libs/driver.jar'),

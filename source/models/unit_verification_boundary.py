@@ -39,5 +39,6 @@ class UnitVerificationBoundary(BaseModel):
     framework_boundaries: list[dict] = Field(default_factory=list, exclude_if=lambda value: not value)
     analysis_status: Literal['identified', 'verification_incomplete'] = 'verification_incomplete'
     verification_status: Literal['not_run'] = 'not_run'
+    analysis_failure_id: str | None = Field(default=None, exclude_if=lambda value: value is None)
     issues: list[str] = Field(default_factory=list)
     schema_version: str = 'unit-boundary-v1'

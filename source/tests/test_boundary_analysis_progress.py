@@ -1,4 +1,4 @@
-"""Verify analyzer progress survives failures and the five-minute limit stays fixed."""
+"""Verify boundary analyzer progress, inactivity failures, and buffered output."""
 
 import logging
 import os
@@ -24,9 +24,12 @@ def test_progress_is_logged_before_analyzer_returns(tmp_path, caplog):
     logger.addHandler(handler)
     caplog.set_level(logging.INFO)
     def runner(command, **kwargs):
-        assert kwargs['timeout'] == 300
-        kwargs['stderr'].write(b'Boundary progress +1.0s: loading JAR driver.jar\n')
-        kwargs['stderr'].flush()
+        assert kwargs['inactivity_timeout_seconds'] == 300
+        assert 'timeout' not in kwargs
+        line = 'Boundary progress +1.0s: project example loading JAR driver.jar'
+        kwargs['output_log'].write_text(line + '\n', encoding='utf-8')
+        kwargs['progress_filter'](line)
+        kwargs['on_output'](line)
         assert observed.wait(5), 'Progress was buffered until process exit'
         return subprocess.CompletedProcess(command, 0, '')
     try:
@@ -39,18 +42,19 @@ def test_progress_is_logged_before_analyzer_returns(tmp_path, caplog):
 
 def test_timeout_retains_last_stage_without_waiting_five_minutes(tmp_path):
     def runner(command, **kwargs):
-        kwargs['stderr'].write(b'Boundary progress +2.0s: traversing reachable calls\n')
-        kwargs['stderr'].flush()
-        raise subprocess.TimeoutExpired(command, kwargs['timeout'])
-    with pytest.raises(ValueError, match='timed out after 300 seconds; XML output bytes=0; last progress:.*traversing reachable calls'):
+        line = 'Boundary progress +2.0s: entry example traversing reachable calls'
+        kwargs['output_log'].write_text(line + '\n', encoding='utf-8')
+        kwargs['progress_filter'](line)
+        kwargs['on_output'](line)
+        raise subprocess.TimeoutExpired(command, kwargs['inactivity_timeout_seconds'])
+    with pytest.raises(ValueError, match='inactivity timeout after 300 seconds without meaningful progress; XML output bytes=0; last progress:.*traversing reachable calls'):
         run_with_progress(['java'], tmp_path / 'progress.log', runner)
     assert not any(thread.name == 'boundary-analysis-progress' for thread in active_threads())
 
 
 def test_failure_preserves_java_stderr(tmp_path):
     def runner(command, **kwargs):
-        kwargs['stderr'].write(b'Java failure details\n')
-        kwargs['stderr'].flush()
+        kwargs['output_log'].write_text('Java failure details\n', encoding='utf-8')
         return subprocess.CompletedProcess(command, 1, '')
     assert run_with_progress(['java'], tmp_path / 'progress.log', runner).stderr == 'Java failure details\n'
 
@@ -72,6 +76,7 @@ def test_completed_output_size_is_measured_from_file(tmp_path, caplog):
     caplog.set_level(logging.INFO)
     output = tmp_path / 'output.xml'
     def runner(command, **kwargs):
+        kwargs['output_log'].write_text('', encoding='utf-8')
         output.write_bytes(b'<analysis/>')
         return subprocess.CompletedProcess(command, 0, '')
     run_with_progress(['java'], tmp_path / 'progress.log', runner, output_path=output)
@@ -92,7 +97,9 @@ def test_heartbeat_reports_output_growth_while_analyzer_runs(tmp_path, caplog, m
     caplog.set_level(logging.INFO)
     output = tmp_path / 'output.xml'
     def runner(command, **kwargs):
-        assert kwargs['timeout'] == 300
+        assert kwargs['inactivity_timeout_seconds'] == 300
+        assert 'timeout' not in kwargs
+        kwargs['output_log'].write_text('', encoding='utf-8')
         output.write_bytes(b'<analysis/>')
         now[0] = 11
         assert observed.wait(5), 'Output growth was not logged during execution'

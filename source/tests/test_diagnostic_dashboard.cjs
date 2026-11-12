@@ -73,3 +73,12 @@ get('saved-panel').open = true; get('saved-panel').handlers.toggle();
 assert.match(get('evidence-count').textContent, /1 saved records/);
 assert.match(get('evidence-list').textContent, /CCString/);
 console.log('Offline dashboard interactions passed: filtering, pagination, drill-down, relationships, files, back navigation and saved evidence.');
+
+assert.equal(get('analysis-failures').hidden, false);
+assert.match(get('analysis-failure-list').textContent, /Analyzer stopped without meaningful progress/);
+location.hash = 'target=CCXML';
+assert.match(get('detail-body').textContent, /Dependency consequence/);
+assert.match(get('detail-body').textContent, /analysis-fixture: Analyzer stopped without meaningful progress/);
+const rootButton = get('detail-body').children.find(child => child.tag === 'button' && child.textContent === 'Show underlying analysis failures');
+assert.ok(rootButton);
+rootButton.onclick();

@@ -693,6 +693,8 @@ objects:
 
       During a comparison, original lifecycle invocation information is sent only to the legacy execution side. The generated code can expose a different public API and does not have to reproduce the original class hierarchy.
 
+      Boundary analysis has an inactivity window rather than a total runtime limit. New source/node work, stage changes, and growing XML output reset it; repeated heartbeats and watchdog stack messages do not. A failed analysis is recorded once and linked to affected component results, so dependency consequences retain the underlying cause.
+
       ## Comparing a format separately
 
       Standalone diagnostics use the same boundary and reachable-call analysis for explicitly selected basic or configured format cases. Context discovery checks quoted source references and the selected execution directions before relying on proposed inputs. These diagnostic comparisons help explain individual cases; they do not replace acceptance checks for the whole configured unit.
@@ -734,7 +736,7 @@ objects:
 
       The command reads stored SQLite state and reports without advancing the migration. Request export copies captured JSON, instructions, and metadata, then extracts embedded source text into files with an occurrence manifest. It does not read the original workspace sources to recreate a request that was never captured.
 
-      During conversion, stage-aware diagnostics report target histories for formats, decorators, OP steps, shared components and units, including consuming operations. Earlier-stage boundary investigation is skipped. Saved database attempts, component results, journal events and unambiguously labelled legacy logs are correlated without inventing HTTP success. Text/JSON summaries and saved materials are exported under work/diagnostics for inspection, with missing historical evidence explicit. An offline HTML dashboard shares the console stage checklist and provides filtered component lists, prerequisite/dependent navigation, per-attempt details and links to captured materials. Saved index and boundary metadata are presented separately without rerunning earlier investigations. Conversion export returns before the legacy oversized exporter, leaving old files untouched.
+      During conversion, stage-aware diagnostics report target histories for formats, decorators, OP steps, shared components and units, including consuming operations. Earlier-stage boundary investigation is skipped. Saved database attempts, component results, journal events and unambiguously labelled legacy logs are correlated without inventing HTTP success. Text/JSON summaries and saved materials are exported under work/diagnostics for inspection, with missing historical evidence explicit. An offline HTML dashboard shares the console stage checklist and provides filtered component lists, prerequisite/dependent navigation, per-attempt details and links to captured materials. Saved index and boundary metadata are presented separately without rerunning earlier investigations. Conversion export returns before the legacy oversized exporter, leaving old files untouched. Underlying boundary-analysis failures are displayed separately from explicitly linked analysis and dependency consequences. Independent conversion and validation errors keep their own classification.
   - id: diagnostic-exports
     type: store
     name: Diagnostic request exports

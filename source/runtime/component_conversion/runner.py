@@ -15,6 +15,7 @@ from tools.state_store_tools import component_records as records
 from tools.state_store_tools.conversion_components import register_component_plan, reuse_component_result
 from tools.behavior_verification.boundaries import build_boundary_report
 from runtime.workspace_paths import write_run_report
+from runtime.component_conversion.analysis_failures import failure_result, require_prerequisites
 
 
 def convert_basic_components(conn, config, profile, directory, preparation, classpath, *, model_call=None, context_factory=None, include_steps=False, include_formats=False):
@@ -35,6 +36,10 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     record_consumers(conn, config.run_id, plan, units, source_root=config.source_root)
     report = dict(capability='component-first-cf6' if include_formats else 'component-first-cf4' if include_steps else 'component-first-cf3', configured_units=len(plan.unit_roots), accepted_units=0,
         accepted_operations=0, behavioral_acceptance=False, groups={}, total_groups=len(plan.groups), format_chain_status='not_reached', component_validated=0, reused_components=0)
+    if boundaries.get('analysis_failures'):
+        report['analysis_failures'] = boundaries['analysis_failures']
+        for failure in report['analysis_failures']:
+            logging.getLogger(__name__).warning('Underlying analysis failure %s: %s', failure['id'], failure['message'])
     if test_based_mode(profile):
         report.update(experimental_only=False,fact_collection=False,fact_validation='disabled',fact_validation_blocking=False,
             verification_version='test-based-conversion-v1')
@@ -49,10 +54,11 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
                     continue
                 if include_formats and configuration_group(plan,group):
                     try:
+                        require_prerequisites(group, report)
                         bind_configuration(conn,config.run_id,plan,group,profile)
                         report['groups'][group.group_id]=dict(status='configuration_bound',members=group.members)
                     except ValueError as exc:
-                        report['groups'][group.group_id]=dict(status='incomplete',members=group.members,reason=str(exc))
+                        report['groups'][group.group_id]=failure_result(group, exc)
                     continue
                 if not (basic_group(plan, group) or include_steps and step_group(plan, group) or include_formats and format_group(plan,group)):
                     report['groups'][group.group_id] = dict(status='deferred', members=group.members,
@@ -67,12 +73,13 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
                     report['format_chain_status']='running'
                 write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
                 try:
+                    require_prerequisites(group, report)
                     result = _convert_group(conn, config, profile, plan, group, boundaries, output, factory, model_call, units=units)
                     report['groups'][group.group_id] = result
                     report['component_validated'] += len(group.members)
                     if result['reused']: report['reused_components'] += len(group.members)
                 except (ValueError, OSError) as exc:
-                    report['groups'][group.group_id] = dict(status='incomplete', members=group.members, reason=str(exc))
+                    report['groups'][group.group_id] = failure_result(group, exc)
                     logging.getLogger(__name__).warning('Basic component group incomplete: %s: %s', group.group_id, exc)
                 conn.commit()
                 write_run_report(directory, 'component-generation.json', json.dumps(report, indent=2))

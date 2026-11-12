@@ -17,6 +17,8 @@ def finding(response=None, error=None, *, completed=False):
         return 'not_sent_setup_failure'
     if 'context budget' in lower or 'too_large' in lower:
         return 'not_sent_oversized'
+    if 'converter boundary analysis' in lower and ('timeout' in lower or 'timed out' in lower):
+        return 'blocked_analysis_timeout'
     if ('no parser-backed entry' in lower or 'entry method' in lower or 'lifecycle could not be resolved' in lower
             or 'requires identified original boundary' in lower):
         return 'blocked_entry_resolution'

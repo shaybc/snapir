@@ -66,6 +66,7 @@ class PipelineConfiguration(BaseModel):
     mapper_analysis: MapperAnalysisSettings = Field(default_factory=MapperAnalysisSettings)
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME
+    boundary_analysis_inactivity_timeout_seconds: float = Field(default=300, gt=0)
     java_scan_inactivity_timeout_seconds: int = Field(default=constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS, gt=0)
     output_root: str = constants.OUTPUT_ROOT
     channels: list[str] = Field(default_factory=lambda: deepcopy(constants.TARGET_CHANNELS), min_length=1)

@@ -592,3 +592,42 @@ python source/workspace_intake.py --framework-config path/to/framework-only.yaml
 The migration profile selects the existing output location in the direct command; the saved run profile supplies the continuation settings. The framework-only update resolves paths against its own YAML file, validates archives, updates the saved profile, and records an audit revision in the existing run database. It does not invoke intake, capture, or the mapper. Existing preparation evidence and unaffected valid artifacts are reused; affected boundary results are refreshed and generated artifacts are revalidated or corrected where necessary. Normal source/map integrity checks remain active. Subsequent resumes need no update flag.
 
 An explicit `framework_jars: []` removes the ownership classification through the same audited update. Other settings cannot be changed using this option. Stop an active run before applying an update. Configuration errors do not clear existing progress.
+
+## Boundary analyzer progress and inactivity timeout
+
+Boundary reachability, format lifecycle, and parser-checklist analysis use
+`boundary_analysis_inactivity_timeout_seconds`, default `300` (five minutes).
+This is a positive number of seconds without observable progress, with no total
+runtime limit. New source/node work, stage transitions, increasing XML byte
+counters, and actual output-file growth reset the timer. Repeated stage messages,
+unchanged counters, slow-operation watchdog stack reports, ordinary diagnostic
+output, and the Python monitor heartbeat do not reset it. A single long operation
+with no observable advancement can still time out.
+
+For a new run, this optional top-level YAML entry sets the idle window:
+
+```yaml
+boundary_analysis_inactivity_timeout_seconds: 300
+```
+
+Existing runs automatically use 300 unless their saved `state/profile.json`
+contains a different value. To change the idle window for a saved run, add or
+update this top-level JSON property, preserving the rest of the profile:
+
+```json
+"boundary_analysis_inactivity_timeout_seconds": 600
+```
+
+Resume the same run normally. This execution setting does not invalidate saved
+source indexing, mapping, or the conversion-policy fingerprint. This timeout
+change is in Python; it does not require rebuilding the Java analyzer JAR.
+The dependency scanner retains its separate timeout and existing activity rules.
+
+If boundary analysis fails, its component-generation report stores one underlying
+failure with an ID, idle/elapsed time, output size, and last meaningful progress
+(where captured). Affected boundaries and component results link to that ID.
+Components whose prerequisites are blocked by that cause are marked as dependency
+consequences. Other conversion and validation failures remain separate. Rerun
+saved-run diagnostics to see the root failure in text, JSON, and the HTML dashboard;
+this does not rerun analysis. Older reports without explicit causal links retain
+their original reasons rather than inventing a dependency explanation.

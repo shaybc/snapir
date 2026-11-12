@@ -50,6 +50,20 @@ def _saved_problem(directory, stage):
                     item['channel'] + '/' + item['service_id'] + ': ' + ', '.join(item['issues']) for item in questions)
         except (OSError, ValueError, sqlite3.Error):
             pass
+        try:
+            from tools.state_store_tools.operation_progress import active_operation, operation_directory
+            report_directory = directory
+            with sqlite3.connect(run_database_path(directory).as_uri() + '?mode=ro', uri=True) as conn:
+                conn.row_factory = sqlite3.Row
+                current = active_operation(conn, directory.name)
+            if current: report_directory = operation_directory(directory, current['operation_key'])
+            report = json.loads(run_report_path(report_directory, 'component-generation.json').read_text(encoding='utf-8'))
+            causes = report.get('analysis_failures', [])
+            if causes:
+                consequences = sum(bool(item.get('root_cause_ids')) for item in report.get('groups', {}).values())
+                return 'Underlying analysis failure: ' + '; '.join(item['message'] for item in causes) + f'; {consequences} linked component/dependency consequences. See saved-run diagnostics for details.'
+        except (OSError, ValueError, sqlite3.Error):
+            pass
     if stage == 'service_generation_and_validation':
         try:
             with sqlite3.connect(run_database_path(directory).as_uri() + '?mode=ro', uri=True) as conn:

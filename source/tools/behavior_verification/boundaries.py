@@ -41,6 +41,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     dict(sources=list(unit_sources[boundary.unit_id].values()), boundaries=[], classpath=context))
                 scope['boundaries'].append(boundary)
     tool_hash = None
+    analysis_failures = []
     if scopes:
         try:
             analysis, tool_hash = (analyze_entries(scopes, tool_jar) if collect_checklists else
@@ -109,8 +110,14 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     if boundary.unit_id not in returned:
                         boundary.issues.append('Analysis returned no entry for this unit')
         except (OSError, ValueError) as exc:
+            from tools.conversion_tools.scoped_reuse.fingerprints import digest
+            failure = dict(getattr(exc, 'details', dict(kind='boundary_analysis_error', message=str(exc))))
+            failure['affected_units'] = sorted(boundary.unit_id for scope in scopes.values() for boundary in scope['boundaries'])
+            failure['id'] = 'boundary-analysis-' + digest(failure)[:20]
+            analysis_failures.append(failure)
             for scope in scopes.values():
                 for boundary in scope['boundaries']:
+                    boundary.analysis_failure_id = failure['id']
                     boundary.analysis_status = 'verification_incomplete'
                     boundary.legacy_method = None
                     boundary.issues.append(str(exc))
@@ -129,7 +136,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
         not_run=len(boundaries) - len(checklists), items=sum(len(item.items) for item in checklists))
     from tools.conversion_tools.scoped_reuse.fingerprints import digest
     classpaths = {key: scope['classpath'] for key, scope in scopes.items() if scope.get('classpath')}
-    return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'), basic_boundaries=basic_boundaries,
+    return dict(**({'analysis_failures': analysis_failures} if analysis_failures else {}), schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'), basic_boundaries=basic_boundaries,
         analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpaths) if classpaths else None,
         analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,

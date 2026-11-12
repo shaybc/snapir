@@ -4,6 +4,8 @@
 def target_status(target):
     """Separate current results from failed historical attempts and policy exclusions."""
     result = target.get('result', 'not established')
+    if target.get('root_cause_ids'):
+        return 'blocked'
     if result == 'external_policy':
         return 'external policy'
     if result == 'configuration_bound':
@@ -39,6 +41,9 @@ def target_status(target):
 
 def target_summary(target):
     """Return a short latest reason, keeping full details in saved materials."""
+    if target.get('root_cause_ids'):
+        label = 'Dependency blocked by analysis failure' if target.get('failure_role') == 'dependency_consequence' else 'Blocked by analysis failure'
+        return label + ': ' + ', '.join(target['root_cause_ids']) + '. ' + target.get('blocker_summary', '')
     if target.get('blocker_summary'):
         return target['blocker_summary']
     attempts = target.get('attempts', [])

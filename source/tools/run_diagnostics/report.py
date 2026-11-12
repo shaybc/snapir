@@ -36,6 +36,8 @@ def issue_summary(issues):
     if text.startswith(('Boundary JAR ', 'Boundary source has no verified owning project',
                         'Boundary implementation has no unique owning project')):
         return text[:240]
+    if 'boundary analysis inactivity timeout' in text:
+        return 'Java analyzer stopped after no meaningful progress; see last progress below'
     if 'boundary analysis timed out after' in text:
         return 'Java analyzer exceeded its total runtime limit; see last progress below'
     if 'could not finish' in text:

@@ -28,7 +28,7 @@ def export_html_report(directory, project, *, conversion=False, diagnostic_lines
     if destination.is_symlink() or not destination.resolve().is_relative_to(project):
         raise ValueError('Diagnostic destination must remain inside the project')
     progress = progress_snapshot(directory)
-    targets, limitations = [], []
+    targets, limitations, analysis_failures = [], [], []
     observed_at = datetime.now(timezone.utc).isoformat()
     if conversion:
         # Consume the exporter output so every material link names the exact exported snapshot.
@@ -38,6 +38,7 @@ def export_html_report(directory, project, *, conversion=False, diagnostic_lines
         summary = json.loads(summary_path.read_text(encoding='utf-8'))
         targets, limitations = summary['targets'], summary['limitations']
         observed_at = summary['observed_at']
+        analysis_failures = summary.get('analysis_failures', [])
     by_id = {target['identity']: target for target in targets}
     dependents = {}
     for target in targets:
@@ -97,7 +98,7 @@ def export_html_report(directory, project, *, conversion=False, diagnostic_lines
         if href:
             files.append(dict(path=name, href=href))
     data = dict(run_id=directory.name, observed_at=observed_at, progress=progress,
-        conversion=conversion, targets=targets, counts=dict(Counter(item['status'] for item in targets)),
+        conversion=conversion, targets=targets, analysis_failures=analysis_failures, counts=dict(Counter(item['status'] for item in targets)),
         saved_evidence=evidence['components'], limitations=limitations, files=files,
         folder=str(destination), folder_url=destination.as_uri() + '/', diagnostic_lines=list(diagnostic_lines))
     # Source/error text must never terminate a script element or become executable markup.

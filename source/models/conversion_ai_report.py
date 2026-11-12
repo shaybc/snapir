@@ -13,4 +13,5 @@ class ConversionAiReport(BaseModel):
     observed_at: str
     active_operation: str | None = None
     targets: list[dict] = Field(default_factory=list)
+    analysis_failures: list[dict] = Field(default_factory=list, exclude_if=lambda value: not value)
     limitations: list[str] = Field(default_factory=list)

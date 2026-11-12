@@ -14,11 +14,13 @@ from runtime.model_execution.error_details import sanitize_diagnostic
 
 
 def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_path=None,
-                              capture_output=True, text=True, check=False, output_log=None, on_output=None, **kwargs):
+                              capture_output=True, text=True, check=False, output_log=None, on_output=None,
+                              progress_filter=None, activity_growth_only=False, log_output=True, **kwargs):
     """Stream captured output and stop a child only after no observable progress.
 
-    Output bytes and result-file size/mtime changes reset the timer. Console
-    heartbeats and elapsed runtime do not. The child is reaped on every exit path.
+    By default, output bytes and result-file size/mtime changes reset the timer.
+    A progress filter can restrict output to meaningful lines; growth-only mode
+    ignores file touches. The child is reaped on every exit path.
     """
     if inactivity_timeout_seconds <= 0:
         raise ValueError("Scanner inactivity timeout must be positive")
@@ -78,19 +80,26 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                     if output is not None:
                         output.write(chunk)
                         output.flush()
-                    last_activity = max(last_activity, observed)
+                    if progress_filter is None:
+                        last_activity = max(last_activity, observed)
                     decoded = decoders[name].decode(chunk)
                 pending[name] += decoded
                 while "\n" in pending[name]:
                     line, pending[name] = pending[name].split("\n", 1)
-                    logger.info("Java dependency scanner: %s", sanitize_diagnostic(line.rstrip("\r")))
+                    line = line.rstrip('\r')
+                    if progress_filter is not None and progress_filter(line):
+                        last_activity = max(last_activity, observed)
+                    if log_output: logger.info("Java dependency scanner: %s", sanitize_diagnostic(line))
                     if on_output is not None:
-                        on_output(line.rstrip('\r'))
+                        on_output(line)
                 if name in closed and pending[name]:
-                    logger.info("Java dependency scanner: %s", sanitize_diagnostic(pending[name]))
+                    if progress_filter is not None and progress_filter(pending[name]):
+                        last_activity = max(last_activity, observed)
+                    if log_output: logger.info("Java dependency scanner: %s", sanitize_diagnostic(pending[name]))
+                    if on_output is not None and progress_filter is not None: on_output(pending[name])
                     pending[name] = ""
                 if len(pending[name]) > 16384:
-                    logger.info('Java dependency scanner: %s', sanitize_diagnostic(pending[name][:16384]))
+                    if log_output: logger.info('Java dependency scanner: %s', sanitize_diagnostic(pending[name][:16384]))
                     pending[name] = pending[name][16384:]
             if activity_path is not None:
                 try:
@@ -98,11 +107,15 @@ def run_with_activity_timeout(command, *, inactivity_timeout_seconds, activity_p
                     state = (stat.st_size, stat.st_mtime_ns)
                 except FileNotFoundError:
                     state = None
-                if state is not None and state != last_file_state:
+                if state is not None and (state[0] > (last_file_state[0] if last_file_state else 0)
+                        if activity_growth_only else state != last_file_state):
                     last_activity = monotonic()
-                last_file_state = state
+                if not activity_growth_only or state is not None and (last_file_state is None or state[0] > last_file_state[0]):
+                    last_file_state = state
             if process.poll() is None and monotonic() - last_activity >= inactivity_timeout_seconds:
-                raise subprocess.TimeoutExpired(command, inactivity_timeout_seconds)
+                error = subprocess.TimeoutExpired(command, inactivity_timeout_seconds)
+                error.inactive_seconds = monotonic() - last_activity
+                raise error
         returncode = process.wait()
     finally:
         stopped.set()

@@ -235,12 +235,19 @@ def build_report(directory):
         except ValueError:
             limitations.add('Some saved consumer associations are unreadable.')
     reports = sorted(directory.glob('**/reports/3_dependency_closure_and_component_conversion/component-generation.json'))
+    analysis_failures = {}
     for path in reports:
-        for identity, result in (read_json(path, {}) or {}).get('groups', {}).items():
+        saved_report = read_json(path, {}) or {}
+        for failure in saved_report.get('analysis_failures', []):
+            analysis_failures[failure['id']] = sanitize_failure(failure)
+        for identity, result in saved_report.get('groups', {}).items():
             target = _target(targets, identity)
             target.setdefault('result_evidence', []).append(dict(file=path.relative_to(directory).as_posix(),
                 status=result.get('status'), reused=result.get('reused', False)))
             target['result'] = ('reused validated component' if result.get('reused') else 'component validated (build/tests)') if result.get('status') == 'component_validated' else str(result.get('status', 'unknown'))
+            for key in ('failure_role', 'root_cause_ids'):
+                target.pop(key, None)
+                if result.get(key): target[key] = result[key]
             if result.get('reason'):
                 target['blocker'] = finding(error=result['reason'])
                 reason = sanitize_diagnostic(result['reason']).splitlines()[0]
@@ -248,6 +255,8 @@ def build_report(directory):
     for row in evidence['conversion_component_heads']:
         target = _target(targets, row['group_id'])
         target['component_head_status'] = row['status']
+        if target.get('root_cause_ids'):
+            continue
         if row['status'] == 'component_validated' and 'validated' not in target['result']:
             target['result'] = 'component_validated (saved component head)'
         elif (row['status'] != 'component_validated' and 'validated' in target['result']) or target['result'] == 'not established':
@@ -292,7 +301,15 @@ def build_report(directory):
         limitations.add('This run predates correlated attempt capture; delivery retry counts and exact HTTP status may be unavailable.')
     return ConversionAiReport(run_id=directory.name, status=str(run['status']), checkpoint=str(run['current_phase']),
         stage=STAGE, observed_at=datetime.now(timezone.utc).isoformat(), active_operation=active,
-        targets=list(targets.values()), limitations=sorted(limitations))
+        targets=list(targets.values()), analysis_failures=list(analysis_failures.values()), limitations=sorted(limitations))
+
+
+def sanitize_failure(failure):
+    """Keep structured cause evidence safe for read-only diagnostic exports."""
+    if isinstance(failure, str): return sanitize_diagnostic(failure)
+    if isinstance(failure, list): return [sanitize_failure(item) for item in failure]
+    if isinstance(failure, dict): return {key: sanitize_failure(value) for key, value in failure.items()}
+    return failure
 
 
 def format_report(report):
@@ -302,6 +319,8 @@ def format_report(report):
         'Observed: ' + report.observed_at]
     if report.active_operation:
         lines.append('Active operation: ' + report.active_operation)
+    for failure in report.analysis_failures:
+        lines += ['', 'Underlying analysis failure: ' + failure['id'], '  Reason: ' + failure['message']]
     counts = Counter(item['result'] for item in report.targets)
     lines.append('Targets: ' + str(len(report.targets)) + '; results: ' + ', '.join(f'{key}={value}' for key, value in counts.items()))
     for target in report.targets:
@@ -329,6 +348,8 @@ def format_report(report):
             lines.append('    Saved materials: ' + available)
         for event in target.get('legacy_delivery_evidence', []):
             lines.append(f"  Historical delivery evidence: {event['event']} at {event['file']}:{event['line']} (generation attempt not correlated)")
+        if target.get('root_cause_ids'):
+            lines.append('  Caused by (' + target['failure_role'] + '): ' + ', '.join(target['root_cause_ids']))
         if target.get('blocker'):
             lines.append('  Blocker: ' + target['blocker'])
             lines.append('  Reason: ' + target['blocker_summary'])

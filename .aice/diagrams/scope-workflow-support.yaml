@@ -47,7 +47,9 @@ narration:
     the converter cannot treat an approval of the old report as approval of the new one.
   o:verification: Build and behavior validation checks generated code using the rules of the current conversion
     job. For formats, it can find which original methods are called, including inherited and delegated methods,
-    and compare original and generated behavior where supported.
+    and compare original and generated behavior where supported. Boundary analysis can continue while real work
+    advances; repeated heartbeats do not extend the inactivity window. Recorded analysis failures link to the
+    component errors they cause.
   outro: The stages use these shared helpers instead of recording progress and approvals in different ways. Follow
     the resume flow to see how work continues after a stop, or the request diagnostics flow to inspect an oversized
     AI request.

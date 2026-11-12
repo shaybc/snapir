@@ -188,11 +188,14 @@ def test_offline_dashboard_navigation_with_large_saved_history(run, tmp_path):
     items = [target('CCString', result='incomplete', blocker='blocked_entry_resolution', blocker_summary='Entry method has no supplied Java source', members=['s']),
         target('CCXML', result='incomplete', blocker='blocked_prerequisite', blocker_summary='Required prerequisite: CCString', prerequisites=['CCString']),
         target('step', result='component_validated'), target('planned', members=['planned'])]
+    items[1].update(root_cause_ids=['analysis-fixture'], failure_role='dependency_consequence')
     items[0]['directions'] = ['unformat']
     items[2]['consumers'] = ['BANK/Other']
     items += [target(f'external-{number}', result='external_policy') for number in range(1250)]
     project = tmp_path / 'project'
-    export_conversion_report(run, project, report(run, items))
+    saved = report(run, items)
+    saved.analysis_failures = [dict(id='analysis-fixture', message='Analyzer stopped without meaningful progress')]
+    export_conversion_report(run, project, saved)
     export_html_report(run, project, conversion=True)
     result = subprocess.run([node, str(Path(__file__).with_name('test_diagnostic_dashboard.cjs')),
         str(project / 'work/diagnostics/run/assets')], capture_output=True, text=True, encoding='utf-8', timeout=30)
@@ -228,3 +231,23 @@ def test_material_links_cannot_escape_export_directory(tmp_path):
     assert _file_link('../outside.txt', destination) is None
     assert _file_link(str(tmp_path / 'outside.txt'), destination) is None
     assert _file_link('missing.txt', destination) is None
+
+
+def test_dashboard_exports_root_failure_and_causal_roles(run, tmp_path):
+    cause = dict(id='analysis-1', message='Analyzer stopped <without progress>', output_bytes=123)
+    items = [target('string', result='incomplete', root_cause_ids=['analysis-1'], failure_role='analysis_consequence'),
+             target('shared', result='incomplete', root_cause_ids=['analysis-1'], failure_role='dependency_consequence'),
+             target('independent', result='incomplete', blocker='schema_validation_failed', blocker_summary='1 validation error')]
+    saved = report(run, items)
+    saved.analysis_failures = [cause]
+    project = tmp_path / 'project'
+    export_conversion_report(run, project, saved)
+    export_html_report(run, project, conversion=True)
+    destination = project / 'work/diagnostics/run'
+    data = dashboard_data(destination)
+    assert data['analysis_failures'] == [cause]
+    assert data['counts'] == {'blocked': 2, 'failed': 1}
+    assert data['targets'][1]['failure_role'] == 'dependency_consequence'
+    assert 'analysis-1' in data['targets'][0]['summary']
+    assert '<without progress>' not in (destination / 'assets/report-data.js').read_text(encoding='utf-8')
+    assert 'Underlying analysis failures' in (destination / 'index.html').read_text(encoding='utf-8')

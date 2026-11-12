@@ -335,3 +335,43 @@ def test_empty_timeout_exception_keeps_its_delivery_failure_type(run, monkeypatc
     target = build_report(run).targets[0]
     assert target['attempts'][0]['deliveries'][0]['outcome'] == 'timeout'
     assert 'TimeoutError' in (run / 'reports/model_attempts/events.jsonl').read_text()
+
+
+def test_underlying_analysis_failure_is_distinct_from_consequences(run):
+    from tools.run_diagnostics.target_status import target_status, target_summary
+    stage = run / 'reports/3_dependency_closure_and_component_conversion'
+    stage.mkdir(parents=True)
+    cause = dict(id='analysis-1', kind='boundary_analysis_inactivity', message='Converter boundary analysis inactivity timeout after 300 seconds without meaningful progress', output_bytes=123)
+    groups = {
+        'string-group': dict(status='incomplete', reason=cause['message'], root_cause_ids=['analysis-1'], failure_role='analysis_consequence'),
+        'shared': dict(status='incomplete', reason='Required prerequisite blocked', root_cause_ids=['analysis-1'], failure_role='dependency_consequence'),
+        'independent': dict(status='incomplete', reason='1 validation error for SharedFixtureBank')}
+    (stage / 'component-generation.json').write_text(json.dumps(dict(analysis_failures=[cause], groups=groups)))
+    with sqlite3.connect(run / 'state/migration.db') as conn:
+        conn.execute('CREATE TABLE conversion_component_heads(run_id,group_id,status)')
+        conn.execute('INSERT INTO conversion_component_heads VALUES(?,?,?)', (run.name, 'string-group', 'component_validated'))
+    before = hashes(run)
+    result = build_report(run)
+    assert result.analysis_failures == [cause]
+    targets = {item['identity']: item for item in result.targets}
+    assert target_status(targets['string-group']) == 'blocked'
+    assert target_status(targets['shared']) == 'blocked'
+    assert target_status(targets['independent']) == 'failed'
+    assert 'analysis-1' in target_summary(targets['shared'])
+    assert targets['string-group']['blocker'] == 'blocked_analysis_timeout'
+    text = '\n'.join(format_report(result))
+    assert 'Underlying analysis failure: analysis-1' in text
+    assert 'Caused by (dependency_consequence): analysis-1' in text
+    assert hashes(run) == before
+
+
+def test_console_situation_exposes_saved_analysis_cause(run):
+    from cli.workflow_situation import situation_lines
+    stage = run / 'reports/3_dependency_closure_and_component_conversion'
+    stage.mkdir(parents=True)
+    (stage / 'component-generation.json').write_text(json.dumps(dict(
+        analysis_failures=[dict(id='analysis-1', message='No meaningful analysis progress for 300 seconds')],
+        groups={'string-group': dict(root_cause_ids=['analysis-1'])})))
+    lines = situation_lines(run, 'blocked', 'conversion_components_incomplete', [], 'Resume after fixing the problem')
+    assert any('Underlying analysis failure: No meaningful analysis progress' in line for line in lines)
+    assert any('1 linked component/dependency consequences' in line for line in lines)

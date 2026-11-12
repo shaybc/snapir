@@ -11,12 +11,18 @@ import constants
 
 _selected = ContextVar("migration_java_toolchain", default=None)
 _scan_inactivity_timeout = ContextVar("java_scan_inactivity_timeout", default=None)
+_boundary_inactivity_timeout = ContextVar("boundary_analysis_inactivity_timeout", default=300)
 
 
 def java_scan_inactivity_timeout():
     """Return the run's scanner inactivity limit, or the standalone default."""
     selected = _scan_inactivity_timeout.get()
     return selected if selected is not None else constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS
+
+
+def boundary_analysis_inactivity_timeout():
+    """Read the run's boundary-analysis inactivity window, independent of total elapsed time."""
+    return _boundary_inactivity_timeout.get()
 
 
 def jdk_version(home):
@@ -88,6 +94,7 @@ def java_scope(profile):
     token = _selected.set((profile.java_version, profile.java_home))
     scan_token = _scan_inactivity_timeout.set(getattr(profile, "java_scan_inactivity_timeout_seconds",
                                                      constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS))
+    boundary_token = _boundary_inactivity_timeout.set(getattr(profile, "boundary_analysis_inactivity_timeout_seconds", 300))
     from tools.source_discovery_tools.classpath_scope import container_bindings
     container_token = container_bindings.set(getattr(profile, 'eclipse_classpath_containers', {}))
     from tools.framework_boundaries.inventory import framework_scope
@@ -97,6 +104,7 @@ def java_scope(profile):
     finally:
         container_bindings.reset(container_token)
         _scan_inactivity_timeout.reset(scan_token)
+        _boundary_inactivity_timeout.reset(boundary_token)
         _selected.reset(token)
 
 

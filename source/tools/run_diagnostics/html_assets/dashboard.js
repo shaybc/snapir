@@ -16,6 +16,11 @@
     element.append(node('summary', title), node('pre', typeof value === 'string' ? value : pretty(value)));
     return element;
   };
+  const failures = new Map((data.analysis_failures || []).map(failure => [failure.id, failure]));
+  $('analysis-failures').hidden = !failures.size;
+  for (const failure of failures.values()) {
+    $('analysis-failure-list').append(node('h3', failure.id), node('p', failure.message, 'notice'), details('Analysis failure evidence', failure));
+  }
   const targetMap = new Map(data.targets.map(target => [target.identity, target]));
   const priority = ['failed', 'blocked', 'running or unknown', 'unknown', 'not started', 'validation recorded', 'completed', 'configuration bound', 'external policy'];
   const sorted = [...data.targets].sort((a, b) => priority.indexOf(a.status) - priority.indexOf(b.status) || a.name.localeCompare(b.name));
@@ -82,6 +87,16 @@
     const body = $('detail-body');
     body.replaceChildren();
     body.append(badge(target.status), node('p', target.summary, 'notice'));
+    if (target.root_cause_ids?.length) {
+      body.append(node('h3', target.failure_role === 'dependency_consequence' ? 'Dependency consequence' : 'Analysis consequence'));
+      for (const id of target.root_cause_ids) {
+        const failure = failures.get(id);
+        body.append(node('p', id + ': ' + (failure?.message || 'Underlying failure details not recorded.')));
+      }
+      const causes = node('button', 'Show underlying analysis failures');
+      causes.onclick = () => $('analysis-failures').scrollIntoView();
+      body.append(causes);
+    }
     const facts = node('dl');
     for (const [key, value] of Object.entries({Identity: target.identity, Type: target.type, Direction: target.directions.join(', ') || 'Not recorded', Result: target.result, 'Consuming operations': target.consumers.join(', ') || 'Not recorded'})) {
       facts.append(node('dt', key), node('dd', value));

@@ -30,6 +30,8 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         from tools.conversion_tools.component_identity import component_group
         for target in bindings.values(): verify_original_sources(plan, component_group(plan, target))
     else: verify_original_sources(plan, group)
+    from runtime.component_conversion.analysis_failures import require_analysis
+    require_analysis(plan, group, boundaries)
     step = configured_step(plan, group, units or {})
     composed = configured_format(plan, group, units or {})
     sources, entries, checklist = component_sources(plan, group, bindings, units=units or {}), {}, {}
