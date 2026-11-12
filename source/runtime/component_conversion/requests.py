@@ -46,6 +46,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         node = plan.components[bindings.get(key, key)]
         identity = node.provenance.get('definition_id', node.provenance.get('source_definition_id'))
         basic_element=key in basic_members
+        step_component=plan.components[key].kind == 'configured_step' or 'step_implementation' in plan.components[key].roles
         methods = set()
         for unit_id, boundary in boundaries['boundaries'].items():
             if unit_id not in plan.components[key].unit_ids:
@@ -57,6 +58,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
                     if basic.get('analysis_status') != 'identified' or basic.get('issues'):
                         raise ValueError('Basic format lifecycle could not be resolved: ' + node.label + ': ' + '; '.join(basic.get('issues', [])))
                     boundary = basic
+            step_element=step_component and boundary.get('kind') == 'configured_step'
             framework_evidence.extend(boundary.get('framework_boundaries', []))
             lifecycle = boundary.get('format_lifecycle')
             if lifecycle:
@@ -70,21 +72,28 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
                 supplied = {source['identity'] for source in sources}
                 lifecycle_sources.update(method['source_identity'] for method in graph.get('nodes', [])
                                          if method['source_identity'] in supplied)
+            step_evidence = None
+            if step_element:
+                from runtime.component_conversion.step_entry_evidence import step_entry_evidence
+                step_methods, step_evidence = step_entry_evidence(boundary, sources, key, node.provenance, collect_checklists=not skip_facts)
+                methods.update(step_methods)
             composition_nodes=set((boundary.get('basic_parser_checklist') or {}).get('composition_code_nodes',[])) if basic_element else set()
             for method in graph.get('nodes', []):
-                if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
+                if not step_element and method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
                     methods.add(method['signature'])
             full_checklist=boundary.get('parser_checklist') or {}
             selected_checklist={} if skip_facts else full_checklist
-            if basic_element and not skip_facts:
+            if basic_element and not step_element and not skip_facts:
                 selected_checklist=boundary.get('basic_parser_checklist') or {}
                 if selected_checklist.get('status')!='extracted' or selected_checklist.get('fact_scope')!='basic_element':
                     raise ValueError('Basic formats/decorators require the current deterministic basic-element fact collector')
                 basic_ids={item['id'] for item in selected_checklist.get('items',[])}
                 composition_obligations.update({item['id']:item for item in full_checklist.get('items',[]) if
                     item['source_identity']==identity and item['id'] not in basic_ids})
+            if step_evidence is not None:
+                selected_checklist = dict(items=step_evidence)
             for item in selected_checklist.get('items', []):
-                if item['source_identity'] in lifecycle_sources and (item['source_identity'] != identity or item['source_hash'] == node.provenance['source_hash']):
+                if step_evidence is not None or item['source_identity'] in lifecycle_sources and (item['source_identity'] != identity or item['source_hash'] == node.provenance['source_hash']):
                     existing = checklist.get(item['id'])
                     if existing and {name:value for name,value in existing.items() if name!='path_certainty'} != {name:value for name,value in item.items() if name!='path_certainty'}:
                         raise ValueError('Conflicting parser checklist provenance')

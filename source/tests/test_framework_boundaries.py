@@ -238,3 +238,61 @@ def test_framework_context_keeps_resolved_source_signature_for_static_validation
         session=session_for(config,profile,units['response'],boundaries['boundaries']['response'])
         session.static(format_bundle(native,request,files))
     assert session.static_report.status=='mapping_valid',session.static_report.errors
+
+
+def test_binary_wrapper_preserves_inherited_step_business_evidence_and_execution(tmp_path, boundary_tool):
+    from zipfile import ZipFile
+    from test_step_inherited_entries import step_case, request_for
+    from runtime.component_conversion.requests import build_component_request
+    from runtime.behavior_conversion.request_context import encode_request
+    from tools.framework_boundaries.requests import INSTRUCTION
+    from models.step_comparison_plan import StepComparisonPlan
+    from runtime.step_comparison.runner import run_step_comparison
+    root = Path(__file__).resolve().parents[2] / 'bank-demo/composer/Workspace/WSBCC_XML/src'
+    files = {'com/ibm/dse/base/' + name + '.java': next(root.rglob(name + '.java')).read_text() for name in ('Context', 'Tag')}
+    files.update({
+        'vendor/OperationStep.java': 'package vendor; public abstract class OperationStep { public abstract int execute() throws Exception; }',
+        'vendor/Wrapper.java': 'package vendor; public abstract class Wrapper extends OperationStep { public void initializeFrom(com.ibm.dse.base.Tag tag){} public void setContext(com.ibm.dse.base.Context context){} public int execute() throws Exception{return dispatch();} protected abstract int dispatch() throws Exception; }'})
+    combined = archive(tmp_path / 'compiled-framework', files)
+    jars = [tmp_path / 'base.jar', tmp_path / 'wrapper.jar']
+    with ZipFile(combined) as compiled, ZipFile(jars[0], 'w') as base, ZipFile(jars[1], 'w') as wrapper:
+        for name in compiled.namelist():
+            (wrapper if name == 'vendor/Wrapper.class' else base).writestr(name, compiled.read(name))
+    definitions = {
+        'example.Procedure': ('package example; public class Procedure extends vendor.Wrapper { protected int dispatch(){return business();} protected int business(){return 23;} }', ['vendor.Wrapper']),
+        'example.Middle': ('package example; public class Middle extends Procedure {}', ['example.Procedure']),
+        'example.Child': ('package example; public class Child extends Middle {}', ['example.Middle', 'example.Noise']),
+        'example.Noise': ('package example; public class Noise { public int unrelated(){return 999;} }', [])}
+    with framework_scope(jars):
+        case = step_case(tmp_path / 'sources', definitions, framework=jars, tool=boundary_tool)
+        for occurrence in (False, True):
+            request = request_for(case, occurrence)
+            methods = next(iter(request['source_entry_points'].values()))
+            assert {'example.Procedure.dispatch()', 'example.Procedure.business()'} <= set(methods)
+            assert not any('Noise' in method for method in methods)
+            assert not any('999' in fact['excerpt'] for fact in request['parser_checklist'])
+            assert any(fact['source_identity'] == 'source:example.Procedure' and '23' in fact['excerpt'] for fact in request['parser_checklist'])
+            assert request['framework_boundaries'][0]['signature'] == 'vendor.Wrapper.execute()'
+            assert request['framework_boundary_policy'] == 'framework-binary-v1'
+            assert not request['retained_libraries']
+            assert not any(source['identity'].startswith('source:vendor.') for source in request['sources'])
+        request, instruction = build_component_request(case.plan, case.occurrence, case.boundaries, [], case.profile,
+            check_budget=False, units=case.units)
+        assert instruction.count(INSTRUCTION) == 1
+        encoded, _ = encode_request(request, instruction, case.profile.behavior_context_chars)
+        assert 'composer_behavior_evidence' in encoded and 'composer_behavior_evidence' not in request
+        assert encode_request(encoded, instruction, case.profile.behavior_context_chars)[0]['composer_behavior_evidence'] == encoded['composer_behavior_evidence']
+    plan = StepComparisonPlan(label='Inherited binary wrapper step', scope='configured',
+        original_unit=case.units['selected-step'],
+        original_framework=dict(adapter_class='il.co.dcd.verification.harness.LegacyBoundaryAdapter', classpath=list(map(str, jars))),
+        native_sources=[dict(path='src/main/java/nativecode/Step.java', content='package nativecode; public class Step { public static int execute(){return 23;} }')],
+        entries={'execute': dict(direction='step_execute', binding=dict(owner_type='nativecode.Step', method_name='execute', static_method=True))},
+        cases=[dict(case_id='normal', binding_id='execute')])
+    profile = case.profile.model_copy(update={'format_comparison': PipelineConfiguration(format_comparison=dict(enabled=True, collect_facts=False)).format_comparison})
+    report = run_step_comparison(plan, profile, tmp_path / 'comparison', tool=boundary_tool)
+    assert report['status'] == 'completed' and report['counts']['matched'] == 1, report
+    assert report['cases'][0]['legacy']['output'] == report['cases'][0]['native']['output'] == 23
+    plan.native_sources[0].content = plan.native_sources[0].content.replace('return 23', 'return 99')
+    wrong = run_step_comparison(plan, profile, tmp_path / 'wrong-native', tool=boundary_tool)
+    assert wrong['status'] == 'completed' and wrong['counts']['different'] == 1, wrong
+    assert wrong['cases'][0]['legacy']['output'] == 23

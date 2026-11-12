@@ -631,3 +631,23 @@ consequences. Other conversion and validation failures remain separate. Rerun
 saved-run diagnostics to see the root failure in text, JSON, and the HTML dashboard;
 this does not rerun analysis. Older reports without explicit causal links retain
 their original reasons rather than inventing a dependency explanation.
+
+## Inherited OP step methods
+
+An OP step does not need to declare `execute()` or a Composer business hook on
+its concrete class. The analyzer resolves the existing public instance
+`int execute()` contract through the class hierarchy. Conversion requests retain
+reachable application methods and parser obligations from the selected
+implementation's verified supporting sources, including intermediate superclasses.
+No superclass names, hook names, or inheritance depths are prescribed.
+
+The existing framework JAR inventory and Composer Manual guidance still define
+the framework boundary. Binary framework code is not converted or reconstructed;
+the original side of comparisons continues to run with the real JARs. Existing
+analysis uncertainty and source-revision checks remain in force.
+
+Resume the same saved run with its existing configuration. No new settings,
+re-indexing, capture, mapping reset, or analyzer rebuild are required for this
+Python request-selection correction. Normal freshness checks still run. Saved
+components whose method/checklist obligations change must pass the existing
+reuse checks and may need regeneration; compatible results remain reusable.
