@@ -52,6 +52,11 @@ final class LegacyFormatLifecycle {
         return result;
     }
     private static Object read(Element job,Object context,String key) throws Exception {
-        return context.getClass().getMethod(job.getAttribute("context_reader"),String.class).invoke(context,key);
+        try {
+            return context.getClass().getMethod(job.getAttribute("context_reader"),String.class).invoke(context,key);
+        } catch (InvocationTargetException failure) {
+            throw new BoundaryRuntime.Incomplete("Original format lifecycle requires explicit input " + key
+                + "; context lookup failed: " + failure.getCause());
+        }
     }
 }

@@ -135,3 +135,74 @@ def test_configured_collection_executes_child_tree_and_compares_structured_rows(
     assert unavailable['counts']['comparison_unavailable'] == 1, unavailable
     assert unavailable['cases'][0]['native']['exception'] is None
 
+
+
+@pytest.mark.parametrize('context_entry', [False,True])
+@pytest.mark.parametrize('direction', ['unformat','format'])
+def test_collection_entry_invocation_uses_existing_object_bindings(boundary_tool,tmp_path,context_entry,direction):
+    from test_format_lifecycle import collection_entry_sources
+    sources=collection_entry_sources(context_entry)
+    value=original_unit(sources,dict(java_class='example.Child',attributes={}))
+    root_key='root' if context_entry else 'lifecycle:example.KeyedCollection'
+    recipe=dict(type_name='example.KeyedCollection',source='object',arguments=[dict(type_name='java.lang.String',source='context',key='raw')])
+    prefix='before-' if context_entry else ('seed' if direction=='unformat' else '')
+    native='package nativecode;public class Codec {public static String call(String value){return '+(
+        '"'+prefix+'"+value' if direction=='unformat' else '"<value>'+prefix+'"+value+"</value>"')+';}}'
+    plan=FormatComparisonPlan(label='collection entry invocation',scope='basic',original_unit=value,
+        native_sources=[dict(path='src/main/java/nativecode/Codec.java',content=native)],
+        entries={'selected':dict(direction=direction,binding=dict(owner_type='nativecode.Codec',method_name='call',static_method=True,
+            arguments=[dict(type_name='java.lang.String',source='xml' if direction=='unformat' else 'context',**({} if direction=='unformat' else {'key':'raw'}))]))},
+        cases=[dict(case_id='normal',binding_id='selected',input_xml='wire' if direction=='unformat' else None,
+            initial_context={'raw':'seed'},original_inputs={root_key:recipe},observe_context_keys=[])],
+        original_framework=dict(adapter_class='il.co.dcd.verification.harness.LegacyBoundaryAdapter',
+            original_context_getters={root_key:['getValue']},original_output_getters=['getValue'] if direction=='unformat' else []))
+    profile=PipelineConfiguration(java_version=25,format_comparison=dict(enabled=True,collect_facts=False))
+    report=run_comparison(plan,profile,tmp_path/'comparison',tool=boundary_tool)
+    assert report['counts']['matched']==1,report
+    legacy=report['cases'][0]['legacy']
+    if context_entry:
+        assert legacy['context']['hooks']==1
+        if direction=='unformat':assert legacy['context']['request']=='wire'
+    else:assert 'hooks' not in legacy['context']
+    if not context_entry:
+        missing=plan.model_copy(deep=True)
+        missing.cases[0].original_inputs={}
+        missing.original_framework.original_context_getters={}
+        unavailable=run_comparison(missing,profile,tmp_path/'missing-input',tool=boundary_tool)
+        assert unavailable['counts']['matched']==0
+        assert 'explicit input lifecycle:example.KeyedCollection' in str(unavailable)
+
+
+def test_binary_context_entry_uses_original_jar_and_keeps_framework_boundary(boundary_tool,tmp_path):
+    from test_format_lifecycle import collection_entry_sources
+    from test_boundary_project_classpath import archive
+    from tools.framework_boundaries.inventory import framework_scope
+    from tools.behavior_verification.boundaries import build_boundary_report
+    from test_behavior_verification_boundaries import unit,prepared
+    from runtime.behavior_conversion.java_api_types import public_api_types
+    selected=[item for item in collection_entry_sources() if item['identity'] in {'Context','Tag','element','collection','format-element','parent'}]
+    files={next(iter(public_api_types(item['content']))).replace('.','/')+'.java':item['content'] for item in selected}
+    jar=archive(tmp_path/'framework',files)
+    child=source('child','package example; public class Child extends Parent {}')
+    with framework_scope([jar]):
+        for kind,method in [('request_unformat','unformatContext'),('response_format','formatContext')]:
+            value=unit(kind,'example.Child',sources=[child])
+            value['effective_configuration']=dict(java_class='example.Child',attributes={})
+            value['format_scope']='basic'
+            boundary=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+            assert boundary['analysis_status']=='identified',boundary['issues']
+            assert boundary['framework_boundaries'][0]['method']==method
+            assert boundary['framework_boundaries'][0]['declaring_class']=='example.Parent'
+    plan=FormatComparisonPlan(label='binary context entry',scope='basic',original_unit=original_unit([child],dict(java_class='example.Child',attributes={})),
+        original_framework=dict(adapter_class='il.co.dcd.verification.harness.LegacyBoundaryAdapter',classpath=[str(jar)],
+            original_context_getters={'root':['getValue']},original_output_getters=['getValue']),
+        native_sources=[dict(path='src/main/java/nativecode/Codec.java',content='package nativecode;public class Codec{public static String read(String value){return "before-"+value;}}')],
+        entries={'read':dict(direction='unformat',binding=dict(owner_type='nativecode.Codec',method_name='read',static_method=True,
+            arguments=[dict(type_name='java.lang.String',source='xml')]))},
+        cases=[dict(case_id='normal',binding_id='read',input_xml='wire',initial_context={'raw':'seed'},observe_context_keys=[],
+            original_inputs={'root':dict(type_name='example.KeyedCollection',source='object',arguments=[dict(type_name='java.lang.String',source='context',key='raw')])})])
+    profile=PipelineConfiguration(java_version=25,framework_jars=[str(jar)],format_comparison=dict(enabled=True,collect_facts=False))
+    report=run_comparison(plan,profile,tmp_path/'comparison',tool=boundary_tool)
+    assert report['counts']['matched']==1,report
+    assert report['cases'][0]['legacy']['context']['hooks']==1
+    assert report['cases'][0]['legacy']['context']['request']=='wire'

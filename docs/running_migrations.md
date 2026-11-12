@@ -651,3 +651,32 @@ re-indexing, capture, mapping reset, or analyzer rebuild are required for this
 Python request-selection correction. Normal freshness checks still run. Saved
 components whose method/checklist obligations change must pass the existing
 reuse checks and may need regeneration; compatible results remain reusable.
+
+## CCXML context and collection entry methods
+
+Original format analysis recognizes inherited `unformatContext(String, Context)`,
+`unformatKeyedCollection(String, KeyedCollection)`, and `formatContext(Context)`
+entries, in addition to the existing `format(Context)`, `format(KeyedCollection)`,
+and scalar-field methods. Existing basic field-entry selection remains intact.
+The boundary records the selected method's actual declaring class, signature,
+return type, and parameter types; tests use that recorded invocation.
+
+Context wrappers execute normally, including hooks and side effects called by
+the original body. The adapter does not add extra hook calls for these entries.
+Direct collection-entry comparisons must explicitly supply the original collection
+object through the existing original-input recipe mechanism. Missing bindings
+remain diagnostic failures. Configured framework JARs still supply proprietary
+code on the original side; their source is not required or reconstructed.
+
+After updating the Python code, rebuild the analyzer/harness with JDK 25 selected:
+
+```text
+mvn -q -f source/behavior-verification-java/pom.xml package
+```
+
+Then resume the same migration using its saved profile and framework-JAR settings.
+No new configuration or intake/mapping reset is required. Normal compatibility
+checks revalidate saved results and can request correction when obligations change.
+This change only recognizes and invokes original entries. The AI still converts
+business behavior from the existing application evidence and Composer Manual;
+the converter does not implement XML parsing or recursive child-format processing.

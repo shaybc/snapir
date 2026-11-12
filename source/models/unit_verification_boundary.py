@@ -20,7 +20,7 @@ class UnitVerificationBoundary(BaseModel):
     operation_identity: str
     kind: Literal['request_unformat', 'response_format', 'configured_step']
     implementation_class: str | None = None
-    method_name: Literal['unformat', 'format', 'execute', 'formatField', 'unformatField', 'beforeFormatDo', 'beforeUnformatDo']
+    method_name: Literal['unformat', 'format', 'execute', 'formatField', 'unformatField', 'beforeFormatDo', 'beforeUnformatDo', 'formatContext', 'unformatContext', 'unformatKeyedCollection']
     parameter_contract: list[str]
     return_contract: str
     inputs: list[str]

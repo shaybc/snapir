@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 final class FormatLifecycle {
     private FormatLifecycle() { }
     static boolean format(Element entry) { return !entry.getAttribute("kind").equals("configured_step"); }
-    private static final Set<String> NAMES = Set.of("format","unformat","formatField","unformatField","beforeFormatDo","beforeUnformatDo");
+    private static final Set<String> NAMES = Set.of("format","unformat","formatField","unformatField","formatContext","unformatContext","unformatKeyedCollection","beforeFormatDo","beforeUnformatDo");
     private static void add(Map<String, ResolvedMethodDeclaration> result, ResolvedMethodDeclaration method) {
         if (!NAMES.contains(method.getName())) return;
         var previous = result.get(method.getSignature());
@@ -50,18 +50,38 @@ final class FormatLifecycle {
         if (found.size() > 1) throw new IllegalStateException("Ambiguous format lifecycle method: " + name);
         return found.isEmpty() ? null : found.get(0);
     }
+    private static ResolvedMethodDeclaration publicEntry(List<ResolvedMethodDeclaration> methods, String name, String returns, String... parameters) {
+        var method = one(methods, name, parameters);
+        return method != null && method.accessSpecifier() == com.github.javaparser.ast.AccessSpecifier.PUBLIC
+            && (returns.equals("String") ? method.getReturnType().describe().equals("java.lang.String")
+                : simple(method.getReturnType().describe()).equals(returns)) ? method : null;
+    }
+    static ResolvedMethodDeclaration contextEntry(List<ResolvedMethodDeclaration> methods, boolean reading) {
+        return reading ? publicEntry(methods, "unformatContext", "DataElement", "String", "Context")
+            : publicEntry(methods, "formatContext", "String", "Context");
+    }
+    private static ResolvedMethodDeclaration collectionEntry(List<ResolvedMethodDeclaration> methods, boolean reading) {
+        return reading ? publicEntry(methods, "unformatKeyedCollection", "KeyedCollection", "String", "KeyedCollection")
+            : publicEntry(methods, "format", "String", "KeyedCollection");
+    }
     static ResolvedMethodDeclaration fallback(Element entry, SourceScope sources) {
         if (!format(entry)) return null;
         var methods = methods(entry, sources);
         boolean reading = entry.getAttribute("kind").equals("request_unformat");
         if (!entry.getAttribute("format_scope").equals("basic")) {
+            var context = contextEntry(methods, reading);
+            if (context != null) return context;
             // Operation is a distinct input, not a Context alias. The harness requires an explicit recipe.
-            return reading ? one(methods, "unformat", "String", "Operation") : one(methods, "format", "KeyedCollection");
+            var configured = reading ? one(methods, "unformat", "String", "Operation") : one(methods, "format", "KeyedCollection");
+            return configured != null ? configured : collectionEntry(methods, reading);
         }
         ResolvedMethodDeclaration selected = reading ? one(methods, "unformat", "String", "DataField")
             : one(methods, "formatField", "DataField");
         if (selected == null && reading) selected = one(methods, "unformatField", "String", "DataField");
-        if (selected == null) return null;
+        if (selected == null) {
+            var context = contextEntry(methods, reading);
+            return context != null ? context : collectionEntry(methods, reading);
+        }
         String hookName = reading ? "beforeUnformatDo" : "beforeFormatDo";
         var hook = reading ? one(methods, hookName, "DataElement", "FormatElement", "Context")
                            : one(methods, hookName, "DataElement", "Context");

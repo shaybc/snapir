@@ -12,7 +12,14 @@ final class FrameworkBoundary {
         boolean framework = sources.frameworkTypes.containsKey(type.getQualifiedName())
             || type.getAllAncestors().stream().anyMatch(parent -> sources.frameworkTypes.containsKey(parent.getQualifiedName()));
         if (!framework || !FormatLifecycle.format(entry)) return null;
-        var methods = FormatLifecycle.methods(entry, sources).stream()
+        var candidates = FormatLifecycle.methods(entry, sources);
+        var context = FormatLifecycle.contextEntry(candidates, entry.getAttribute("kind").equals("request_unformat"));
+        if (context != null) {
+            // Use the same wrapper preference as source-backed formats, preserving basic field entries.
+            var preferred = FormatLifecycle.fallback(entry, sources);
+            if (preferred != null && preferred.getQualifiedSignature().equals(context.getQualifiedSignature())) return context;
+        }
+        var methods = candidates.stream()
             .filter(method -> method.getName().equals(entry.getAttribute("method")) && !method.isStatic()
                 && method.accessSpecifier() == com.github.javaparser.ast.AccessSpecifier.PUBLIC).toList();
         // Multiple overloads remain an actual binding ambiguity; never choose arbitrarily.

@@ -207,3 +207,128 @@ def test_standalone_unformat_executes_required_hook_and_rejects_missing_fixture(
     assert report['counts']['matched']==1,report
     assert report['counts']['comparison_unavailable']==1,report
     assert 'lifecycle:example.FormatElement' in str(report['cases'][1])
+
+
+def collection_entry_sources(context_entries=True):
+    """Original fixture code supplies behavior; the converter only discovers its entry."""
+    wrappers = """
+      public DataElement unformatContext(String text,com.ibm.dse.base.Context context){
+        context.setValueAt("request",text);
+        KeyedCollection root=(KeyedCollection)context.getValueAt("root");
+        beforeUnformatDo(root,this,context);
+        return unformatKeyedCollection(text,root);
+      }
+      public String formatContext(com.ibm.dse.base.Context context){
+        KeyedCollection root=(KeyedCollection)context.getValueAt("root");
+        beforeFormatDo(root,context);return format(root);
+      }
+    """ if context_entries else ''
+    return [*demo_sources(),
+        source('element', 'package example; public class DataElement {protected String value;public String getValue(){return value;}}'),
+        source('collection', 'package example; public class KeyedCollection extends DataElement {public KeyedCollection(String value){this.value=value;}public void setValue(String value){this.value=value;}}'),
+        source('format-element', 'package example; public class FormatElement {}'),
+        source('parent', 'package example; public class Parent extends FormatElement {' + wrappers + """
+          public void initializeFrom(com.ibm.dse.base.Tag tag){}
+          public KeyedCollection unformatKeyedCollection(String text,KeyedCollection root){root.setValue(root.getValue()+text);return root;}
+          public String format(KeyedCollection root){return "<value>"+root.getValue()+"</value>";}
+          public void beforeUnformatDo(DataElement root,FormatElement format,com.ibm.dse.base.Context context){
+            ((KeyedCollection)root).setValue("before-");context.setValueAt("hooks",1+(context.getValueAt("hooks")==null?0:(Integer)context.getValueAt("hooks")));}
+          public void beforeFormatDo(DataElement root,com.ibm.dse.base.Context context){
+            ((KeyedCollection)root).setValue("before-"+root.getValue());context.setValueAt("hooks",1+(context.getValueAt("hooks")==null?0:(Integer)context.getValueAt("hooks")));}
+        }"""),
+        source('child', 'package example; public class Child extends Parent {}')]
+
+
+@pytest.mark.parametrize('kind,method,returns', [
+    ('request_unformat','unformatContext','example.DataElement'),
+    ('response_format','formatContext','java.lang.String')])
+@pytest.mark.parametrize('scope', ['basic','configured'])
+def test_inherited_context_collection_entry_is_recorded(boundary_tool, kind, method, returns, scope):
+    value=unit(kind,'example.Child',sources=collection_entry_sources())
+    value['effective_configuration']=dict(java_class='example.Child',attributes={})
+    if scope=='basic':value['format_scope']='basic'
+    result=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+    assert result['analysis_status']=='identified',result['issues']
+    assert result['legacy_method']['declaring_class']=='example.Parent'
+    assert result['method_name']==method and result['return_contract']==returns
+    assert [item['method'] for item in result['format_lifecycle']['invocations']]==[method]
+
+
+@pytest.mark.parametrize('kind,method', [('request_unformat','unformatKeyedCollection'),('response_format','format')])
+@pytest.mark.parametrize('scope', ['basic','configured'])
+def test_explicit_collection_entry_is_recorded_without_synthetic_hooks(boundary_tool, kind, method, scope):
+    value=unit(kind,'example.Child',sources=collection_entry_sources(False))
+    value['effective_configuration']=dict(java_class='example.Child',attributes={})
+    if scope=='basic':value['format_scope']='basic'
+    result=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+    assert result['analysis_status']=='identified',result['issues']
+    assert result['method_name']==method
+    assert result['parameter_contract'][-1]=='example.KeyedCollection'
+    assert [item['method'] for item in result['format_lifecycle']['invocations']]==[method]
+
+
+@pytest.mark.parametrize('declaration', ['private KeyedCollection','public static KeyedCollection','public DataElement'])
+def test_collection_read_entry_requires_public_instance_and_return_contract(boundary_tool,declaration):
+    sources=collection_entry_sources(False)
+    sources=[source(item['identity'],item['content'].replace('public KeyedCollection unformatKeyedCollection',declaration+' unformatKeyedCollection'))
+             if item['identity']=='parent' else item for item in sources]
+    value=unit('request_unformat','example.Child',sources=sources)
+    value.update(format_scope='basic',effective_configuration=dict(java_class='example.Child',attributes={}))
+    boundary=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+    assert boundary['analysis_status']=='verification_incomplete'
+    assert 'matches=0' in ' '.join(boundary['issues'])
+
+
+def test_ambiguous_context_entry_is_not_chosen_arbitrarily(boundary_tool):
+    sources=collection_entry_sources()
+    sources.append(source('other-context','package other;public class Context {}'))
+    sources=[source(item['identity'],item['content'].replace('public void initializeFrom',
+        'public DataElement unformatContext(String text,other.Context context){return null;} public void initializeFrom'))
+        if item['identity']=='parent' else item for item in sources]
+    value=unit('request_unformat','example.Child',sources=sources)
+    value.update(format_scope='basic',effective_configuration=dict(java_class='example.Child',attributes={}))
+    boundary=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+    assert boundary['analysis_status']=='verification_incomplete'
+    assert 'Ambiguous format lifecycle method: unformatContext' in ' '.join(boundary['issues'])
+
+
+@pytest.mark.parametrize('kind',['request_unformat','response_format'])
+def test_existing_scalar_entry_precedes_additional_context_wrapper(boundary_tool,kind):
+    value=field_unit(kind)
+    value['sources']=[source(item['identity'],item['content'].replace('public class Holder {',
+        'public class Holder { public DataElement unformatContext(String text,com.ibm.dse.base.Context context){return null;} public String formatContext(com.ibm.dse.base.Context context){return "other";}'))
+        if item['identity']=='holder' else item for item in value['sources']]
+    boundary=build_boundary_report(prepared(value),tool_jar=boundary_tool)['boundaries'][value['unit_id']]
+    assert boundary['analysis_status']=='identified',boundary['issues']
+    assert boundary['method_name'] not in {'unformatContext','formatContext'}
+
+
+@pytest.mark.parametrize('kind,method',[('request_unformat','unformatContext'),('response_format','formatContext')])
+def test_collection_context_entry_reaches_generation_request(boundary_tool,tmp_path,kind,method):
+    from runtime.component_conversion.requests import build_component_request
+    from tools.conversion_tools.component_graph import build_component_plan
+    from tools.conversion_tools.component_identity import component_group
+    from runtime.behavior_conversion.java_api_types import public_api_types
+    value=unit(kind,'example.Child',sources=collection_entry_sources())
+    value.update(source_definition_id='definition',occurrence_id='definition',logical_id='Collection',
+        effective_configuration=dict(tag='CCXML',java_class='example.Child',attributes={},children=[],decorators=[]))
+    dependencies={'example.Child':['example.Parent'],'example.Parent':['example.KeyedCollection','example.DataElement','example.FormatElement','com.ibm.dse.base.Context','com.ibm.dse.base.Tag'],
+        'example.KeyedCollection':['example.DataElement']}
+    origins=[]
+    for item in value['sources']:
+        names=public_api_types(item['content'])
+        if not names:continue
+        name=next(iter(names))
+        path=tmp_path/(item['identity']+'.java');path.write_bytes(item['content'].encode('utf-8'))
+        origins.append(dict(fqcn=name,status='verified_source',definition_id=item['identity'],source_hash=item['content_hash'],
+            source_file=str(path),required_classes=dependencies.get(name,[])))
+    preparation=dict(operations={'XML/Collection':dict(status='prepared',units=[value],behavior_request=dict(java_origins=origins))})
+    plan=build_component_plan(preparation['operations'])
+    assert not plan.issues,plan.issues
+    key=next(key for key,node in plan.components.items() if node.label=='example.Child')
+    boundaries=build_boundary_report(preparation,tool_jar=boundary_tool,collect_checklists=False)
+    profile=PipelineConfiguration(java_version=25,executable_verification=dict(mode='test_based_v1'))
+    request,instruction=build_component_request(plan,component_group(plan,key),boundaries,[],profile,check_budget=False,units={value['unit_id']:value})
+    assert any('example.Parent.'+method+'(' in entry for entry in request['source_entry_points'][key])
+    assert request['format_lifecycles'][key][0]['invocations'][0]['method']==method
+    assert 'do not recreate that hierarchy' in instruction
