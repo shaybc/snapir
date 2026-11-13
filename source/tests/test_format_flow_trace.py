@@ -35,6 +35,9 @@ def test_trace_preserves_mismatch_and_excludes_private_content(tmp_path):
         conn.execute('INSERT INTO conversion_component_plans VALUES (?,?,?)', ('run-1', json.dumps(plan), 'plan-1'))
         conn.execute('INSERT INTO behavior_attempts VALUES (?,?,?,?,?,?,?,?)',
                      ('run-1', 'component_generation', 'group-1', 'fingerprint-1', 1, json.dumps(request), 'PRIVATE_RESPONSE', 'PRIVATE_ERROR'))
+        sibling = dict(request, group_id='group-2')
+        conn.execute('INSERT INTO behavior_attempts VALUES (?,?,?,?,?,?,?,?)',
+                     ('run-1', 'component_generation', 'group-2', 'fingerprint-2', 1, json.dumps(sibling), None, None))
         conn.execute('INSERT INTO conversion_component_records VALUES (?,?,?,?,?)',
                      ('run-1', 'group-1', 'result', 'result-1', json.dumps({'results': {'string': artifact}})))
     boundary = dict(implementation_class=name, format_scope='basic', analysis_status='identified',
@@ -72,6 +75,15 @@ def test_trace_preserves_mismatch_and_excludes_private_content(tmp_path):
     separate = extract_format_flow(run, name, exported)
     assert separate['saved_diagnostics'][0]['attempts'][0]['request_sha256'] == hashed
     assert 'PRIVATE_' not in json.dumps(separate)
+    exact = extract_format_flow(run, None, group_id='group-1')
+    assert exact['group_id'] == 'group-1'
+    assert len(exact['database_attempts']) == 1
+    assert exact['database_attempts'][0]['identity'] == 'group-1'
+    assert exact['exact_boundary_lookups'][0]['found'] is True
+    other = extract_format_flow(run, None, group_id='group-2')
+    assert len(other['database_attempts']) == 1
+    assert other['database_attempts'][0]['identity'] == 'group-2'
+    assert other['validation_receipts'] == []
 
 
 def test_trace_exports_framework_metadata_without_source():
@@ -81,3 +93,16 @@ def test_trace_exports_framework_metadata_without_source():
                                    path='PRIVATE_PATH', content='PRIVATE_SOURCE')]))
     assert value['framework_boundaries'][0]['declaring_class'] == 'framework.FieldFormat'
     assert 'PRIVATE_' not in json.dumps(value)
+
+
+def test_cli_selects_exact_group_without_default_ccstring(monkeypatch, capsys):
+    from tools.run_diagnostics import trace_format_flow
+    calls = []
+    def extract(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {'group_id': kwargs['group_id']}
+    monkeypatch.setattr(trace_format_flow, 'extract_format_flow', extract)
+    monkeypatch.setattr('sys.argv', ['trace', '--run', 'saved-run', '--group', 'exact-group', '--diagnostics', 'saved-diagnostics'])
+    assert trace_format_flow.main() == 0
+    assert calls == [(('saved-run', None, 'saved-diagnostics'), {'group_id': 'exact-group'})]
+    assert json.loads(capsys.readouterr().out) == {'group_id': 'exact-group'}

@@ -11,6 +11,7 @@ from cli.workflow_progress_snapshot import progress_snapshot
 from tools.run_diagnostics.component_evidence import saved_components
 from tools.run_diagnostics.conversion_ai_export import _write
 from tools.run_diagnostics.target_status import target_status, target_summary
+from tools.run_diagnostics.trace_command import trace_command
 
 
 def _file_link(path, destination):
@@ -47,6 +48,7 @@ def export_html_report(directory, project, *, conversion=False, diagnostic_lines
     scanned_folders = set()
     for target in targets:
         target['status'] = target_status(target)
+        target['trace_command'] = trace_command(directory, project, destination, target['identity'])
         target['summary'] = target_summary(target)
         target['dependents'] = dependents.get(target['identity'], [])
         target['prerequisite_statuses'] = {identity: target_status(by_id[identity]) if identity in by_id else 'not recorded'

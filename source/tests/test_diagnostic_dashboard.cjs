@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 class Element {
-  constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this.value = ''; }
+  constructor(tag) { this.tag = tag; this.children = []; this.handlers = {}; this.value = ''; this.style = {}; }
   set textContent(value) { this.text = String(value); this.children = []; }
   get textContent() { return (this.text || '') + this.children.map(child => child.textContent).join(''); }
   append(...children) { this.children.push(...children); }
@@ -13,6 +13,8 @@ class Element {
   get childNodes() { return this.children; }
   addEventListener(name, callback) { this.handlers[name] = callback; }
   focus() {}
+  select() { this.selected = true; }
+  setAttribute(name, value) { this[name] = value; }
   scrollIntoView() {}
 }
 const elements = new Map();
@@ -82,3 +84,24 @@ assert.match(get('detail-body').textContent, /analysis-fixture: Analyzer stopped
 const rootButton = get('detail-body').children.find(child => child.tag === 'button' && child.textContent === 'Show underlying analysis failures');
 assert.ok(rootButton);
 rootButton.onclick();
+
+(async () => {
+  for (const identity of ['CCString', 'CCXML', 'step', 'planned']) {
+    location.hash = 'target=' + identity;
+    const button = get('detail-body').children.find(child => child.tag === 'button' && child.textContent === 'Copy trace command');
+    assert.ok(button, 'Trace command is available for every outcome');
+    const panel = get('detail-body').children.find(child => child.tag === 'details' && child.textContent.includes('Conversion trace command'));
+    const text = panel.children.find(child => child.tag === 'textarea');
+    assert.ok(text.readOnly);
+    assert.ok(text.value.includes("--group '" + identity + "'"));
+    delete context.navigator.clipboard;
+    await button.onclick();
+    assert.ok(text.selected, 'Clipboard rejection leaves a selectable command');
+    assert.ok(panel.open);
+    let copied;
+    context.navigator.clipboard = {writeText: async value => { copied = value; }};
+    await button.onclick();
+    assert.equal(copied, text.value);
+    assert.equal(button.textContent, 'Copied');
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

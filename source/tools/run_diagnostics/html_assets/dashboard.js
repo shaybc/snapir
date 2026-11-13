@@ -107,6 +107,26 @@
       fileScope = target; fileLimit = 60; $('file-search').value = ''; renderFiles(); $('files').scrollIntoView();
     };
     body.append(showFiles);
+    if (target.trace_command) {
+      const trace = node('details');
+      trace.append(node('summary', 'Conversion trace command'));
+      trace.append(node('p', 'Run this command in PowerShell using your Snapir Python environment. It extracts saved metadata for this exact entry only. No source code or model messages are included.'));
+      const command = node('textarea');
+      command.value = target.trace_command;
+      command.readOnly = true;
+      command.rows = 6;
+      command.style.width = '100%';
+      command.setAttribute('aria-label', 'PowerShell conversion trace command');
+      const copy = node('button', 'Copy trace command');
+      copy.onclick = async () => {
+        trace.open = true;
+        try { await navigator.clipboard.writeText(target.trace_command); copy.textContent = 'Copied'; }
+        catch { command.focus(); command.select(); copy.textContent = 'Command selected · press Ctrl+C'; }
+      };
+      body.append(copy);
+      trace.append(command);
+      body.append(trace);
+    }
     for (const [title, values] of [['Prerequisites', target.prerequisites], ['Dependent components', target.dependents]]) {
       body.append(node('h3', title));
       const block = node('div', undefined, 'relations');

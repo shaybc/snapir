@@ -74,6 +74,7 @@ def test_offline_export_links_exact_materials_and_preserves_state(run, tmp_path,
     assert data['targets'][0]['attempts'][0]['deliveries'][0]['http_status'] == 200
     assert evil not in (destination / 'assets/report-data.js').read_text()
     assert data['targets'][0]['summary'] == evil
+    assert all("--group '" + item['identity'] + "'" in item['trace_command'] for item in data['targets'])
     assert 'fetch(' not in (destination / 'assets/dashboard.js').read_text()
     assert 'innerHTML' not in (destination / 'assets/dashboard.js').read_text()
     assert 'https://' not in (destination / 'index.html').read_text(encoding='utf-8')
@@ -81,6 +82,23 @@ def test_offline_export_links_exact_materials_and_preserves_state(run, tmp_path,
     console = capsys.readouterr().out
     for index, stage in enumerate(data['progress']['stages'], 1):
         assert f"{index}. {stage['label']} ({stage['status'].upper()})" in console
+
+
+def test_trace_commands_quote_powershell_values_and_do_not_extract(run, tmp_path, monkeypatch):
+    monkeypatch.setattr('tools.run_diagnostics.format_flow_trace.extract_format_flow',
+                        lambda *_args, **_kwargs: pytest.fail('HTML export must not extract traces'))
+    project = tmp_path / "Snapir's project $(do-not-execute)"
+    identity = "group's $(do-not-execute)"
+    export_conversion_report(run, project, report(run, [target(identity)]))
+    before = hashes(run)
+    export_html_report(run, project, conversion=True)
+    command = dashboard_data(project / 'work/diagnostics/run')['targets'][0]['trace_command']
+    assert "--group 'group''s $(do-not-execute)'" in command
+    assert "Snapir''s project $(do-not-execute)" in command
+    assert 'Set-Content -LiteralPath' in command
+    assert '--class' not in command
+    assert hashes(run) == before
+    assert not list((project / 'work/diagnostics/run').glob('conversion-trace-*.json'))
 
 
 @pytest.mark.parametrize('value,expected', [

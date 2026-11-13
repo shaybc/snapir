@@ -51,24 +51,30 @@ def _safe_file(directory, path):
     return not path.is_symlink() and path.resolve().is_relative_to(directory)
 
 
-def extract_format_flow(directory, implementation, diagnostics_directory=None):
+def extract_format_flow(directory, implementation, diagnostics_directory=None, *, group_id=None):
     """Read raw evidence and diagnostics separately; do not infer runtime invocation."""
     directory = Path(directory).resolve()
     evidence = snapshot(directory)
     limitations = set(evidence['unavailable_tables'])
-    plans, groups, members = [], set(), set()
+    plans, groups, members = [], {group_id} if group_id else set(), set()
     for row in evidence['conversion_component_plans']:
         plan = _json(row['plan_json'])
+        group_members = {key for group in plan.get('groups', []) if group.get('group_id') == group_id
+                         for key in group.get('members', [])} if group_id else None
         selected = {key: value for key, value in plan.get('components', {}).items()
-                    if value.get('label') == implementation}
+                    if (key in group_members if group_id else value.get('label') == implementation)}
         members.update(selected)
-        selected_groups = [item for item in plan.get('groups', []) if set(item.get('members', [])) & set(selected)]
+        selected_groups = [item for item in plan.get('groups', []) if
+                           (item.get('group_id') == group_id if group_id else set(item.get('members', [])) & set(selected))]
         groups.update(item['group_id'] for item in selected_groups)
         plans.append(dict(fingerprint=row.get('fingerprint'), components=_request(dict(components=selected))['components'],
                           groups=[dict(group_id=item['group_id'], members=item['members'],
                                        dependencies=item.get('dependencies', [])) for item in selected_groups]))
 
     def relevant(request, identity=''):
+        if group_id:
+            return (request.get('group_id') == group_id if request.get('group_id') else
+                    identity == group_id or identity.startswith(group_id + ':'))
         return (request.get('group_id') in groups or identity in groups or
                 any(identity.startswith(key + ':') for key in groups) or
                 any(node.get('label') == implementation for node in (request.get('components') or {}).values()
@@ -113,11 +119,11 @@ def extract_format_flow(directory, implementation, diagnostics_directory=None):
         basic = saved.get('basic_boundaries', {})
         parents = saved.get('boundaries', {})
         for key, boundary in basic.items():
-            if boundary.get('implementation_class') == implementation:
+            if boundary.get('implementation_class') in {node.get('label') for node in components.values()} | ({implementation} if implementation else set()):
                 boundaries.append(dict(report=path.relative_to(directory).as_posix(), key=key, **_boundary(boundary)))
         for key, component in components.items():
             for unit in component['unit_ids']:
-                lookup = basic_identity(unit, implementation)
+                lookup = basic_identity(unit, component.get('label') or implementation)
                 lookups.append(dict(report=path.relative_to(directory).as_posix(), component_id=key, unit_id=unit,
                     basic_key=lookup, found=lookup in basic, basic=_boundary(basic[lookup]) if lookup in basic else None,
                     parent=_boundary(parents[unit]) if unit in parents else None))
@@ -151,7 +157,7 @@ def extract_format_flow(directory, implementation, diagnostics_directory=None):
                         displayed['attempts'].append(metadata)
                     diagnostics.append(displayed)
     receipts = _receipts(directory, groups, limitations)
-    return dict(schema_version='format-flow-trace-v1', implementation=implementation, plans=plans,
+    return dict(schema_version='format-flow-trace-v1', implementation=implementation, group_id=group_id, plans=plans,
         component_heads=[_fields(row, ('group_id', 'status', 'input_revision', 'contract_revision', 'result_revision'))
                          for row in evidence['conversion_component_heads'] if row['group_id'] in groups],
         basic_boundaries=boundaries, exact_boundary_lookups=lookups, database_attempts=attempts,

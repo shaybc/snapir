@@ -11,10 +11,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run', required=True, help='Existing migration run directory')
     parser.add_argument('--diagnostics', help='Existing exported diagnostics directory, if separate from run')
-    parser.add_argument('--class', dest='implementation', default='com.ibm.il.dse.cc.format.CCString')
+    selector = parser.add_mutually_exclusive_group()
+    selector.add_argument('--class', dest='implementation', help='Trace all groups for one implementation class')
+    selector.add_argument('--group', help='Trace one exact component/group identity shown in diagnostics')
     args = parser.parse_args()
     try:
-        result = extract_format_flow(args.run, args.implementation, args.diagnostics)
+        implementation = args.implementation or (None if args.group else 'com.ibm.il.dse.cc.format.CCString')
+        result = extract_format_flow(args.run, implementation, args.diagnostics, group_id=args.group)
     except Exception as error:
         print('Trace could not be completed (' + type(error).__name__ + '). No raw error content exported.', file=sys.stderr)
         return 1
