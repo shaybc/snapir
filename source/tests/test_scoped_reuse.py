@@ -56,6 +56,18 @@ def test_unchanged_workflow_reuses_proof_without_closure_analysis(saved, monkeyp
     assert not second['conversion_enabled']
 
 
+def test_comparison_switch_reuses_captured_preparation(saved, monkeypatch):
+    conn, config, profile, first = saved
+    from tools.conversion_tools.scoped_workflow import preparation
+    monkeypatch.setattr(preparation, 'build_scoped_operation_closure', lambda *a, **k: pytest.fail('Captured closure rebuilt'))
+    monkeypatch.setattr(preparation, 'build_scoped_units', lambda *a, **k: pytest.fail('Captured units regenerated'))
+    for enabled in (False, True):
+        profile.comparison_testing_enabled = enabled
+        second = prepare(conn, config, profile)
+        assert second['reused_contexts'] == sorted(first['operations'])
+        assert second['operations'] == first['operations']
+
+
 def test_prepared_evidence_under_old_import_policy_is_not_reused(tmp_path, scoped_mapper, monkeypatch):
     from tools.conversion_tools.scoped_reuse import checkpoint
     conn, root, vault = import_workspace(tmp_path, scoped_mapper)

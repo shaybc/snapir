@@ -26,13 +26,16 @@ def prepare_metadata(tasks,payload,production,inventory,bundle,check):
             tasks.fresh()
             check(bundle)
             tasks.fresh()
+            from runtime.behavior_conversion.verification_mode import verification_settings, comparison_testing_enabled
             receipt=dict(version=VERSION,acceptance=False,production_hash=stable_id(production.model_dump(mode='json')),
                 production_files_hash=stable_id([f.model_dump(mode='json') for f in production.files]),
                 source_hash=stable_id(payload),api_hash=stable_id(inventory['apis']),
                 binding=bundle.verification_binding.model_dump(mode='json') if getattr(bundle,'verification_binding',None) else None,
                 dependencies=[d.model_dump(mode='json') for d in getattr(bundle,'dependencies',[])],
                 compile_hash=compiled['artifact_hash'],
-                verification_policy=tasks.profile.executable_verification.model_dump(mode='json'))
+                verification_policy=verification_settings(tasks.profile).model_dump(mode='json'))
+            if not comparison_testing_enabled(tasks.profile):
+                receipt['comparison_testing_enabled'] = False
             state.retain(tasks.conn,tasks.config.run_id,tasks.identity,tasks.revision,
                 'implementation_ready',receipt,stable_id(receipt))
             return receipt

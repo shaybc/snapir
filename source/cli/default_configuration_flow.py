@@ -75,7 +75,10 @@ def collect_section(draft, inputs, configs, api):
         result['maven_local_repository'] = inputs.text('Maven local repository (empty uses Maven defaults)', '') or None
         return result
     if section == 6:
-        return api.collect_gate_configuration(inputs.text)
+        result = api.collect_gate_configuration(inputs.text)
+        result['comparison_testing_enabled'] = inputs.menu('Compare original Composer and generated Java',
+            [('enabled', 'Enabled (default)'), ('disabled', 'Disabled - keep native compilation and tests')]) == 'enabled'
+        return result
     if section == 7:
         result = dict(model_provider='litellm',
             model_name=inputs.text('LiteLLM model name', api.constants.AGENT_MODEL),

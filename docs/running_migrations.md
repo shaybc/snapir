@@ -1,5 +1,28 @@
 # Running migration intake
 
+## Enable or disable comparison testing
+
+The default configuration wizard offers **Compare original Composer and generated Java**.
+It defaults to enabled. To change it in a YAML configuration, use:
+
+```yaml
+comparison_testing_enabled: false
+```
+
+Use `true` to enable it again. When omitted, it defaults to `true`.
+The switch controls original-versus-generated comparison preparation and execution
+for formats, operation steps, and unit verification. It does not disable compilation,
+generated Java/JUnit tests, source analysis, or framework boundary handling.
+Existing detailed `format_comparison` preferences remain intact.
+
+For an existing run, set the same boolean in its saved `state/profile.json` before
+resuming. Resume reads that saved profile; changing only the YAML does not update
+the existing run. Conversion-readiness records produced with comparisons disabled
+state `behavioral_equivalence: not_assessed`; they do not establish equivalence. Changing the switch changes
+conversion/reuse policy identities, so cached results are revalidated or regenerated
+under the selected policy rather than promoted as comparison-verified evidence.
+The switch alone does not invalidate saved intake or mapping checkpoints.
+
 For large workspaces, the configuration wizard offers **Reusable AST index for
 large workspaces** when creating a map. Mapping remains global; converter intake
 then loads the selected operation/dependency closure from persisted facts. See

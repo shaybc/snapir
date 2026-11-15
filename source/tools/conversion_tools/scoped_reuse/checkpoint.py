@@ -6,7 +6,7 @@ from pathlib import Path
 from models.scoped_checkpoint import ScopedCheckpoint
 from tools.conversion_tools.scoped_reuse import state
 from tools.conversion_tools.scoped_reuse.evidence import source_layout, channel_layout, context_facts, input_files, call_bindings
-from tools.conversion_tools.scoped_reuse.fingerprints import POLICY_VERSION, digest, revision, conversion_policy, classpath_fingerprint
+from tools.conversion_tools.scoped_reuse.fingerprints import POLICY_VERSION, digest, revision, checkpoint_policy, classpath_fingerprint
 
 
 class ScopedCheckpointStale(ValueError):
@@ -58,7 +58,7 @@ def observe_inputs(conn, config, profile, classpath):
         output_root=str(Path(config.output_root).resolve()) if getattr(config, 'output_root', None) else None,
         artifact_schema=getattr(config, 'artifact_schema_version', None), run_schema=getattr(config, 'schema_version', None),
         target_languages=[getattr(item, 'value', item) for item in getattr(config, 'target_languages', ())], selection=selection,
-        intake_hash=digest(intake), policy=conversion_policy(profile), classpath=classpath_fingerprint(classpath),
+        intake_hash=digest(intake), policy=checkpoint_policy(profile), classpath=classpath_fingerprint(classpath),
         source_index=digest(structure), resolved_projects=projects, layout=source_layout(config.source_root), intake=intake)
 
 

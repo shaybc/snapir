@@ -22,6 +22,13 @@ def revision(path):
         return None
 
 
+def checkpoint_policy(profile):
+    """Comparison execution does not change captured application/intake evidence."""
+    if not getattr(profile, 'comparison_testing_enabled', True):
+        profile = profile.model_copy(update={'comparison_testing_enabled': True})
+    return conversion_policy(profile)
+
+
 def conversion_policy(profile):
     """Fingerprint relevant generation/origin policy without persisting credentials."""
     # framework_jars is additive conversion metadata, not imported source/map identity.
@@ -30,6 +37,8 @@ def conversion_policy(profile):
         'conversion_requirements', 'maven_settings_path', 'maven_local_repository',
         'approved_maven_repository_urls', 'service_maven_dependencies')
     values = {}
+    if not getattr(profile, 'comparison_testing_enabled', True):
+        values['comparison_testing_enabled'] = False
     preparation=getattr(profile,'test_preparation',None)
     if preparation is not None and preparation.mode!='existing':
         values['test_preparation']=preparation.model_dump(mode='json')

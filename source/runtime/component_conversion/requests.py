@@ -119,6 +119,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     requirements = {'entry-' + digest([key, method]): 'Exercise original entry point ' + method
                     for key, methods in entries.items() for method in methods}
     request = dict(group_id=group.group_id, input_revision=revision, kind='basic_component',
+        comparison_testing_enabled=profile.comparison_testing_enabled,
         native_package=saved_package(profile,group.group_id,'com.company.generated.components.c' + package_revision[:16],
             {key:plan.components[key] for key in group.members}),
         components={key: plan.components[key].model_dump(mode='json') for key in group.members},
@@ -236,6 +237,10 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             configuration_mode='specialized' if node.kind in {'configured_step','format_composition'} else 'parameterized',
             evidence_ids=[own],dependencies=node.dependencies)
     instruction = instruction_factory(request.get('known_dependencies', [])) + specific
+    if not profile.comparison_testing_enabled:
+        request['comparison_limitations'] = ['Comparison testing is disabled; original-versus-native equivalence is not assessed. Native compilation and executed JUnit tests remain required.']
+        instruction += ('\nFor this request comparison_testing_enabled is false. Do not generate or run original Composer/native comparison tests, comparison adapters or comparison scenarios. '
+                        'Any earlier requirement for paired comparison is disabled for this run. Preserve the complete source-derived business behavior and all native compilation/JUnit requirements; original entry points remain evidence, not instructions to execute Composer.')
     from agents.behavior_conversion.native_instructions import java_compatibility_instruction
     instruction += '\n' + java_compatibility_instruction(profile.java_version)
     # The same encoder runs again with correction feedback immediately before each actual request.

@@ -10,7 +10,7 @@ from runtime.behavior_conversion.verification_state import record_verification
 
 def generate_verified_unit(conn, config, profile, identity, instruction, payload, validator, model_call=None, label='', *, bundle_generator=None):
     """Reuse the existing durable generation/retry mechanism, replacing only its unit check ladder."""
-    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload,facts_disabled,conversion_version
+    from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload,facts_disabled,conversion_version,verification_settings
     request, boundary, original = attach_verification(payload,collect_facts=not facts_disabled(profile))
     if executable_mode(profile) or conversion_mode(profile):
         request['executable_verification']=policy_payload(profile)
@@ -25,7 +25,7 @@ def generate_verified_unit(conn, config, profile, identity, instruction, payload
     extra_types = [api['type_name'] for dependency in payload.get('converted_dependency_apis', [])
                    for api in dependency.get('planned_apis', [])]
     session = UnitVerificationSession(config, original, boundary, extra_types=extra_types, policy=policy, authorizations=authorizations,
-                                      mutation_settings=profile.unit_mutation_testing,executable_settings=profile.executable_verification)
+                                      mutation_settings=profile.unit_mutation_testing,executable_settings=verification_settings(profile))
     try:
         with verification_session(session):
             if bundle_generator is None:

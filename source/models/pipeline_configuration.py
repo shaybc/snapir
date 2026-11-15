@@ -39,6 +39,7 @@ class PipelineConfiguration(BaseModel):
     behavior_triage_enabled: bool = False
     unit_mutation_testing: UnitMutationSettings = Field(default_factory=UnitMutationSettings)
     executable_verification: ExecutableVerificationSettings = Field(default_factory=ExecutableVerificationSettings)
+    comparison_testing_enabled: bool = True
     format_comparison: FormatComparisonSettings = Field(default_factory=FormatComparisonSettings)
     test_preparation: TestPreparationSettings = Field(default_factory=TestPreparationSettings)
     microservice: MicroserviceSettings = Field(default_factory=MicroserviceSettings)

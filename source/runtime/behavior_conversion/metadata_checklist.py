@@ -150,9 +150,10 @@ def map_checklist(tasks,payload,production,inventory):
         for e in request['evidence']:
             if e['kind']=='native':visible.setdefault(e['owner'],[]).append(e['content'])
         check=(lambda entries:_policy_check(session,items,files,entries)) if session else None
+        from runtime.behavior_conversion.verification_mode import verification_settings
         result=validate_batch(decoded,ids,files,revision=revision,production=production_revision,batch_id=request['batch_id'],
                               allow_exclusions=session is not None,check=check,visible=visible,
-                              require_code=profile.executable_verification.mode=='conversion_checklist_v1')
+                              require_code=verification_settings(profile).mode=='conversion_checklist_v1')
         tasks.fresh()
         state.save_items(conn,run,revision,proof,result['accepted']);accepted.update(result['accepted'])
         pending=[key for key in ids if key not in accepted]
