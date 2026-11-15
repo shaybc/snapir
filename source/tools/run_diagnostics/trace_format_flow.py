@@ -1,6 +1,7 @@
 """Print a metadata-only format trace; run with python -m tools.run_diagnostics.trace_format_flow."""
 import argparse
 import json
+from pathlib import Path
 import sys
 
 from tools.run_diagnostics.format_flow_trace import extract_format_flow
@@ -20,6 +21,14 @@ def main():
         result = extract_format_flow(args.run, implementation, args.diagnostics, group_id=args.group)
     except Exception as error:
         print('Trace could not be completed (' + type(error).__name__ + '). No raw error content exported.', file=sys.stderr)
+        frames = []
+        frame = error.__traceback__
+        while frame is not None:
+            code = frame.tb_frame.f_code
+            frames.append(Path(code.co_filename).name + ':' + str(frame.tb_lineno) + ' in ' + code.co_name)
+            frame = frame.tb_next
+        for location in frames[-3:]:
+            print('Trace location: ' + location, file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2, ensure_ascii=True))
     return 0

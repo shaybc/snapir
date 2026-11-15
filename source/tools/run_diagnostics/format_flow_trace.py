@@ -72,6 +72,8 @@ def extract_format_flow(directory, implementation, diagnostics_directory=None, *
                                        dependencies=item.get('dependencies', [])) for item in selected_groups]))
 
     def relevant(request, identity=''):
+        # Journals allow a null identity for requests not associated with a component.
+        identity = identity if isinstance(identity, str) else ''
         if group_id:
             return (request.get('group_id') == group_id if request.get('group_id') else
                     identity == group_id or identity.startswith(group_id + ':'))

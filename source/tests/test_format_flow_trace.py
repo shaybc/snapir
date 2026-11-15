@@ -51,9 +51,13 @@ def test_trace_preserves_mismatch_and_excludes_private_content(tmp_path):
     body = json.dumps(request).encode()
     hashed = hashlib.sha256(body).hexdigest()
     (journal / 'blobs' / (hashed + '.txt')).write_bytes(body)
+    unassociated = json.dumps({'kind': 'planning', 'sources': [{'content': 'PRIVATE_SOURCE'}]}).encode()
+    unassociated_hash = hashlib.sha256(unassociated).hexdigest()
+    (journal / 'blobs' / (unassociated_hash + '.txt')).write_bytes(unassociated)
     (journal / 'events.jsonl').write_text(json.dumps(dict(event='application_request', trace_id='trace-1',
         identity='group-1', request_blob=hashed)) + '\n' + json.dumps(dict(event='response_received', trace_id='trace-1',
-        response='PRIVATE_RESPONSE')) + '\n')
+        response='PRIVATE_RESPONSE')) + '\n' + json.dumps(dict(event='application_request', trace_id='unassociated',
+        identity=None, request_blob=unassociated_hash)) + '\n')
     before = hashlib.sha256(database.read_bytes()).hexdigest()
     result = extract_format_flow(run, name)
     text = json.dumps(result)
@@ -80,6 +84,8 @@ def test_trace_preserves_mismatch_and_excludes_private_content(tmp_path):
     assert len(exact['database_attempts']) == 1
     assert exact['database_attempts'][0]['identity'] == 'group-1'
     assert exact['exact_boundary_lookups'][0]['found'] is True
+    assert len(exact['captured_requests']) == 1
+    assert exact['captured_requests'][0]['identity'] == 'group-1'
     other = extract_format_flow(run, None, group_id='group-2')
     assert len(other['database_attempts']) == 1
     assert other['database_attempts'][0]['identity'] == 'group-2'
@@ -106,3 +112,20 @@ def test_cli_selects_exact_group_without_default_ccstring(monkeypatch, capsys):
     assert trace_format_flow.main() == 0
     assert calls == [(('saved-run', None, 'saved-diagnostics'), {'group_id': 'exact-group'})]
     assert json.loads(capsys.readouterr().out) == {'group_id': 'exact-group'}
+
+
+def test_cli_failure_reports_location_without_private_error(monkeypatch, capsys):
+    from tools.run_diagnostics import trace_format_flow
+    def fail(*args, **kwargs):
+        raise AttributeError('PRIVATE_SOURCE PRIVATE_PATH PRIVATE_RESPONSE')
+    monkeypatch.setattr(trace_format_flow, 'extract_format_flow', fail)
+    monkeypatch.setattr('sys.argv', ['trace', '--run', 'saved-run', '--group', 'exact-group'])
+    assert trace_format_flow.main() == 1
+    output = capsys.readouterr()
+    assert output.out == ''
+    assert 'AttributeError' in output.err
+    assert 'test_format_flow_trace.py:' in output.err
+    assert 'in fail' in output.err
+    assert 'Trace location:' in output.err
+    assert 'PRIVATE_' not in output.err
+    assert str(__file__) not in output.err
