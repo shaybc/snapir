@@ -33,6 +33,7 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     step = configured_step(plan, group, units or {})
     composed = configured_format(plan, group, units or {})
     sources, entries, checklist = component_sources(plan, group, bindings), {}, {}
+    framework_methods = {}
     from runtime.behavior_conversion.verification_mode import facts_disabled
     skip_facts = facts_disabled(profile)
     composition_obligations={}
@@ -46,10 +47,21 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         for unit_id, boundary in boundaries['boundaries'].items():
             if unit_id not in plan.components[key].unit_ids:
                 continue
+            if getattr(profile, 'conversion_scope', 'operations') == 'components':
+                if boundary.get('implementation_class') != node.label or boundary.get('analysis_status') != 'identified' or boundary.get('issues'):
+                    raise ValueError('Standalone component requires its own identified entry point: ' + node.label + ' / ' + boundary['kind'] + ': ' + '; '.join(boundary.get('issues', [])))
+                entry = boundary.get('legacy_method') or boundary.get('framework_method')
+                if not entry:
+                    raise ValueError('Standalone component entry has no resolved method: ' + node.label)
+                methods.add(entry['signature'])
+            framework = boundary.get('framework_method')
+            if framework and framework['implementation_class'] == node.label:
+                methods.add(framework['signature'])
+                if framework not in framework_methods.setdefault(key, []): framework_methods[key].append(framework)
             graph = boundary.get('reachable_slice') or {}
             composition_nodes=set((boundary.get('basic_parser_checklist') or {}).get('composition_code_nodes',[])) if basic_element else set()
             for method in graph.get('nodes', []):
-                if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
+                if getattr(profile, 'conversion_scope', 'operations') != 'components' and method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
                     methods.add(method['signature'])
             full_checklist=boundary.get('parser_checklist') or {}
             selected_checklist={} if skip_facts else full_checklist
@@ -72,7 +84,10 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             boundary=current_format_boundary(units[composed['unit_id']],boundaries)
             if boundary.get('analysis_status')!='identified' or not skip_facts and (boundary.get('parser_checklist') or {}).get('status')!='extracted':
                 raise ValueError('Complete format requires identified original boundary and parser checklist')
-            methods={boundary['legacy_method']['signature']}
+            method = boundary.get('legacy_method') or boundary.get('framework_method')
+            methods={method['signature']}
+            if boundary.get('framework_method'):
+                framework_methods[key] = [boundary['framework_method']]
             checklist={} if skip_facts else {item['id']:item for item in boundary['parser_checklist']['items']}
         if not methods:
             raise ValueError('Component has no parser-backed entry points: ' + node.label)
@@ -96,6 +111,13 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     if boundaries.get('analysis_classpath_hash'):
         request['analysis_classpath_hash'] = boundaries['analysis_classpath_hash']
     request['retained_libraries'] = plan_libraries(plan, group)
+    if getattr(profile, 'conversion_scope', 'operations') == 'components':
+        request['standalone_component'] = dict(version='standalone-components-v1', type=profile.component_type,
+            classes=[plan.components[key].label for key in group.members],
+            boundaries={identity: boundaries['boundaries'][identity] for key in group.members for identity in plan.components[key].unit_ids})
+        request['comparison_limitations'] = ['Standalone component comparisons are reported separately for each selected direction; no operation is converted.']
+    if framework_methods:
+        request['framework_methods'] = framework_methods
     if basic_format:
         request['composition_obligations']=[dict(checklist_id=key,source_identity=composition_obligations[key]['source_identity'],
             source_hash=composition_obligations[key]['source_hash'],owner='complete_configured_format') for key in sorted(composition_obligations)]
@@ -184,6 +206,14 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             configuration_mode='specialized' if node.kind in {'configured_step','format_composition'} else 'parameterized',
             evidence_ids=[own],dependencies=node.dependencies)
     instruction = instruction_factory(request.get('known_dependencies', [])) + specific
+    if request.get('standalone_component'):
+        instruction += ('\nConvert only the selected standalone classes with their supplied required source dependencies. '
+                        'standalone_component.boundaries identifies the actual declared or inherited entry for each direction. '
+                        'Implement and test every listed direction using the existing native API contract. Do not generate an operation, channel, containing format or routing service.')
+    if framework_methods:
+        instruction += ('\nframework_methods records methods resolved from explicitly configured framework JARs. Their source is unavailable and is not requested. '
+                        'Do not convert or recreate framework implementations. Use the supplied application code, configuration and Composer explanations to implement native business behavior. '
+                        'The framework method signature is invocation evidence only; no framework body or behavioral equivalence has been established.')
     from agents.behavior_conversion.native_instructions import java_compatibility_instruction
     instruction += '\n' + java_compatibility_instruction(profile.java_version)
     # The same encoder runs again with correction feedback immediately before each actual request.

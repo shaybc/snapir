@@ -26,8 +26,11 @@ def write_run_identity(directory, profile, configuration_path=None):
         configuration_path=str(configuration) if configuration else None,
         created_at=utc_now(),
         channels=_selection(profile.channels),
-        operations=_selection(profile.include_operations) or 'All operations',
+        operations='No operations' if getattr(profile, 'conversion_scope', 'operations') == 'components' else _selection(profile.include_operations) or 'All operations',
         conversion_strategy=profile.conversion_strategy,
+        **(dict(conversion_scope='components', component_type=profile.component_type,
+                selected_components=profile.selected_components)
+           if getattr(profile, 'conversion_scope', 'operations') == 'components' else {}),
     ))
 
 

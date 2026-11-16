@@ -11,7 +11,8 @@ from runtime.behavior_conversion.verification_state import record_verification
 def generate_verified_unit(conn, config, profile, identity, instruction, payload, validator, model_call=None, label='', *, bundle_generator=None):
     """Reuse the existing durable generation/retry mechanism, replacing only its unit check ladder."""
     from runtime.behavior_conversion.verification_mode import executable_mode,conversion_mode,policy_payload,facts_disabled,conversion_version
-    request, boundary, original = attach_verification(payload,collect_facts=not facts_disabled(profile))
+    request, boundary, original = attach_verification(payload,collect_facts=not facts_disabled(profile),
+        **({'framework_jars': profile.framework_jars} if getattr(profile, 'framework_jars', ()) else {}))
     if executable_mode(profile) or conversion_mode(profile):
         request['executable_verification']=policy_payload(profile)
         request['verification_version']=conversion_version(profile) if conversion_mode(profile) else 'executable-boundary-v1'

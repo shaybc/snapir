@@ -10,7 +10,7 @@ from cli.configuration_review import review_configuration, safe_value
 from cli.interactive import SelectionCancelled
 
 SECTION_NAMES = ('Name and source workspace', 'Composer map', 'Output folder',
-                 'Channels, operations and languages', 'Java and scanner timeout',
+                 'Conversion scope and languages', 'Java and scanner timeout',
                  'External dependencies and conversion strategy', 'Gate settings',
                  'AI model connection', 'Test deployment')
 
@@ -39,6 +39,11 @@ def collect_section(draft, inputs, configs, api):
         return dict(output_root=api.collect_path(configs, 'output_root',
                     _default_path(configs, api.constants.OUTPUT_ROOT), prompt=inputs.text))
     if section == 3:
+        scope = inputs.menu('Conversion scope', [('operations', 'Channels and operations'),
+                                                  ('components', 'Selected components')])
+        if scope == 'components':
+            from cli.component_selection import collect_components
+            return collect_components(draft, inputs, configs, api)
         root = str((configs / values['source_root']).resolve())
         channel_key = ('channels', root)
         if channel_key not in draft.discovery:
@@ -63,14 +68,18 @@ def collect_section(draft, inputs, configs, api):
         languages = inputs.multiple('Select target languages', [(name, name.title()) for name in supported], select_all=True)
         if not channels or not included or not languages:
             raise ValueError('Select at least one channel, operation, and target language')
-        return dict(channels=channels, include_operations=included, target_languages=languages)
+        result = dict(channels=channels, include_operations=included, target_languages=languages)
+        if values.get('conversion_scope') == 'components':
+            result.update(conversion_scope='operations', component_type=None, selected_components=[], component_attributes={})
+        return result
     if section == 4:
         version, home = api.collect_java_configuration(configs, inputs.text)
         return dict(java_version=version, java_home=home,
                     java_scan_inactivity_timeout_seconds=api.collect_java_scan_timeout(inputs.text))
     if section == 5:
         result = api.collect_external_dependencies(inputs.text)
-        strategy = inputs.text('conversion_strategy (legacy_components or behavior_units)', 'behavior_units')
+        strategy = ('behavior_units' if values.get('conversion_scope') == 'components' else
+                    inputs.text('conversion_strategy (legacy_components or behavior_units)', 'behavior_units'))
         if strategy not in {'legacy_components', 'behavior_units'}:
             raise ValueError('Choose legacy_components or behavior_units')
         return dict(**result, conversion_strategy=strategy)
@@ -93,7 +102,7 @@ def _commit(draft, inputs, result):
 def _error_section(error):
     text = str(error)
     for index, keys in ((0, ('source_root', 'Config name')), (1, ('mapper_', 'existing_composer_map','source_workspace_id')),
-                        (2, ('output_root',)), (3, ('channels', 'include_operations', 'target_languages')),
+                        (2, ('output_root',)), (3, ('channels', 'include_operations', 'target_languages', 'component', 'conversion_scope')),
                         (4, ('java_',)), (5, ('external_dependencies', 'conversion_strategy')),
                         (6, ('gate_', 'plan_approval_policy')), (7, ('model_',)), (8, ('test_deployment',))):
         if any(key in text for key in keys):
@@ -124,7 +133,7 @@ def run_configuration_wizard(configs, api, *, flow=None):
                 if draft.review_return or draft.section == len(names) - 1:
                     if draft.dirty:
                         draft.section = min(draft.dirty)
-                        inputs.feedback = 'Source changed. Review channels and operations before saving.'
+                        inputs.feedback = 'Source changed. Review the selected conversion scope before saving.'
                         continue
                     reviewing = True
                 else:

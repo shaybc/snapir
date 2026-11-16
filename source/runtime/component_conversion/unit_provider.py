@@ -19,7 +19,8 @@ class ComponentUnitProvider:
         from tools.behavior_verification.boundaries import build_boundary_report
         from runtime.component_conversion.steps import default_step_mappings
         from runtime.behavior_conversion.verification_mode import facts_disabled
-        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan), collect_checklists=not facts_disabled(profile))
+        self.boundaries = build_boundary_report(preparation, mappings=default_step_mappings(self.plan), collect_checklists=not facts_disabled(profile),
+            **({'framework_jars': profile.framework_jars} if getattr(profile, 'framework_jars', ()) else {}))
         self.units = {unit['unit_id']:unit for item in preparation['operations'].values() for unit in item['units']}
 
     def __call__(self, unit, payload, validator):

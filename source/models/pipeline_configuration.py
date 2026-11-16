@@ -68,7 +68,11 @@ class PipelineConfiguration(BaseModel):
     java_home: str | None = constants.JAVA_HOME
     java_scan_inactivity_timeout_seconds: int = Field(default=constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS, gt=0)
     output_root: str = constants.OUTPUT_ROOT
-    channels: list[str] = Field(default_factory=lambda: deepcopy(constants.TARGET_CHANNELS), min_length=1)
+    conversion_scope: Literal['operations', 'components'] = 'operations'
+    component_type: Literal['format', 'op_step'] | None = None
+    selected_components: list[str] = Field(default_factory=list)
+    component_attributes: dict[str, dict[str, str]] = Field(default_factory=dict)
+    channels: list[str] = Field(default_factory=lambda: deepcopy(constants.TARGET_CHANNELS))
     include_operations: list[str] | None = Field(default_factory=lambda: deepcopy(constants.INCLUDE_OPERATIONS))
     exclude_operations: list[str] | None = Field(default_factory=lambda: deepcopy(constants.EXCLUDE_OPERATIONS))
     target_languages: list[Literal["java"]] = Field(default_factory=lambda: deepcopy(constants.TARGET_LANGUAGES), min_length=1)
@@ -77,6 +81,7 @@ class PipelineConfiguration(BaseModel):
     auto_rerun_impacted_operations: bool = constants.AUTO_RERUN_IMPACTED_OPERATIONS
     model_provider: Literal["gemini", "litellm", "mock"] = constants.MODEL_PROVIDER
     classpath_jars: list[str] = Field(default_factory=lambda: deepcopy(constants.CLASSPATH_JARS))
+    framework_jars: list[str] = Field(default_factory=list)
     external_dependencies: list[ExternalDependencyRule] = Field(default_factory=list)
     composer_behavior_document: str = Field(default="docs/comp-manual/wsbcc_developer_manual_v2.md", exclude=True)
     maven_settings_path: str | None = constants.MAVEN_SETTINGS_PATH
@@ -121,6 +126,25 @@ class PipelineConfiguration(BaseModel):
         if set(value) - {"1", "2", "3", "4", "5"}:
             raise ValueError("Gate numbers must be 1 through 5")
         return {**deepcopy(constants.GATE_POLICIES), **value}
+
+    @model_validator(mode='after')
+    def validate_conversion_scope(self):
+        """Keep standalone selection explicit and existing operation profiles unchanged."""
+        if self.conversion_scope == 'operations':
+            if not self.channels:
+                raise ValueError('channels must contain at least one channel')
+            if self.component_type or self.selected_components or self.component_attributes:
+                raise ValueError('Component selections require conversion_scope: components')
+        else:
+            if not self.component_type or not self.selected_components or any(not name.strip() for name in self.selected_components):
+                raise ValueError('Component scope requires component_type and selected_components')
+            if len(set(self.selected_components)) != len(self.selected_components):
+                raise ValueError('selected_components must be unique')
+            if set(self.component_attributes) - set(self.selected_components):
+                raise ValueError('component_attributes must belong to selected_components')
+            if self.conversion_strategy != 'behavior_units' or self.scoped_native_mode != 'component_first_v1':
+                raise ValueError('Component scope requires behavior_units and component_first_v1')
+        return self
 
     @field_validator("scoped_java_projects")
     @classmethod

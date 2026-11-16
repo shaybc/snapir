@@ -87,7 +87,9 @@ def main(argv: list[str] | None = None) -> int:
                         if warning:
                             print(warning)
                 print(f"Run workspace: {directory}")
-                print("Migration has continued through intake; inspect the current status and reports for any required action."
+                print("Standalone component conversion returned; inspect reports/standalone-components.json for each entry point, build and comparison result."
+                      if getattr(profile, 'conversion_scope', 'operations') == 'components' else
+                      "Migration has continued through intake; inspect the current status and reports for any required action."
                       if getattr(profile, 'scoped_native_mode', 'prepare') in {'component_first_v1', 'behavior_units_v1'} else
                       "Intake result is saved. Inspect status and the intake reports for the plan or any blockers."
                       if getattr(profile, 'conversion_strategy', None) == 'behavior_units' else

@@ -29,8 +29,11 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
     if not output.resolve().is_relative_to(Path(config.output_root).resolve()):
         raise ValueError('Component output is outside the run root')
     from runtime.behavior_conversion.verification_mode import facts_disabled, test_based_mode
-    boundaries = build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile), classpath_index=classpath)
+    boundaries = preparation['boundaries'] if preparation.get('conversion_scope') == 'components' else build_boundary_report(preparation, mappings=default_step_mappings(plan), collect_checklists=not facts_disabled(profile), classpath_index=classpath,
+        **({'framework_jars': profile.framework_jars} if getattr(profile, 'framework_jars', ()) else {}))
     units = {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}
+    if preparation.get('conversion_scope') == 'components':
+        units = {unit['unit_id']: unit for unit in preparation['standalone_units']}
     from tools.state_store_tools.component_reuse import record_consumers
     record_consumers(conn, config.run_id, plan, units, source_root=config.source_root)
     report = dict(capability='component-first-cf6' if include_formats else 'component-first-cf4' if include_steps else 'component-first-cf3', configured_units=len(plan.unit_roots), accepted_units=0,
@@ -108,6 +111,10 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
                        if saved.get(name) != obligations[name]]
             if saved.get('analysis_classpath_hash') != obligations.get('analysis_classpath_hash'):
                 changed.append('analysis_classpath_hash')
+            if saved.get('framework_methods', {}) != obligations.get('framework_methods', {}):
+                changed.append('framework_methods')
+            if saved.get('standalone_component') != obligations.get('standalone_component'):
+                changed.append('standalone_component')
             if changed:
                 raise ValueError('Component parser obligations or validation policy changed: '+', '.join(changed))
             if saved.get('configured_unit') != obligations.get('configured_unit'):

@@ -56,6 +56,15 @@ def revalidate_components(profile, factory, *, config=None, units=None, boundari
                 if report.get('configured_format') is not None:
                     from runtime.component_conversion.format_verification import recheck_format
                     recheck_format(config,profile,contracts,results,project,context,validation,report,units,boundaries)
+                if report.get('standalone_component'):
+                    from runtime.component_conversion.standalone_comparison import compare_standalone
+                    from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
+                    files = {path.relative_to(project).as_posix(): path.read_text(encoding='utf-8')
+                             for path in (project / 'src/main/java').rglob('*.java')}
+                    comparisons = compare_standalone(report, units, files, profile, project / 'standalone-comparison',
+                        native_runtime_classpath(project, context))
+                    if any(item['status'] != 'matched' for item in comparisons.values()):
+                        raise ValueError('Standalone component comparisons require current matching observations')
         return True
     return validate
 
@@ -158,7 +167,7 @@ class ComponentCandidateValidator:
                 session.complete(staged,context,verified_bundle,build_validation=validation.model_dump(mode='json'))
                 comparison=retain_format_evidence(session,project)
             from runtime.test_assets.preparation import enabled as shared_assets_enabled
-            if self.profile.format_comparison.enabled and (self.request.get('configured_format') is not None or
+            if self.profile.format_comparison.enabled and (self.request.get('standalone_component') or self.request.get('configured_format') is not None or
                     shared_assets_enabled(self.profile) and self.request.get('configured_unit') is not None):
                 from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
                 try:
@@ -181,6 +190,11 @@ class ComponentCandidateValidator:
         if self.request.get('configured_unit') is not None:
             from runtime.step_comparison.component_diagnostics import diagnose_step
             diagnose_step(self,all_files,project/'step-diagnostic',diagnostic_classpath)
+        standalone_comparisons = None
+        if self.request.get('standalone_component'):
+            from runtime.component_conversion.standalone_comparison import compare_standalone
+            standalone_comparisons = compare_standalone(self.request, self.units, all_files, self.profile,
+                project / 'standalone-comparison', diagnostic_classpath)
         manifest = {path.relative_to(project).as_posix(): file_digest(path) for path in project.rglob('*') if path.is_file()}
         results = {}
         for key in self.group.members:
@@ -193,6 +207,11 @@ class ComponentCandidateValidator:
                 analysis_tool_hash=self.request['analysis_tool_hash'], component_generation_policy=self.request['component_generation_policy'],
                 checklist_implementations={item: [location.model_dump() for location in locations] for item, locations in bundle.checklist_implementations.items()},
                 source_entry_points=self.request['source_entry_points'], comparison_limitations=self.request['comparison_limitations'])
+            if self.request.get('framework_methods'):
+                report['framework_methods'] = self.request['framework_methods']
+            if self.request.get('standalone_component'):
+                report['standalone_component'] = self.request['standalone_component']
+                report['standalone_comparisons'] = standalone_comparisons
             from runtime.test_assets.preparation import current
             if self.request.get('analysis_classpath_hash'):
                 report['analysis_classpath_hash'] = self.request['analysis_classpath_hash']

@@ -7,10 +7,15 @@ from tools.behavior_verification.reachable_slice import read_reachable_slice
 from tools.behavior_verification.parser_checklist import read_parser_checklist
 
 
-def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None):
+def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_checklists=True, classpath_index=None, framework_jars=()):
     """Identify entry methods and conservative slices; no behavioral pass is claimed."""
     boundaries, scopes, unit_sources, source_paths = {}, {}, {}, {}
-    for operation, item in sorted(preparation.get('operations', {}).items()):
+    from tools.behavior_verification.framework_jars import framework_libraries
+    frameworks = framework_libraries(framework_jars)
+    items = sorted(preparation.get('operations', {}).items())
+    if preparation.get('conversion_scope') == 'components':
+        items = [('', dict(units=preparation['standalone_units'], behavior_request=dict(java_origins=preparation['java_origins'])))]
+    for operation, item in items:
         origins = {origin['definition_id']: origin['source_file']
                    for origin in item.get('behavior_request', {}).get('java_origins', [])
                    if origin.get('status') == 'verified_source'}
@@ -36,6 +41,8 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                 key = boundary.source_manifest_hash + ':' + context['fingerprint'] if context else boundary.source_manifest_hash
                 scope = scopes.setdefault(key,
                     dict(sources=list(unit_sources[boundary.unit_id].values()), boundaries=[], classpath=context))
+                if frameworks:
+                    scope['framework_libraries'] = frameworks
                 scope['boundaries'].append(boundary)
     tool_hash = None
     if scopes:
@@ -51,6 +58,18 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                 boundary = boundaries[identity]
                 issues = [node.get('message') for node in entry.findall('issue')]
                 methods = entry.findall('method')
+                binary = entry.find('framework-method')
+                if not issues and not methods and len(entry.findall('framework-method')) == 1:
+                    from models.framework_boundary_method import FrameworkBoundaryMethod
+                    method = FrameworkBoundaryMethod(**binary.attrib,
+                        parameters=[item.get('type') for item in binary.findall('parameter')])
+                    owner = next((item for item in frameworks if item['path'] == method.jar_path and item['sha256'] == method.jar_sha256
+                                  and method.declaring_class.replace('$', '.') in {name.replace('$', '.') for name in item['classes']}), None)
+                    if owner is None or method.implementation_class != boundary.implementation_class or method.method != boundary.method_name:
+                        raise ValueError('Framework method is outside its configured JAR or selected implementation')
+                    boundary.framework_method = method
+                    boundary.analysis_status = 'identified'
+                    continue
                 if issues or len(methods) != 1:
                     boundary.issues.extend(issues or ['Entry method has no unique source implementation'])
                     continue
@@ -78,6 +97,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                 for boundary in scope['boundaries']:
                     boundary.analysis_status = 'verification_incomplete'
                     boundary.legacy_method = None
+                    boundary.framework_method = None
                     boundary.issues.append(str(exc))
     identified = sum(item.analysis_status == 'identified' for item in boundaries.values())
     slices = [item.reachable_slice for item in boundaries.values() if item.reachable_slice is not None]
@@ -93,8 +113,10 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
         not_run=len(boundaries) - len(checklists), items=sum(len(item.items) for item in checklists))
     from tools.conversion_tools.scoped_reuse.fingerprints import digest
     classpaths = {key: scope['classpath'] for key, scope in scopes.items() if scope.get('classpath')}
+    classpath_identity = dict(projects=classpaths, frameworks=[dict(path=item['path'], sha256=item['sha256'])
+        for item in frameworks]) if frameworks else classpaths
     return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'),
-        analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpaths) if classpaths else None,
+        analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpath_identity) if classpath_identity else None,
         analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,
         verification_status='not_run', reachability_status=('not_run' if not slices else

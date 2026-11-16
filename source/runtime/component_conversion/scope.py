@@ -40,10 +40,17 @@ def component_execution(conn, config, profile, classpath, preparation, *, includ
         raise ValueError('Basic components require the explicit component_first_v1 behavior mode')
     plan = checked_plan(preparation['component_plan'])
     selected = set(preparation['operations'])
-    validate_checkpoints(conn, config, profile, classpath, selected)
+    standalone = preparation if preparation.get('conversion_scope') == 'components' else None
+    if standalone:
+        from runtime.component_conversion.standalone_preparation import verify_preparation
+        verify_preparation(profile, standalone)
+    else:
+        validate_checkpoints(conn, config, profile, classpath, selected)
     token = _execution.set(dict(conn=conn, config=config, profile=profile, classpath=classpath,
         selected=selected, plan=plan, target=component_target(profile), include_steps=include_steps, include_formats=include_formats,
-        units={unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}))
+        standalone=standalone,
+        units={unit['unit_id']: unit for unit in preparation['standalone_units']} if standalone else
+              {unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}))
     try:
         yield
     finally:
@@ -95,7 +102,11 @@ def require_component_task(conn, config, profile, identity, payload=None):
             attach_format_chains(trusted,execution['plan'],group,execution['units'])
             if any(payload.get(key)!=trusted[key] for key in ('format_chains','format_chain_policy')):
                 raise ValueError('Component request changed original decorator order/scope obligations')
-    validate_checkpoints(conn, config, profile, execution['classpath'], execution['selected'])
+    if execution.get('standalone'):
+        from runtime.component_conversion.standalone_preparation import verify_preparation
+        verify_preparation(profile, execution['standalone'])
+    else:
+        validate_checkpoints(conn, config, profile, execution['classpath'], execution['selected'])
     verify_original_sources(execution['plan'], group)
     if bindings:
         from tools.conversion_tools.component_identity import component_group

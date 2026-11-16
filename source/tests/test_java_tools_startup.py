@@ -27,6 +27,7 @@ def jar(path):
     with ZipFile(path, 'w') as archive:
         archive.writestr(startup.ANALYZER_CAPABILITY, b'existing-tool')
         archive.writestr(startup.ANALYZER_PROGRESS_CAPABILITY, b'existing-tool')
+        archive.writestr(startup.ANALYZER_FRAMEWORK_CAPABILITY, b'existing-tool')
 
 
 def test_existing_tools_need_no_jdk_lookup_or_maven(project, monkeypatch):
@@ -84,7 +85,7 @@ def test_launchers_share_the_check_before_cli_and_stop_on_failure():
     assert 'run.cmd" --verbose %*' in verbose
 
 
-@pytest.mark.parametrize('capability', ['old-analyzer.class', startup.ANALYZER_CAPABILITY])
+@pytest.mark.parametrize('capability', ['old-analyzer.class', startup.ANALYZER_CAPABILITY, startup.ANALYZER_PROGRESS_CAPABILITY])
 def test_existing_old_analyzer_is_rebuilt_before_launch(project, monkeypatch, capability):
     root, mapper, analyzer = project
     jar(mapper)

@@ -29,11 +29,13 @@ final class SourceScope implements AutoCloseable {
     private final Map<Path, Element> evidence = new HashMap<>();
     final Set<String> typeNames = new TreeSet<>();
     final CombinedTypeSolver solver;
+    final FrameworkJars frameworks;
     private ProjectTypeSolvers projectSolvers;
 
     SourceScope(Element scope) throws IOException {
         root = Files.createTempDirectory("snapir-unit-source-");
         try {
+            frameworks = new FrameworkJars(scope);
             ParserConfiguration configuration = new ParserConfiguration()
                 .setLanguageLevel(ParserConfiguration.LanguageLevel.BLEEDING_EDGE)
                 .setCharacterEncoding(StandardCharsets.UTF_8);
@@ -78,6 +80,7 @@ final class SourceScope implements AutoCloseable {
                 solver = projectSolvers.forProject(scope.getAttribute("project"));
             } else {
                 solver = new CombinedTypeSolver(new ClassLoaderTypeSolver(ClassLoader.getPlatformClassLoader()), new JavaParserTypeSolver(root, configuration));
+                frameworks.addTo(solver);
             }
         } catch (IOException | RuntimeException exception) {
             close();

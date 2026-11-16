@@ -61,6 +61,7 @@ final class ProjectTypeSolvers {
                 solver.add(new JarTypeSolver(path));
                 AnalysisProgress.report("project " + name + " loaded JAR " + path.getFileName());
             }
+            new FrameworkJars(scope).addTo(solver);
         }
     }
 

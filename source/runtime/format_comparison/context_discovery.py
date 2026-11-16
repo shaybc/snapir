@@ -37,6 +37,9 @@ def validate_discovery(discovery, unit):
     if len(set(identities)) != len(identities):
         raise ValueError('Duplicate context requirement identity')
     for requirement in discovery.requirements:
+        allowed = {'step_execute'} if unit.get('kind') == 'configured_step' else {'format', 'unformat'}
+        if requirement.directions is not None and set(requirement.directions) - allowed:
+            raise ValueError('Context requirement direction does not match the selected component type')
         validate_citations(requirement.citations, catalog)
         for value in requirement.values:
             validate_citations(value.citations, catalog)
@@ -60,11 +63,13 @@ def applies_to_direction(requirement, direction):
 def discover_context(unit, model_call, settings, directory, *, directions=None):
     """Retain request/response artifacts; provider failure is an unresolved inventory."""
     selected=sorted(set(directions if directions is not None else
+        ['step_execute'] if unit.get('kind') == 'configured_step' else
         ['unformat'] if unit.get('kind')=='request_unformat' else ['format']))
-    if not selected or set(selected)-{'format','unformat'}:
-        raise ValueError('Discovery requires explicit format/unformat directions')
+    allowed = {'step_execute'} if unit.get('kind') == 'configured_step' else {'format', 'unformat'}
+    if not selected or set(selected)-allowed:
+        raise ValueError('Discovery requires explicit directions for the selected component type')
     payload = dict(execution=dict(unit_kind=unit.get('kind'),selected_directions=selected,
-        entry_points=[dict(direction=direction,method_name=direction) for direction in selected]),
+        entry_points=[dict(direction=direction,method_name='execute' if direction == 'step_execute' else direction) for direction in selected]),
         evidence=evidence_catalog(unit), schema=FormatContextDiscovery.model_json_schema())
     encoded = json.dumps(payload, ensure_ascii=True)
     if len(DISCOVERY) + len(encoded) > settings.discovery_request_chars:

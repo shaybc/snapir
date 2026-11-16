@@ -22,6 +22,7 @@ public final class BoundaryAnalysis {
             output.writeStartDocument();
             output.writeStartElement("analysis");
             output.writeAttribute("classpath_protocol", "project-classpath-v1");
+            output.writeAttribute("framework_protocol", "framework-jars-v1");
             for (Node node = input.getFirstChild(); node != null; node = node.getNextSibling()) {
                 if (!(node instanceof Element scope) || !scope.getTagName().equals("scope")) continue;
                 AnalysisProgress.report("scope " + scope.getAttribute("id") + " preparing sources and classpath");
@@ -47,7 +48,7 @@ public final class BoundaryAnalysis {
             try {
                 if (problem != null) throw new IllegalStateException(problem);
                 EntryMethod.write(entry, sources, output);
-                if (entry.getAttribute("reachability").equals("true")) {
+                if (entry.getAttribute("reachability").equals("true") && !sources.frameworks.entries.contains(entry.getAttribute("id"))) {
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " indexing source catalog");
                     ReachableSlice graph = new ReachableSlice(new SourceCatalog(sources));
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " traversing reachable calls");

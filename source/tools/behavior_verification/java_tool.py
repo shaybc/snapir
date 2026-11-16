@@ -24,6 +24,7 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
     tool_hash = file_digest(tool)
     libraries = {item['path']: item['sha256'] for scope in scopes.values()
                  for project in scope.get('classpath', {}).get('projects', {}).values() for item in project['libraries']}
+    libraries.update({item['path']: item['sha256'] for scope in scopes.values() for item in scope.get('framework_libraries', [])})
     def verify_libraries():
         for path, expected in libraries.items():
             if file_digest(path) != expected:
@@ -34,6 +35,10 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         manifest = ElementTree.Element('analysis')
         for key, scope in sorted(scopes.items()):
             node = ElementTree.SubElement(manifest, 'scope', id=key)
+            for library in scope.get('framework_libraries', []):
+                framework = ElementTree.SubElement(node, 'framework-library', path=library['path'], sha256=library['sha256'])
+                for name in library['classes']:
+                    ElementTree.SubElement(framework, 'class', name=name)
             context = scope.get('classpath', {})
             if context:
                 node.set('project', context['project'])
@@ -78,6 +83,8 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
             raise ValueError('Converter analysis tool changed during boundary discovery')
         verify_libraries()
         report = read_analysis_xml(folder / 'output.xml')
+        if any(scope.get('framework_libraries') for scope in scopes.values()) and report.get('framework_protocol') != 'framework-jars-v1':
+            raise ValueError('Boundary analyzer JAR lacks framework boundary support; rebuild the analyzer project')
         if any(scope.get('classpath') for scope in scopes.values()):
             if report.get('classpath_protocol') != 'project-classpath-v1':
                 raise ValueError('Boundary analyzer JAR lacks project classpath support; rebuild source/behavior-verification-java/pom.xml')

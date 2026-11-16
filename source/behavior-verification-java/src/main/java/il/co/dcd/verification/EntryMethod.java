@@ -15,6 +15,7 @@ final class EntryMethod {
     static void write(Element entry, SourceScope sources, XMLStreamWriter output) throws XMLStreamException {
         String implementation = entry.getAttribute("implementation");
         var resolved = resolve(entry, sources);
+        if (resolved.toAst(MethodDeclaration.class).isEmpty() && sources.frameworks.write(entry, resolved, output)) return;
         MethodDeclaration method = resolved.toAst(MethodDeclaration.class)
             .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source"));
         if (method.getBody().isEmpty()) throw new IllegalStateException("Entry method has no executable body");

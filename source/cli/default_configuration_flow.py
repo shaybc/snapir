@@ -10,7 +10,7 @@ from runtime.model_execution.readiness import model_readiness_issues
 
 
 SECTION_NAMES = ('Default config: name and source', 'Composer analysis', 'Run and shared storage',
-    'Channels and root operations', 'Java and Helm', 'Dependency environment', 'Approval policy',
+    'Conversion scope', 'Java and Helm', 'Dependency environment', 'Approval policy',
     'Live AI connection', 'Service environment')
 
 
@@ -125,7 +125,7 @@ def error_section(error):
     """Return validation failures to their user-input section."""
     text = str(error)
     for index, fields in ((1, ('mapper_', 'existing_composer_map')), (2, ('shared_store_root', 'output_root')),
-            (3, ('channels', 'include_operations')), (4, ('java_', 'helm')), (5, ('maven_', 'classpath', 'external_dependencies')),
+            (3, ('channels', 'include_operations', 'component', 'conversion_scope')), (4, ('java_', 'helm')), (5, ('maven_', 'classpath', 'external_dependencies')),
             (6, ('gate_', 'plan_approval_policy')), (7, ('model_', 'credential', 'API key')),
             (8, ('service_environments', 'deployment_', 'namespace', 'Service port', 'Service environment', 'Operation overrides'))):
         if any(field in text for field in fields):

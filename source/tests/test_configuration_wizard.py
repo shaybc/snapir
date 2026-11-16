@@ -336,6 +336,8 @@ def test_existing_config_requires_explicit_replacement(project, monkeypatch, rep
     attempted = False
     def confirm(title, options, **kwargs):
         nonlocal attempted
+        if title == 'Conversion scope':
+            return 'operations'
         if title == "Review configuration":
             return "cancel" if attempted and not replace else "save"
         if title == "Discard unsaved configuration?":

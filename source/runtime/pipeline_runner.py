@@ -26,6 +26,9 @@ from runtime.inventory_reports import write_json_report
 
 def run_pipeline(profile: PipelineConfiguration, run_id: str, configuration_path=None) -> Path:
     """Start intake and continue full native profiles through the existing gated workflow."""
+    if profile.conversion_scope == 'components':
+        from runtime.component_conversion.standalone_components import start_components
+        return start_components(profile, run_id, configuration_path)
     directory = _run_intake(profile, run_id, configuration_path)
     from runtime.migration_start import continue_after_intake
     return continue_after_intake(profile, directory)

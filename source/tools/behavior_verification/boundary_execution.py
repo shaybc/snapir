@@ -51,10 +51,10 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
     for target, canonical in sorted(binding.external_bindings.items()):
         ET.SubElement(manifest, 'external_binding', target=target, canonical=canonical)
     if side == 'legacy':
-        for node in boundary.reachable_slice.nodes:
+        for node in boundary.reachable_slice.nodes if boundary.reachable_slice is not None else ():
             ET.SubElement(manifest, 'reachable', **{key: str(getattr(node, key)) for key in
                 ('source_identity', 'start_line', 'end_line', 'start_column', 'end_column')})
-        for node in boundary.reachable_slice.nodes:
+        for node in boundary.reachable_slice.nodes if boundary.reachable_slice is not None else ():
             if node.kind not in {'method', 'constructor', 'static_initializer', 'instance_initializer'}: continue
             ET.SubElement(manifest, 'probe', id=node.id, kind='method', syntax_type={
                 'method': 'MethodDeclaration', 'constructor': 'ConstructorDeclaration',

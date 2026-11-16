@@ -313,6 +313,16 @@ objects:
       - Python
     code:
       - source/runtime/component_conversion/**
+  - id: standalone-components
+    type: component
+    name: Standalone component conversion
+    description: Selects source formats or steps and reuses component conversion with independent directional comparisons.
+    parent: conversion-stage
+    technologies: [Python]
+    code:
+      - source/cli/component_selection.py
+      - source/tools/conversion_tools/standalone_sources.py
+      - source/runtime/component_conversion/standalone_*.py
   - id: behavior-runner
     type: component
     name: Behavior conversion and assembly
@@ -615,6 +625,21 @@ objects:
     description: Generates structured conversion results and reviews through Gemini or a compatible endpoint.
     external: true
 connections:
+  - id: standalone-selection
+    from: intake-control
+    to: standalone-components
+    description: Routes explicit component profiles without operation intake.
+    technology: Python
+  - id: standalone-discovery
+    from: standalone-components
+    to: source-discovery
+    description: Resolves selected classes and required original source dependencies.
+    technology: Python
+  - id: standalone-conversion
+    from: standalone-components
+    to: components
+    description: Reuses generation, compilation, tests and revision-bound component reuse.
+    technology: Python
   - id: operator-intake
     from: operator
     to: intake-control

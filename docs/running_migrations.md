@@ -107,6 +107,64 @@ Native Gemini uses the standard ADK Google authentication configuration.
 
 Java classpath discovery reads Eclipse library and variable entries and accepts
 additional classpath_jars plus eclipse_classpath_variables in the YAML profile.
+To recognize inherited entry methods supplied by framework binaries, list their
+JARs separately (paths are relative to the profile):
+
+```yaml
+framework_jars:
+  - libraries/composer-base.jar
+  - libraries/composer-runtime.jar
+```
+
+Boundary analysis records the declaring method and exact JAR revision without
+requesting or converting the framework method's source. Application source stays
+conversion evidence. This does not add entry-method signatures, borrow a containing
+format's boundary, or establish behavioral equivalence. Existing validation gates
+remain in force; policies requiring source-derived facts can still report incomplete.
+Original-code tests can load these JARs. Native-code classpaths are unchanged.
+Changing a framework JAR changes the boundary analysis identity used for reuse.
+
+During configuration creation, the scope section offers **Channels and operations**
+or **Selected components**. For components, choose **Formats** or **OP steps**, then
+filter the fully qualified class list and select one or more entries. The list contains
+source syntax/inheritance candidates; exact public entry signatures are verified before
+conversion. No selected operation or channel is required. Start and resume use the
+existing commands and saved profile:
+
+```powershell
+python -m cli start --config configs/string-component.yaml --run-id string-component
+python -m cli resume --config configs/string-component.yaml --run-id string-component
+```
+
+The component-specific YAML settings are:
+
+```yaml
+conversion_scope: components
+component_type: format  # or op_step
+selected_components:
+  - com.ibm.il.dse.cc.format.CCString
+conversion_strategy: behavior_units
+scoped_native_mode: component_first_v1
+channels: []
+include_operations: []
+format_comparison:
+  enabled: true
+  collect_facts: false
+```
+
+The rest of the existing profile supplies the source workspace, Java, model, build,
+framework and validation settings. Optional `component_attributes` maps a selected
+class name to its actual initialization attributes. Missing runtime configuration
+or an unsupported method signature remains a blocker; no containing format is borrowed.
+The converter prepares only selected classes and their required source dependencies,
+then reuses normal generation, correction, Maven/JUnit and comparison code. Both format
+directions are checked separately; OP steps use their declared or inherited `execute`.
+`reports/standalone-components.json` separates build/test success from comparison
+results. A component is complete only when every requested direction has matching
+executed observations. Disabled or unavailable comparisons are reported as blocked.
+Resume re-analyzes current sources, initialization and JAR revisions before considering
+saved artifacts for reuse. Channel/operation profiles keep their existing route.
+
 Configured paths are relative to that profile. Set JAVA_HOME to the desired JDK
 to inventory its platform classes. No dependencies are downloaded automatically.
 The run saves java_classpath_index.json with class locations and diagnostics.

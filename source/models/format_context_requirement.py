@@ -24,7 +24,7 @@ class FormatContextRequirement(BaseModel):
     """A context read discovered from original code, not an adapter implementation."""
     model_config = ConfigDict(extra='forbid')
     requirement_id: str
-    directions: list[Literal['format', 'unformat']] | None = None
+    directions: list[Literal['format', 'unformat', 'step_execute']] | None = None
     context_key: str | None = None
     key_expression: str | None = None
     value_type: Literal['string', 'boolean', 'integer', 'number', 'list', 'map', 'unknown'] = 'unknown'

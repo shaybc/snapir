@@ -40,9 +40,10 @@ def unit_for_case(plan, case):
     return unit
 
 
-def analyze_unit(unit, tool, *, collect_facts=True, step_implementation=None):
+def analyze_unit(unit, tool, *, collect_facts=True, step_implementation=None, framework_jars=()):
     """Reuse parser/reachability discovery for real instrumentation and observed branch probes."""
     report = build_boundary_report({'operations': {'diagnostic': {'units': [unit]}}}, tool_jar=tool,
+                                  **({'framework_jars': framework_jars} if framework_jars else {}),
                                   collect_checklists=collect_facts,**({'mappings':{'opStep':step_implementation}} if step_implementation else {}))
     boundary = UnitVerificationBoundary.model_validate(report['boundaries'][unit['unit_id']])
     if boundary.analysis_status != 'identified' or boundary.issues:

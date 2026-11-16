@@ -31,6 +31,9 @@ def summary_lines(data, *, directory=None):
             lines.append(f'{name}: {safe_value(value)}')
         if directory and name in paths and value:
             lines.append('  Resolved: ' + safe_value(str((Path(directory) / value).resolve())))
+    if data.get('conversion_scope') == 'components':
+        lines.append('Standalone components: no channel or operation conversion; Composer mapping is not run.')
+        return lines
     lines.append('Composer map: ' + ('Reuse existing map' if data.get('existing_composer_map') else
                                     'Create during migration; no mapping is running now'))
     return lines
@@ -55,13 +58,13 @@ def review_configuration(draft, inputs, configs, names, *, settings_transform=No
                  *summary_lines(data, directory=configs)]
         action = inputs.api.select_option('Review configuration', [
             ('edit', 'Edit a section'), ('save', 'Save configuration'),
-            ('operations', 'View all selected operations'), ('back', 'Back'), ('cancel', 'Cancel')],
+            ('operations', 'View all selected components' if data.get('conversion_scope') == 'components' else 'View all selected operations'), ('back', 'Back'), ('cancel', 'Cancel')],
             heading='Review configuration: ' + safe_value(data['_name']), details=lines,
             clear_after_selection=False)
         if action == 'operations':
-            operations = data.get('include_operations', [])
+            operations = data.get('selected_components', []) if data.get('conversion_scope') == 'components' else data.get('include_operations', [])
             try:
-                inputs.api.select_option('Selected operations (type to filter; Enter to return)',
+                inputs.api.select_option('Selected components (type to filter; Enter to return)' if data.get('conversion_scope') == 'components' else 'Selected operations (type to filter; Enter to return)',
                     [(str(i), safe_value(name)) for i, name in enumerate(operations)], filterable=True,
                     heading='Review configuration: ' + safe_value(data['_name']), clear_after_selection=False)
             except SelectionCancelled as exc:

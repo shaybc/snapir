@@ -24,7 +24,7 @@ def write_boundary_report(conn, config, preparation, directory, *, collect_check
         classpath = discover_conversion_classpath(config.source_root, profile.classpath_jars,
             profile.eclipse_classpath_variables, profile=profile)
     report = build_boundary_report(preparation, mappings=mappings, collect_checklists=collect_checklists,
-                                  classpath_index=classpath)
+                                  classpath_index=classpath, **({'framework_jars': profile.framework_jars} if getattr(profile, 'framework_jars', ()) else {}))
     write_run_report(directory, 'behavior_verification_boundaries.json', json.dumps(report, indent=2))
     logging.getLogger(__name__).info('Boundary discovery: %s/%s entries identified; behavioral verification has not run',
         report['counts']['identified'], report['counts']['total'])

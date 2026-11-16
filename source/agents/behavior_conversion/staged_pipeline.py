@@ -84,4 +84,8 @@ steps. No HTTP controller or test-specific switches. Do not return accepted unit
     if payload.get('format_chain_policy'):
         from runtime.component_conversion.format_chains import INSTRUCTION
         prompt+='\n'+INSTRUCTION
+    if payload.get('standalone_component'):
+        prompt += ('\nThis is standalone component conversion. Convert only standalone_component.classes and their required '
+                   'source dependencies. Implement every supplied source_entry_point at its recorded declared or inherited '
+                   'boundary. Do not generate an operation, channel, routing service or substitute a containing format.')
     return prompt

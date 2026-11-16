@@ -11,6 +11,10 @@ def confirm_migration_start(configuration, profile, run_id):
               'java_home', 'java_scan_inactivity_timeout_seconds', 'conversion_strategy',
               'model_provider', 'model_name')
     data = {name: getattr(profile, name) for name in fields if hasattr(profile, name)}
+    if getattr(profile, 'conversion_scope', 'operations') == 'components':
+        data = {name: value for name, value in data.items() if name not in {'channels', 'include_operations', 'exclude_operations', 'mapper_jar', 'existing_composer_map'}}
+        data.update(conversion_scope=profile.conversion_scope, component_type=profile.component_type,
+                    selected_components=profile.selected_components)
     from runtime.workspace_paths import resolve_run_directory
     details = ['Run name: ' + safe_value(run_id),
                'Configuration: ' + safe_value(str(configuration)),

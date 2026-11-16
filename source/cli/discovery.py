@@ -12,6 +12,7 @@ RESUMABLE_PHASES = {
     "scoped_inventory_ready", "conversion_scoped_gated", "conversion_scoped_stale", "conversion_scoped_prepared",
     "conversion_scoped_native_failed", "conversion_scoped_unsupported",
     "conversion_components_incomplete", "conversion_components_failed",
+    "conversion_components_completed", "conversion_components_preparing",
     "conversion_components_ready_for_composition", "conversion_units_verifying",
     "conversion_plan_pending", "conversion_plan_rejected", "conversion_plan_approved", "conversion_plan_blocked",
     "planning_inputs_ready", "planning", "planning_failed", "gate_1_pending",

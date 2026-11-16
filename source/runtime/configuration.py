@@ -18,6 +18,7 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
     for name in ("source_root", "mapper_jar", "output_root", "shared_store_root"):
         setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))
     config.classpath_jars = [str(((profile_path.parent if "classpath_jars" in config.model_fields_set else project_directory) / path).resolve()) for path in config.classpath_jars]
+    config.framework_jars = [str((profile_path.parent / path).resolve()) for path in config.framework_jars]
     for name in ("maven_settings_path", "maven_local_repository", "deployment_template_dir", "java_home", "service_registry_path", "mapper_analysis_reuse"):
         if getattr(config, name):
             setattr(config, name, str(((profile_path.parent if name in config.model_fields_set else project_directory) / getattr(config, name)).resolve()))
@@ -35,7 +36,7 @@ def load_configuration(path: str | Path) -> PipelineConfiguration:
         config.existing_composer_map = str((profile_path.parent / config.existing_composer_map).resolve())
         from tools.workspace_intake_tools.vault_validator import check_existing_composer_map
         check_existing_composer_map(config.existing_composer_map)
-    elif not Path(config.mapper_jar).is_file():
+    elif config.conversion_scope != 'components' and not Path(config.mapper_jar).is_file():
         raise ValueError("mapper_jar must identify an existing file")
     if config.conversion_strategy == "behavior_units" or config.service_registry_path:
         from tools.converted_service_registry_tools.location import resolve_registry_settings

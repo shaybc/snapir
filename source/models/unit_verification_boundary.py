@@ -7,6 +7,7 @@ from models.legacy_boundary_method import LegacyBoundaryMethod
 from models.unit_reachable_slice import UnitReachableSlice
 from models.configured_setup_binding import ConfiguredSetupBinding
 from models.unit_parser_checklist import UnitParserChecklist
+from models.framework_boundary_method import FrameworkBoundaryMethod
 
 
 class UnitVerificationBoundary(BaseModel):
@@ -29,6 +30,7 @@ class UnitVerificationBoundary(BaseModel):
     configuration_hash: str
     source_manifest_hash: str
     legacy_method: LegacyBoundaryMethod | None = None
+    framework_method: FrameworkBoundaryMethod | None = Field(default=None, exclude_if=lambda value: value is None)
     reachable_slice: UnitReachableSlice | None = None
     parser_checklist: UnitParserChecklist | None = None
     basic_parser_checklist: UnitParserChecklist | None = None

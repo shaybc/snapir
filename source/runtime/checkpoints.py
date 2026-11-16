@@ -27,6 +27,9 @@ def resume_pipeline(output_root: str, run_id: str):
     if not run_database_path(directory).is_file():
         raise ValueError("Run database does not exist")
     profile = PipelineConfiguration.model_validate_json(run_profile_path(directory).read_text(encoding="utf-8"))
+    if profile.conversion_scope == 'components':
+        from runtime.component_conversion.standalone_components import resume_components
+        return resume_components(profile, directory)
     conn = get_connection(str(run_database_path(directory)))
     diagnostics = run_model_diagnostics(directory)
     diagnostics.__enter__()

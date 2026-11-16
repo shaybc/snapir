@@ -57,26 +57,7 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
         model_call = AdkExecutor(profile).execute
 
     def fixtures(selected, discovery):
-        # Reuse input generation. Its samples are exploratory, not inferred expected outputs.
-        generated, _ = generate_input_scenarios(unit, boundary, profile.executable_verification)
-        result = []
-        for key, entry in selected.items():
-            if entry.direction != direction:
-                continue  # Other direction needs its own configured boundary and fixtures.
-            for original in generated:
-                values = original.model_dump(mode='json')
-                values.update(binding_id=key, origin='exploratory', case_id='fixture-' + digest((key, values))[:24])
-                if discovery:
-                    for requirement in discovery.requirements:
-                        if not applies_to_direction(requirement,entry.direction):
-                            continue
-                        supported = [value for value in requirement.values if value.origin == 'source_backed']
-                        if requirement.context_key is not None and requirement.context_key not in values['initial_context'] and supported:
-                            values['initial_context'][requirement.context_key] = supported[0].value
-                result.append(FormatComparisonCase.model_validate(values))
-        if not result:
-            raise ValueError('No matching configured direction has runnable baseline fixtures')
-        return result
+        return directional_fixtures(unit, boundary, profile.executable_verification, direction, selected, discovery)
 
     try:
         plan, preparation = prepare_plan(validator.request.get('configured_format', {}).get('logical_id', identity),
@@ -96,3 +77,26 @@ def _diagnose_component(validator, candidate, files, directory, *, model_call=No
         result = dict(status='comparison_unavailable', reason=type(error).__name__, acceptance_changed=False)
         (directory / 'unavailable.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         return result
+
+
+def directional_fixtures(unit, boundary, settings, direction, selected, discovery):
+    """Reuse controlled input generation and source-backed context values for one exact direction."""
+    generated, _ = generate_input_scenarios(unit, boundary, settings)
+    result = []
+    for key, entry in selected.items():
+        if entry.direction != direction:
+            continue
+        for original in generated:
+            values = original.model_dump(mode='json')
+            values.update(binding_id=key, origin='exploratory', case_id='fixture-' + digest((key, values))[:24])
+            if discovery:
+                for requirement in discovery.requirements:
+                    if not applies_to_direction(requirement, entry.direction):
+                        continue
+                    supported = [value for value in requirement.values if value.origin == 'source_backed']
+                    if requirement.context_key is not None and requirement.context_key not in values['initial_context'] and supported:
+                        values['initial_context'][requirement.context_key] = supported[0].value
+            result.append(FormatComparisonCase.model_validate(values))
+    if not result:
+        raise ValueError('No matching configured direction has runnable baseline fixtures')
+    return result
