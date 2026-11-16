@@ -36,8 +36,6 @@ def issue_summary(issues):
     if text.startswith(('Boundary JAR ', 'Boundary source has no verified owning project',
                         'Boundary implementation has no unique owning project')):
         return text[:240]
-    if 'boundary analysis inactivity timeout' in text:
-        return 'Java analyzer stopped after no meaningful progress; see last progress below'
     if 'boundary analysis timed out after' in text:
         return 'Java analyzer exceeded its total runtime limit; see last progress below'
     if 'could not finish' in text:
@@ -50,9 +48,6 @@ def issue_summary(issues):
     if 'Entry method must resolve uniquely' in text:
         return 'No unique method matches the required entry signature'
     if 'no supplied Java source' in text:
-        if 'Entry method has no supplied Java source: declaring_class=' in text:
-            from runtime.model_execution.error_details import sanitize_diagnostic
-            return sanitize_diagnostic(text[text.index('Entry method has no supplied Java source: declaring_class='):])
         return 'Entry method has no supplied Java source'
     if 'no executable body' in text:
         return 'Entry method has no executable body'
@@ -124,17 +119,6 @@ def diagnose(directory):
                     pass
     except sqlite3.Error:
         return lines + ['Run database missing, unreadable, locked, or incompatible.']
-    from tools.run_diagnostics.conversion_ai import is_conversion_phase, build_report, format_report
-    if is_conversion_phase(row[1]):
-        try:
-            return format_report(build_report(directory))
-        except (OSError, ValueError, sqlite3.Error):
-            return lines + ['Conversion AI evidence is unavailable or incompatible; no earlier-stage investigation performed.']
-    if not str(row[1] or '').startswith(('conversion_', 'closure', 'dependency_closure')):
-        from runtime.workflow_stages import workflow_stage_label
-        known = str(row[1] or '').startswith(('planning', 'gate_', 'intake', 'scoped_', 'component_', 'assembly_', 'operation_', 'service_', 'finalization'))
-        return lines + ['Stage: ' + (workflow_stage_label(row[1]) if known else 'Unknown checkpoint'),
-                        'Conversion AI diagnosis is not applicable at this checkpoint; no previous-stage investigation performed.']
     stage = directory / 'reports/3_dependency_closure_and_component_conversion'
     try:
         boundaries = read_json(stage / 'behavior_verification_boundaries.json').get('boundaries', {})

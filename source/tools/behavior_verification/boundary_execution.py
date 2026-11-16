@@ -38,12 +38,9 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
             raise ValueError('Boundary source/configuration revision changed before compilation')
         sources = unit['sources']
     else:
-        from tools.framework_boundaries.native_output import reject_framework_output
-        reject_framework_output(binding.sources)
         sources = [dict(identity=item.path, content=item.content,
                         content_hash=hashlib.sha256(item.content.encode()).hexdigest()) for item in binding.sources]
-    if not sources and side!='original' and not (side=='legacy' and boundary.framework_boundaries):
-        raise ValueError('No supplied source for ' + side + ' boundary')
+    if not sources and side!='original': raise ValueError('No supplied source for ' + side + ' boundary')
     for source in sources:
         text_hash = hashlib.sha256(source['content'].encode()).hexdigest()
         if side != 'legacy' and text_hash != source['content_hash']:
@@ -68,19 +65,7 @@ def compile_boundary_side(unit, boundary, binding, directory, side, tool=None, *
             ET.SubElement(manifest, 'probe', id=item.id, kind=item.kind, detail=item.detail, syntax_type=item.syntax_type,
                 **{key: str(getattr(item, key)) for key in ('source_identity', 'start_line', 'end_line', 'start_column', 'end_column')})
     classpath = [str(tool)]
-    from tools.framework_boundaries.inventory import paths as framework_paths
-    from tools.framework_boundaries.inventory import verify
-    verify()
-    dependencies = list(binding.classpath)
-    if side in {'legacy', 'original'}:
-        revisions = {_digest(Path(value)) for value in dependencies}
-        for value in framework_paths():
-            if _digest(Path(value)) not in revisions:
-                dependencies.append(value)
-                revisions.add(_digest(Path(value)))
-    elif {_digest(Path(value)) for value in dependencies} & {_digest(Path(value)) for value in framework_paths()}:
-        raise ValueError('Native comparison cannot depend on original framework JARs')
-    for name in dependencies:
+    for name in binding.classpath:
         path = Path(name).resolve()
         if not path.is_file() or path.suffix.lower() != '.jar': raise ValueError('Boundary dependencies must be explicit existing JARs')
         hashes['dependency:' + str(path)] = _digest(path); classpath.append(str(path))
@@ -115,19 +100,6 @@ def execute_boundary_case(compiled, unit, boundary, binding, case, timeout=15,de
     directory.mkdir(parents=True, exist_ok=False)
     job = ET.Element('job', adapter_class=binding.adapter_class, kind=unit['kind'], implementation=boundary.implementation_class,
         **{name: getattr(binding, name) for name in ('context_class', 'tag_class', 'context_writer', 'context_remover', 'context_snapshot', 'step_context_setter')})
-    job.set('context_reader', binding.context_reader)
-    if boundary.format_lifecycle and side_is_legacy(binding):
-        lifecycle = ET.SubElement(job, 'format_lifecycle', version=boundary.format_lifecycle.version)
-        for invocation in boundary.format_lifecycle.invocations:
-            call = ET.SubElement(lifecycle, 'invocation', method=invocation.method, declaring_class=invocation.declaring_class)
-            for parameter in invocation.parameters:
-                ET.SubElement(call, 'parameter', type=parameter)
-    if boundary.framework_boundaries and side_is_legacy(binding) and unit['kind'] != 'configured_step':
-        lifecycle = ET.SubElement(job, 'format_lifecycle', version='framework-binary-v1')
-        original = boundary.framework_boundaries[0]
-        call = ET.SubElement(lifecycle, 'invocation', method=original['method'], declaring_class=original['declaring_class'])
-        for parameter in original['parameters']:
-            ET.SubElement(call, 'parameter', type=parameter)
     if binding.original_action:job.set('original_action',binding.original_action)
     values = case.model_dump(mode='json')
     if case.original_inputs and unit['kind']=='configured_step':raise ValueError('Original object recipes are limited to formats/decorators')
@@ -137,8 +109,6 @@ def execute_boundary_case(compiled, unit, boundary, binding, case, timeout=15,de
     if unit['kind']!='configured_step':
         from runtime.behavior_conversion.java_api_types import public_api_types
         names=set(unit.get('original_input_types',[]))
-        from tools.framework_boundaries.inventory import current
-        names.update(current())
         for source in unit['sources']:names.update(public_api_types(source['content']))
         job.append(value_element(sorted(names),'original_types'))
         job.append(value_element(binding.original_context_getters,'original_context_getters'))
@@ -188,8 +158,3 @@ def _settings(settings, binding):
                        'method': destination.get('method', setting['method'])})
     return result
 
-
-
-def side_is_legacy(binding):
-    """Keep original lifecycle invocation data out of native API execution."""
-    return binding.adapter_class == 'il.co.dcd.verification.harness.LegacyBoundaryAdapter'

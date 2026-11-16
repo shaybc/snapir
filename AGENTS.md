@@ -36,12 +36,6 @@ when asked to plan - give a detailed plan with code changes expected, add a sect
 
 When asked a question do not change code just answer and keep answers focused, concise, and directly responsive. Lead with the conclusion, then include only the essential supporting points. Avoid repetition, extensive background, diagrams, long task lists, and adjacent information unless explicitly requested. For general questions, stay under 50 lines whenever possible. If the subject requires a longer explanation, provide a short answer first and ask whether I want more detail. When researching, summarize the findings instead of reproducing the research.
 
-## Ground code answers in reviewed evidence
-
-When answering a question about this codebase's behavior, architecture, or execution flow, review the relevant code before drawing conclusions. You may rely on a code review already performed in the conversation when it directly covers the question and remains applicable to the current code. If that review is incomplete or may be outdated, inspect the missing or changed paths first.
-
-Do not substitute guesses, generic expectations, statistical estimates, or assumptions for reviewing the implementation. Distinguish what the reviewed code establishes from what run-specific evidence proves. State any remaining uncertainty explicitly rather than presenting an unverified explanation as fact. Before claiming a capability or flow is absent, trace its implementation and callers, including applicable alternate and reuse paths.
-
 ## Check behavior across stages and phases
 
 Whenever fixing behavior in one stage or phase, trace where that behavior is resolved, passed between stages, and consumed elsewhere. Check whether the same fix must also apply to other stages or phases, including preparation, analysis, conversion, validation, and resume/reuse paths. Do not assume that fixing one path fixes the others.
@@ -56,12 +50,8 @@ Apply a rule to another stage or phase only when it is applicable and correct fo
 This repository keeps a C4 architecture model in `.aice/`, drawn by the a-ice VS Code extension.
 Before you create or edit anything in `.aice/`, read `.aice/agent/SKILL.md` and follow it.
 
-- **Model in levels, top-down — never one flat list.** The top (Context) diagram shows only people, this codebase as one system, and external systems. Apps and data stores go *inside* the system, components *inside* the apps, and big components can hold sub-components. Every object with real internals gets children so the user can zoom into it. **Level 4 (sub-component) is the deepest:** never nest further; put finer detail in `details` and `code:`. See "Build the model in levels" in the skill.
-- **Tags are for cross-cutting concerns, at most 3 per object.** Tag an object only for what is true of it, never with its children's tags, and never with tags that just repeat the structure. See "Tags" in the skill.
-- **Respect the person's edits while they are true.** Fields listed in an object's or connection's `edited:` were written by a person: do not reword them for style, and keep them when the object only moves. When the code makes them wrong, correct them; when the object is replaced or gone, delete it with its customisations. Report every such change in your summary, and never clear `edited:`. See "Respect the person's edits" in the skill.
 - **Keep the model in step with the code.** When a change adds, removes or renames a service, app, data store, queue, external integration, major module, or a call between them, update `.aice/model.yaml` (and any affected flow in `.aice/flows/`) in the same task. Pure refactors inside one module need no model change.
-- **Check your work.** After editing the model, run `node .aice/agent/validate.cjs` and fix every error and warning it reports.
+- **Check your work.** After editing the model, run `node .aice/agent/validate.cjs` and fix every error it reports.
 - **Show what the user asks for.** When the user asks to see, show or open part of the architecture, write `.aice/view.yaml` as described in the skill; the a-ice canvas jumps there.
-- **Write the narrated tour.** When you create or change a diagram's content or a flow, write or update its `narration:` (what the narrator says at each stop). List the stops with `node .aice/agent/validate.cjs --tour <diagram or flow id>`. Keys in `narrationEdited:` are the person's: keep them while they are true, remove them when their stop is gone. See "Narrated tours" in the skill.
 - Never edit layout positions in `.aice/diagrams/*.yaml`; a-ice owns them.
 <!-- a-ice:end -->

@@ -8,7 +8,6 @@ from time import monotonic
 
 from models.pipeline_configuration import PipelineConfiguration
 from runtime.model_execution.readiness import require_model_readiness
-from runtime.model_execution.offline_tokenizers import prepare_offline_tokenizers
 from runtime.model_execution.error_details import sanitize_diagnostic
 from runtime.model_execution.progress import before_model, after_model, request_headers, response_headers, wait_with_progress
 
@@ -27,9 +26,7 @@ class AdkExecutor:
         logger = logging.getLogger(__name__)
         logger.info("Model interaction started", extra={"model_interaction_boundary": "start"})
         try:
-            from runtime.model_execution.attempt_diagnostics import model_scope
-            with model_scope(payload, instruction, self.component_label):
-                return self._execute_with_retries(instruction, payload)
+            return self._execute_with_retries(instruction, payload)
         finally:
             logger.info("Model interaction ended", extra={"model_interaction_boundary": "end"})
             COMPONENT_LABEL.reset(token)
@@ -38,8 +35,6 @@ class AdkExecutor:
         """Run transport retries with the current component diagnostic context."""
         from runtime.model_execution.component_progress import component_suffix
         require_model_readiness(self.profile)
-        if self.profile.model_provider == "litellm":
-            prepare_offline_tokenizers()
         error = None
         logger = logging.getLogger(__name__)
         for attempt in range(1, self.profile.max_model_attempts + 1):
@@ -47,17 +42,9 @@ class AdkExecutor:
             logger.info("Model execution attempt %s/%s using %s (%s).%s", attempt,
                         self.profile.max_model_attempts, self.profile.model_name, self.profile.model_provider, component_suffix())
             try:
-                from runtime.model_execution.attempt_diagnostics import delivery_scope, emit
-                with delivery_scope(attempt):
-                    try:
-                        response = asyncio.run(wait_with_progress(
-                            self._execute(instruction, payload), self.profile.model_timeout_seconds
-                        ))
-                        emit('response_received', response=response)
-                    except Exception as exc:
-                        status = getattr(exc, 'status_code', None)
-                        emit('delivery_failed', error=exc, http_status=status if isinstance(status, int) else None)
-                        raise
+                response = asyncio.run(wait_with_progress(
+                    self._execute(instruction, payload), self.profile.model_timeout_seconds
+                ))
                 logger.info("Model execution completed in %.1f seconds (%s response characters).%s",
                             monotonic() - started, len(response), component_suffix())
                 return response
@@ -77,8 +64,6 @@ class AdkExecutor:
 
     async def _execute(self, instruction: str, payload: str) -> str:
         require_model_readiness(self.profile)
-        if self.profile.model_provider == "litellm":
-            prepare_offline_tokenizers()
         from google.adk.agents import LlmAgent
         from google.adk.runners import Runner
         from google.adk.sessions import InMemorySessionService

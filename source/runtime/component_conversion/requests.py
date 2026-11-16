@@ -30,13 +30,9 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         from tools.conversion_tools.component_identity import component_group
         for target in bindings.values(): verify_original_sources(plan, component_group(plan, target))
     else: verify_original_sources(plan, group)
-    from runtime.component_conversion.analysis_failures import require_analysis
-    require_analysis(plan, group, boundaries)
     step = configured_step(plan, group, units or {})
     composed = configured_format(plan, group, units or {})
-    sources, entries, checklist = component_sources(plan, group, bindings, units=units or {}), {}, {}
-    lifecycle_evidence = {}
-    framework_evidence = []
+    sources, entries, checklist = component_sources(plan, group, bindings), {}, {}
     from runtime.behavior_conversion.verification_mode import facts_disabled
     skip_facts = facts_disabled(profile)
     composition_obligations={}
@@ -44,56 +40,28 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     basic_format=bool(basic_members)
     for key in group.members:
         node = plan.components[bindings.get(key, key)]
-        identity = node.provenance.get('definition_id', node.provenance.get('source_definition_id'))
+        identity = node.provenance['definition_id']
         basic_element=key in basic_members
-        step_component=plan.components[key].kind == 'configured_step' or 'step_implementation' in plan.components[key].roles
         methods = set()
         for unit_id, boundary in boundaries['boundaries'].items():
             if unit_id not in plan.components[key].unit_ids:
                 continue
-            if {'format_leaf', 'format_wrapper'}.intersection(plan.components[key].roles) and composed is None:
-                from tools.behavior_verification.format_lifecycle import basic_identity
-                basic = boundaries.get('basic_boundaries', {}).get(basic_identity(unit_id, node.label))
-                if basic is not None:
-                    if basic.get('analysis_status') != 'identified' or basic.get('issues'):
-                        raise ValueError('Basic format lifecycle could not be resolved: ' + node.label + ': ' + '; '.join(basic.get('issues', [])))
-                    boundary = basic
-            step_element=step_component and boundary.get('kind') == 'configured_step'
-            framework_evidence.extend(boundary.get('framework_boundaries', []))
-            lifecycle = boundary.get('format_lifecycle')
-            if lifecycle:
-                lifecycle_evidence.setdefault(key, []).append(lifecycle)
-                methods.update(call['signature'] for call in lifecycle['invocations'])
-            lifecycle_sources = {identity} | {call['source_identity'] for call in (lifecycle or {}).get('invocations', [])}
             graph = boundary.get('reachable_slice') or {}
-            if lifecycle and basic_element:
-                lifecycle_sources.update(method['source_identity'] for method in graph.get('nodes', []))
-            elif boundary.get('framework_boundaries') and basic_element:
-                supplied = {source['identity'] for source in sources}
-                lifecycle_sources.update(method['source_identity'] for method in graph.get('nodes', [])
-                                         if method['source_identity'] in supplied)
-            step_evidence = None
-            if step_element:
-                from runtime.component_conversion.step_entry_evidence import step_entry_evidence
-                step_methods, step_evidence = step_entry_evidence(boundary, sources, key, node.provenance, collect_checklists=not skip_facts)
-                methods.update(step_methods)
             composition_nodes=set((boundary.get('basic_parser_checklist') or {}).get('composition_code_nodes',[])) if basic_element else set()
             for method in graph.get('nodes', []):
-                if not step_element and method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
+                if method['source_identity'] == identity and method['source_hash'] == node.provenance['source_hash'] and method['kind'] == 'method' and method.get('id') not in composition_nodes:
                     methods.add(method['signature'])
             full_checklist=boundary.get('parser_checklist') or {}
             selected_checklist={} if skip_facts else full_checklist
-            if basic_element and not step_element and not skip_facts:
+            if basic_element and not skip_facts:
                 selected_checklist=boundary.get('basic_parser_checklist') or {}
                 if selected_checklist.get('status')!='extracted' or selected_checklist.get('fact_scope')!='basic_element':
                     raise ValueError('Basic formats/decorators require the current deterministic basic-element fact collector')
                 basic_ids={item['id'] for item in selected_checklist.get('items',[])}
                 composition_obligations.update({item['id']:item for item in full_checklist.get('items',[]) if
                     item['source_identity']==identity and item['id'] not in basic_ids})
-            if step_evidence is not None:
-                selected_checklist = dict(items=step_evidence)
             for item in selected_checklist.get('items', []):
-                if step_evidence is not None or item['source_identity'] in lifecycle_sources and (item['source_identity'] != identity or item['source_hash'] == node.provenance['source_hash']):
+                if item['source_identity'] == identity and item['source_hash'] == node.provenance['source_hash']:
                     existing = checklist.get(item['id'])
                     if existing and {name:value for name,value in existing.items() if name!='path_certainty'} != {name:value for name,value in item.items() if name!='path_certainty'}:
                         raise ValueError('Conflicting parser checklist provenance')
@@ -104,11 +72,8 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             boundary=current_format_boundary(units[composed['unit_id']],boundaries)
             if boundary.get('analysis_status')!='identified' or not skip_facts and (boundary.get('parser_checklist') or {}).get('status')!='extracted':
                 raise ValueError('Complete format requires identified original boundary and parser checklist')
-            framework_evidence.extend(boundary.get('framework_boundaries', []))
-            methods={boundary['legacy_method']['signature']} if boundary.get('legacy_method') else {item['signature'] for item in boundary.get('framework_boundaries', [])}
+            methods={boundary['legacy_method']['signature']}
             checklist={} if skip_facts else {item['id']:item for item in boundary['parser_checklist']['items']}
-        if not methods and framework_evidence:
-            methods.update(item['signature'] for item in framework_evidence)
         if not methods:
             raise ValueError('Component has no parser-backed entry points: ' + node.label)
         entries[key] = sorted(methods)
@@ -119,7 +84,6 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     requirements = {'entry-' + digest([key, method]): 'Exercise original entry point ' + method
                     for key, methods in entries.items() for method in methods}
     request = dict(group_id=group.group_id, input_revision=revision, kind='basic_component',
-        comparison_testing_enabled=profile.comparison_testing_enabled,
         native_package=saved_package(profile,group.group_id,'com.company.generated.components.c' + package_revision[:16],
             {key:plan.components[key] for key in group.members}),
         components={key: plan.components[key].model_dump(mode='json') for key in group.members},
@@ -128,17 +92,6 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
         prerequisite_components=dependencies, java_version=profile.java_version, requirements=requirements,
         validation_scope='build_and_tests', behavioral_equivalence='not_established',
         comparison_limitations=['No independent component invocation adapter; whole configured-unit comparison remains required.'])
-    from tools.framework_boundaries.requests import dependency_boundaries
-    framework_evidence.extend(dependency_boundaries(plan, group))
-    if composed is not None:
-        from tools.framework_boundaries.composition import composition_boundaries
-        framework_evidence.extend(composition_boundaries(composed, boundaries))
-    if framework_evidence:
-        from tools.framework_boundaries.requests import attach_framework_context
-        attach_framework_context(request, framework_evidence)
-    if lifecycle_evidence:
-        request['format_lifecycles'] = lifecycle_evidence
-        request['comparison_limitations'] = ['Standalone lifecycle comparisons are explicit diagnostics; component build/tests do not replace whole configured-unit comparison.']
     from runtime.retained_libraries.catalog import plan_libraries
     if boundaries.get('analysis_classpath_hash'):
         request['analysis_classpath_hash'] = boundaries['analysis_classpath_hash']
@@ -165,12 +118,9 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     elif any('format_wrapper' in plan.components[key].roles for key in group.members):
         request['kind']='format_implementation'
     from runtime.component_conversion.format_chains import attach_format_chains
-    attach_format_chains(request,plan,group,units or {},boundaries=boundaries)
+    attach_format_chains(request,plan,group,units or {})
     from agents.behavior_conversion.step_component import step_instruction
     specific = step_instruction(request['kind'])
-    if lifecycle_evidence:
-        from agents.behavior_conversion.format_component import FORMAT_LIFECYCLE_INSTRUCTION
-        specific += '\n' + FORMAT_LIFECYCLE_INSTRUCTION
     if skip_facts:
         from runtime.behavior_conversion.verification_mode import test_based_mode
         specific+= ('\nSupported test-based conversion: parser facts and fact validation are disabled. Leave checklist mappings empty and checklist_answers null. Preserve all source behavior, API, settings, dependency, chain, compilation and JUnit requirements.' if test_based_mode(profile) else
@@ -189,9 +139,6 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
     from runtime.behavior_conversion.typed_boundaries import attach_typed_boundary, INSTRUCTION as TYPED_BOUNDARY_INSTRUCTION
     if attach_typed_boundary(request):
         specific += '\n' + TYPED_BOUNDARY_INSTRUCTION
-    if framework_evidence:
-        from tools.framework_boundaries.requests import INSTRUCTION as FRAMEWORK_INSTRUCTION
-        specific += '\n' + FRAMEWORK_INSTRUCTION
     request['component_generation_policy'] = digest(dict(instruction=instruction_factory()+specific, schema=schema.model_json_schema()))
     from runtime.behavior_conversion.verification_mode import conversion_mode,policy_payload
     if conversion_mode(profile):
@@ -237,10 +184,6 @@ def build_component_request(plan, group, boundaries, dependencies, profile, *, c
             configuration_mode='specialized' if node.kind in {'configured_step','format_composition'} else 'parameterized',
             evidence_ids=[own],dependencies=node.dependencies)
     instruction = instruction_factory(request.get('known_dependencies', [])) + specific
-    if not profile.comparison_testing_enabled:
-        request['comparison_limitations'] = ['Comparison testing is disabled; original-versus-native equivalence is not assessed. Native compilation and executed JUnit tests remain required.']
-        instruction += ('\nFor this request comparison_testing_enabled is false. Do not generate or run original Composer/native comparison tests, comparison adapters or comparison scenarios. '
-                        'Any earlier requirement for paired comparison is disabled for this run. Preserve the complete source-derived business behavior and all native compilation/JUnit requirements; original entry points remain evidence, not instructions to execute Composer.')
     from agents.behavior_conversion.native_instructions import java_compatibility_instruction
     instruction += '\n' + java_compatibility_instruction(profile.java_version)
     # The same encoder runs again with correction feedback immediately before each actual request.

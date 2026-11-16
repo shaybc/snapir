@@ -31,14 +31,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", nargs="?", choices=["start", "status", "resume", "approve", "reject"])
     parser.add_argument("--config")
     parser.add_argument("--run-id")
-    parser.add_argument("--framework-config", help="Framework-only YAML update for an existing run; no new intake")
     parser.add_argument('--connection-answers', help='JSON list of last-resort service/driver decisions for Resume')
     parser.add_argument("--gate", type=lambda value: 'plan' if value == 'plan' else int(value), choices=[1, 2, 3, 4, 5, 'plan'])
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Enable detailed file diagnostics; keep console progress concise.")
     args = parser.parse_args(argv)
-    if args.framework_config and args.command not in {None, 'resume'}:
-        parser.error('--framework-config is only supported for resume')
     diagnostics = console_diagnostics(args.verbose)
     diagnostics.__enter__()
     preferred_run = None
@@ -81,17 +78,7 @@ def main(argv: list[str] | None = None) -> int:
                     run_id = args.run_id or (choose_run_name(args.config, profile.output_root) if is_interactive()
                                              else suggested_run_name(args.config))
                     validate_run_name(profile.output_root, run_id)
-                try:
-                    directory = run_pipeline(profile, run_id, args.config)
-                except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
-                    if not command_selected_from_menu:
-                        raise
-                    print(f"Migration error: {sanitize_diagnostic(str(exc))}")
-                    if args.verbose:
-                        print("Detailed diagnostics are saved in the run's logs folder when a run was opened.")
-                    args.run_id = None
-                    args.command = None
-                    continue
+                directory = run_pipeline(profile, run_id, args.config)
                 preferred_run = str(directory)
                 if command_selected_from_menu:
                     print(f"Run created: {run_id}")
@@ -138,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
                     from pathlib import Path
                     answers = json.loads(Path(args.connection_answers).read_text()) if args.connection_answers else None
                     answer_connection_questions(directory, answers=answers)
-                    resumed_directory = resume_pipeline(str(directory.parent), directory.name, **({'framework_config': args.framework_config} if args.framework_config else {}))
+                    resumed_directory = resume_pipeline(str(directory.parent), directory.name)
                     database = run_database_path(directory)
                     with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as conn:
                         result = conn.execute("SELECT status, current_phase FROM runs WHERE run_id=?",
@@ -213,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
                 from pathlib import Path
                 answers = json.loads(Path(args.connection_answers).read_text())
                 answer_connection_questions(directory, answers=answers)
-            print(f"Run workspace: {resume_pipeline(profile.output_root, args.run_id, **({'framework_config': args.framework_config} if args.framework_config else {}))}")
+            print(f"Run workspace: {resume_pipeline(profile.output_root, args.run_id)}")
         elif args.command in {"approve", "reject"}:
             if not args.run_id or not args.gate:
                 parser.error("approval commands require --run-id and --gate")

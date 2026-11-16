@@ -15,28 +15,9 @@ final class EntryMethod {
     static void write(Element entry, SourceScope sources, XMLStreamWriter output) throws XMLStreamException {
         String implementation = entry.getAttribute("implementation");
         var resolved = resolve(entry, sources);
-        if (resolved.toAst(MethodDeclaration.class).isEmpty()
-                && sources.frameworkTypes.containsKey(resolved.declaringType().getQualifiedName())) {
-            Element library = sources.frameworkTypes.get(resolved.declaringType().getQualifiedName());
-            output.writeStartElement("framework-boundary");
-            output.writeAttribute("declaring_class", resolved.declaringType().getQualifiedName());
-            output.writeAttribute("signature", resolved.getQualifiedSignature());
-            output.writeAttribute("method", resolved.getName());
-            output.writeAttribute("returns", resolved.getReturnType().describe());
-            output.writeAttribute("path", library.getAttribute("path"));
-            output.writeAttribute("sha256", library.getAttribute("sha256"));
-            for (int index = 0; index < resolved.getNumberOfParams(); index++) {
-                output.writeEmptyElement("parameter");
-                output.writeAttribute("type", resolved.getParam(index).getType().describe());
-            }
-            output.writeEndElement();
-            return;
-        }
         MethodDeclaration method = resolved.toAst(MethodDeclaration.class)
-            .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source: declaring_class="
-                + resolved.declaringType().getQualifiedName() + "; signature=" + resolved.getQualifiedSignature()));
+            .orElseThrow(() -> new IllegalStateException("Entry method has no supplied Java source"));
         if (method.getBody().isEmpty()) throw new IllegalStateException("Entry method has no executable body");
-        if (FormatLifecycle.format(entry)) FormatLifecycle.sequence(entry, sources, resolved);
         var unit = method.findCompilationUnit().orElseThrow();
         Element source = sources.evidence(unit);
         var range = method.getRange().orElseThrow();
@@ -53,31 +34,20 @@ final class EntryMethod {
         output.writeCharacters(method.getTokenRange().orElseThrow().toString());
         output.writeEndElement();
         output.writeEndElement();
-        if (FormatLifecycle.format(entry)) FormatLifecycle.write(entry, sources, resolved, output);
     }
 
     static ResolvedMethodDeclaration resolve(Element entry, SourceScope sources) {
         String implementation = entry.getAttribute("implementation");
-        var declaration = sources.solverFor(implementation).solveType(implementation);
+        var declaration = sources.solver.solveType(implementation);
         List<ResolvedMethodDeclaration> matches = new ArrayList<>();
         // Prefer the actual override before examining inherited methods.
-        if (FormatLifecycle.format(entry)) {
-            for (var method : FormatLifecycle.methods(entry,sources)) if (matches(entry,method)) matches.add(method);
-        } else for (var method : declaration.getDeclaredMethods()) {
+        for (var method : declaration.getDeclaredMethods()) {
             if (matches(entry, method)) matches.add(method);
         }
-        if (matches.isEmpty() && !FormatLifecycle.format(entry)) {
+        if (matches.isEmpty()) {
             for (var usage : declaration.getAllMethods()) {
                 if (matches(entry, usage.getDeclaration())) matches.add(usage.getDeclaration());
             }
-        }
-        if (matches.isEmpty()) {
-            var binary = FrameworkBoundary.entry(entry, sources, declaration);
-            if (binary != null) matches.add(binary);
-        }
-        if (matches.isEmpty()) {
-            var alternative = FormatLifecycle.fallback(entry, sources);
-            if (alternative != null) matches.add(alternative);
         }
         if (matches.size() != 1) throw new IllegalStateException("Entry method must resolve uniquely: " + implementation + "." + entry.getAttribute("method") + " (matches=" + matches.size() + ")");
         return matches.get(0);

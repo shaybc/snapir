@@ -13,7 +13,6 @@ from runtime.behavior_conversion.validation import build_candidate
 from runtime.component_conversion.scope import require_component_task
 from tools.composer_mapper_tools.scoped_intake_evidence import file_digest
 from tools.state_store_tools.conversion_components import register_component_contracts, save_component_results
-from runtime.behavior_conversion.verification_mode import format_comparison_enabled
 
 
 def owned_component_sources(files, dependency_files, extracted=()):
@@ -159,7 +158,7 @@ class ComponentCandidateValidator:
                 session.complete(staged,context,verified_bundle,build_validation=validation.model_dump(mode='json'))
                 comparison=retain_format_evidence(session,project)
             from runtime.test_assets.preparation import enabled as shared_assets_enabled
-            if format_comparison_enabled(self.profile) and (self.request.get('configured_format') is not None or
+            if self.profile.format_comparison.enabled and (self.request.get('configured_format') is not None or
                     shared_assets_enabled(self.profile) and self.request.get('configured_unit') is not None):
                 from runtime.behavior_conversion.verification_classpath import native_runtime_classpath
                 try:
@@ -176,7 +175,7 @@ class ComponentCandidateValidator:
             path = project / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding='utf-8', newline='\n')
-        if format_comparison_enabled(self.profile) and self.request.get('configured_format') is not None:
+        if self.profile.format_comparison.enabled and self.request.get('configured_format') is not None:
             from runtime.format_comparison.component_diagnostics import diagnose_component
             diagnose_component(self, bundle, all_files, project / 'format-diagnostic', native_classpath=diagnostic_classpath)
         if self.request.get('configured_unit') is not None:
@@ -187,7 +186,6 @@ class ComponentCandidateValidator:
         for key in self.group.members:
             report_name = 'component-' + key[-16:] + '.json'
             report = dict(component_id=key, input_revision=registered['input_revision'], contract_revision=registered['contract_revision'],
-                comparison_testing_enabled=self.profile.comparison_testing_enabled,
                 files=manifest, validation_scope='build_and_tests', validation=validation, required_tests=required_tests,
                 owned_sources=owned_component_sources(files,self.dependency_files,self.owned_dependency_sources),
                 dependencies=[item.model_dump(mode='json') for item in dependencies],
@@ -198,8 +196,6 @@ class ComponentCandidateValidator:
             from runtime.test_assets.preparation import current
             if self.request.get('analysis_classpath_hash'):
                 report['analysis_classpath_hash'] = self.request['analysis_classpath_hash']
-            if self.request.get('framework_boundaries'):
-                report['framework_boundaries'] = self.request['framework_boundaries']
             assets=current()
             if assets:report['test_assets']=dict(manifest_hash=assets['manifest_hash'],
                 resource_path='src/test/resources/shared-test-assets/'+assets['manifest_hash'],

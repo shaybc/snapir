@@ -26,7 +26,6 @@ def unit_for_case(plan, case):
         if hashlib.sha256(source['content'].encode('utf-8')).hexdigest() != source['content_hash']:
             raise ValueError('Original source hash does not match supplied bytes')
     if plan.scope == 'basic':
-        unit['format_scope'] = 'basic'
         node = unit['effective_configuration']
         if node.get('children') or node.get('decorators') or not node.get('java_class'):
             raise ValueError('Basic comparison requires an explicit undecorated implementing root')
@@ -41,10 +40,10 @@ def unit_for_case(plan, case):
     return unit
 
 
-def analyze_unit(unit, tool, *, collect_facts=True, step_implementation=None, original_classpath=()):
+def analyze_unit(unit, tool, *, collect_facts=True, step_implementation=None):
     """Reuse parser/reachability discovery for real instrumentation and observed branch probes."""
     report = build_boundary_report({'operations': {'diagnostic': {'units': [unit]}}}, tool_jar=tool,
-                                  collect_checklists=collect_facts,**({'original_classpath':original_classpath} if original_classpath else {}),**({'mappings':{'opStep':step_implementation}} if step_implementation else {}))
+                                  collect_checklists=collect_facts,**({'mappings':{'opStep':step_implementation}} if step_implementation else {}))
     boundary = UnitVerificationBoundary.model_validate(report['boundaries'][unit['unit_id']])
     if boundary.analysis_status != 'identified' or boundary.issues:
         raise ValueError('Original boundary cannot be identified: ' + '; '.join(boundary.issues))

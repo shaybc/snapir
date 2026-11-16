@@ -1,32 +1,14 @@
 """Select an explicit verification policy without altering legacy receipt meanings."""
 
 
-def comparison_testing_enabled(profile):
-    """The master switch leaves native compilation and generated JUnit checks enabled."""
-    return getattr(profile, 'comparison_testing_enabled', True)
-
-
-def format_comparison_enabled(profile):
-    """Honor both the master switch and the existing optional diagnostic setting."""
-    return comparison_testing_enabled(profile) and profile.format_comparison.enabled
-
-
-def verification_settings(profile):
-    """Use conversion readiness instead of paired execution when comparisons are off."""
-    settings = getattr(profile, 'executable_verification', None)
-    if not comparison_testing_enabled(profile) and getattr(settings, 'mode', None) in {'checklist_v1', 'executable_boundary_v1'}:
-        return settings.model_copy(update=dict(mode='conversion_checklist_v1'))
-    return settings
-
-
 def executable_mode(profile):
     """Only the explicitly selected alternative may omit AI checklist citations."""
-    return verification_settings(profile).mode=='executable_boundary_v1'
+    return profile.executable_verification.mode=='executable_boundary_v1'
 
 
 def conversion_mode(profile):
     """Conversion readiness requires mappings/build/JUnit, without paired execution."""
-    return getattr(verification_settings(profile),'mode',None) in {'conversion_checklist_v1','test_based_v1'}
+    return getattr(getattr(profile,'executable_verification',None),'mode',None) in {'conversion_checklist_v1','test_based_v1'}
 
 
 def test_based_mode(profile_or_settings):
@@ -56,15 +38,7 @@ def conversion_version(profile):
 
 def policy_payload(profile):
     """Bind requests, cached stages and reuse to the complete verification policy."""
-    data = _policy_payload(profile)
-    if not comparison_testing_enabled(profile):
-        data['comparison_testing_enabled'] = False
-    return data
-
-
-def _policy_payload(profile):
-    """Retain existing enabled-policy identities and separate conversion-only receipts."""
-    data=verification_settings(profile).model_dump(mode='json')
+    data=profile.executable_verification.model_dump(mode='json')
     data.pop('experimental_disable_facts',None)
     if test_based_mode(profile):
         return dict(mode='test_based_v1', schema_version='test-based-conversion-v1',

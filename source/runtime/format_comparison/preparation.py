@@ -3,7 +3,6 @@ import json
 from models.format_comparison_plan import FormatComparisonPlan
 from runtime.format_comparison.bindings import propose_bindings
 from runtime.format_comparison.context_discovery import discover_context
-from runtime.behavior_conversion.verification_mode import format_comparison_enabled
 
 
 def prepare_plan(label, scope, unit, native_sources, cases, profile, directory, *, entries=None, model_call=None):
@@ -14,7 +13,7 @@ def prepare_plan(label, scope, unit, native_sources, cases, profile, directory, 
     Missing wiring produces a retained preparation report and no fabricated plan.
     """
     directory.mkdir(parents=True, exist_ok=True)
-    if not format_comparison_enabled(profile):
+    if not profile.format_comparison.enabled:
         raise ValueError('Diagnostic preparation is disabled')
     unresolved = []
     discovery = None

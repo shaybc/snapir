@@ -32,7 +32,6 @@ def test_default_wizard_saves_full_flow_without_legacy_questions(project, monkey
     assert not profile.executable_verification.experimental_disable_facts
     assert profile.test_preparation.mode == 'ai_shared_fixtures_v1'
     assert profile.format_comparison.enabled and not profile.format_comparison.collect_facts
-    assert profile.comparison_testing_enabled
     assert profile.microservice.enabled and profile.microservice.require_helm_validation
     assert profile.model_provider == 'litellm'
     assert profile.model_api_key_environment == 'GEMINI_API_KEY'
@@ -53,12 +52,6 @@ def test_fixed_policy_preserves_helm_and_service_inputs():
     assert profile.deployment_environment == 'qa'
     assert profile.deployment_values['XML/Other']['internal_base_url'] == 'http://other:8080'
     assert profile.scoped_native_mode == 'component_first_v1' and profile.model_provider == 'litellm'
-
-
-def test_default_configuration_preserves_comparison_opt_out():
-    profile = PipelineConfiguration.model_validate(completed_settings({'comparison_testing_enabled': False, 'source_workspace_id': 'bank'}))
-    assert not profile.comparison_testing_enabled
-    assert profile.format_comparison.enabled  # Detailed preferences survive re-enabling the master switch.
 
 
 def test_review_cannot_save_a_different_map_identity(tmp_path, monkeypatch):

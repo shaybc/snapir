@@ -43,9 +43,6 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
                         ElementTree.SubElement(project_node, 'visible-source', identity=identity)
                     for library in project['libraries']:
                         ElementTree.SubElement(project_node, 'library', **library)
-            from tools.framework_boundaries.inventory import current
-            for name, library in current().items():
-                ElementTree.SubElement(node, 'framework-class', name=name, **library)
             for source in scope['sources']:
                 child = ElementTree.SubElement(node, 'source', identity=source['identity'], hash=source['content_hash'])
                 if context:
@@ -54,7 +51,7 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
             for boundary in scope['boundaries']:
                 entry = ElementTree.SubElement(node, 'entry', id=boundary.unit_id,
                     implementation=boundary.implementation_class, method=boundary.method_name,
-                    returns=boundary.return_contract, kind=boundary.kind, format_scope=boundary.format_scope)
+                    returns=boundary.return_contract, kind=boundary.kind)
                 for parameter in boundary.parameter_contract:
                     ElementTree.SubElement(entry, 'parameter', type=parameter)
                 for name in boundary.setup_class_roots:
@@ -84,10 +81,4 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
         if any(scope.get('classpath') for scope in scopes.values()):
             if report.get('classpath_protocol') != 'project-classpath-v1':
                 raise ValueError('Boundary analyzer JAR lacks project classpath support; rebuild source/behavior-verification-java/pom.xml')
-        if any(boundary.kind != 'configured_step' for scope in scopes.values() for boundary in scope['boundaries']):
-            if report.get('format_lifecycle_protocol') != 'format-lifecycle-v1':
-                raise ValueError('Boundary analyzer JAR lacks format lifecycle support; rebuild source/behavior-verification-java/pom.xml')
-        from tools.framework_boundaries.inventory import current
-        if current() and report.get('framework_boundary_protocol') != 'framework-binary-v1':
-            raise ValueError('Boundary analyzer JAR lacks framework boundary support; rebuild source/behavior-verification-java/pom.xml')
         return report, tool_hash

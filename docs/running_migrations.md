@@ -1,28 +1,5 @@
 # Running migration intake
 
-## Enable or disable comparison testing
-
-The default configuration wizard offers **Compare original Composer and generated Java**.
-It defaults to enabled. To change it in a YAML configuration, use:
-
-```yaml
-comparison_testing_enabled: false
-```
-
-Use `true` to enable it again. When omitted, it defaults to `true`.
-The switch controls original-versus-generated comparison preparation and execution
-for formats, operation steps, and unit verification. It does not disable compilation,
-generated Java/JUnit tests, source analysis, or framework boundary handling.
-Existing detailed `format_comparison` preferences remain intact.
-
-For an existing run, set the same boolean in its saved `state/profile.json` before
-resuming. Resume reads that saved profile; changing only the YAML does not update
-the existing run. Conversion-readiness records produced with comparisons disabled
-state `behavioral_equivalence: not_assessed`; they do not establish equivalence. Changing the switch changes
-conversion/reuse policy identities, so cached results are revalidated or regenerated
-under the selected policy rather than promoted as comparison-verified evidence.
-The switch alone does not invalidate saved intake or mapping checkpoints.
-
 For large workspaces, the configuration wizard offers **Reusable AST index for
 large workspaces** when creating a map. Mapping remains global; converter intake
 then loads the selected operation/dependency closure from persisted facts. See
@@ -398,73 +375,6 @@ created in reuse mode.
 
 ## Operation without public website access
 
-### Conversion AI diagnostics
-
-Run `diagnose-run.cmd` and choose a saved run, or supply its folder as an argument.
-At conversion checkpoints the command reports AI activity per conversion target
-(basic format, decorator, configured format, OP step, shared component or unit),
-including consuming operations. It skips earlier boundary/indexing investigations.
-Pre-conversion preparation checkpoints retain the boundary diagnostic. Other stages
-are identified without running an unrelated earlier-stage investigation.
-
-The report separates request budget checks, generation/correction attempts, delivery
-retries, and saved validation/reuse results. An oversized check is not a transmitted
-request. Received text, HTTP 200, valid JSON, component build/tests and whole-unit
-acceptance are separate facts. Missing HTTP status stays `not captured`; unfinished
-attempts stay `in_progress_or_unknown`. Saved receipts are evidence of the recorded
-outcome, not a new verification of source freshness or whole-operation equivalence.
-
-Console output and `work/diagnostics/<run-name>/conversion-ai-summary.txt` summarize
-the history. `conversion-ai-summary.json` and readable target files under `targets/`
-retain attempt references. `materials/<content-hash>/` holds available `request.json`,
-`instructions.txt`, `response.txt`, redacted `error.txt` and extracted sources with original filenames
-where provenance resolves them. Identical application material is shared by hash;
-the request itself is not deduplicated or changed. Existing oversized exports remain
-available alongside the report. Exports do not change the saved run or retry budgets.
-
-The command also writes `work/diagnostics/<run-name>/index.html`. Open it directly
-in a browser; its styling, navigation, filters and report data are local files under
-`assets/`, so no web server or internet access is required. Keep that folder with
-the page when copying the dashboard. Rerun the diagnostic to refresh the snapshot.
-
-The dashboard starts with the same stage checklist as the menu progress display.
-During AI conversion it defaults to failures and blockers, with filters for status,
-component type, consuming operation and format/unformat direction. Component details
-link prerequisites and dependents, distinguish conversion attempts from delivery
-retries, and link captured request, instruction, response and error files. HTTP status
-and unrecorded evidence remain explicitly unknown. A saved validation result is not
-automatically whole-component or whole-operation acceptance.
-
-The collapsed saved-evidence view reads existing source-index and boundary-analysis
-reports without rerunning those stages or opening original workspace sources. Indexed
-classes and analyzed boundaries are labelled separately from native conversion results.
-Reports exceeding the 32 MiB dashboard metadata limit are explicitly skipped. Existing
-reports, captured requests and generated files can change during an active run; this is
-an observation, not an atomic snapshot of all filesystem artifacts.
-
-`Show exported files` lists materials referenced by the current snapshot. Folder links
-depend on browser support; the copyable folder path is the reliable way to open the
-directory in Explorer. Conversion diagnostics no longer invoke the legacy oversized
-exporter after the AI report. Old hash folders and other diagnostic files are retained,
-but are not included just because they already exist in the export directory.
-
-Future runs retain correlated events in `reports/model_attempts/events.jsonl` and
-exact application text in its checksum-addressed `blobs/` folder while model
-diagnostics are active. API credentials and transport headers are not captured.
-Native adapter HTTP hooks capture status and request identifiers when exposed;
-LiteLLM/provider versions that do not expose them leave status unknown. Capture
-failures warn without changing model execution. Full prompts and source/response
-text stay in local materials, not the console summary.
-
-Historical runs are diagnosed from existing database rows, reports, captures and
-incrementally read logs. Historical request rows may include later validation
-feedback. Missing instructions or exact transport details are not reconstructed.
-Staged reservations and generation rows are not counted as separate requests;
-ambiguous legacy log lines are reported as uncorrelated rather than assigned by
-guesswork. The diagnostic can run during conversion; its observation time is shown,
-and later activity may not yet be present. It performs no AI calls, Java builds,
-original-source parsing, connector reads, or migration-state writes.
-
 `run.cmd` and `run-verbose.cmd` default `LITELLM_LOCAL_MODEL_COST_MAP=True`,
 which makes LiteLLM use its bundled model pricing metadata. An explicitly set
 environment value takes precedence. When launching Python directly, set this
@@ -481,37 +391,10 @@ to the existing validation cache on first use; validation never downloads it.
 Other versions require a matching bundled or pre-populated cached schema.
 
 The converter measures model requests in characters and UTF-8 bytes; it does not
-call a tokenizer for this budget. LiteLLM may still use tokenizers internally to
-estimate usage/cost when the endpoint does not return token counts.
-
-LiteLLM execution prepares a local tokenizer cache before importing the adapter or
-starting model retries, including when Python is launched directly. The repository
-bundles `cl100k_base` and `o200k_base` under
-`source/runtime/model_execution/tokenizer_assets`, with upstream URLs, SHA-256
-checksums, license and tested dependency versions. Pull/copy this directory with
-the code; no tokenizer download is needed on the enterprise machine.
-
-The default cache is `<Snapir root>/work/cache/tokenizers`. Set
-`TIKTOKEN_CACHE_DIR` or `CUSTOM_TIKTOKEN_CACHE_DIR` to select another directory.
-If both are set, they must resolve to the same location. `DATA_GYM_CACHE_DIR` is
-honored when neither is set. Empty paths are rejected because they disable
-caching. Preparation sets both tiktoken and LiteLLM cache variables so LiteLLM
-cannot silently replace the selected path. Missing or damaged cache entries are
-rebuilt atomically from verified bundled data.
-
-Missing/corrupt bundled data, cache permission errors, or incompatible tokenizer
-initialization stop execution with an `Offline tokenizer setup failed` message
-before a model attempt. Restore the bundled directory from the repository and
-check the selected cache permissions and installed dependency versions. Git
-attributes preserve the tokenizer bytes across Windows/Unix checkouts; do not
-edit their line endings. Public data fetching through tiktoken is disabled after
-preparation: another encoding requiring an uncached asset fails rather than
-downloading. Additional provider-specific tokenizers, such as Hugging Face
-tokenizers, require separately provisioned assets; this is not a blanket offline
-mode for every LiteLLM provider. Native Gemini and mock execution are unchanged.
-The model endpoint must still be reachable, and its transport failures retain
-the existing retry behavior. Character budgets remain estimates, not Gemini
-token counts, and are not changed by this cache preparation.
+call a tokenizer directly. LiteLLM may use tokenizers internally to estimate
+usage/cost when the endpoint does not return token counts. Depending on the model
+and installed LiteLLM version, tokenizer assets may need to be cached before
+moving to a restricted network; the pricing setting does not disable tokenizers.
 
 Configure pip and Maven to use accessible package repositories, the model profile
 to use the on-premises AI endpoint, container images to use the internal registry,
@@ -578,128 +461,3 @@ After accepted Gate 3, resume stages each final service under the run's `service
 Runtime persists generation attempts and input/output fingerprints. Unchanged successful projects can be reused; changed projects require regeneration, and failed attempts remain bounded across resume. Validation runs managed compilation, Maven tests and packaging with transitive dependency checks and the IBM source guard. No test reports means tests are unavailable, not passed.
 
 Successful builds stop at `validation_evidence_pending`. XML compatibility, legacy traces and behavioral equivalence are explicitly unavailable until runtime evidence is supplied; this is not a completed migration. Runtime endpoint validation, final reporting and Gate 5 remain separate work. Structured correction routing is available, but runtime evidence producers still need integration. Mock generation requires explicit fixtures. Live model and enterprise repository execution has not been verified.
-
-
-### Binary-only Composer framework boundaries
-
-Set `framework_jars` to a list of original Composer framework JAR paths. Relative paths resolve against the YAML file containing the setting. The archives identify exact classes, not an entire IBM namespace. Do not list ordinary third-party libraries here; their existing dependency rules still apply.
-
-```yaml
-framework_jars:
-  - C:/Workspace/composer/lib/composer-runtime.jar
-  - C:/Workspace/composer/lib/composer-formats.jar
-```
-
-Unavailable source for a configured framework method is non-blocking context. Generation receives captured application code, configuration, and the existing Composer explanations; it does not receive decompiled framework implementations or convert the framework. Supplied application overrides remain conversion targets. Missing application source and actual validation failures are still reported.
-
-The real framework binaries remain available on the original-side comparison classpath. Native output must implement business behavior without Composer runtime dependencies. Build/tests and original-versus-native comparison keep their existing distinct acceptance meanings.
-
-After updating Snapir, rebuild the analyzer with Java 25 before the first framework-aware resume:
-
-```powershell
-mvn -q -f source/behavior-verification-java/pom.xml package
-```
-
-To add this setting to an existing blocked or paused migration, create a YAML file containing **only** `framework_jars`, then resume:
-
-```powershell
-python source/workspace_intake.py resume --config path/to/migration.yaml --run-id YOUR_EXISTING_RUN --framework-config path/to/framework-only.yaml
-```
-
-Alternatively, open the normal menu with the update file, choose **Resume a migration**, and select the saved run. This route does not require the original start YAML:
-
-```powershell
-python source/workspace_intake.py --framework-config path/to/framework-only.yaml
-```
-
-The migration profile selects the existing output location in the direct command; the saved run profile supplies the continuation settings. The framework-only update resolves paths against its own YAML file, validates archives, updates the saved profile, and records an audit revision in the existing run database. It does not invoke intake, capture, or the mapper. Existing preparation evidence and unaffected valid artifacts are reused; affected boundary results are refreshed and generated artifacts are revalidated or corrected where necessary. Normal source/map integrity checks remain active. Subsequent resumes need no update flag.
-
-An explicit `framework_jars: []` removes the ownership classification through the same audited update. Other settings cannot be changed using this option. Stop an active run before applying an update. Configuration errors do not clear existing progress.
-
-## Boundary analyzer progress and inactivity timeout
-
-Boundary reachability, format lifecycle, and parser-checklist analysis use
-`boundary_analysis_inactivity_timeout_seconds`, default `300` (five minutes).
-This is a positive number of seconds without observable progress, with no total
-runtime limit. New source/node work, stage transitions, increasing XML byte
-counters, and actual output-file growth reset the timer. Repeated stage messages,
-unchanged counters, slow-operation watchdog stack reports, ordinary diagnostic
-output, and the Python monitor heartbeat do not reset it. A single long operation
-with no observable advancement can still time out.
-
-For a new run, this optional top-level YAML entry sets the idle window:
-
-```yaml
-boundary_analysis_inactivity_timeout_seconds: 300
-```
-
-Existing runs automatically use 300 unless their saved `state/profile.json`
-contains a different value. To change the idle window for a saved run, add or
-update this top-level JSON property, preserving the rest of the profile:
-
-```json
-"boundary_analysis_inactivity_timeout_seconds": 600
-```
-
-Resume the same run normally. This execution setting does not invalidate saved
-source indexing, mapping, or the conversion-policy fingerprint. This timeout
-change is in Python; it does not require rebuilding the Java analyzer JAR.
-The dependency scanner retains its separate timeout and existing activity rules.
-
-If boundary analysis fails, its component-generation report stores one underlying
-failure with an ID, idle/elapsed time, output size, and last meaningful progress
-(where captured). Affected boundaries and component results link to that ID.
-Components whose prerequisites are blocked by that cause are marked as dependency
-consequences. Other conversion and validation failures remain separate. Rerun
-saved-run diagnostics to see the root failure in text, JSON, and the HTML dashboard;
-this does not rerun analysis. Older reports without explicit causal links retain
-their original reasons rather than inventing a dependency explanation.
-
-## Inherited OP step methods
-
-An OP step does not need to declare `execute()` or a Composer business hook on
-its concrete class. The analyzer resolves the existing public instance
-`int execute()` contract through the class hierarchy. Conversion requests retain
-reachable application methods and parser obligations from the selected
-implementation's verified supporting sources, including intermediate superclasses.
-No superclass names, hook names, or inheritance depths are prescribed.
-
-The existing framework JAR inventory and Composer Manual guidance still define
-the framework boundary. Binary framework code is not converted or reconstructed;
-the original side of comparisons continues to run with the real JARs. Existing
-analysis uncertainty and source-revision checks remain in force.
-
-Resume the same saved run with its existing configuration. No new settings,
-re-indexing, capture, mapping reset, or analyzer rebuild are required for this
-Python request-selection correction. Normal freshness checks still run. Saved
-components whose method/checklist obligations change must pass the existing
-reuse checks and may need regeneration; compatible results remain reusable.
-
-## CCXML context and collection entry methods
-
-Original format analysis recognizes inherited `unformatContext(String, Context)`,
-`unformatKeyedCollection(String, KeyedCollection)`, and `formatContext(Context)`
-entries, in addition to the existing `format(Context)`, `format(KeyedCollection)`,
-and scalar-field methods. Existing basic field-entry selection remains intact.
-The boundary records the selected method's actual declaring class, signature,
-return type, and parameter types; tests use that recorded invocation.
-
-Context wrappers execute normally, including hooks and side effects called by
-the original body. The adapter does not add extra hook calls for these entries.
-Direct collection-entry comparisons must explicitly supply the original collection
-object through the existing original-input recipe mechanism. Missing bindings
-remain diagnostic failures. Configured framework JARs still supply proprietary
-code on the original side; their source is not required or reconstructed.
-
-After updating the Python code, rebuild the analyzer/harness with JDK 25 selected:
-
-```text
-mvn -q -f source/behavior-verification-java/pom.xml package
-```
-
-Then resume the same migration using its saved profile and framework-JAR settings.
-No new configuration or intake/mapping reset is required. Normal compatibility
-checks revalidate saved results and can request correction when obligations change.
-This change only recognizes and invokes original entries. The AI still converts
-business behavior from the existing application evidence and Composer Manual;
-the converter does not implement XML parsing or recursive child-format processing.

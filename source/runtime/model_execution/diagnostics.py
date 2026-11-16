@@ -11,8 +11,7 @@ from runtime.model_execution.error_details import SafeDiagnosticFormatter
 def run_model_diagnostics(directory):
     """Attach run logging and retain oversized application request materials."""
     from runtime.behavior_conversion.oversized_request_capture import capture_for_run
-    from runtime.model_execution.attempt_diagnostics import capture_attempts_for_run
-    with capture_for_run(directory), capture_attempts_for_run(directory), _run_model_diagnostics(directory):
+    with capture_for_run(directory), _run_model_diagnostics(directory):
         yield
 
 

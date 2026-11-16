@@ -6,12 +6,11 @@ from models.native_unit_bundle import NativeSourceFile
 from runtime.test_assets.preparation import current,enabled
 from runtime.test_assets.materialization import comparison_plan
 from runtime.step_comparison.runner import run_step_comparison
-from runtime.behavior_conversion.verification_mode import format_comparison_enabled
 
 
 def diagnose_step(validator,files,directory,native_classpath):
     """Never change conversion acceptance, production or retry counters from a diagnostic."""
-    if not enabled(validator.profile) or not format_comparison_enabled(validator.profile):return
+    if not enabled(validator.profile) or not validator.profile.format_comparison.enabled:return
     root=Path(directory);root.mkdir(parents=True,exist_ok=True)
     try:
         assets=current()

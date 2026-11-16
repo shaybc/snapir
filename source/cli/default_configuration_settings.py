@@ -15,7 +15,6 @@ FIXED_SETTINGS = dict(conversion_strategy='behavior_units', scoped_native_mode='
 def completed_settings(values):
     """Return explicit immutable-policy choices merged with user inputs, without I/O."""
     result = {**values, **deepcopy(FIXED_SETTINGS)}
-    result['comparison_testing_enabled'] = values.get('comparison_testing_enabled', True)
     if values.get('microservice', {}).get('helm_executable'):
         result['microservice']['helm_executable'] = values['microservice']['helm_executable']
     return result

@@ -39,7 +39,6 @@ class PipelineConfiguration(BaseModel):
     behavior_triage_enabled: bool = False
     unit_mutation_testing: UnitMutationSettings = Field(default_factory=UnitMutationSettings)
     executable_verification: ExecutableVerificationSettings = Field(default_factory=ExecutableVerificationSettings)
-    comparison_testing_enabled: bool = True
     format_comparison: FormatComparisonSettings = Field(default_factory=FormatComparisonSettings)
     test_preparation: TestPreparationSettings = Field(default_factory=TestPreparationSettings)
     microservice: MicroserviceSettings = Field(default_factory=MicroserviceSettings)
@@ -67,7 +66,6 @@ class PipelineConfiguration(BaseModel):
     mapper_analysis: MapperAnalysisSettings = Field(default_factory=MapperAnalysisSettings)
     java_version: Literal[21, 25] = int(constants.JAVA_VERSION)
     java_home: str | None = constants.JAVA_HOME
-    boundary_analysis_inactivity_timeout_seconds: float = Field(default=300, gt=0)
     java_scan_inactivity_timeout_seconds: int = Field(default=constants.JAVA_SCAN_INACTIVITY_TIMEOUT_SECONDS, gt=0)
     output_root: str = constants.OUTPUT_ROOT
     channels: list[str] = Field(default_factory=lambda: deepcopy(constants.TARGET_CHANNELS), min_length=1)
@@ -78,7 +76,6 @@ class PipelineConfiguration(BaseModel):
     model_base_url: str = constants.LITELLM_BASE_URL
     auto_rerun_impacted_operations: bool = constants.AUTO_RERUN_IMPACTED_OPERATIONS
     model_provider: Literal["gemini", "litellm", "mock"] = constants.MODEL_PROVIDER
-    framework_jars: list[str] = Field(default_factory=list)
     classpath_jars: list[str] = Field(default_factory=lambda: deepcopy(constants.CLASSPATH_JARS))
     external_dependencies: list[ExternalDependencyRule] = Field(default_factory=list)
     composer_behavior_document: str = Field(default="docs/comp-manual/wsbcc_developer_manual_v2.md", exclude=True)

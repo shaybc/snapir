@@ -11,12 +11,11 @@ from runtime.model_execution.adk_executor import AdkExecutor
 from tools.behavior_verification.boundary_contracts import digest
 from tools.behavior_verification.input_scenarios import generate_input_scenarios
 from runtime.format_comparison.context_discovery import applies_to_direction
-from runtime.behavior_conversion.verification_mode import format_comparison_enabled
 
 
 def diagnose_component(validator, candidate, files, directory, *, model_call=None, native_classpath=()):
     """Diagnose a complete configured format only after its normal checks have succeeded."""
-    if not format_comparison_enabled(validator.profile) or not validator.request.get('configured_format'):
+    if not validator.profile.format_comparison.enabled or not validator.request.get('configured_format'):
         return None
     try:
         return _diagnose_component(validator, candidate, files, directory, model_call=model_call, native_classpath=native_classpath)

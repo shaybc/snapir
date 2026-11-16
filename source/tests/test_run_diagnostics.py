@@ -11,13 +11,6 @@ from tools.run_diagnostics.prepared_units import read_prepared_units
 from tools.run_diagnostics.report import database, diagnose, issue_summary
 
 
-def test_missing_entry_source_summary_retains_resolved_method():
-    issue = ('Entry method has no supplied Java source: declaring_class=com.ibm.dse.base.StringFormat; '
-        'signature=com.ibm.dse.base.StringFormat.formatField(com.ibm.dse.base.DataField)')
-    assert issue_summary([issue]) == issue
-    assert issue_summary(['Entry method has no supplied Java source']) == 'Entry method has no supplied Java source'
-
-
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data), encoding='utf-8')
@@ -34,7 +27,7 @@ def saved(tmp_path):
     with sqlite3.connect(state / 'migration.db') as conn:
         conn.executescript('CREATE TABLE runs(run_id,status,current_phase,run_config_json);'
             'CREATE TABLE scoped_source_definitions(run_id,kind,logical_id);')
-        conn.execute('INSERT INTO runs VALUES (?,?,?,?)', ('run', 'blocked', 'conversion_scoped_prepared',
+        conn.execute('INSERT INTO runs VALUES (?,?,?,?)', ('run', 'blocked', 'conversion_components_incomplete',
             json.dumps(dict(vault_root=str(vault)))))
         conn.execute('INSERT INTO scoped_source_definitions VALUES (?,?,?)', ('run', 'java_class', 'example.Work'))
     with sqlite3.connect(analysis) as conn:
@@ -116,7 +109,6 @@ def test_diagnostic_prints_complete_saved_analyzer_issues(saved):
     ('Entry method must resolve uniquely: example.Work.execute (matches=0)', 'No unique method'),
     ('Invalid Java source privateSourceValue', 'rejected supplied Java syntax'),
     ('Unknown problem password=privateSettingValue', 'see saved issue details'),
-    ('Converter boundary analysis inactivity timeout after 300 seconds without meaningful progress', 'stopped after no meaningful progress'),
     ('Converter boundary analysis timed out after 300 seconds; last progress: loading JAR', 'exceeded its total runtime limit'),
     ('Boundary analyzer JAR lacks project classpath support; rebuild analyzer', 'Analyzer JAR is outdated'),
     ('Boundary JAR missing, unreadable or invalid for project BANK: C:/libs/driver.jar', 'C:/libs/driver.jar'),
@@ -187,4 +179,4 @@ def test_numbered_selection_uses_existing_roots_without_filtering_failed_checkpo
     monkeypatch.setattr('cli.status_discovery.discover_run_roots', lambda project: [run.parent])
     monkeypatch.setattr('builtins.input', lambda message: '')
     main()
-    assert 'conversion_scoped_prepared' in capsys.readouterr().out
+    assert 'conversion_components_incomplete' in capsys.readouterr().out

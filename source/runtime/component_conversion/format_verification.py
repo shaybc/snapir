@@ -23,10 +23,9 @@ def format_bundle(candidate, request, dependency_files):
 
 def session_for(config,profile,unit,boundary):
     """Reuse existing parser/binding, controlled-input and source/native comparison policies."""
-    from runtime.behavior_conversion.verification_mode import verification_settings
     return UnitVerificationSession(config,unit,UnitVerificationBoundary.model_validate(boundary),tool=default_tool_path(),
         policy=profile.unit_verification_policy,authorizations=profile.unit_verification_authorizations,
-        mutation_settings=profile.unit_mutation_testing,executable_settings=verification_settings(profile))
+        mutation_settings=profile.unit_mutation_testing,executable_settings=profile.executable_verification)
 
 
 def retain_format_evidence(session, project):

@@ -9,7 +9,6 @@ from agents.behavior_conversion.test_scenarios import FIXTURES,JUNIT,COMPARISON
 from runtime.test_assets.validation import validate_bank,validate_suite
 from runtime.test_assets.store import publish,load
 from tools.conversion_tools.scoped_reuse.fingerprints import digest
-from runtime.behavior_conversion.verification_mode import format_comparison_enabled
 
 _assets=ContextVar('shared_test_assets',default=None)
 
@@ -40,7 +39,7 @@ def prepare(tasks,payload,production,inventory,prerequisites=(),*,test_scope=Non
     configured=payload.get('configured_format') or payload.get('configured_unit') or payload.get('selected_unit') or payload.get('unit') or payload
     kind=configured.get('kind') or payload.get('kind')
     direction={'response_format':'format','request_unformat':'unformat','configured_step':'step_execute'}.get(kind)
-    if direction in {'format','unformat'} and format_comparison_enabled(tasks.profile):
+    if direction in {'format','unformat'} and tasks.profile.format_comparison.enabled:
         from runtime.test_assets.original_evidence import complete_format_evidence
         payload=complete_format_evidence(payload,configured,tasks.profile,direction)
     request=dict(original_evidence=payload,boundary_kind=kind,production_files=[f.model_dump(mode='json') for f in production.files],
@@ -108,7 +107,7 @@ def prepare(tasks,payload,production,inventory,prerequisites=(),*,test_scope=Non
             JunitScenarioSuite,check_repaired_suite,request_limit=request_limit)
         if bank==previous_bank and junit==previous_suite:break
     comparisons=ComparisonScenarioSuite()
-    if direction and format_comparison_enabled(tasks.profile):
+    if direction and tasks.profile.format_comparison.enabled:
         comparisons=tasks.ask('comparison_scenarios',with_bank,COMPARISON,ComparisonScenarioSuite,
             lambda value:validate_suite(value,bank,tasks.profile.format_comparison.max_cases,direction=direction,native_sources=native_sources,unit=original_unit,external_contracts=contracts,api_inventory=inventory),request_limit=request_limit)
     from tools.conversion_tools.scoped_reuse.fingerprints import conversion_policy
@@ -116,8 +115,7 @@ def prepare(tasks,payload,production,inventory,prerequisites=(),*,test_scope=Non
     context=dict(source=digest(payload),production=digest(production.model_dump(mode='json')),prerequisites=digest(prerequisites),apis=digest(inventory),
         preparation=settings.model_dump(mode='json'),conversion_policy=conversion_policy(tasks.profile),runtime=runtime_source_revision(),
         preparation_instructions=digest([FIXTURES,JUNIT,COMPARISON]),
-        comparison=tasks.profile.format_comparison.model_dump(mode='json'),
-        comparison_testing_enabled=getattr(tasks.profile,'comparison_testing_enabled',True))
+        comparison=tasks.profile.format_comparison.model_dump(mode='json'))
     root,manifest=publish(Path(tasks.config.output_root)/'test-assets',tasks.identity,context,bank,junit,comparisons,
         definition_checks=['schemas','fixture_references','source_citations','scenario_limits','native_api_recipe_policy'])
     manifest_hash=digest(manifest.model_dump(mode='json'))

@@ -84,9 +84,6 @@
           "description": {
             "type": "string"
           },
-          "details": {
-            "type": "string"
-          },
           "parent": {
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
@@ -107,18 +104,7 @@
             }
           },
           "team": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "minItems": 1,
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            ]
+            "type": "string"
           },
           "status": {
             "type": "string",
@@ -155,12 +141,6 @@
             "items": {
               "type": "string"
             }
-          },
-          "edited": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
@@ -191,17 +171,8 @@
           "description": {
             "type": "string"
           },
-          "details": {
-            "type": "string"
-          },
           "technology": {
             "type": "string"
-          },
-          "edited": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "direction": {
             "type": "string",
@@ -233,65 +204,6 @@
         ],
         "additionalProperties": false
       }
-    },
-    "ignored": {
-      "type": "object",
-      "properties": {
-        "objects": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "actor",
-                  "system",
-                  "app",
-                  "store",
-                  "component",
-                  "group"
-                ]
-              },
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "type",
-              "name"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "connections": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "from": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
-              },
-              "to": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
-              }
-            },
-            "required": [
-              "from",
-              "to"
-            ],
-            "additionalProperties": false
-          }
-        }
-      },
-      "additionalProperties": false
     }
   },
   "required": [

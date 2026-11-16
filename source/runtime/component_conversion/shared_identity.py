@@ -22,10 +22,8 @@ def implementation_identity(plan, group, profile):
         pending.extend(node.dependencies)
     from tools.conversion_tools.component_identity import COMPONENT_POLICY_VERSION
     return content_hash(dict(roots=sorted(plan.components[key].label for key in group.members),
-                             **({'comparison_testing_enabled': False} if not getattr(profile,'comparison_testing_enabled',True) else {}),
                              resolution=sorted(seen.values(), key=lambda item: (item['kind'], item['label'])),
                              java_version=profile.java_version, policy=COMPONENT_POLICY_VERSION,
-                             **({'format_lifecycle_policy': 'format-lifecycle-v1'} if any({'format_leaf','format_wrapper','decorator'}.intersection(plan.components[key].roles) for key in group.members) else {}),
                              allowed_classes=sorted(profile.allowed_ibm_classes), allowed_artifacts=sorted(profile.allowed_ibm_artifacts)))
 
 

@@ -34,7 +34,7 @@ def partition_task(identity, request, original):
 
 
 @contextmanager
-def component_execution(conn, config, profile, classpath, preparation, *, include_steps=False, include_formats=False, boundaries=None):
+def component_execution(conn, config, profile, classpath, preparation, *, include_steps=False, include_formats=False):
     """Bind an explicit CF3 invocation; configured-unit generation remains gated separately."""
     if profile.scoped_native_mode != 'component_first_v1' or profile.conversion_strategy != 'behavior_units':
         raise ValueError('Basic components require the explicit component_first_v1 behavior mode')
@@ -42,7 +42,7 @@ def component_execution(conn, config, profile, classpath, preparation, *, includ
     selected = set(preparation['operations'])
     validate_checkpoints(conn, config, profile, classpath, selected)
     token = _execution.set(dict(conn=conn, config=config, profile=profile, classpath=classpath,
-        selected=selected, plan=plan, boundaries=boundaries, target=component_target(profile), include_steps=include_steps, include_formats=include_formats,
+        selected=selected, plan=plan, target=component_target(profile), include_steps=include_steps, include_formats=include_formats,
         units={unit['unit_id']: unit for item in preparation['operations'].values() for unit in item.get('units', [])}))
     try:
         yield
@@ -52,8 +52,6 @@ def component_execution(conn, config, profile, classpath, preparation, *, includ
 
 def require_component_task(conn, config, profile, identity, payload=None):
     """Recheck checkpoint/source/target bindings before model calls and candidate publication."""
-    from tools.framework_boundaries.inventory import verify
-    verify()
     partition = _partition_tasks.get()
     if partition and identity == partition[0] and payload is not None and payload.get('format_partition') is not None:
         if any(payload.get(key) != value for key, value in partition[1].items()):
@@ -90,11 +88,11 @@ def require_component_task(conn, config, profile, identity, payload=None):
         if step is not None and (payload.get('operation_calls') != step['operation_calls'] or payload.get('service_connections') != sorted(step['service_connections'],key=lambda item:item['connection_id'])):
             raise ValueError('Component request changed occurrence-specific external contracts')
         from runtime.component_conversion.source_evidence import validate_component_sources
-        validate_component_sources(execution['plan'], group, bindings, payload.get('sources', []), units=execution['units'])
+        validate_component_sources(execution['plan'], group, bindings, payload.get('sources', []))
         if composed is not None:
             from runtime.component_conversion.format_chains import attach_format_chains
             trusted=dict(configured_format=composed,requirements={})
-            attach_format_chains(trusted,execution['plan'],group,execution['units'],boundaries=execution.get('boundaries'))
+            attach_format_chains(trusted,execution['plan'],group,execution['units'])
             if any(payload.get(key)!=trusted[key] for key in ('format_chains','format_chain_policy')):
                 raise ValueError('Component request changed original decorator order/scope obligations')
     validate_checkpoints(conn, config, profile, execution['classpath'], execution['selected'])
