@@ -8,10 +8,16 @@ It imports no migration-converter runtime, reads no migration database, and does
 
 Python 3.11+, JDK 17+ and Maven are needed. Use the Java version configured in config.yaml.
 Maven builds only the metadata scanner infrastructure. Generated Java is never compiled or run.
-From this directory, create a Python environment and install requirements.txt:
+run.cmd validates the selected Python environment's requirements and their active transitive
+dependencies locally. If they are already satisfied, no installer or package index is contacted.
+Otherwise it runs pip install -r requirements.txt without --upgrade, then validates again.
+It installs into the selected interpreter, so an optional dedicated environment is recommended:
 
     python -m venv .venv
-    .venv\Scripts\python.exe -m pip install -r requirements.txt
+
+The launcher then validates the configured JDK and builds the scanner and its Maven dependencies
+only when the JAR is missing/invalid or its source/build files have changed. A failed installation
+or build stops startup. Composer projects and generated components are never built.
 
 Edit config.yaml. Its source, Java, Eclipse/JAR, Maven and model fields use the corresponding
 converter field names and structures. Copy those fields, not the entire converter configuration.
@@ -33,8 +39,9 @@ A different configuration is selected before the command:
 
     run.cmd --config "C:\organization\format-library.yaml" discover
 
-Discovery builds scanner/target/format-library-scanner-1.0.0-jar-with-dependencies.jar if absent.
-After changing scanner Java code use discover --rebuild-scanner. No live AI call happens during
+Startup and discovery share the same scanner freshness check for
+scanner/target/format-library-scanner-1.0.0-jar-with-dependencies.jar. Source changes rebuild it
+automatically; discover --rebuild-scanner explicitly forces a build. No live AI call happens during
 discovery, planning, preparation, status, or approval.
 
 Discovery identifies formats by configured FormatElement ancestry through source and JARs.

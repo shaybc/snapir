@@ -1,29 +1,15 @@
 """Run the isolated Java scanner; retain exact source and archive revisions."""
-import shutil
 import tempfile
 from pathlib import Path
 from format_library.classpaths import inventory
-from format_library.configuration import TOOL_ROOT, java_environment
+from format_library.java_prerequisites import SCANNER_JAR, ensure_scanner
 from format_library.files import file_hash, read_json, write_json
 from format_library.processes import run_process
 
-SCANNER_JAR = TOOL_ROOT / 'scanner/target/format-library-scanner-1.0.0-jar-with-dependencies.jar'
-
-
 def scan(config, *, build=False):
     """Discover classes and dependencies without invoking the converter or original classes."""
-    java, environment = java_environment(config)
+    java, environment = ensure_scanner(config, force=build)
     timeout = config['java_scan_inactivity_timeout_seconds']
-    if build or not SCANNER_JAR.is_file():
-        maven = shutil.which('mvn', path=environment['PATH']) or shutil.which('mvn.cmd', path=environment['PATH'])
-        if not maven:
-            raise ValueError('Maven is required to build the scanner infrastructure')
-        command = [maven, '-B', '-f', str(TOOL_ROOT / 'scanner/pom.xml')]
-        if config.get('maven_settings_path'):
-            command += ['-s', config['maven_settings_path']]
-        if config.get('maven_local_repository'):
-            command += ['-Dmaven.repo.local=' + config['maven_local_repository']]
-        run_process([*command, 'package'], environment, timeout, cwd=TOOL_ROOT)
     inputs = inventory(config)
     inputs.update(format_base_class=config['format_base_class'], decorator_base_classes=config['decorator_base_classes'],
                   framework_jars=config['framework_jars'])
