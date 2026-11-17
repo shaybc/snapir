@@ -47,18 +47,26 @@ def prepare(config, plan, names=()):
                             for name in group['members']}, files=[], binaries=[],
             preparation_hash=preparation_hash)
         source_files = sorted({plan['classes'][name]['file'] for name in group['source_classes']})
+        manifest['file_classes'] = {path: sorted(name for name, item in plan['classes'].items() if item.get('file') == path)
+                                    for path in source_files}
+        from format_library.source_layout import copied_source_paths
+        source_paths = copied_source_paths(source_files, manifest['file_classes'], plan['classes'])
+        manifest['source_layout'] = 'java-package-v1'
         projects = {plan['classes'][name]['project'] for name in group['source_classes']}
         libraries = sorted({path for item in plan['projects'] if item['id'] in projects for path in item['libraries']})
         for kind, paths in [('sources', source_files), ('jars', libraries)]:
             for original in paths:
                 path = Path(original)
                 if not path.is_file():
+                    if kind == 'jars' and plan.get('dependency_policy') == 'required-members-v1':
+                        manifest.setdefault('dependency_warnings', []).append('Missing declared classpath JAR: ' + original)
+                        continue
                     manifest['blockers'].append('Missing required input: ' + original)
                     continue
                 revision = file_hash(path)
                 if plan['hashes'].get(original) != revision:
                     raise ValueError('Input changed since discovery: ' + original)
-                relative = kind + '/' + digest(original)[:12] + '/' + path.name
+                relative = source_paths[original] if kind == 'sources' else kind + '/' + digest(original)[:12] + '/' + path.name
                 destination = inside(folder, relative)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, destination)

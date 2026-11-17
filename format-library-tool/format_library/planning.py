@@ -10,15 +10,17 @@ def build_plan(discovery):
     projects = {item['id']: item for item in discovery.get('projects', [])}
     closures, dependencies, blockers = {}, {}, {}
     for name in sorted(targets):
+        scope = discovery.get('dependency_scopes', {}).get(name, {})
         seen, pending, problems = set(), [name], list(discovery.get('issues', []))
         while pending:
             current = pending.pop()
             if current in seen or current not in classes:
                 continue
             seen.add(current)
-            item = classes[current]
+            item = scope.get(current, classes[current])
             problems.extend(current + ': ' + issue for issue in item.get('issues', []))
-            problems.extend(projects.get(item['project'], {}).get('issues', []))
+            if 'dependency_scopes' not in discovery:
+                problems.extend(projects.get(item['project'], {}).get('issues', []))
             pending.extend(item['dependencies'])
         closures[name] = sorted(seen)
         dependencies[name] = sorted((seen & targets) - {name})
@@ -50,6 +52,12 @@ def build_plan(discovery):
         prerequisites = sorted({owners[target] for member in members for target in dependencies[member]
                                 if owners[target] != identity})
         result[identity] = dict(id=identity, members=members, dependencies=prerequisites,
+            required_members={name: sorted({method for member in members
+                for method in discovery.get('dependency_scopes', {}).get(member, {}).get(name, {}).get('required_members', [])})
+                for member in members for name in discovery.get('dependency_scopes', {}).get(member, {})},
+            dynamic_calls={name: sorted({call for member in members
+                for call in discovery.get('dependency_scopes', {}).get(member, {}).get(name, {}).get('dynamic_calls', [])})
+                for member in members for name in discovery.get('dependency_scopes', {}).get(member, {})},
             source_classes=sorted({target for member in members for target in closures[member]}),
             blockers=sorted({issue for member in members for issue in blockers[member]}))
     pending, ordered = set(result), []
@@ -62,7 +70,9 @@ def build_plan(discovery):
             ordered.append(result[key]); pending.remove(key)
     return dict(schema_version='format-library-plan-v1', discovery_hash=digest(discovery),
                 groups=ordered, classes=classes, hashes=discovery['hashes'], projects=discovery['projects'],
-                issues=discovery.get('issues', []))
+                issues=discovery.get('issues', []), dependency_policy=discovery.get('dependency_policy'),
+                detailed_log=discovery.get('detailed_log'),
+                unresolved_dependencies=discovery.get('unresolved_dependencies', []))
 
 
 def select_groups(plan, names):

@@ -10,6 +10,10 @@ def scan(config, *, build=False):
     """Discover classes and dependencies without invoking the converter or original classes."""
     java, environment = ensure_scanner(config, force=build)
     timeout = config['java_scan_inactivity_timeout_seconds']
+    log_path = Path(config['output_root']).resolve() / 'logs/discovery.log'
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text('Format library discovery: inheritance first, then required members.\n', encoding='utf-8')
+    print('Checking inheritance and required dependencies; details: ' + str(log_path), flush=True)
     inputs = inventory(config)
     inputs.update(format_base_class=config['format_base_class'], decorator_base_classes=config['decorator_base_classes'],
                   framework_jars=config['framework_jars'])
@@ -20,12 +24,17 @@ def scan(config, *, build=False):
         folder = Path(temporary)
         write_json(folder / 'input.json', inputs)
         run_process([java, '-jar', str(SCANNER_JAR), str(folder / 'input.json'), str(folder / 'output.json')],
-                    environment, timeout)
+                    environment, timeout, log_path=log_path)
         result = read_json(folder / 'output.json')
     for path, revision in hashes.items():
         if file_hash(path) != revision:
             raise ValueError('Input changed during discovery: ' + path)
     result.update(schema_version='format-library-discovery-v1', hashes=hashes, projects=inputs['projects'],
                   scanner_hash=file_hash(SCANNER_JAR), source_root=config['source_root'])
+    result['dependency_policy'] = 'required-members-v1'
+    result['detailed_log'] = str(log_path)
+    from format_library.discovery_reporting import missing_dependencies, record_details
+    result['unresolved_dependencies'] = missing_dependencies(result)
+    record_details(result)
     write_json(Path(config['output_root']) / 'discovery.json', result)
     return result

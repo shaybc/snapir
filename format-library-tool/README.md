@@ -138,3 +138,26 @@ process crash, verify it is stopped before manually removing its stale lock.
 There is no migration-converter integration yet. This tool produces a reviewed source library,
 not a Maven release, automatic registration, unit tests, comparison tests, or executable test runs.
 Tool regression tests use synthetic sources and fake model deliveries only.
+
+## Standalone discovery and dependency diagnostics
+
+Discovery checks inheritance first. Unrelated classes are not inspected for method/field
+failures; unresolved ancestry is recorded in `work/logs/discovery.log`. The console lists
+identified formats/decorators, deduplicated missing dependencies and the log location.
+
+Each formatter has its own required-member scope: format/unformat, initialization,
+constructors, reached source calls, inherited overrides and field initializers. Unused
+helper methods do not contribute blockers. Qualified names such as `java.util.Calendar`
+are treated as types. Abstract runtime delegation is recorded without guessing its target.
+Whole original source files remain intact as evidence; `component.json` and `prompt.txt`
+identify required members. Shared ancestors are evidence for the standalone conversion,
+not separately approved foundation targets. No foundation configuration is required.
+
+Eclipse test entries, JUnit containers and test source roots are excluded. Maven test-scope
+dependencies do not require a production classpath. Missing classpath declarations remain
+diagnostics; missing symbols in required members block the affected formatter. Declared
+production JARs remain available as dependencies rather than uploaded source bodies.
+
+Prepared sources use their Java package paths, adding a readable project folder only for
+collisions. Hashes remain in `component.json`. Existing folders are immutable: rediscover
+and use a new output_root to replace older dependency evidence and prepared layouts.

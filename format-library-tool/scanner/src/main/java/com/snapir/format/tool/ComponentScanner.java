@@ -9,6 +9,7 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.TypeSolver;
 import com.github.javaparser.resolution.model.SymbolReference;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.*;
 import java.nio.file.*;
@@ -25,6 +26,7 @@ public final class ComponentScanner {
     private final Map<String, String> declaredFiles = new HashMap<>();
     private final Set<String> frameworks = new HashSet<>();
     private final List<String> issues = new ArrayList<>();
+    private final Map<String, Map<String, Map<String, Object>>> dependencyScopes = new TreeMap<>();
     private final JsonNode input;
 
     private ComponentScanner(JsonNode input) { this.input = input; }
@@ -34,7 +36,7 @@ public final class ComponentScanner {
         var scanner = new ComponentScanner(json.readTree(Path.of(args[0]).toFile()));
         scanner.scan();
         json.writerWithDefaultPrettyPrinter().writeValue(Path.of(args[1]).toFile(),
-            Map.of("classes", scanner.records, "issues", scanner.issues));
+            Map.of("classes", scanner.records, "issues", scanner.issues, "dependency_scopes", scanner.dependencyScopes));
     }
 
     private static List<String> strings(JsonNode node) {
@@ -96,6 +98,7 @@ public final class ComponentScanner {
                 }
             }
         }
+        Map<String, TypeDeclaration<?>> declarations = new TreeMap<>();
         for (var item : units.entrySet()) {
             String file = item.getKey();
             var solver = solvers.get(owners.get(file));
@@ -110,61 +113,88 @@ public final class ComponentScanner {
                     || concrete.isAbstract() || concrete.isInterface());
                 record.put("framework", frameworks.contains(name));
                 List<String> problems = new ArrayList<>();
+                Set<String> missing = new TreeSet<>();
                 Set<String> dependencies = new TreeSet<>();
                 List<String> ancestors = new ArrayList<>();
+                List<Map<String, String>> relations = new ArrayList<>();
                 String kind = "support";
                 try {
-                    if (declaration instanceof ClassOrInterfaceDeclaration original)
+                    if (declaration instanceof ClassOrInterfaceDeclaration original) {
                         collectAncestors(original.resolve(), new HashSet<>(), ancestors);
+                        for (var parent : original.getExtendedTypes())
+                            relations.add(Map.of("kind", "extends", "target", parent.resolve().asReferenceType().getQualifiedName()));
+                        for (var parent : original.getImplementedTypes())
+                            relations.add(Map.of("kind", "implements", "target", parent.resolve().asReferenceType().getQualifiedName()));
+                    }
                     if (ancestors.contains(input.path("format_base_class").asText())
                             || name.equals(input.path("format_base_class").asText())) kind = "format";
                     for (String base : strings(input.path("decorator_base_classes")))
                         if (ancestors.contains(base) || name.equals(base)) kind = "decorator";
-                } catch (RuntimeException error) { problems.add("Ancestry unresolved: " + error.getMessage()); }
+                    record.put("ancestry_status", "resolved");
+                } catch (RuntimeException error) {
+                    record.put("ancestry_status", "unresolved");
+                    unresolved(problems, missing, "Ancestry", name, error, item.getValue());
+                }
                 dependencies.addAll(ancestors);
-                for (var type : declaration.findAll(ClassOrInterfaceType.class)) {
-                    // JavaParser represents package/type qualifiers as nested type nodes too.
-                    if (type.getParentNode().filter(parent -> parent instanceof ClassOrInterfaceType outer
-                            && outer.getScope().orElse(null) == type).isPresent()) continue;
-                    try {
-                        var resolved = type.resolve();
-                        if (resolved.isReferenceType()) dependencies.add(resolved.asReferenceType().getQualifiedName());
-                    } catch (RuntimeException error) { problems.add("Type unresolved: " + type + ": " + error.getMessage()); }
-                }
-                // Static utility calls/fields also bring business logic into the source closure.
-                for (var call : declaration.findAll(MethodCallExpr.class)) {
-                    try { dependencies.add(call.resolve().declaringType().getQualifiedName()); }
-                    catch (RuntimeException error) { problems.add("Call unresolved: " + call.getNameAsString()); }
-                }
-                for (var access : declaration.findAll(FieldAccessExpr.class)) {
-                    if (access.getParentNode().filter(parent -> parent instanceof FieldAccessExpr outer
-                            && outer.getScope() == access).isPresent()) continue;
-                    try {
-                        var value = access.resolve();
-                        if (value.isField()) dependencies.add(value.asField().declaringType().getQualifiedName());
-                    } catch (RuntimeException error) { problems.add("Field unresolved: " + access); }
-                }
-                for (var expression : declaration.findAll(NameExpr.class)) {
-                    try {
-                        var value = expression.resolve();
-                        if (value.isField()) dependencies.add(value.asField().declaringType().getQualifiedName());
-                    } catch (RuntimeException ignored) { /* Type qualifiers are resolved by their enclosing calls. */ }
-                }
-                for (var imported : item.getValue().getImports()) {
-                    if (!imported.isStatic()) continue;
-                    String owner = imported.getNameAsString();
-                    if (!imported.isAsterisk()) owner = owner.substring(0, owner.lastIndexOf('.'));
-                    if (solver.tryToSolveType(owner).isSolved()) dependencies.add(owner);
-                    else problems.add("Static import unresolved: " + imported.getNameAsString());
-                }
-                dependencies.remove(name);
                 record.put("kind", kind);
                 record.put("ancestors", ancestors);
+                record.put("relations", relations);
+                record.put("binary_ancestors", ancestors.stream().filter(value -> !declaredFiles.containsKey(value)).toList());
+                record.put("declaration_kind", declaration instanceof ClassOrInterfaceDeclaration original
+                    ? (original.isInterface() ? "interface" : "class") : "support");
                 record.put("dependencies", dependencies);
-                record.put("issues", problems.stream().distinct().toList());
+                record.put("issues", problems);
+                record.put("unresolved_dependencies", missing);
+                record.put("dependency_status", "ignored");
                 records.put(name, record);
+                declarations.put(name, declaration);
             }
         }
+        // Keep each target's reached members isolated from other targets using the same helpers.
+        Set<String> roots = new TreeSet<>();
+        for (var item : records.entrySet())
+            if (!item.getValue().get("kind").equals("support")) roots.add(item.getKey());
+        for (String root : roots) {
+            if (!records.containsKey(root)) continue;
+            progress("Inspecting required members " + root);
+            dependencyScopes.put(root, new RequiredDependencies(records, declarations, solvers)
+                .analyze(root));
+        }
+        // Flat records remain an inventory/log view; planning consumes the per-target scopes.
+        for (var scope : dependencyScopes.values())
+            for (var item : scope.entrySet()) {
+                var target = records.get(item.getKey());
+                target.put("dependency_status", "analyzed");
+                for (String key : List.of("dependencies", "issues", "unresolved_dependencies"))
+                    for (Object value : (Collection<?>) item.getValue().get(key))
+                        if (!((Collection<?>) target.get(key)).contains(value)) ((Collection) target.get(key)).add(value);
+            }
+    }
+
+    private void unresolved(List<String> problems, Set<String> missing, String kind, String subject,
+                            RuntimeException error, CompilationUnit unit) {
+        problems.add(kind + " unresolved: " + subject + ": " + error.getMessage());
+        String symbol = null;
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof UnsolvedSymbolException unresolved) {
+                symbol = unresolved.getName();
+                break;
+            }
+        }
+        if (symbol == null || symbol.isBlank()) {
+            missing.add(kind + " dependency: " + subject);
+            return;
+        }
+        // An explicit import supplies a qualified class identity; never guess wildcard imports.
+        String simple = symbol.replaceAll("<.*>", "").split("\\.")[0];
+        for (var imported : unit.getImports()) {
+            if (!imported.isAsterisk() && !imported.isStatic()
+                    && imported.getName().getIdentifier().equals(simple)) {
+                missing.add(imported.getNameAsString());
+                return;
+            }
+        }
+        missing.add(symbol);
     }
 
     /** Resolve each source in its owner's dependency context, not a consumer's JAR list. */

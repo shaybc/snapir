@@ -12,17 +12,9 @@ def discover(config, rebuild=False):
     from format_library.planning import build_plan
     plan = build_plan(scan(config, build=rebuild))
     write_json(Path(config['output_root']) / 'plan.json', plan)
-    for item in plan['groups']:
-        print(str(item['order']) + '. ' + ', '.join(item['members']) + ' [' + item['id'] + ']')
-        print('   Prerequisites: ' + (', '.join(item['dependencies']) or 'none'))
-        for blocker in item['blockers']:
-            print('   BLOCKED: ' + blocker)
-    for issue in plan['issues']:
-        print('DISCOVERY ISSUE: ' + issue)
-    unresolved = [item for item in plan['classes'].values() if item['issues'] and item['kind'] == 'support']
-    for item in unresolved:
-        print('CLASSIFICATION UNRESOLVED: ' + item['name'] + ': ' + '; '.join(item['issues']))
-    print('Discovered ' + str(sum(len(item['members']) for item in plan['groups'])) + ' concrete format/decorator targets')
+    from format_library.discovery_reporting import record_plan, print_summary
+    record_plan(plan)
+    print_summary(plan)
     return plan
 
 

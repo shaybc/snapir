@@ -51,6 +51,10 @@ def write_prompt(folder, manifest, prerequisites=()):
              '\nApproved dependency coordinates: ' + json.dumps(manifest['known_dependencies']),
              '\nOriginal source attachments:']
     lines.extend(item['path'] for item in manifest['files'])
+    lines.append('\nRequired members for this standalone conversion (whole original files remain evidence):')
+    lines.append(json.dumps(manifest.get('required_members', {}), indent=2))
+    lines.append('\nRuntime delegation (preserve child/wrapped calls; do not guess implementations):')
+    lines.append(json.dumps(manifest.get('dynamic_calls', {}), indent=2))
     lines.append('\nCommon API attachments:')
     lines.extend(str(path.relative_to(folder)).replace('\\', '/') for path in sorted((folder / 'common-api/src').rglob('*.java')))
     lines.append('\nBinary dependencies (not uploaded as source):')
