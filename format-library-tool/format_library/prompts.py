@@ -77,7 +77,8 @@ def build_request(config, folder, manifest):
         raise ValueError('Preparation is blocked: ' + '; '.join(manifest['blockers']))
     prerequisites = collect_prerequisites(config, folder, manifest)
     write_prompt(folder, manifest, prerequisites)
-    attachments = {item['path']: inside(folder, item['path']).read_text(encoding='utf-8-sig')
+    attachments = {item['path']: inside(folder, item['path']).read_text(
+                       encoding=manifest.get('source_encoding', 'UTF-8')).lstrip('\ufeff')
                    for item in manifest['files']}
     attachments.update({str(path.relative_to(folder)).replace('\\', '/'): path.read_text(encoding='utf-8')
                         for path in sorted((folder / 'common-api/src').rglob('*.java'))})

@@ -16,8 +16,14 @@ def scan(config, *, build=False):
     print('Checking inheritance and required dependencies; details: ' + str(log_path), flush=True)
     inputs = inventory(config)
     inputs.update(format_base_class=config['format_base_class'], decorator_base_classes=config['decorator_base_classes'],
-                  framework_jars=config['framework_jars'])
-    hashes = {item['file']: file_hash(item['file']) for item in inputs['sources']}
+                  framework_jars=config['framework_jars'], source_encoding=config['source_encoding'])
+    hashes = {}
+    for item in inputs['sources']:
+        try:
+            hashes[item['file']] = file_hash(item['file'])
+        except OSError as error:
+            with log_path.open('a', encoding='utf-8') as log:
+                log.write('WARNING: Unreadable Java source: ' + item['file'] + ' | ' + str(error) + '\n')
     libraries = {library for project in inputs['projects'] for library in project['libraries'] if Path(library).is_file()}
     hashes.update({path: file_hash(path) for path in libraries})
     with tempfile.TemporaryDirectory(prefix='format-library-scan-') as temporary:
@@ -30,7 +36,8 @@ def scan(config, *, build=False):
         if file_hash(path) != revision:
             raise ValueError('Input changed during discovery: ' + path)
     result.update(schema_version='format-library-discovery-v1', hashes=hashes, projects=inputs['projects'],
-                  scanner_hash=file_hash(SCANNER_JAR), source_root=config['source_root'])
+                  scanner_hash=file_hash(SCANNER_JAR), source_root=config['source_root'],
+                  source_encoding=config['source_encoding'])
     result['dependency_policy'] = 'required-members-v1'
     result['detailed_log'] = str(log_path)
     from format_library.discovery_reporting import missing_dependencies, record_details

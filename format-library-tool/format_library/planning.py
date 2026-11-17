@@ -70,7 +70,8 @@ def build_plan(discovery):
             ordered.append(result[key]); pending.remove(key)
     return dict(schema_version='format-library-plan-v1', discovery_hash=digest(discovery),
                 groups=ordered, classes=classes, hashes=discovery['hashes'], projects=discovery['projects'],
-                issues=discovery.get('issues', []), dependency_policy=discovery.get('dependency_policy'),
+                issues=discovery.get('issues', []), source_encoding=discovery.get('source_encoding', 'UTF-8'),
+                source_warnings=discovery.get('source_warnings', []), dependency_policy=discovery.get('dependency_policy'),
                 detailed_log=discovery.get('detailed_log'),
                 unresolved_dependencies=discovery.get('unresolved_dependencies', []))
 

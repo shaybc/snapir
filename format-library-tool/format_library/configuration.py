@@ -1,5 +1,6 @@
 """Load converter-compatible configuration fields without importing migration configuration."""
 import os
+import codecs
 import re
 import shutil
 import subprocess
@@ -10,7 +11,7 @@ import yaml
 TOOL_ROOT = Path(__file__).resolve().parents[1]
 PATH_FIELDS = ('source_root', 'output_root', 'approved_library_root', 'java_home',
                'maven_settings_path', 'maven_local_repository')
-DEFAULTS = dict(java_version=25, java_home=None, java_scan_inactivity_timeout_seconds=900,
+DEFAULTS = dict(source_encoding='UTF-8', java_version=25, java_home=None, java_scan_inactivity_timeout_seconds=900,
     classpath_jars=[], framework_jars=[], eclipse_classpath_variables={}, eclipse_classpath_containers={},
     eclipse_project_classpath_containers={}, maven_settings_path=None, maven_local_repository=None,
     model_provider='litellm', model_name='', model_base_url='', model_api_key_environment='AI_API_KEY',
@@ -31,6 +32,12 @@ def load_config(path):
     if unknown:
         raise ValueError('Unsupported config fields; copy only documented sections: ' + ', '.join(sorted(unknown)))
     result = {**deepcopy(DEFAULTS), **supplied}
+    try:
+        if not isinstance(result['source_encoding'], str) or not result['source_encoding'].strip():
+            raise ValueError('source_encoding must be a nonempty encoding name')
+        codecs.lookup(result['source_encoding'])
+    except LookupError as error:
+        raise ValueError('Unsupported source_encoding: ' + result['source_encoding']) from error
     if not result.get('source_root'):
         raise ValueError('source_root is required')
     for key in PATH_FIELDS:

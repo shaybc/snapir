@@ -43,9 +43,9 @@ def menu(config):
     from format_library.approval import approve
     while True:
         print('\nFormat library tool\n1. Discover and plan\n2. Prepare folders\n3. Show status\n'
-              '4. Convert a prepared folder\n5. Approve reviewed code\n0. Exit')
+              '4. Convert a prepared folder\n5. Approve reviewed code\n6. Exit')
         action = input('Choice: ').strip()
-        if action == '0':
+        if action in {'0', '6'}:
             return
         try:
             if action == '1':

@@ -1,5 +1,6 @@
 # Copy the matching fields from an existing converter config. Paths are relative to this YAML.
 source_root: C:/REPLACE/Composer/Workspace
+source_encoding: UTF-8         # Encoding of original/decompiled Java files, e.g. windows-1255
 java_version: 25
 java_home: null                 # null uses JAVA_HOME or java on PATH
 java_scan_inactivity_timeout_seconds: 900

@@ -40,6 +40,7 @@ def prepare(config, plan, names=()):
             continue
         folder.mkdir(parents=True)
         manifest = dict(schema_version='format-library-component-v1', **group,
+            source_encoding=plan.get('source_encoding', 'UTF-8'),
             api_version=1, api_hash=api_revision(), native_package=config['native_package'],
             target_java_version=config['target_java_version'], known_dependencies=config['known_dependencies'],
             original_classes={name: plan['classes'][name] for name in group['source_classes']},

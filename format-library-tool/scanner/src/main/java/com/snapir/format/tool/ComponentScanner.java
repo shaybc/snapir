@@ -13,6 +13,8 @@ import com.github.javaparser.resolution.UnsolvedSymbolException;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.*;
 import java.nio.file.*;
+import java.nio.charset.Charset;
+import java.io.IOException;
 import java.util.*;
 import java.util.jar.JarFile;
 
@@ -26,6 +28,7 @@ public final class ComponentScanner {
     private final Map<String, String> declaredFiles = new HashMap<>();
     private final Set<String> frameworks = new HashSet<>();
     private final List<String> issues = new ArrayList<>();
+    private final List<String> sourceWarnings = new ArrayList<>();
     private final Map<String, Map<String, Map<String, Object>>> dependencyScopes = new TreeMap<>();
     private final JsonNode input;
 
@@ -36,7 +39,8 @@ public final class ComponentScanner {
         var scanner = new ComponentScanner(json.readTree(Path.of(args[0]).toFile()));
         scanner.scan();
         json.writerWithDefaultPrettyPrinter().writeValue(Path.of(args[1]).toFile(),
-            Map.of("classes", scanner.records, "issues", scanner.issues, "dependency_scopes", scanner.dependencyScopes));
+            Map.of("classes", scanner.records, "issues", scanner.issues, "dependency_scopes", scanner.dependencyScopes,
+                "source_warnings", scanner.sourceWarnings));
     }
 
     private static List<String> strings(JsonNode node) {
@@ -54,11 +58,23 @@ public final class ComponentScanner {
                     frameworks.add(entry.getName().replace('/', '.').replaceAll("\\.class$", "")));
             }
         }
-        var parser = new JavaParser(new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.BLEEDING_EDGE));
+        Charset sourceEncoding = Charset.forName(input.path("source_encoding").asText("UTF-8"));
+        var parser = new JavaParser(new ParserConfiguration().setCharacterEncoding(sourceEncoding)
+            .setLanguageLevel(ParserConfiguration.LanguageLevel.BLEEDING_EDGE));
         for (var source : input.path("sources")) {
             String file = source.path("file").asText();
             progress("Parsing " + file);
-            var parsed = parser.parse(Files.readString(Path.of(file)).replaceFirst("^\\uFEFF", ""));
+            String content;
+            try {
+                content = Files.readString(Path.of(file), sourceEncoding).replaceFirst("^\\uFEFF", "");
+            } catch (IOException error) {
+                String warning = "Unreadable Java source: " + file + " | encoding: " + sourceEncoding.name()
+                    + " | " + error.getClass().getSimpleName() + ": " + error.getMessage();
+                sourceWarnings.add(warning);
+                progress("WARNING: " + warning);
+                continue;
+            }
+            var parsed = parser.parse(content);
             if (!parsed.isSuccessful()) {
                 issues.add("Invalid Java source " + file + ": " + parsed.getProblems());
                 continue;
@@ -81,6 +97,7 @@ public final class ComponentScanner {
             String identity = project.path("id").asText();
             var solver = solvers.get(identity);
             var config = new ParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.BLEEDING_EDGE)
+                .setCharacterEncoding(sourceEncoding)
                 .setSymbolResolver(new JavaSymbolSolver(solver));
             List<JavaParserTypeSolver> sourceRoots = new ArrayList<>();
             for (String root : strings(project.path("roots"))) {

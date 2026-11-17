@@ -141,6 +141,16 @@ Tool regression tests use synthetic sources and fake model deliveries only.
 
 ## Standalone discovery and dependency diagnostics
 
+`source_encoding` selects the encoding of original and decompiled `.java` files, defaulting
+to `UTF-8`. For example, set `source_encoding: windows-1255` for Hebrew Windows sources.
+This setting applies to direct parsing, dependency source resolution and original-source
+AI attachments. YAML, logs, generated code and common API files remain UTF-8. No encoding
+is guessed and original files are not rewritten. For mixed encodings, normalize the sources
+to one encoding first. Unreadable files are skipped with their path, encoding and error in
+`logs/discovery.log`; remaining files are still scanned. Missing required source dependencies
+can still block affected components. Rediscover and prepare fresh folders after changing
+the encoding; prepared folders retain the encoding used for their original evidence.
+
 Discovery checks inheritance first. Unrelated classes are not inspected for method/field
 failures; unresolved ancestry is recorded in `work/logs/discovery.log`. The console lists
 identified formats/decorators, deduplicated missing dependencies and the log location.
