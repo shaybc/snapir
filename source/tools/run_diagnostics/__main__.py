@@ -39,6 +39,8 @@ def main():
     print('\n'.join(diagnose(directory)))
     from tools.run_diagnostics.request_materials import export_request_materials
     print('\n'.join(export_request_materials(directory, Path(__file__).resolve().parents[3])))
+    from tools.run_diagnostics.html_report import write_dashboard
+    print('Diagnostics dashboard: ' + str(write_dashboard(directory)))
 
 
 if __name__ == '__main__':

@@ -243,3 +243,5 @@ class ComponentCandidateValidator:
         save_component_results(self.conn, self.config.run_id, self.plan, self.group.group_id, results, self.profile,
                                self.output, validator=revalidate_components(self.profile, self.factory,config=self.config,units=self.units,boundaries=self.boundaries,conn=self.conn))
         self.results = results
+        from runtime.component_conversion.conversion_trace import record_validation
+        record_validation(self.config, self.plan, bundle.contracts, results)

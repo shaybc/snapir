@@ -45,6 +45,7 @@ public final class BoundaryAnalysis {
             AnalysisProgress.report("entry " + entry.getAttribute("id") + " resolving " + entry.getAttribute("implementation") + "." + entry.getAttribute("method"));
             output.writeStartElement("entry");
             output.writeAttribute("id", entry.getAttribute("id"));
+            var diagnosticTypes = new java.util.TreeSet<String>();
             try {
                 if (problem != null) throw new IllegalStateException(problem);
                 EntryMethod.write(entry, sources, output);
@@ -54,6 +55,7 @@ public final class BoundaryAnalysis {
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " traversing reachable calls");
                     try { graph.analyze(entry); }
                     catch (RuntimeException exception) { graph.issues.add("Reachability did not finish: " + exception.getClass().getSimpleName() + ": " + exception.getMessage()); }
+                    graph.nodes.values().forEach(value -> diagnosticTypes.add(value.owner));
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " writing reachable graph");
                     try (var operation = NodeProcessingProgress.operation("entry " + entry.getAttribute("id") + " writing reachable graph")) {
                         graph.write(output);
@@ -73,6 +75,14 @@ public final class BoundaryAnalysis {
             } catch (RuntimeException exception) {
                 output.writeEmptyElement("issue");
                 output.writeAttribute("message", exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());
+            }
+            if (sources != null) {
+                AnalysisProgress.report("entry " + entry.getAttribute("id") + " recording diagnostic class structure");
+                try { ClassStructure.write(entry, sources, diagnosticTypes, output); }
+                catch (RuntimeException exception) {
+                    output.writeEmptyElement("structure-issue");
+                    output.writeAttribute("message", "Diagnostic structure unavailable: " + exception.getClass().getSimpleName());
+                }
             }
             output.writeEndElement();
             AnalysisProgress.report("entry complete " + entry.getAttribute("id"));

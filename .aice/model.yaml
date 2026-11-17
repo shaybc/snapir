@@ -446,6 +446,17 @@ objects:
       - source/runtime/operation_coordinator.py
       - source/runtime/human_gates.py
       - source/runtime/model_execution/**
+  - id: conversion-diagnostics
+    type: component
+    name: Converter evidence and diagrams
+    description: Records converter facts and exports focused four-level SuperScope diagrams on demand from a static diagnostics dashboard.
+    parent: workflow-support
+    technologies: [Python, HTML, YAML]
+    code:
+      - source/runtime/component_conversion/conversion_trace.py
+      - source/tools/conversion_tools/conversion_graph_records.py
+      - source/models/conversion_graph.py
+      - source/tools/run_diagnostics/**
   - id: checkpoints
     type: component
     name: Resume and checkpoints
@@ -624,7 +635,27 @@ objects:
     name: Configured model provider
     description: Generates structured conversion results and reviews through Gemini or a compatible endpoint.
     external: true
+  - id: superscope-viewer
+    type: system
+    name: SuperScope
+    description: Displays isolated conversion dependency exports in VS Code.
+    external: true
 connections:
+  - id: superscope-export-reader
+    from: superscope-viewer
+    to: deliverables
+    description: Opens generated four-level models and saved converter evidence on demand.
+    technology: YAML and JSON files
+  - id: converter-diagnostic-records
+    from: components
+    to: conversion-diagnostics
+    description: Records resolved plans, entry points, blockers, validation and reuse without changing acceptance.
+    technology: Python
+  - id: converter-diagnostic-files
+    from: conversion-diagnostics
+    to: deliverables
+    description: Saves converter snapshots and reads them for static dashboards and isolated diagram exports.
+    technology: Filesystem
   - id: standalone-selection
     from: intake-control
     to: standalone-components

@@ -69,7 +69,10 @@ def _convert(conn, config, profile, directory):
             update_run_status(conn, config.run_id, 'completed' if result['status'] == 'completed' else 'blocked',
                               'conversion_components_completed' if result['status'] == 'completed' else 'conversion_components_incomplete')
             print('Standalone components: ' + result['status'] + '. Results: ' + str(directory / 'reports/standalone-components.json'))
-        except Exception:
+        except Exception as error:
+            if 'preparation' not in locals():
+                from runtime.component_conversion.conversion_trace import record_preparation_failure
+                record_preparation_failure(config, profile, directory, error)
             update_run_status(conn, config.run_id, 'blocked', 'conversion_components_incomplete')
             raise
     return directory

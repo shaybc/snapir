@@ -165,6 +165,46 @@ executed observations. Disabled or unavailable comparisons are reported as block
 Resume re-analyzes current sources, initialization and JAR revisions before considering
 saved artifacts for reuse. Channel/operation profiles keep their existing route.
 
+### On-demand conversion diagrams
+
+Run diagnostics against a saved run:
+
+```powershell
+python -m tools.run_diagnostics 'C:\path\to\migration_runs\my-run'
+```
+
+Open the printed `reports/diagnostics/index.html` file. Each component or operation
+has a **SuperScope diagram** action. Expand it, copy the PowerShell generation
+command, and run that command locally. Opening diagnostics does not generate diagrams
+or execute commands. The copied command uses the same Python environment and source
+path as the diagnostics process.
+
+Open `conversion.code-workspace` in the printed export folder with VS Code and choose **SuperScope: Open Canvas**.
+The model and focused diagrams are isolated under that export's `.superscope` folder;
+existing project models and layouts are never overwritten. To repeat an export of the
+same snapshot, supply a new `--output` folder.
+
+The graph uses only saved converter plans, analyzer structural records, current group
+outcomes, explicit blocker events and validated artifact receipts. It never scans source
+or asks AI to reconstruct dependencies. The converter saves `state/conversion-graph.json`
+as a best-effort diagnostic; diagnostic write failures do not change conversion results.
+Older runs expose only evidence they saved, with missing information marked not recorded.
+Per-operation snapshots remain separate so identical class names do not mix scopes.
+
+Double-click objects to enter their dependency scopes. Inheritance chains are shown
+together. Navigation stops at four levels: further descendants are flattened into the
+fourth level, preserving shared references and cycles. Navigation aliases retain their
+canonical converter node IDs in `manifest.json`; display parents do not assert source
+containment. Labelled arrows distinguish inheritance, containment, field references,
+usage, entry-point ownership, conversion results and recorded blockers.
+
+Classes declaring format/unformat/execute entry points carry an entry marker and the
+exact recorded signatures. Missing entries show the expected contract without borrowing
+another class's boundary. Build/test success, directional comparison results and operation
+acceptance remain separate facts. `converter-records.json` retains the exported snapshot
+and provenance. Excessively large display expansions fail explicitly rather than silently
+discard relationships; choose a more focused component in that case.
+
 Configured paths are relative to that profile. Set JAVA_HOME to the desired JDK
 to inventory its platform classes. No dependencies are downloaded automatically.
 The run saves java_classpath_index.json with class locations and diagnostics.

@@ -43,7 +43,11 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
             verification_version='test-based-conversion-v1')
     elif facts_disabled(profile):
         report.update(experimental_only=True,fact_collection=False,fact_validation='disabled_for_test',fact_validation_blocking=False)
-    write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
+    def save_report():
+        write_run_report(directory, 'component-generation.json', json.dumps(report, indent=2))
+        from runtime.component_conversion.conversion_trace import record_trace
+        record_trace(config, directory, plan, boundaries, units, report)
+    save_report()
     with component_execution(conn, config, profile, classpath, preparation, include_steps=include_steps,include_formats=include_formats):
         try:
             for position, group in enumerate(plan.groups, 1):
@@ -63,12 +67,16 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
                     continue
                 if group.wave is None:
                     report['groups'][group.group_id] = dict(status='incomplete', members=group.members, reason='Unresolved prerequisite evidence')
+                    from runtime.component_conversion.conversion_trace import record_blocker
+                    for dependency in plan.groups:
+                        if dependency.group_id in group.dependencies and dependency.wave is None:
+                            record_blocker(config, plan, group.group_id, dependency.group_id, 'Unresolved prerequisite evidence')
                     continue
                 logging.getLogger(__name__).info('Basic component group %s/%s: %s', position, len(plan.groups), group.members)
                 report['groups'][group.group_id]=dict(status='running',members=group.members)
                 if any(plan.components[key].kind=='format_composition' for key in group.members):
                     report['format_chain_status']='running'
-                write_run_report(directory,'component-generation.json',json.dumps(report,indent=2))
+                save_report()
                 try:
                     result = _convert_group(conn, config, profile, plan, group, boundaries, output, factory, model_call, units=units)
                     report['groups'][group.group_id] = result
@@ -78,7 +86,7 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
                     report['groups'][group.group_id] = dict(status='incomplete', members=group.members, reason=str(exc))
                     logging.getLogger(__name__).warning('Basic component group incomplete: %s: %s', group.group_id, exc)
                 conn.commit()
-                write_run_report(directory, 'component-generation.json', json.dumps(report, indent=2))
+                save_report()
         except Exception as exc:
             report['fatal_error'] = str(exc)
             from tools.state_store_tools.runs import update_run_status
@@ -89,7 +97,7 @@ def convert_basic_components(conn, config, profile, directory, preparation, clas
             states=[report['groups'].get(item.group_id,{}).get('status') for item in format_groups]
             report['format_chain_status']=('validated' if states and all(value=='component_validated' for value in states) else
                 'blocked' if any(value in {'incomplete','running'} for value in states) else 'not_reached')
-            write_run_report(directory, 'component-generation.json', json.dumps(report, indent=2))
+            save_report()
     from tools.state_store_tools.runs import update_run_status
     update_run_status(conn, config.run_id, 'blocked', 'conversion_components_incomplete' if any(
         item['status'] == 'incomplete' for item in report['groups'].values()) else 'conversion_components_ready_for_composition')
@@ -134,6 +142,8 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
         logging.getLogger(__name__).info('Component reuse requires correction for %s: %s',group.group_id,exc)
         reused = None
     if reused is not None:
+        from runtime.component_conversion.conversion_trace import record_reuse
+        record_reuse(config, conn, plan, group)
         require_component_task(conn, config, profile, group.group_id)
         return dict(status='component_validated', members=group.members, reused=True, validation_scope='build_and_tests')
     direct_groups=native_format_prerequisites(plan,group)
@@ -153,7 +163,10 @@ def _convert_group(conn, config, profile, plan, group, boundaries, output, facto
                 direct.append(dict(group_id=key, policy=[plan.components[member].model_dump(mode='json') for member in dependency.members]))
             continue
         result = reuse_component_result(conn, config.run_id, plan, dependency.members[0], profile, output, validator=validator)
-        if result is None: raise ValueError('Required native prerequisite is not component_validated: ' + key)
+        if result is None:
+            from runtime.component_conversion.conversion_trace import record_blocker
+            record_blocker(config, plan, group.group_id, key, 'Required native prerequisite is not component_validated: ' + key)
+            raise ValueError('Required native prerequisite is not component_validated: ' + key)
         head = records.head(conn, config.run_id, key)
         contracts = records.read_record(conn, config.run_id, key, 'contract', head['contract_revision'])['contracts']
         saved = records.read_record(conn, config.run_id, key, 'result', head['result_revision'])['results']

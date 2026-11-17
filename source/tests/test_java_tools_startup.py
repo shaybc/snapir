@@ -28,6 +28,7 @@ def jar(path):
         archive.writestr(startup.ANALYZER_CAPABILITY, b'existing-tool')
         archive.writestr(startup.ANALYZER_PROGRESS_CAPABILITY, b'existing-tool')
         archive.writestr(startup.ANALYZER_FRAMEWORK_CAPABILITY, b'existing-tool')
+        archive.writestr(startup.ANALYZER_STRUCTURE_CAPABILITY, b'existing-tool')
 
 
 def test_existing_tools_need_no_jdk_lookup_or_maven(project, monkeypatch):

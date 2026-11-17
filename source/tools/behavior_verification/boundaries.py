@@ -45,6 +45,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     scope['framework_libraries'] = frameworks
                 scope['boundaries'].append(boundary)
     tool_hash = None
+    diagnostic_structure = {}
     if scopes:
         try:
             analysis, tool_hash = (analyze_entries(scopes, tool_jar) if collect_checklists else
@@ -56,6 +57,10 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
                     raise ValueError('Analysis returned an unexpected or duplicate unit identity')
                 returned.add(identity)
                 boundary = boundaries[identity]
+                from tools.behavior_verification.class_structure import read_class_structure
+                diagnostic_structure[identity] = read_class_structure(entry, unit_sources[identity], source_paths[identity])
+                diagnostic_structure[identity]['resolution_scope'] = next((key for key, scope in scopes.items()
+                    if any(item.unit_id == identity for item in scope['boundaries'])), None)
                 issues = [node.get('message') for node in entry.findall('issue')]
                 methods = entry.findall('method')
                 binary = entry.find('framework-method')
@@ -116,6 +121,7 @@ def build_boundary_report(preparation, *, mappings=None, tool_jar=None, collect_
     classpath_identity = dict(projects=classpaths, frameworks=[dict(path=item['path'], sha256=item['sha256'])
         for item in frameworks]) if frameworks else classpaths
     return dict(schema_version='unit-boundaries-v1', run_id=preparation.get('run_id'),
+        diagnostic_structure=diagnostic_structure,
         analysis_classpaths=classpaths, analysis_classpath_hash=digest(classpath_identity) if classpath_identity else None,
         analysis_stage='boundary_reachability_and_checklist' if collect_checklists else 'boundary_reachability_only', analysis_tool_hash=tool_hash, acceptance_gate_enabled=False,
         checklist_counts=checklist_counts,

@@ -26,6 +26,10 @@ def write_boundary_report(conn, config, preparation, directory, *, collect_check
     report = build_boundary_report(preparation, mappings=mappings, collect_checklists=collect_checklists,
                                   classpath_index=classpath, **({'framework_jars': profile.framework_jars} if getattr(profile, 'framework_jars', ()) else {}))
     write_run_report(directory, 'behavior_verification_boundaries.json', json.dumps(report, indent=2))
+    if preparation.get('component_plan'):
+        from runtime.component_conversion.conversion_trace import record_trace
+        units = {unit['unit_id']: unit for item in preparation.get('operations', {}).values() for unit in item.get('units', [])}
+        record_trace(config, directory, preparation['component_plan'], report, units, {})
     logging.getLogger(__name__).info('Boundary discovery: %s/%s entries identified; behavioral verification has not run',
         report['counts']['identified'], report['counts']['total'])
     logging.getLogger(__name__).info('Reachability: %s analyzed, %s incomplete, %s uncertain and %s unbounded edges; no runtime tracing',
