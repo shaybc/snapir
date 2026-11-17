@@ -1,0 +1,33 @@
+# Copy the matching fields from an existing converter config. Paths are relative to this YAML.
+source_root: C:/REPLACE/Composer/Workspace
+java_version: 25
+java_home: null                 # null uses JAVA_HOME or java on PATH
+java_scan_inactivity_timeout_seconds: 900
+classpath_jars: []
+framework_jars: []              # Copied dependencies, never automatic AI source attachments
+eclipse_classpath_variables: {}
+eclipse_classpath_containers: {}
+eclipse_project_classpath_containers: {}
+maven_settings_path: null
+maven_local_repository: null
+model_provider: litellm         # litellm or gemini
+model_name: openai/REPLACE_MODEL
+model_base_url: https://REPLACE_ENDPOINT/v1
+model_api_key_environment: ORGANIZATION_AI_API_KEY
+model_timeout_seconds: 900      # Inactivity while awaiting response; local heartbeats do not reset it
+max_model_attempts: 3
+model_stream: false            # Enable only if the organization endpoint supports streaming
+
+# Settings specific to this separate tool.
+output_root: ./work
+approved_library_root: ./approved
+native_package: com.company.nativeformats
+request_character_limit: 2000000
+target_java_version: 17
+format_base_class: com.ibm.dse.base.FormatElement
+decorator_base_classes:
+  - com.ibm.dse.base.FormatDecorator
+  - com.ibm.il.dse.cc.decorator.FormatDecoratorHolder
+source_excludes: [".git", ".venv", "target", "bin", "build", "node_modules"]
+# Dependency versions are supplied to the AI as approved choices, not installed by this tool.
+known_dependencies: []

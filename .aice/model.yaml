@@ -11,6 +11,37 @@ objects:
     type: system
     name: Snapir conversion
     description: Converts Composer behavior into reviewed Java services.
+  - id: native-format-api
+    type: group
+    name: Native format library API
+    description: Defines the standalone shared contracts for native formats and decorators without converter integration.
+    parent: snapir
+    technologies: [Java]
+    code:
+      - format-library-tool/common-api/src/main/java/**
+  - id: format-library-tool
+    type: app
+    name: Native format library tool
+    description: Independently prepares source evidence and generates human-reviewed native format and decorator candidates.
+    parent: snapir
+    technologies: [Python]
+    code:
+      - format-library-tool/format_library/**
+      - format-library-tool/run.cmd
+  - id: format-library-scanner
+    type: app
+    name: Format library source scanner
+    description: Inspects source and JAR inheritance and dependencies without executing Composer classes.
+    parent: snapir
+    technologies: [Java]
+    code:
+      - format-library-tool/scanner/src/**
+  - id: format-library-artifacts
+    type: store
+    name: Prepared and approved format library files
+    description: Retains copied evidence, prompts, AI attempts, generated candidates and human-approved revisions.
+    parent: snapir
+    technologies: [Filesystem]
   - id: conversion-cli
     type: app
     name: Conversion CLI
@@ -642,6 +673,31 @@ objects:
     description: Displays isolated conversion dependency exports in VS Code.
     external: true
 connections:
+  - id: operator-format-library
+    from: operator
+    to: format-library-tool
+    description: Selects formats, starts generation and explicitly approves reviewed candidates.
+    technology: CLI
+  - id: format-library-discovery
+    from: format-library-tool
+    to: format-library-scanner
+    description: Requests metadata-only source and dependency discovery.
+    technology: Subprocess and JSON
+  - id: format-library-api
+    from: format-library-tool
+    to: native-format-api
+    description: Copies the common native API into each prepared conversion folder.
+    technology: Filesystem
+  - id: format-library-files
+    from: format-library-tool
+    to: format-library-artifacts
+    description: Preserves inputs and attempts and publishes explicit human approvals.
+    technology: Filesystem
+  - id: format-library-model
+    from: format-library-tool
+    to: model-provider
+    description: Sends bounded source evidence to the configured AI and records streamed generation attempts.
+    technology: Provider API
   - id: superscope-export-reader
     from: superscope-viewer
     to: deliverables
