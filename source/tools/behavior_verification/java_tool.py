@@ -15,7 +15,7 @@ def default_tool_path():
     return Path(__file__).resolve().parents[2] / 'behavior-verification-java/target/behavior-verification-1.0.0-jar-with-dependencies.jar'
 
 
-def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
+def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True, candidate_only=False):
     """Batch isolated source scopes; a missing tool is reported by the caller as incomplete."""
     tool = Path(tool_jar or default_tool_path()).resolve()
     if not tool.is_file():
@@ -65,7 +65,9 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
                     configured = ElementTree.SubElement(entry, 'binding', implementation=binding.implementation_class)
                     for name, value in sorted(binding.attributes.items()):
                         ElementTree.SubElement(configured, 'attribute', name=name, value=value)
-                entry.set('reachability', 'true')
+                entry.set('reachability', 'false' if candidate_only else 'true')
+                if candidate_only:
+                    entry.set('candidate-only', 'true')
                 if not collect_checklists:
                     entry.set('checklist', 'false')
         # XML parsers normalize literal CR/CRLF; character references retain exact source text.
@@ -83,6 +85,8 @@ def analyze_entries(scopes, tool_jar=None, *, collect_checklists=True):
             raise ValueError('Converter analysis tool changed during boundary discovery')
         verify_libraries()
         report = read_analysis_xml(folder / 'output.xml')
+        if candidate_only and report.get('format_catalog_protocol') != 'format-element-v1':
+            raise ValueError('Boundary analyzer lacks FormatElement ancestry discovery; rebuild the analyzer project')
         if any(scope.get('framework_libraries') for scope in scopes.values()) and report.get('framework_protocol') != 'framework-jars-v1':
             raise ValueError('Boundary analyzer JAR lacks framework boundary support; rebuild the analyzer project')
         if any(scope.get('classpath') for scope in scopes.values()):

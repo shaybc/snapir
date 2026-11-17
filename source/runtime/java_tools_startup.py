@@ -15,6 +15,7 @@ ANALYZER_CAPABILITY = 'il/co/dcd/verification/ProjectTypeSolvers.class'
 ANALYZER_PROGRESS_CAPABILITY = 'il/co/dcd/verification/BufferedAnalysisOutput.class'
 ANALYZER_FRAMEWORK_CAPABILITY = 'il/co/dcd/verification/FrameworkJars.class'
 ANALYZER_STRUCTURE_CAPABILITY = 'il/co/dcd/verification/ClassStructure.class'
+ANALYZER_FORMAT_CAPABILITY = 'il/co/dcd/verification/FormatAncestry.class'
 
 
 def analyzer_ready(path):
@@ -22,7 +23,7 @@ def analyzer_ready(path):
     try:
         with ZipFile(path) as archive:
             return all(name in archive.namelist() for name in
-                       (ANALYZER_CAPABILITY, ANALYZER_PROGRESS_CAPABILITY, ANALYZER_FRAMEWORK_CAPABILITY, ANALYZER_STRUCTURE_CAPABILITY))
+                       (ANALYZER_CAPABILITY, ANALYZER_PROGRESS_CAPABILITY, ANALYZER_FRAMEWORK_CAPABILITY, ANALYZER_STRUCTURE_CAPABILITY, ANALYZER_FORMAT_CAPABILITY))
     except (OSError, BadZipFile):
         return False
 

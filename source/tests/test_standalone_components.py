@@ -21,15 +21,18 @@ def workspace(tmp_path):
 public class Context {private final Map<String,Object> values=new LinkedHashMap<>();
 public Object getValueAt(String key){return values.get(key);} public void setValueAt(String key,Object value){values.put(key,value);}
 public Object removeValueAt(String key){return values.remove(key);} public Map<String,Object> snapshot(){return values;}}''',
+        'com/ibm/dse/base/DataElement.java': 'package com.ibm.dse.base; public class DataElement {}',
+        'com/ibm/dse/base/FormatElement.java': 'package com.ibm.dse.base; public abstract class FormatElement {}',
         'example/BaseFormat.java': '''package example; import com.ibm.dse.base.Context;
-public class BaseFormat { public void setDataName(String name){} public String format(Context context){return "<value/>";}
-public void unformat(String xml,Context context){} }''',
+public class BaseFormat extends com.ibm.dse.base.FormatElement { public void setDataName(String name){} public String format(Context context){return "<value/>";}
+public com.ibm.dse.base.DataElement unformat(String xml,Context context){return null;} }''',
         'example/CCString.java': 'package example; public class CCString extends BaseFormat {}',
         'example/OtherFormat.java': 'package example; public class OtherFormat extends BaseFormat {}',
         'example/Step.java': '''package example; import com.ibm.dse.base.Context;
 public class Step {public void setContext(Context context){} public int execute(){return 0;}}''',
         'example/ChildStep.java': 'package example; public class ChildStep extends Step {}',
         'example/Unrelated.java': 'package example; public class Unrelated {}',
+        'example/MethodLookalike.java': 'package example; public class MethodLookalike { public String format(){return "";} public void unformat(){} }',
         'other/WildcardFormat.java': 'package other; import example.*; public class WildcardFormat extends BaseFormat {}',
     }
     for name, text in files.items():
@@ -58,13 +61,14 @@ def test_scope_validation_and_old_profile_defaults(workspace):
         profile(workspace, ['example.CCString', 'example.CCString'])
 
 
-def test_catalog_lists_inherited_formats_and_steps(workspace):
+def test_catalog_lists_inherited_formats_and_steps(workspace, boundary_tool):
     from tools.conversion_tools.standalone_sources import component_catalog
     with java_scope(PipelineConfiguration(java_version=25)):
         found = component_catalog(workspace)
     assert {'example.CCString', 'example.OtherFormat', 'other.WildcardFormat'} <= set(found['format'])
     assert {'example.Step', 'example.ChildStep'} <= set(found['op_step'])
     assert 'example.Unrelated' not in found['format'] + found['op_step']
+    assert 'example.MethodLookalike' not in found['format']
 
 
 @pytest.mark.parametrize('names,kind', [(['example.CCString'], 'format'),
@@ -94,7 +98,7 @@ def test_prepare_and_request_use_own_inherited_entries(workspace, boundary_tool,
 
 def test_missing_direction_blocks_without_borrowing_other_format(workspace, boundary_tool):
     (workspace / 'src/main/java/example/Broken.java').write_text('''package example; import com.ibm.dse.base.Context;
-public class Broken {public String format(Context context){return "";}}''')
+public class Broken extends com.ibm.dse.base.FormatElement {public String format(Context context){return "";}}''')
     selected = profile(workspace, ['example.Broken'])
     with java_scope(selected):
         preparation, _ = prepare_components(selected)
@@ -111,7 +115,7 @@ def test_component_menu_selects_many_without_channel_discovery(tmp_path, monkeyp
         return 'components' if title == 'Conversion scope' else 'format'
     inputs = SimpleNamespace(menu=menu, multiple=lambda title, options, **kwargs: [value for value, _ in options])
     monkeypatch.setattr('tools.conversion_tools.standalone_sources.component_catalog',
-        lambda root: dict(format=['example.One', 'example.Two'], op_step=[]))
+        lambda root, **kwargs: dict(format=['example.One', 'example.Two'], op_step=[]))
     api = SimpleNamespace(discover_channel_directories=lambda *args: pytest.fail('Channel discovery ran'))
     result = collect_section(draft, inputs, tmp_path, api)
     assert result['selected_components'] == ['example.One', 'example.Two']

@@ -23,6 +23,7 @@ public final class BoundaryAnalysis {
             output.writeStartElement("analysis");
             output.writeAttribute("classpath_protocol", "project-classpath-v1");
             output.writeAttribute("framework_protocol", "framework-jars-v1");
+            output.writeAttribute("format_catalog_protocol", "format-element-v1");
             for (Node node = input.getFirstChild(); node != null; node = node.getNextSibling()) {
                 if (!(node instanceof Element scope) || !scope.getTagName().equals("scope")) continue;
                 AnalysisProgress.report("scope " + scope.getAttribute("id") + " preparing sources and classpath");
@@ -48,7 +49,12 @@ public final class BoundaryAnalysis {
             var diagnosticTypes = new java.util.TreeSet<String>();
             try {
                 if (problem != null) throw new IllegalStateException(problem);
-                EntryMethod.write(entry, sources, output);
+                if (entry.getAttribute("candidate-only").equals("true")) {
+                    var declaration = sources.solverFor(entry.getAttribute("implementation"))
+                        .solveType(entry.getAttribute("implementation"));
+                    output.writeEmptyElement("format-candidate");
+                    output.writeAttribute("identified", Boolean.toString(FormatAncestry.isFormat(declaration)));
+                } else EntryMethod.write(entry, sources, output);
                 if (entry.getAttribute("reachability").equals("true") && !sources.frameworks.entries.contains(entry.getAttribute("id"))) {
                     AnalysisProgress.report("entry " + entry.getAttribute("id") + " indexing source catalog");
                     ReachableSlice graph = new ReachableSlice(new SourceCatalog(sources));
@@ -76,7 +82,7 @@ public final class BoundaryAnalysis {
                 output.writeEmptyElement("issue");
                 output.writeAttribute("message", exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());
             }
-            if (sources != null) {
+            if (sources != null && !entry.getAttribute("candidate-only").equals("true")) {
                 AnalysisProgress.report("entry " + entry.getAttribute("id") + " recording diagnostic class structure");
                 try { ClassStructure.write(entry, sources, diagnosticTypes, output); }
                 catch (RuntimeException exception) {

@@ -22,11 +22,12 @@ def source_catalog(root):
     return index, documents
 
 
-def component_catalog(root, *, catalog=None):
+def component_catalog(root, *, catalog=None, profile=None, classpath=None, include_formats=True):
     """List inherited syntax candidates; exact public entry contracts are checked before generation."""
     index, documents = catalog or source_catalog(root)
     metadata = {name: [documents[path].find('java_class') for path in paths] for name, paths in index.classes.items()}
-    result = dict(format=[], op_step=[])
+    from tools.conversion_tools.format_candidates import format_candidates
+    result = dict(format=format_candidates(root, (index, documents), profile, classpath) if include_formats else [], op_step=[])
     for name in sorted(metadata):
         methods, parents, pending, seen = set(), set(), [name], set()
         while pending:
@@ -55,9 +56,6 @@ def component_catalog(root, *, catalog=None):
                                     resolved = documents[target].find('java_class')
                                     if resolved is not None:
                                         pending.append(resolved.get('fqcn'))
-        if {'format', 'unformat'}.intersection(methods) or any(
-                parent.startswith('com.ibm.') and parent.rsplit('.', 1)[-1] in {'FieldFormat', 'FormatElement'} for parent in parents):
-            result['format'].append(name)
         if {'execute', 'CCExecute', 'ccExecute'}.intersection(methods) or any(
                 parent.startswith('com.ibm.') and parent.rsplit('.', 1)[-1] in {'OperationStep', 'CCOperationStep'} for parent in parents):
             result['op_step'].append(name)

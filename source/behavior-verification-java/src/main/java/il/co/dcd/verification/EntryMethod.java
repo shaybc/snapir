@@ -59,7 +59,18 @@ final class EntryMethod {
                 || method.accessSpecifier() != com.github.javaparser.ast.AccessSpecifier.PUBLIC) return false;
         var parameters = entry.getElementsByTagName("parameter");
         if (method.getNumberOfParams() != parameters.getLength()) return false;
-        if (!method.getReturnType().describe().equals(entry.getAttribute("returns"))) return false;
+        String expectedReturn = entry.getAttribute("returns");
+        var actualReturn = method.getReturnType();
+        if (!actualReturn.describe().equals(expectedReturn)) {
+            // Keep existing configured-operation void adapters compatible. FormatElement descendants
+            // use DataElement (or a covariant subtype); format discovery still requires that ancestry.
+            boolean unformat = entry.getAttribute("kind").equals("request_unformat")
+                && expectedReturn.equals("com.ibm.dse.base.DataElement");
+            boolean compatible = unformat && (actualReturn.isVoid() || actualReturn.isReferenceType()
+                && actualReturn.asReferenceType().getAllAncestors().stream()
+                    .anyMatch(type -> type.getQualifiedName().equals(expectedReturn)));
+            if (!compatible) return false;
+        }
         for (int index = 0; index < parameters.getLength(); index++) {
             String expected = ((Element) parameters.item(index)).getAttribute("type");
             String actual = method.getParam(index).getType().describe();

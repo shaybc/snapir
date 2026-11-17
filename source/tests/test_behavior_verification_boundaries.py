@@ -87,13 +87,14 @@ def test_inherited_implementation_points_to_parent_source(boundary_tool):
 
 
 def test_format_directions_select_exact_framework_signatures(boundary_tool):
-    sources = [source('context', 'package com.ibm.dse.base; public class Context {}'), source('formatter', '''
+    sources = [source('context', 'package com.ibm.dse.base; public class Context {}'),
+        source('data', 'package com.ibm.dse.base; public class DataElement {}'), source('formatter', '''
 package example;
 import com.ibm.dse.base.Context;
 public class Formatter {
     public String format(Context context) { return "<Value/>"; }
     public String format(Object unrelated) { return "wrong"; }
-    public void unformat(String xml, Context context) { }
+    public com.ibm.dse.base.DataElement unformat(String xml, Context context) { return null; }
     public void unformat(String xml, Object unrelated) { }
 }''')]
     request = unit('request_unformat', 'example.Formatter', sources)

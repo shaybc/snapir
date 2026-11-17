@@ -322,6 +322,7 @@ objects:
     code:
       - source/cli/component_selection.py
       - source/tools/conversion_tools/standalone_sources.py
+      - source/tools/conversion_tools/format_candidates.py
       - source/runtime/component_conversion/standalone_*.py
   - id: behavior-runner
     type: component
@@ -671,6 +672,11 @@ connections:
     to: components
     description: Reuses generation, compilation, tests and revision-bound component reuse.
     technology: Python
+  - id: standalone-format-ancestry
+    from: standalone-components
+    to: verification
+    description: Resolves FormatElement ancestry through source and project JARs during selection and preparation.
+    technology: Python and Java analyzer
   - id: operator-intake
     from: operator
     to: intake-control

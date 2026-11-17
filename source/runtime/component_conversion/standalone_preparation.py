@@ -11,7 +11,11 @@ from tools.behavior_verification.boundaries import build_boundary_report
 def prepare_components(profile):
     """Resolve selected classes and each directional boundary using the existing analyzer."""
     catalog = source_catalog(profile.source_root)
-    available = component_catalog(profile.source_root, catalog=catalog)[profile.component_type]
+    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
+    classpath = discover_conversion_classpath(profile.source_root, profile.classpath_jars,
+        profile.eclipse_classpath_variables, profile=profile)
+    available = component_catalog(profile.source_root, catalog=catalog, profile=profile, classpath=classpath,
+                                  include_formats=profile.component_type == 'format')[profile.component_type]
     if set(profile.selected_components) - set(available):
         raise ValueError('Selected classes are no longer available as ' + profile.component_type + ' components')
     origins = []
@@ -46,9 +50,6 @@ def prepare_components(profile):
                        component_attributes=deepcopy(profile.component_attributes),
                        component_type=profile.component_type, standalone_units=units, java_origins=origins,
                        operations={}, component_plan=plan.model_dump(mode='json'))
-    from tools.source_discovery_tools.classpath_scope import discover_conversion_classpath
-    classpath = discover_conversion_classpath(profile.source_root, profile.classpath_jars,
-        profile.eclipse_classpath_variables, profile=profile)
     from runtime.behavior_conversion.verification_mode import facts_disabled
     boundaries = build_boundary_report(preparation, collect_checklists=not facts_disabled(profile),
         classpath_index=classpath, framework_jars=profile.framework_jars)

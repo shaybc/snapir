@@ -6,14 +6,17 @@ def collect_components(draft, inputs, configs, api):
     """List source-backed format or step candidates and remember multiple selections."""
     kind = inputs.menu('Component type', [('format', 'Formats'), ('op_step', 'OP steps')])
     root = str((Path(configs) / draft.values()['source_root']).resolve())
-    key = ('component-catalog', root)
+    key = ('component-catalog', root, kind)
     if key not in draft.discovery:
         print('WORKING - Discovering component classes...', flush=True)
         from tools.conversion_tools.standalone_sources import component_catalog
         from runtime.java_toolchain import java_scope
         from models.pipeline_configuration import PipelineConfiguration
-        with java_scope(PipelineConfiguration()):
-            draft.discovery[key] = component_catalog(root)
+        values = draft.values()
+        profile = PipelineConfiguration().model_copy(update={name: value for name, value in values.items()
+            if name in PipelineConfiguration.model_fields})
+        with java_scope(profile):
+            draft.discovery[key] = component_catalog(root, profile=profile, include_formats=kind == 'format')
     names = draft.discovery[key][kind]
     if not names:
         raise ValueError('No ' + kind + ' component candidates found in the source workspace')

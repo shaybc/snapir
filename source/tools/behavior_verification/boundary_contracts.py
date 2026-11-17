@@ -10,7 +10,7 @@ CONTROLS = ['clock', 'random_seed', 'initial_settings', 'external_responses']
 
 CONTRACTS = {
     'request_unformat': dict(method_name='unformat', parameter_contract=['java.lang.String', 'Context'],
-        return_contract='void', inputs=['request_xml', 'initial_context', 'initialization', *CONTROLS]),
+        return_contract='com.ibm.dse.base.DataElement', inputs=['request_xml', 'initial_context', 'initialization', *CONTROLS]),
     'response_format': dict(method_name='format', parameter_contract=['Context'],
         return_contract='java.lang.String', inputs=['initial_context', 'initialization', *CONTROLS]),
     'configured_step': dict(method_name='execute', parameter_contract=[], return_contract='int',
