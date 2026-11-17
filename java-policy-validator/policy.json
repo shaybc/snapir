@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "forbidden_packages": [
+    "com.ibm",
+    "composer",
+    "javax.ejb",
+    "javax.rmi",
+    "org.omg"
+  ],
+  "forbidden_reflection_packages": [
+    "java.lang.reflect",
+    "java.lang.invoke",
+    "sun.misc.Unsafe",
+    "jdk.internal.misc.Unsafe",
+    "org.apache.commons.beanutils",
+    "org.apache.commons.lang.reflect",
+    "org.apache.commons.lang3.reflect",
+    "org.springframework.util.ReflectionUtils",
+    "org.springframework.beans.BeanWrapper",
+    "java.beans.Introspector",
+    "java.util.ServiceLoader"
+  ],
+  "allowed_dependencies": [],
+  "allowed_plugins": [],
+  "allowed_repositories": []
+}

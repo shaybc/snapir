@@ -28,6 +28,16 @@ objects:
     code:
       - format-library-tool/format_library/**
       - format-library-tool/run.cmd
+  - id: java-policy-validator
+    type: app
+    name: Independent Java policy validator
+    description: Checks generated source syntax and framework dependencies using its own policy and returns JSON findings.
+    parent: snapir
+    technologies: [Java, Python]
+    code:
+      - java-policy-validator/src/**
+      - java-policy-validator/run.py
+      - java-policy-validator/policy.json
   - id: format-library-scanner
     type: app
     name: Format library source scanner
@@ -673,6 +683,11 @@ objects:
     description: Displays isolated conversion dependency exports in VS Code.
     external: true
 connections:
+  - id: format-library-validator
+    from: format-library-tool
+    to: java-policy-validator
+    description: Validates staged generated candidates before publication.
+    technology: CLI/JSON
   - id: operator-format-library
     from: operator
     to: format-library-tool

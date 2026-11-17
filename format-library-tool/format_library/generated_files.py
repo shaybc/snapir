@@ -1,6 +1,6 @@
 """Validate response structure and publish production-only candidates without executing them."""
 import json
-import re
+import shutil
 from pathlib import Path
 from format_library.files import digest, file_hash, inside, write_json
 
@@ -18,7 +18,7 @@ def production_path(path):
     raise ValueError('Only production code/resources are permitted: ' + path)
 
 
-def extract(folder, manifest, response, request, attempt):
+def extract(folder, manifest, response, request, attempt, *, config=None):
     """Validate the complete response before writing; retain prior candidates and human edits."""
     payload = json.loads(response)
     if not isinstance(payload, dict):
@@ -57,8 +57,6 @@ def extract(folder, manifest, response, request, attempt):
         if path.endswith('.java'):
             if not path.startswith('src/main/java/' + package_root + '/'):
                 raise ValueError('Generated Java must use the assigned native package')
-            if re.search(r'\bcom\.ibm\.', item['content']):
-                raise ValueError('Generated Java still references IBM/Composer types')
     for native in manifest['native_classes'].values():
         if 'src/main/java/' + native.replace('.', '/') + '.java' not in seen:
             raise ValueError('Missing exported native class file: ' + native)
@@ -69,15 +67,23 @@ def extract(folder, manifest, response, request, attempt):
     destination = folder / 'generated' / attempt.name
     if destination.exists():
         raise ValueError('Candidate destination already exists')
+    staged = attempt / 'candidate'
+    if staged.exists():
+        raise ValueError('Staged candidate already exists')
     for item in files:
-        path = inside(destination, item['path'])
+        path = inside(staged, item['path'])
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(item['content'], encoding='utf-8')
+    from format_library.validator_client import validate
+    report = validate(config, staged, attempt)
+    shutil.copytree(staged, destination)
     candidate = dict(schema_version='format-library-candidate-v1', status='generated', group_id=manifest['id'],
         api_hash=manifest['api_hash'], preparation_hash=manifest['preparation_hash'], components=components,
         dependencies=dependencies, prerequisites=request['prerequisites'], request_hash=digest(request),
         files=[dict(path=item['path'], sha256=file_hash(inside(destination, item['path']))) for item in files],
-        notes=payload.get('notes', []), verified=False)
+        notes=payload.get('notes', []), verified=False,
+        validation=dict(status=report['status'], policy_hash=report['policy_hash'], input_hash=report['input_hash'],
+                        report=str((attempt / 'validation.json').relative_to(folder))))
     write_json(destination / 'candidate.json', candidate)
     write_json(folder / 'latest.json', dict(candidate=str(destination.relative_to(folder)).replace('\\', '/')))
     return destination

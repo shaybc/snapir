@@ -1,0 +1,60 @@
+"""Generation accepts only a matching passing report from the external CLI."""
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+from types import SimpleNamespace
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from format_library.validator_client import validate
+from format_library.files import read_json
+from format_library.generated_files import extract
+from format_library.planning import build_plan
+from format_library.workspaces import prepare
+from test_tool import config, evidence, response, generate
+
+
+def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(config):
+    folder = prepare(config, build_plan(evidence(config, {'example.Work': []})))[0]
+    manifest = read_json(folder / 'component.json')
+    payload = json.loads(response(manifest))
+    payload['files'][0]['content'] = '/** {@code com.ibm.dse.Legacy} */\n'+payload['files'][0]['content']
+    attempt = folder / 'attempts/documentation'; attempt.mkdir()
+    accepted = extract(folder, manifest, json.dumps(payload), dict(prerequisites=[]), attempt, config=config)
+    before = (folder / 'latest.json').read_bytes()
+    assert read_json(attempt/'validation.json')['status']=='passed'
+    assert read_json(accepted/'candidate.json')['validation']['status']=='passed'
+    payload['files'][0]['content'] += '\nclass Helper { com.ibm.dse.Context context; }'
+    attempt = folder / 'attempts/rejected'; attempt.mkdir()
+    with pytest.raises(ValueError, match='validation'):
+        extract(folder, manifest, json.dumps(payload), dict(prerequisites=[]), attempt, config=config)
+    assert read_json(attempt/'validation.json')['status']=='failed'
+    assert (attempt/'candidate').is_dir()
+    assert not (folder/'generated/rejected').exists()
+    assert (folder/'latest.json').read_bytes()==before
+
+
+@pytest.mark.parametrize('mode', ['missing','malformed','exit','stale','timeout','error'])
+def test_client_fails_closed(tmp_path, monkeypatch, mode):
+    staged = tmp_path/'candidate'; staged.mkdir()
+    (staged/'Work.java').write_text('class Work {}')
+    attempt=tmp_path/'attempt'; attempt.mkdir()
+    policy=tmp_path/'policy.json';policy.write_text('{}')
+    def run(*args, **kwargs):
+        if mode=='missing': raise FileNotFoundError('missing validator')
+        if mode=='timeout': raise subprocess.TimeoutExpired(args[0],1)
+        if mode=='malformed': return SimpleNamespace(returncode=0,stdout='not JSON',stderr='')
+        files={'Work.java':hashlib.sha256((staged/'Work.java').read_bytes()).hexdigest()}
+        report=dict(schema_version='java-policy-validation-v1',status='passed',files=files,
+            policy_hash=hashlib.sha256(policy.read_bytes()).hexdigest(), input_hash=hashlib.sha256(
+                json.dumps(files,separators=(',',':')).encode()).hexdigest(),
+            findings=[],tool_version='1',policy_version='1')
+        if mode=='stale': report['files']={}
+        if mode=='error': report['status']='error'
+        return SimpleNamespace(returncode=2 if mode in {'exit','error'} else 0,stdout=json.dumps(report),stderr='')
+    monkeypatch.setattr('format_library.validator_client.subprocess.run',run)
+    with pytest.raises(ValueError,match='External validation'):
+        validate(dict(validator_command=['external'],validator_policy_path=str(policy)),staged,attempt)
+    assert (attempt/'validation-rejection.json').is_file()

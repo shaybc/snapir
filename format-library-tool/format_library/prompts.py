@@ -25,6 +25,9 @@ XmlElement strings are logical unescaped text. Preserve mixed content and escape
 wire adapter. Never serialize Java record field names as the business XML schema.
 Use ordinary native Java; Jackson XML may be used for genuine wire adapters. No IBM/Composer imports,
 runtime objects, reflection-based reconstruction, generic Composer engine or XML tag interpreter.
+Original and decompiled sources are behavioral reference only, never runtime dependencies.
+Translate inherited behavior into native Java and the supplied common API. Do not preserve IBM
+inheritance, delegate to IBM classes or use reflection/class loading to reconstruct Composer.
 No original JAR is a target dependency. Ordinary required third-party dependencies must be declared
 with pinned coordinates from known_dependencies; if missing, return blocked and explain what is needed.
 Do not invent behavior whose required source is unavailable. JARs in the folder are dependencies,

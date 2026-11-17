@@ -110,7 +110,7 @@ def _convert(config, folder):
             continue
         (attempt / 'response.txt').write_text(response, encoding='utf-8')
         try:
-            destination = extract(folder, manifest, response, request, attempt)
+            destination = extract(folder, manifest, response, request, attempt, config=config)
         except (ValueError, KeyError, TypeError) as error:
             write_json(attempt / 'result.json', dict(status='invalid_response', message=str(error), model_message_received=True))
             raise ValueError('Model response saved but not accepted: ' + str(error)) from error

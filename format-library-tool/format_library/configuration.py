@@ -1,6 +1,7 @@
 """Load converter-compatible configuration fields without importing migration configuration."""
 import os
 import codecs
+import sys
 import re
 import shutil
 import subprocess
@@ -9,9 +10,11 @@ from pathlib import Path
 import yaml
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
-PATH_FIELDS = ('source_root', 'output_root', 'approved_library_root', 'java_home',
+PATH_FIELDS = ('source_root', 'output_root', 'approved_library_root', 'java_home', 'validator_policy_path',
                'maven_settings_path', 'maven_local_repository')
 DEFAULTS = dict(source_encoding='UTF-8', java_version=25, java_home=None, java_scan_inactivity_timeout_seconds=900,
+    validator_command=[sys.executable, str(TOOL_ROOT.parent / 'java-policy-validator/run.py')],
+    validator_policy_path=str(TOOL_ROOT.parent / 'java-policy-validator/policy.json'), validator_timeout_seconds=900,
     classpath_jars=[], framework_jars=[], eclipse_classpath_variables={}, eclipse_classpath_containers={},
     eclipse_project_classpath_containers={}, maven_settings_path=None, maven_local_repository=None,
     model_provider='litellm', model_name='', model_base_url='', model_api_key_environment='AI_API_KEY',
@@ -32,6 +35,11 @@ def load_config(path):
     if unknown:
         raise ValueError('Unsupported config fields; copy only documented sections: ' + ', '.join(sorted(unknown)))
     result = {**deepcopy(DEFAULTS), **supplied}
+    if not isinstance(result['validator_command'], list) or not result['validator_command'] or not all(
+            isinstance(value, str) and value.strip() for value in result['validator_command']):
+        raise ValueError('validator_command must be a nonempty list of command arguments')
+    if not isinstance(result['validator_policy_path'], str) or not result['validator_policy_path'].strip():
+        raise ValueError('validator_policy_path is required')
     try:
         if not isinstance(result['source_encoding'], str) or not result['source_encoding'].strip():
             raise ValueError('source_encoding must be a nonempty encoding name')
@@ -55,7 +63,7 @@ def load_config(path):
     for bindings in [result['eclipse_classpath_containers'], *result['eclipse_project_classpath_containers'].values()]:
         for key, values in bindings.items():
             bindings[key] = [str((path.parent / item).resolve()) for item in values]
-    for key in ('model_timeout_seconds', 'java_scan_inactivity_timeout_seconds', 'max_model_attempts',
+    for key in ('model_timeout_seconds', 'java_scan_inactivity_timeout_seconds', 'max_model_attempts', 'validator_timeout_seconds',
                 'request_character_limit', 'target_java_version', 'java_version'):
         if not isinstance(result[key], int) or isinstance(result[key], bool) or result[key] <= 0:
             raise ValueError(key + ' must be a positive integer')

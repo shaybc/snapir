@@ -171,3 +171,22 @@ production JARs remain available as dependencies rather than uploaded source bod
 Prepared sources use their Java package paths, adding a readable project folder only for
 collisions. Hashes remain in `component.json`. Existing folders are immutable: rediscover
 and use a new output_root to replace older dependency evidence and prepared layouts.
+
+## External candidate policy validation
+
+Generation stages returned production files under `attempts/<id>/candidate/`, then invokes
+an independent CLI. No validator code is imported. The default command uses the current
+Python interpreter and `../java-policy-validator/run.py`; override `validator_command` with
+a YAML list of executable/arguments. `validator_policy_path` identifies the validator's own
+JSON policy, and `validator_timeout_seconds` bounds the complete invocation (including its
+first build). The command receives `--code PATH --policy PATH` and must return the documented
+JSON report and exit codes. See `../java-policy-validator/README.md` for policy configuration.
+
+Only a complete passing report matching all staged file bytes and policy bytes allows a
+candidate to be published under `generated`. JSON response metadata is not inspected as
+Java. Reports and captured output are saved in the attempt as `validation.json`,
+`validator.stdout.txt` and `validator.stderr.txt`; rejection details are in
+`validation-rejection.json`. Rejected candidates remain staged for inspection and AI feedback.
+The previous accepted candidate is preserved. Delivery retries remain unchanged; policy
+findings do not yet initiate an automatic AI repair. Approval continues to allow human edits
+and records their actual bytes; the generation report describes pre-review bytes only.
