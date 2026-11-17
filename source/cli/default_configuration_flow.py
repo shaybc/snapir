@@ -45,7 +45,13 @@ def collect_section(draft, inputs, configs, api):
             raise ValueError('Select an indexed/scoped map or create a new map')
         metadata = bounded_json((root / 'vault-manifest.json').read_text(encoding='utf-8-sig'))
         if metadata['workspace_id'] != values['source_workspace_id']:
-            raise ValueError('source_workspace_id differs from the existing map; correct the application ID or create a new map')
+            choice = inputs.menu('Existing map workspace ID differs from the configured application ID', [
+                ('accept', 'Accept existing vault and use its workspace ID: ' + metadata['workspace_id']),
+                ('change', 'Choose another map or correct the application ID'),
+            ])
+            if choice != 'accept':
+                raise ValueError('source_workspace_id differs from the existing map; correct the application ID or create a new map')
+            return dict(existing_composer_map=path, source_workspace_id=metadata['workspace_id'])
         return dict(existing_composer_map=path)
     if section == 2:
         result = existing_section(draft, inputs, configs, api)

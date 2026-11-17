@@ -63,6 +63,46 @@ def test_review_cannot_save_a_different_map_identity(tmp_path, monkeypatch):
     validate_settings(dict(existing_composer_map='map', source_workspace_id='original'), tmp_path)
 
 
+@pytest.mark.parametrize('workspace_id, accept', [('new_config', True), ('original', True), ('new_config', False)])
+def test_existing_vault_can_continue_with_its_workspace_identity(tmp_path, monkeypatch, workspace_id, accept):
+    from types import SimpleNamespace
+    from cli.default_configuration_flow import collect_section
+    from cli.configuration_inputs import WizardInputs
+    from models.configuration_draft import ConfigurationDraft
+    from cli.configuration_flow import _commit
+
+    root = tmp_path / 'map'; root.mkdir()
+    (root / 'vault-manifest.json').write_text(json.dumps({'workspace_id': 'original'}))
+    monkeypatch.setattr('tools.composer_mapper_tools.indexed_analysis.is_indexed_map', lambda _: True)
+    menus = []
+    def select(title, options, **kwargs):
+        menus.append(title)
+        if title == 'Composer analysis':
+            return 'existing'
+        if title == 'Section complete':
+            return 'next'
+        assert any(key == 'accept' for key, _ in options)
+        return 'accept' if accept else 'change'
+    api = SimpleNamespace(select_option=select, clear_screen=lambda: None,
+                          prompt_text=lambda *a, **k: 'map')
+    draft = ConfigurationDraft()
+    draft.sections[0] = dict(_name='new_config', source_workspace_id=workspace_id)
+    draft.section = 1
+    inputs = WizardInputs(draft, api, ('Name', 'Composer analysis'))
+    if not accept:
+        with pytest.raises(ValueError, match='source_workspace_id differs'):
+            collect_section(draft, inputs, tmp_path, api)
+        assert draft.values()['source_workspace_id'] == workspace_id
+        return
+    result = collect_section(draft, inputs, tmp_path, api)
+    assert inputs.next() == 'next'
+    _commit(draft, inputs, result)
+    assert draft.values()['existing_composer_map'] == 'map'
+    assert draft.values()['source_workspace_id'] == 'original'
+    validate_settings(draft.values(), tmp_path)
+    assert len(menus) == (2 if workspace_id == 'original' else 3)
+
+
 def test_default_menu_returns_without_starting_conversion(monkeypatch):
     from cli import interactive
     from cli.main import main
