@@ -28,16 +28,6 @@ objects:
     code:
       - format-library-tool/format_library/**
       - format-library-tool/run.cmd
-  - id: format-library-foundations
-    type: component
-    name: Approved native foundations
-    description: Plans shared base conversions and selects AI evidence at approved native ownership boundaries.
-    parent: format-library-tool
-    technologies: [Python]
-    code:
-      - format-library-tool/format_library/foundation_planning.py
-      - format-library-tool/format_library/foundation_contracts.py
-      - format-library-tool/format_library/prompt_evidence.py
   - id: format-library-scanner
     type: app
     name: Format library source scanner
@@ -683,11 +673,6 @@ objects:
     description: Displays isolated conversion dependency exports in VS Code.
     external: true
 connections:
-  - id: format-library-foundation-planning
-    from: format-library-tool
-    to: format-library-foundations
-    description: Plans foundation prerequisites and supplies frozen extension contracts for concrete conversion.
-    technology: Python
   - id: operator-format-library
     from: operator
     to: format-library-tool

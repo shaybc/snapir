@@ -28,22 +28,18 @@ def _artifact(root, identity, revision):
     return folder, record
 
 
-def collect_prerequisites(config, folder, manifest, *, copy_files=True):
+def collect_prerequisites(config, folder, manifest):
     """Attach only approved, unmodified components with matching original-source and API revisions."""
     root = Path(config['approved_library_root'])
     index = _index(root)
     original_hashes = {item['original']: item['sha256'] for item in manifest['files']}
-    expected = {name: original_hashes[item['file']] for name, item in manifest['original_classes'].items() if item.get('file') in original_hashes}
-    result, native_files = [], {}
+    expected = {name: original_hashes[item['file']] for name, item in manifest['original_classes'].items()}
+    result = []
     for identity in manifest['dependencies']:
         revision = index.get(identity)
         if not revision:
             raise ValueError('Prerequisite needs human approval: ' + identity)
         source, record = _artifact(root, identity, revision)
-        if record.get('policy') != manifest.get('policy') or record.get('stage') != manifest['dependency_stages'][identity]:
-            raise ValueError('Prerequisite lacks the current foundation policy/stage; prepare and approve it again: ' + identity)
-        if set(record.get('members', [])) != set(manifest['dependency_members'][identity]):
-            raise ValueError('Prerequisite ownership differs from this preparation: ' + identity)
         if record['api_hash'] != manifest['api_hash']:
             raise ValueError('Prerequisite uses a different common API: ' + identity)
         for name, value in record['original_revisions'].items():
@@ -54,19 +50,13 @@ def collect_prerequisites(config, folder, manifest, *, copy_files=True):
                 raise ValueError('Prerequisite was approved against an older dependency: ' + identity)
             _artifact(root, dependency['id'], dependency['revision'])
         for item in record['files']:
-            if item['path'].endswith('.java'):
-                previous = native_files.setdefault(item['path'], item['sha256'])
-                if previous != item['sha256']:
-                    raise ValueError('Approved prerequisites contain conflicting native Java: ' + item['path'])
             target = inside(folder, 'prerequisites/' + identity + '/' + revision + '/' + item['path'])
+            target.parent.mkdir(parents=True, exist_ok=True)
             if target.exists() and file_hash(target) != item['sha256']:
                 raise ValueError('Local prerequisite copy was edited: ' + str(target))
-            if copy_files and not target.exists():
-                target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
                 shutil.copyfile(inside(source, item['path']), target)
-        result.append(dict(id=identity, revision=revision, stage=record['stage'], policy=record['policy'],
-            members=record['members'], components=record['components'], files=record['files'],
-            original_revisions=record['original_revisions']))
+        result.append(dict(id=identity, revision=revision, components=record['components'], files=record['files']))
     return result
 
 
@@ -89,18 +79,11 @@ def _approve(config, folder, *, reviewed=False):
     folder = Path(folder).resolve()
     manifest = read_json(folder / 'component.json')
     verify_inputs(folder, manifest)
-    from format_library.foundation_planning import verify_selection
-    verify_selection(config, manifest)
     candidate_folder = inside(folder, read_json(folder / 'latest.json')['candidate'])
     candidate = read_json(candidate_folder / 'candidate.json')
-    if candidate['preparation_hash'] != manifest['preparation_hash'] or candidate['api_hash'] != manifest['api_hash'] or candidate.get('policy') != manifest['policy'] or candidate.get('stage') != manifest['stage']:
+    if candidate['preparation_hash'] != manifest['preparation_hash'] or candidate['api_hash'] != manifest['api_hash']:
         raise ValueError('Candidate does not match this preparation')
-    if candidate.get('group_id') != manifest['id']:
-        raise ValueError('Reviewed candidate changed its group identity')
-    if manifest['stage'] == 'foundation':
-        from format_library.foundation_contracts import exports
-        exports(manifest, candidate['components'])
-    elif {
+    if candidate.get('group_id') != manifest['id'] or {
             item['original_class']: item['native_class'] for item in candidate['components']} != manifest['native_classes']:
         raise ValueError('Reviewed candidate changed its assigned exported identities')
     current = collect_prerequisites(config, folder, manifest)
@@ -122,12 +105,8 @@ def _approve(config, folder, *, reviewed=False):
     expected = {item['path'] for item in candidate['files']}
     if not expected <= {item['path'] for item in files}:
         raise ValueError('An exported candidate file was removed')
-    frozen_files = {item['path'] for prerequisite in current for item in prerequisite['files'] if item['path'].endswith('.java')}
-    if frozen_files.intersection(item['path'] for item in files):
-        raise ValueError('Reviewed candidate must not replace approved prerequisite Java')
     original_hashes = {item['original']: item['sha256'] for item in manifest['files']}
-    record = dict(schema_version='format-library-approval-v2', policy=manifest['policy'], stage=manifest['stage'],
-        members=manifest['members'], id=manifest['id'], api_hash=manifest['api_hash'],
+    record = dict(schema_version='format-library-approval-v1', id=manifest['id'], api_hash=manifest['api_hash'],
         api_version=1, components=candidate['components'], files=files, approval='human_reviewed',
         verified=False, prerequisites=[dict(id=item['id'], revision=item['revision']) for item in current],
         original_revisions={name: original_hashes[item['file']] for name, item in manifest['original_classes'].items()},

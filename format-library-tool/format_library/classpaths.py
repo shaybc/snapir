@@ -20,7 +20,7 @@ def inventory(config):
     sources = [path.resolve() for path in files if path.suffix == '.java']
     owners = {path: next((project for project in descriptors if path.is_relative_to(project)), root) for path in sources}
     projects = {str(path): dict(id=str(path), roots=[], libraries=[], references=[], issues=[], source_files=[],
-                               exported_libraries=[], exported_references=[], test_roots=[])
+                               exported_libraries=[], exported_references=[])
                 for path in sorted(set(owners.values()) | set(descriptors))}
     names = {}
     for project in projects:
@@ -36,12 +36,6 @@ def inventory(config):
         if descriptor.is_file():
             for entry in ET.parse(descriptor).getroot().findall('classpathentry'):
                 kind, value = entry.get('kind'), entry.get('path', '')
-                test_only = any(attribute.get('name') == 'test' and attribute.get('value') == 'true'
-                                for attribute in entry.findall('./attributes/attribute'))
-                if test_only or value == 'org.eclipse.jdt.junit.JUNIT_CONTAINER' or value.startswith('org.eclipse.jdt.junit.JUNIT_CONTAINER/'):
-                    if kind == 'src' and not value.startswith('/'):
-                        project['test_roots'].append(str((path / value).resolve()))
-                    continue
                 previous_libraries = len(project['libraries'])
                 if kind == 'src':
                     if value.startswith('/'):
@@ -84,9 +78,7 @@ def inventory(config):
         # Maven-only projects need an effective classpath, not guessed versions/transitive dependencies.
         if (path / 'pom.xml').is_file() and not descriptor.is_file():
             pom = ET.parse(path / 'pom.xml').getroot()
-            production = [item for item in pom.findall('./{*}dependencies/{*}dependency')
-                          if item.findtext('{*}scope', 'compile') != 'test']
-            if production and not config['classpath_jars']:
+            if pom.findall('.//{*}dependency') and not config['classpath_jars']:
                 project['issues'].append('Maven dependencies require classpath_jars with the effective dependency JARs')
         project['libraries'].extend(config['classpath_jars'])
         project['libraries'].extend(config['framework_jars'])
@@ -106,13 +98,4 @@ def inventory(config):
             project['libraries'].extend(item for item in target['exported_libraries'] if item not in project['libraries'])
             pending.extend(target['exported_references'])
         project['visible_projects'] = [project['id'], *sorted(seen)]
-    production_sources = []
-    for path, owner in owners.items():
-        test_roots = projects[str(owner)]['test_roots']
-        conventional_test = path.relative_to(owner).parts[:2] == ('src', 'test')
-        if conventional_test or any(path.is_relative_to(Path(test)) for test in test_roots):
-            continue
-        production_sources.append(dict(file=str(path), project=str(owner)))
-    for project in projects.values():
-        project['source_files'] = [item['file'] for item in production_sources if item['project'] == project['id']]
-    return dict(projects=list(projects.values()), sources=production_sources)
+    return dict(projects=list(projects.values()), sources=[dict(file=str(path), project=str(owner)) for path, owner in owners.items()])

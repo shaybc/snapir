@@ -5,13 +5,6 @@ java_home: null                 # null uses JAVA_HOME or java on PATH
 java_scan_inactivity_timeout_seconds: 900
 classpath_jars: []
 framework_jars: []              # Copied dependencies, never automatic AI source attachments
-foundation_source_roots: []     # Source directories for shared/framework behavior; never decompiled automatically
-# Review discovery's proposed bases, then name explicit coordinated conversion groups.
-# foundation_groups:
-#   field_base:
-#     - com.ibm.dse.base.FormatElement
-#     - com.ibm.dse.base.FieldFormat
-foundation_groups: {}
 eclipse_classpath_variables: {}
 eclipse_classpath_containers: {}
 eclipse_project_classpath_containers: {}

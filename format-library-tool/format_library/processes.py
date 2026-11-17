@@ -3,10 +3,9 @@ import queue
 import subprocess
 import threading
 import time
-from pathlib import Path
 
 
-def run_process(command, environment, inactivity, *, cwd=None, log_path=None):
+def run_process(command, environment, inactivity, *, cwd=None):
     """Drain child output; terminate after inactivity, not after a fixed overall runtime."""
     process = subprocess.Popen(command, env=environment, cwd=cwd, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
@@ -18,7 +17,6 @@ def run_process(command, environment, inactivity, *, cwd=None, log_path=None):
     threading.Thread(target=read, daemon=True).start()
     last = time.monotonic()
     lines = []
-    log = Path(log_path).open('a', encoding='utf-8') if log_path else None
     try:
         while True:
             try:
@@ -32,19 +30,12 @@ def run_process(command, environment, inactivity, *, cwd=None, log_path=None):
             # Only emitted scanner work advances its own activity timer.
             last = time.monotonic()
             lines.append(line)
-            if log:
-                log.write(line)
-                log.flush()
-            else:
-                print(line.rstrip(), flush=True)
+            print(line.rstrip(), flush=True)
         result = process.wait(timeout=inactivity)
         if result:
-            details = 'see ' + str(log_path) if log else ''.join(lines)[-3000:]
-            raise ValueError('Scanner command failed (' + str(result) + '): ' + details)
+            raise ValueError('Scanner command failed (' + str(result) + '): ' + ''.join(lines)[-3000:])
     finally:
         if process.poll() is None:
             process.kill()
             process.wait()
         process.stdout.close()
-        if log:
-            log.close()
