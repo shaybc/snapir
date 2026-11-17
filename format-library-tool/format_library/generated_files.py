@@ -32,11 +32,17 @@ def extract(folder, manifest, response, request, attempt):
     if payload.get('status') != 'generated':
         raise ValueError('AI response status must be generated or blocked')
     components = payload.get('components', [])
-    if not isinstance(components, list) or len(components) != len(manifest['members']):
+    foundation = manifest.get('stage') == 'foundation'
+    if foundation:
+        from format_library.foundation_contracts import exports
+        native_exports = exports(manifest, components)
+    else:
+        native_exports = set(manifest['native_classes'].values())
+    if not foundation and (not isinstance(components, list) or len(components) != len(manifest['members'])):
         raise ValueError('Response must declare every target exactly once')
-    if not all(isinstance(item, dict) for item in components) or {item.get('original_class') for item in components} != set(manifest['members']):
+    if not foundation and (not all(isinstance(item, dict) for item in components) or {item.get('original_class') for item in components} != set(manifest['members'])):
         raise ValueError('Response target identities differ from the prepared group')
-    for item in components:
+    for item in ([] if foundation else components):
         if item.get('native_class') != manifest['native_classes'][item['original_class']]:
             raise ValueError('Response changed the assigned native class')
         if not isinstance(item.get('constructors'), list) or not item['constructors'] or not all(isinstance(value, str) for value in item['constructors']):
@@ -45,11 +51,15 @@ def extract(folder, manifest, response, request, attempt):
     if not isinstance(files, list) or not files:
         raise ValueError('No production files returned')
     seen = set()
+    frozen_files = {item['path'] for prerequisite in request['prerequisites'] for item in prerequisite['files']
+                    if item['path'].endswith('.java')}
     package_root = manifest['native_package'].replace('.', '/')
     for item in files:
         if not isinstance(item, dict):
             raise ValueError('Every generated file must be an object')
         path = production_path(item['path'])
+        if path in frozen_files:
+            raise ValueError('Response must not regenerate approved prerequisite Java: ' + path)
         inside(attempt, path)
         if path in seen or not isinstance(item.get('content'), str) or not item['content'].strip():
             raise ValueError('Duplicate or empty generated file: ' + path)
@@ -59,7 +69,7 @@ def extract(folder, manifest, response, request, attempt):
                 raise ValueError('Generated Java must use the assigned native package')
             if re.search(r'\bcom\.ibm\.', item['content']):
                 raise ValueError('Generated Java still references IBM/Composer types')
-    for native in manifest['native_classes'].values():
+    for native in native_exports:
         if 'src/main/java/' + native.replace('.', '/') + '.java' not in seen:
             raise ValueError('Missing exported native class file: ' + native)
     dependencies = payload.get('dependencies', [])
@@ -73,7 +83,8 @@ def extract(folder, manifest, response, request, attempt):
         path = inside(destination, item['path'])
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(item['content'], encoding='utf-8')
-    candidate = dict(schema_version='format-library-candidate-v1', status='generated', group_id=manifest['id'],
+    candidate = dict(schema_version='format-library-candidate-v2', policy=manifest['policy'], stage=manifest['stage'],
+        status='generated', group_id=manifest['id'],
         api_hash=manifest['api_hash'], preparation_hash=manifest['preparation_hash'], components=components,
         dependencies=dependencies, prerequisites=request['prerequisites'], request_hash=digest(request),
         files=[dict(path=item['path'], sha256=file_hash(inside(destination, item['path']))) for item in files],

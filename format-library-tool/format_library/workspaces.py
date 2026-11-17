@@ -18,20 +18,26 @@ def folder_name(group):
     return re.sub(r'[^A-Za-z0-9_.+-]', '_', label)[:100] + '--' + group['id'][6:14]
 
 
-def prepare(config, plan, names=()):
+def prepare(config, plan, names=(), stage='all'):
     """Copy complete original closures and required JARs; never overwrite an existing folder."""
     from format_library.planning import select_groups
     from format_library.prompts import write_prompt
+    from format_library.foundation_planning import POLICY
+    if plan.get('policy') != POLICY:
+        raise ValueError('Rediscover and prepare a v2 foundation-aware plan; older artifacts remain unchanged')
+    if plan['foundation_settings'] != dict(groups=config.get('foundation_groups', {}),
+                                           source_roots=config.get('foundation_source_roots', [])):
+        raise ValueError('Foundation configuration changed; run discover again before preparation')
     root = Path(config['output_root'])
     for path in (str(TOOL_ROOT / 'run.cmd'), config['_config_path']):
         if any(character in path for character in ('%', '"', '\r', '\n')):
             raise ValueError('CMD launcher paths cannot contain percent signs, quotes or newlines')
     write_json(root / 'plan.json', plan)
     created = []
-    for group in select_groups(plan, names):
+    for group in select_groups(plan, names, stage):
         preparation_hash = digest([plan['discovery_hash'], group, api_revision(), config['native_package'],
                                    config['target_java_version'], config['known_dependencies']])
-        folder = root / 'components' / folder_name(group)
+        folder = root / ('foundations' if group['stage'] == 'foundation' else 'components') / folder_name(group)
         if folder.exists():
             existing = read_json(folder / 'component.json')
             if existing.get('preparation_hash') != preparation_hash:
@@ -39,26 +45,37 @@ def prepare(config, plan, names=()):
             created.append(folder)
             continue
         folder.mkdir(parents=True)
-        manifest = dict(schema_version='format-library-component-v1', **group,
+        manifest = dict(schema_version='format-library-component-v2', **group,
+            foundation_settings=plan['foundation_settings'],
             api_version=1, api_hash=api_revision(), native_package=config['native_package'],
             target_java_version=config['target_java_version'], known_dependencies=config['known_dependencies'],
             original_classes={name: plan['classes'][name] for name in group['source_classes']},
             native_classes={name: config['native_package'] + '.c' + group['id'][6:14] + '.Native' + name.rsplit('.', 1)[-1]
                             for name in group['members']}, files=[], binaries=[],
             preparation_hash=preparation_hash)
-        source_files = sorted({plan['classes'][name]['file'] for name in group['source_classes']})
+        manifest['dependency_members'] = {item['id']: item['members'] for item in plan['groups'] if item['id'] in group['dependencies']}
+        manifest['dependency_stages'] = {item['id']: item['stage'] for item in plan['groups'] if item['id'] in group['dependencies']}
+        source_files = sorted({plan['classes'][name]['file'] for name in group['source_classes'] if plan['classes'][name].get('file')})
+        manifest['file_classes'] = {path: sorted(name for name, item in plan['classes'].items() if item.get('file') == path)
+                                    for path in source_files}
+        from format_library.source_layout import copied_source_paths
+        source_paths = copied_source_paths(source_files, manifest['file_classes'], plan['classes'])
+        manifest['source_layout'] = 'java-package-v1'
         projects = {plan['classes'][name]['project'] for name in group['source_classes']}
         libraries = sorted({path for item in plan['projects'] if item['id'] in projects for path in item['libraries']})
         for kind, paths in [('sources', source_files), ('jars', libraries)]:
             for original in paths:
                 path = Path(original)
                 if not path.is_file():
+                    if kind == 'jars' and plan.get('dependency_policy') == 'required-members-v1':
+                        manifest.setdefault('dependency_warnings', []).append('Missing declared classpath JAR: ' + original)
+                        continue
                     manifest['blockers'].append('Missing required input: ' + original)
                     continue
                 revision = file_hash(path)
                 if plan['hashes'].get(original) != revision:
                     raise ValueError('Input changed since discovery: ' + original)
-                relative = kind + '/' + digest(original)[:12] + '/' + path.name
+                relative = source_paths[original] if kind == 'sources' else kind + '/' + digest(original)[:12] + '/' + path.name
                 destination = inside(folder, relative)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, destination)
@@ -83,6 +100,9 @@ def prepare(config, plan, names=()):
 
 def verify_inputs(folder, manifest):
     """Reject modified original evidence or common API before sending a request."""
+    from format_library.foundation_planning import POLICY
+    if manifest.get('policy') != POLICY:
+        raise ValueError('Legacy preparation has no foundation ownership policy; rediscover into a new folder')
     if manifest.get('manifest_hash') != digest({key: value for key, value in manifest.items() if key != 'manifest_hash'}):
         raise ValueError('Prepared component record changed; prepare a new folder')
     for item in manifest['files'] + manifest['binaries']:

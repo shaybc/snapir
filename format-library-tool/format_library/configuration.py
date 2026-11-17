@@ -12,6 +12,7 @@ PATH_FIELDS = ('source_root', 'output_root', 'approved_library_root', 'java_home
                'maven_settings_path', 'maven_local_repository')
 DEFAULTS = dict(java_version=25, java_home=None, java_scan_inactivity_timeout_seconds=900,
     classpath_jars=[], framework_jars=[], eclipse_classpath_variables={}, eclipse_classpath_containers={},
+    foundation_source_roots=[], foundation_groups={},
     eclipse_project_classpath_containers={}, maven_settings_path=None, maven_local_repository=None,
     model_provider='litellm', model_name='', model_base_url='', model_api_key_environment='AI_API_KEY',
     model_timeout_seconds=900, max_model_attempts=3, model_stream=False, output_root='./work', approved_library_root='./approved',
@@ -36,10 +37,22 @@ def load_config(path):
     for key in PATH_FIELDS:
         if result.get(key):
             result[key] = str((path.parent / Path(result[key]).expanduser()).resolve())
-    for key in ('classpath_jars', 'framework_jars'):
+    for key in ('classpath_jars', 'framework_jars', 'foundation_source_roots'):
         if not isinstance(result[key], list):
             raise ValueError(key + ' must be a list')
         result[key] = [str((path.parent / item).resolve()) for item in result[key]]
+    groups = result['foundation_groups']
+    if not isinstance(groups, dict):
+        raise ValueError('foundation_groups must map readable group names to original class-name lists')
+    assigned = set()
+    for name, members in groups.items():
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', name):
+            raise ValueError('Foundation group names must use letters, numbers, underscores or hyphens')
+        if not isinstance(members, list) or not members or not all(isinstance(item, str) and item.strip() for item in members):
+            raise ValueError('Each foundation group needs a nonempty list of exact original class names')
+        if len(set(members)) != len(members) or assigned.intersection(members):
+            raise ValueError('Each original class may belong to only one foundation group')
+        assigned.update(members)
     for key in ('eclipse_classpath_variables', 'eclipse_classpath_containers', 'eclipse_project_classpath_containers'):
         if not isinstance(result[key], dict):
             raise ValueError(key + ' must be an object')

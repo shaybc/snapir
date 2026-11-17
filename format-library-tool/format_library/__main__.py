@@ -12,33 +12,45 @@ def discover(config, rebuild=False):
     from format_library.planning import build_plan
     plan = build_plan(scan(config, build=rebuild))
     write_json(Path(config['output_root']) / 'plan.json', plan)
-    for item in plan['groups']:
-        print(str(item['order']) + '. ' + ', '.join(item['members']) + ' [' + item['id'] + ']')
-        print('   Prerequisites: ' + (', '.join(item['dependencies']) or 'none'))
-        for blocker in item['blockers']:
-            print('   BLOCKED: ' + blocker)
-    for issue in plan['issues']:
-        print('DISCOVERY ISSUE: ' + issue)
-    unresolved = [item for item in plan['classes'].values() if item['issues'] and item['kind'] == 'support']
-    for item in unresolved:
-        print('CLASSIFICATION UNRESOLVED: ' + item['name'] + ': ' + '; '.join(item['issues']))
-    print('Discovered ' + str(sum(len(item['members']) for item in plan['groups'])) + ' concrete format/decorator targets')
+    from format_library.discovery_reporting import record_plan, print_summary
+    record_plan(plan)
+    print_summary(plan)
     return plan
 
 
 def status(config):
     """Show prepared candidates, blockers and approval availability without analysis or generation."""
     root = Path(config['output_root'])
-    for path in sorted((root / 'components').glob('*/component.json')):
+    paths = sorted([*(root / 'foundations').glob('*/component.json'), *(root / 'components').glob('*/component.json')])
+    from format_library.foundation_planning import POLICY, verify_selection
+    from format_library.workspaces import verify_inputs
+    from format_library.approval import collect_prerequisites
+    for path in paths:
         item = read_json(path)
         latest = path.parent / 'latest.json'
         state = 'blocked' if item['blockers'] else 'prepared'
         if latest.is_file():
             state = 'generated candidate'
+        if item.get('policy') != POLICY:
+            state = 'legacy preparation: rediscover required'
+        elif not item['blockers']:
+            try:
+                verify_inputs(path.parent, item)
+                verify_selection(config, item)
+                prerequisites = collect_prerequisites(config, path.parent, item, copy_files=False)
+                if latest.is_file():
+                    candidate = read_json(path.parent / read_json(latest)['candidate'] / 'candidate.json')
+                    if [(value['id'], value['revision']) for value in prerequisites] != [
+                            (value['id'], value['revision']) for value in candidate['prerequisites']]:
+                        state = 'stale candidate: prerequisite approvals changed'
+                else:
+                    state = 'ready for conversion'
+            except (ValueError, OSError, KeyError) as error:
+                state += '; blocked prerequisite: ' + str(error)
         attempts = sorted((path.parent / 'attempts').glob('*/result.json'), key=lambda value: value.stat().st_mtime_ns)
         if attempts:
             state += '; latest attempt: ' + read_json(attempts[-1])['status']
-        print(', '.join(item['members']) + ': ' + state + '\n  ' + str(path.parent))
+        print(item.get('stage', 'legacy').upper() + ' ' + ', '.join(item['members']) + ': ' + state + '\n  ' + str(path.parent))
     index = Path(config['approved_library_root']) / 'index.json'
     if index.is_file():
         print('Approved group revisions: ' + str(len(read_json(index))))
@@ -62,9 +74,12 @@ def menu(config):
                 plan_path = Path(config['output_root']) / 'plan.json'
                 plan = read_json(plan_path) if plan_path.is_file() else discover(config)
                 for item in plan['groups']:
-                    print(', '.join(item['members']))
+                    print(item.get('stage', 'legacy') + ': ' + item.get('name', item['id']) + ' | ' + ', '.join(item['members']))
+                stage = input('Stage: foundation, component, or all (default all): ').strip() or 'all'
+                if stage not in {'foundation', 'component', 'all'}:
+                    raise ValueError('Unknown preparation stage')
                 names = [name.strip() for name in input('Exact/unique short names, comma separated (empty = all): ').split(',') if name.strip()]
-                for folder in prepare(config, plan, names):
+                for folder in prepare(config, plan, names, stage=stage):
                     print('Prepared: ' + str(folder))
             elif action == '3':
                 status(config)
@@ -88,6 +103,7 @@ def main(argv=None):
     scanning.add_argument('--rebuild-scanner', action='store_true')
     preparing = commands.add_parser('prepare')
     preparing.add_argument('--select', action='append', default=[])
+    preparing.add_argument('--stage', choices=['foundation', 'component', 'all'], default='all')
     for name in ('convert', 'approve'):
         action = commands.add_parser(name)
         action.add_argument('--folder', required=True)
@@ -103,7 +119,7 @@ def main(argv=None):
             from format_library.workspaces import prepare
             path = Path(config['output_root']) / 'plan.json'
             plan = read_json(path) if path.is_file() else discover(config)
-            for folder in prepare(config, plan, args.select):
+            for folder in prepare(config, plan, args.select, stage=args.stage):
                 print('Prepared: ' + str(folder))
         elif args.command == 'convert':
             from format_library.model_client import convert

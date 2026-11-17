@@ -31,7 +31,12 @@ The context is shared within an invocation; callers must provide appropriate iso
 invocations. XML structure is immutable. Text is unescaped data, not raw XML fragments. This API
 does not promise preservation of lexical XML choices such as quote style or self-closing syntax.
 
-Generated exported components accept definition attributes through a Map<String,String> constructor
+Approved native foundations may implement this interface or leave concrete hooks abstract.
+Concrete formats inherit or delegate through their approved constructors and public/protected APIs.
+Foundation utility types and interfaces need not implement NativeFormat. Settings and delegation
+remain source-defined native code; the common API signatures and version remain unchanged.
+
+Generated concrete components accept definition attributes through a Map<String,String> constructor
 argument and implement their own initialization, defaults and validation. This does not add an
 attribute-to-settings metadata mechanism or change the shared interface signatures.
 

@@ -40,6 +40,10 @@ def test_source_inheritance_and_decorator_precedence(tmp_path):
     assert result['classes']['example.Mode']['kind'] == 'support'
     plan = build_plan(result)
     assert {member for group in plan['groups'] for member in group['members']} == {'example.CCString', 'example.NilDecorator'}
+    assert any('Select shared ancestor' in issue for group in plan['groups'] for issue in group['blockers'])
+    result['foundation_groups'] = {'base': ['com.ibm.dse.base.FormatElement', 'com.ibm.dse.base.FormatDecorator', 'example.Holder']}
+    plan = build_plan(result)
+    assert plan['groups'][0]['stage'] == 'foundation'
     assert not any(group['blockers'] for group in plan['groups']), plan
 
 
@@ -71,6 +75,8 @@ def test_binary_ancestry_and_copied_framework_dependencies(tmp_path):
     archive = framework / 'framework.jar'
     subprocess.run([jar, '--create', '--file', str(archive), '-C', str(classes), '.'], env=environment, check=True, capture_output=True)
     config['framework_jars'] = [str(archive)]
+    config['foundation_source_roots'] = [str(framework / 'src')]
+    config['foundation_groups'] = {'base': ['com.ibm.dse.base.FormatElement', 'com.ibm.dse.base.StringFormat']}
     result = scan(config)
     assert result['classes']['example.CCString']['kind'] == 'format'
     plan = build_plan(result)
@@ -126,3 +132,51 @@ def test_referenced_source_uses_own_project_jars(tmp_path):
     assert result['classes']['a.Child']['kind'] == 'format'
     assert result['classes']['a.Plain']['kind'] == 'support'
     assert result['classes']['b.Holder']['kind'] == 'format'
+
+
+def test_inheritance_first_ignores_unrelated_bodies_and_reports_required_missing_symbols(tmp_path, capsys):
+    if not SCANNER_JAR.is_file():
+        pytest.skip('Build the scanner first')
+    from format_library.__main__ import discover
+    root = tmp_path / 'workspace'
+    files = {
+        'com/ibm/dse/base/FormatElement.java': 'package com.ibm.dse.base; public abstract class FormatElement {}',
+        'com/ibm/dse/base/FormatDecorator.java': 'package com.ibm.dse.base; public abstract class FormatDecorator extends FormatElement {}',
+        'example/Good.java': 'package example; public class Good extends com.ibm.dse.base.FormatElement { Helper helper; public String format(){return helper.read();} }',
+        'example/Other.java': 'package example; public class Other extends Good {}',
+        'example/Decorator.java': 'package example; public class Decorator extends com.ibm.dse.base.FormatDecorator {}',
+        'example/Helper.java': 'package example; import missing.Shared; public class Helper { Shared first; Shared second; public String read(){return first.toString();} }',
+        'example/ObjectFactory.java': 'package example; import missing.Irrelevant; public class ObjectFactory { Irrelevant value; public void broken(){missingCall();} }',
+        'example/Unknown.java': 'package example; import missing.Base; public class Unknown extends Base { MissingBody ignore; }',
+        'example/ExplicitBase.java': 'package example; import missing.FoundationHelper; public abstract class ExplicitBase { FoundationHelper value; }',
+    }
+    for name, text in files.items():
+        path = root / 'src/main/java' / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    path = tmp_path / 'config.yaml'
+    path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25,
+        foundation_groups={'support': ['example.ExplicitBase']})))
+    plan = discover(load_config(path))
+    classes = plan['classes']
+    assert classes['example.ObjectFactory']['ancestry_status'] == 'resolved'
+    assert classes['example.ObjectFactory']['dependency_status'] == 'ignored'
+    assert classes['example.ObjectFactory']['issues'] == []
+    assert classes['example.Unknown']['ancestry_status'] == 'unresolved'
+    assert classes['example.Unknown']['dependency_status'] == 'ignored'
+    assert classes['example.Helper']['dependency_status'] == 'analyzed'
+    assert classes['example.ExplicitBase']['dependency_status'] == 'analyzed'
+    assert set(plan['unresolved_dependencies']) == {'missing.Base', 'missing.Shared', 'missing.FoundationHelper'}
+    output = capsys.readouterr().out
+    for name in ('example.Good', 'example.Other', 'example.Decorator'):
+        assert name in output
+    assert 'example.Unknown' not in output and 'example.ObjectFactory' not in output
+    assert 'missingCall' not in output and 'CLASSIFICATION UNRESOLVED' not in output
+    assert output.count('missing.Shared') == 1
+    assert 'BLOCKED:' not in output and 'FOUNDATION BASE:' not in output
+    log = Path(plan['detailed_log']).read_text()
+    assert 'WARNING: ancestry could not be classified: example.Unknown' in log
+    assert 'example.Helper: Type unresolved' in log
+    assert 'BLOCKED:' in log and 'FOUNDATION BASE:' in log
+    assert str(Path(plan['detailed_log'])) in output
