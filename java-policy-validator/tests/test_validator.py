@@ -11,14 +11,22 @@ ROOT = Path(__file__).resolve().parents[1]
 JAR = ROOT / 'target/java-policy-validator-1.0.0-jar-with-dependencies.jar'
 
 
-def run(tmp_path, files, policy=None):
+def run(tmp_path, files, policy=None, context=None, java_options=()):
     code = tmp_path / 'code'; code.mkdir()
+    files = dict(files)
+    if not any(name.endswith('.java') for name in files):
+        files['Work.java'] = 'class Work {}'
     for name, content in files.items():
         path = code / name; path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding='utf-8')
     rules = tmp_path / 'policy.json'
     rules.write_text(json.dumps(policy or json.loads((ROOT / 'policy.json').read_text())))
-    result = subprocess.run([shutil.which('java'), '-jar', str(JAR), str(code), str(rules)],
+    args = [shutil.which('java'), *java_options, '-jar', str(JAR), str(code), str(rules)]
+    if context is not None:
+        inputs = tmp_path / 'compilation.json'
+        inputs.write_text(json.dumps(context), encoding='utf-8')
+        args.append(str(inputs))
+    result = subprocess.run(args,
                             capture_output=True, text=True, encoding='utf-8')
     report = json.loads(result.stdout)
     assert report['policy_hash'] == hashlib.sha256(rules.read_bytes()).hexdigest()

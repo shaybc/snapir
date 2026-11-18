@@ -20,12 +20,27 @@ def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(
     folder = prepare(config, build_plan(evidence(config, {'example.Work': []})))[0]
     manifest = read_json(folder / 'component.json')
     payload = json.loads(response(manifest))
+    native = next(iter(manifest['native_classes'].values())).rsplit('.', 1)[-1]
+    payload['files'][0]['content'] = payload['files'][0]['content'].replace('public class ' + native + ' {}',
+        'public class ' + native + ' implements com.snapir.format.api.NativeFormat {'
+        'public com.snapir.format.api.XmlElement format(Object value, com.snapir.format.api.FormatContext context){return null;}'
+        'public Object unformat(com.snapir.format.api.XmlElement value, com.snapir.format.api.FormatContext context){return null;} }')
     payload['files'][0]['content'] = '/** {@code com.ibm.dse.Legacy} */\n'+payload['files'][0]['content']
     attempt = folder / 'attempts/documentation'; attempt.mkdir()
     accepted = extract(folder, manifest, json.dumps(payload), dict(prerequisites=[]), attempt, config=config)
     before = (folder / 'latest.json').read_bytes()
     assert read_json(attempt/'validation.json')['status']=='passed'
     assert read_json(accepted/'candidate.json')['validation']['status']=='passed'
+    assert read_json(attempt/'validation.json')['compilation']['status']=='passed'
+    assert read_json(attempt/'validation.json')['compilation']['support_files']
+    invalid = json.loads(json.dumps(payload))
+    invalid['files'][0]['content'] += '\nclass Invalid { int number(){return "wrong";} }'
+    compile_attempt = folder / 'attempts/uncompilable'; compile_attempt.mkdir()
+    with pytest.raises(ValueError, match='validation'):
+        extract(folder, manifest, json.dumps(invalid), dict(prerequisites=[]), compile_attempt, config=config)
+    assert read_json(compile_attempt/'validation.json')['compilation']['status']=='failed'
+    assert not (folder/'generated/uncompilable').exists()
+    assert (folder/'latest.json').read_bytes()==before
     payload['files'][0]['content'] += '\nclass Helper { com.ibm.dse.Context context; }'
     attempt = folder / 'attempts/rejected'; attempt.mkdir()
     with pytest.raises(ValueError, match='validation'):
@@ -36,7 +51,7 @@ def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(
     assert (folder/'latest.json').read_bytes()==before
 
 
-@pytest.mark.parametrize('mode', ['missing','malformed','exit','stale','timeout','error'])
+@pytest.mark.parametrize('mode', ['missing','malformed','exit','stale','timeout','error','no_compile','wrong_release','wrong_support'])
 def test_client_fails_closed(tmp_path, monkeypatch, mode):
     staged = tmp_path/'candidate'; staged.mkdir()
     (staged/'Work.java').write_text('class Work {}')
@@ -50,7 +65,11 @@ def test_client_fails_closed(tmp_path, monkeypatch, mode):
         report=dict(schema_version='java-policy-validation-v1',status='passed',files=files,
             policy_hash=hashlib.sha256(policy.read_bytes()).hexdigest(), input_hash=hashlib.sha256(
                 json.dumps(files,separators=(',',':')).encode()).hexdigest(),
-            findings=[],tool_version='1',policy_version='1')
+            findings=[],tool_version='1',policy_version='1',checks=['compilation'],
+            compilation=dict(status='passed',release=17,support_files={}))
+        if mode=='no_compile': report.pop('compilation')
+        if mode=='wrong_release': report['compilation']['release']=25
+        if mode=='wrong_support': report['compilation']['support_files']={'stale':'hash'}
         if mode=='stale': report['files']={}
         if mode=='error': report['status']='error'
         return SimpleNamespace(returncode=2 if mode in {'exit','error'} else 0,stdout=json.dumps(report),stderr='')

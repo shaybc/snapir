@@ -75,7 +75,10 @@ def extract(folder, manifest, response, request, attempt, *, config=None):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(item['content'], encoding='utf-8')
     from format_library.validator_client import validate
-    report = validate(config, staged, attempt)
+    support = [folder / 'common-api/src/main/java']
+    for prerequisite in request['prerequisites']:
+        support.append(inside(folder, 'prerequisites/' + prerequisite['id'] + '/' + prerequisite['revision'] + '/src/main/java'))
+    report = validate(config, staged, attempt, source_roots=support, release=manifest['target_java_version'])
     shutil.copytree(staged, destination)
     candidate = dict(schema_version='format-library-candidate-v1', status='generated', group_id=manifest['id'],
         api_hash=manifest['api_hash'], preparation_hash=manifest['preparation_hash'], components=components,
@@ -83,6 +86,7 @@ def extract(folder, manifest, response, request, attempt, *, config=None):
         files=[dict(path=item['path'], sha256=file_hash(inside(destination, item['path']))) for item in files],
         notes=payload.get('notes', []), verified=False,
         validation=dict(status=report['status'], policy_hash=report['policy_hash'], input_hash=report['input_hash'],
+                        compilation=report['compilation'],
                         report=str((attempt / 'validation.json').relative_to(folder))))
     write_json(destination / 'candidate.json', candidate)
     write_json(folder / 'latest.json', dict(candidate=str(destination.relative_to(folder)).replace('\\', '/')))
