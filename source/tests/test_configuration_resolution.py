@@ -19,7 +19,7 @@ from tools.workspace_intake_tools.run_factory import create_run_config
 def test_shipped_common_configuration_lists_every_converter_field_and_default():
     """Keep the common YAML complete and valid without changing converter runtime defaults."""
     root = Path(__file__).resolve().parents[2]
-    path = root / 'config/default_config.yaml'
+    path = root / 'configs/default_config.yaml'
     saved = yaml.safe_load(path.read_text(encoding='utf-8'))
     defaults = PipelineConfiguration()
     expected = defaults.model_dump(mode='json')

@@ -1,4 +1,4 @@
-# Shared Java/Maven defaults come from ../config/default_config.yaml.
+# Shared Java/Maven defaults come from ../configs/default_config.yaml.
 # Explicit local java_home, java_version, target_java_version, maven_settings_path
 # or maven_local_repository entries override those defaults. Usually none are needed.
 common_config_path: null

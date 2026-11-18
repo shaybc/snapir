@@ -1,4 +1,4 @@
-# Common settings default to ../config/default_config.yaml; tool defaults normally suffice.
+# Common settings default to ../configs/default_config.yaml; tool defaults normally suffice.
 # Explicit local shared fields override common values, including null and empty collections.
 # null: use SNAPIR_COMMON_CONFIG or the default common file (CLI --common-config wins).
 # A relative path here is resolved against this tool YAML.

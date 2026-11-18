@@ -19,10 +19,10 @@ The launcher then validates the configured JDK and builds the scanner and its Ma
 only when the JAR is missing/invalid or its source/build files have changed. A failed installation
 or build stops startup. Composer projects and generated components are never built.
 
-Model, source workspace, Java, Eclipse/JAR and Maven defaults are read from ../config/default_config.yaml.
+Model, source workspace, Java, Eclipse/JAR and Maven defaults are read from ../configs/default_config.yaml.
 That file lists all 89 converter settings and their nested defaults. Edit shared organization values there.
 Select it with --common-config PATH, SNAPIR_COMMON_CONFIG, or common_config_path in this tool's config.yaml
-(in that order) to use another common file. Without a selection, config/default_config.yaml is used.
+(in that order) to use another common file. Without a selection, configs/default_config.yaml is used.
 Legacy root config.yaml/sole-profile discovery remains available when the default common file is absent.
 A missing explicitly selected file is an error. Effective values are built-in fallbacks, then common YAML,
 then explicitly supplied local YAML entries. Missing local entries inherit the common value; null and empty

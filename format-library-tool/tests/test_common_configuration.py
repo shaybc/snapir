@@ -44,7 +44,7 @@ def test_independent_readers_resolve_common_paths_and_selection(tmp_path, monkey
     second = profile.with_name('second.yaml'); second.write_text('{}')
     with pytest.raises(ValueError, match='Select the converter YAML'):
         module.load_common(tmp_path / 'tool')
-    default = tmp_path / 'config/default_config.yaml'; default.parent.mkdir()
+    default = tmp_path / 'configs/default_config.yaml'; default.parent.mkdir(exist_ok=True)
     default.write_text('model_name: default-model\n')
     assert module.load_common(tmp_path / 'tool')['model_name'] == 'default-model'
     monkeypatch.setenv('SNAPIR_COMMON_CONFIG', str(profile))
@@ -97,7 +97,7 @@ def test_repository_default_is_selected_without_inheriting_converter_output_sett
     from format_library.configuration import TOOL_ROOT
     monkeypatch.delenv('SNAPIR_COMMON_CONFIG', raising=False)
     settings = load_config(TOOL_ROOT / 'config.yaml')
-    assert settings['_common_config_path'] == str(TOOL_ROOT.parent / 'config/default_config.yaml')
+    assert settings['_common_config_path'] == str(TOOL_ROOT.parent / 'configs/default_config.yaml')
     assert settings['output_root'] == str(TOOL_ROOT / 'work')
 
 

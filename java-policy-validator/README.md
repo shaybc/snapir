@@ -33,7 +33,7 @@ The optional third Java argument is a JSON file containing `release` and `source
 It supplies inputs, never enables compilation; omitting it still compiles the candidate.
 This low-level Java protocol accepts resolved inputs; use the Python/CMD launcher to read common YAML.
 
-The default common YAML is ../config/default_config.yaml. Select another with --common-config PATH,
+The default common YAML is ../configs/default_config.yaml. Select another with --common-config PATH,
 SNAPIR_COMMON_CONFIG or local common_config_path (in that order). Legacy root/sole-profile discovery is
 retained when the default file is absent. --config selects this tool's local YAML instead of config.yaml.
 Common java_home, java_version, maven_settings_path and maven_local_repository apply to this tool's

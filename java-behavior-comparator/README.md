@@ -11,10 +11,10 @@ Install Python 3, the JDK selected by common java_home/java_version and Maven on
 uses Python and installs only missing requirements from this directory. The first index run
 builds `indexer/pom.xml`; later runs verify its content hashes and reuse the built JAR.
 
-Keep comparison limits in this tool's config.yaml. Shared defaults come from ../config/default_config.yaml,
+Keep comparison limits in this tool's config.yaml. Shared defaults come from ../configs/default_config.yaml,
 which lists every converter field and its default. Explicit local shared fields override common defaults.
 --common-config PATH wins, followed by SNAPIR_COMMON_CONFIG, then local common_config_path. Otherwise use
-config/default_config.yaml; legacy root/sole-profile discovery is retained if that file is absent.
+configs/default_config.yaml; legacy root/sole-profile discovery is retained if that file is absent.
 Relative paths resolve against the supplying YAML. Missing local values inherit common defaults; explicit
 null/empty settings replace them. A comparator-local connection override is honored even when called by the format library.
 The format-library caller passes the selected common path automatically; it does not import comparator code.

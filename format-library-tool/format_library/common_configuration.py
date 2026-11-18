@@ -24,8 +24,8 @@ def select_common(tool_root, explicit=None, configured=None):
             raise ValueError('Common converter configuration not found: ' + str(path))
         return path
     root = Path(tool_root).resolve().parent
-    if (root / 'config/default_config.yaml').is_file():
-        return root / 'config/default_config.yaml'
+    if (root / 'configs/default_config.yaml').is_file():
+        return root / 'configs/default_config.yaml'
     if (root / 'config.yaml').is_file():
         return root / 'config.yaml'
     profiles = sorted({path.resolve() for folder in ('config', 'configs')

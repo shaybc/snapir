@@ -2,7 +2,8 @@
 /outputs/
 /work/
 /shared/
-/configs/
+/configs/*
+!/configs/default_config.yaml
 /huge-bank-demo/
 
 # Locally built shared Java analysis artifacts.

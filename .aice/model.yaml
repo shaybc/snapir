@@ -6,11 +6,11 @@ objects:
   - id: common-converter-configuration
     type: store
     name: Common converter configuration
-    description: Supplies all converter defaults in config/default_config.yaml while standalone tools may override applicable common values locally.
+    description: Supplies all converter defaults in configs/default_config.yaml while standalone tools may override applicable common values locally.
     parent: snapir
     technologies: [YAML]
     code:
-      - config/default_config.yaml
+      - configs/default_config.yaml
   - id: operator
     type: actor
     name: Migration operator
