@@ -46,6 +46,23 @@ def test_stale_comparison_evidence_is_rejected(config):
     assert not (folder/'latest.json').exists()
 
 
+def test_comparison_feedback_retains_limit_root_causes_and_reuse_counters(config):
+    details=dict(root_causes=[dict(id='limit-max_model_calls',category='limit_exhausted',
+        message='max_model_calls exhausted: 200 used / 200 limit',
+        limit=dict(setting='max_model_calls',used=200,limit=200,stage='mapping',detail=''),
+        occurrences=4,affected=['b1','b2'],stages=['mapping','coverage'])],
+        budgets=dict(max_model_calls=dict(used=200,limit=200,exhausted=True)),
+        calls_by_stage=dict(mapping=180,inventory=20),interactions=[dict(attempted=0,unmapped_behaviors=2)],
+        mapping_reuse=dict(preferred_pages=4,preferred_matches=3),cache=dict(reused_receipts=10,migrated_receipts=2))
+    Path(config['comparison_config_path']).write_text(json.dumps(dict(decision='inconclusive',**details)))
+    folder=prepare(config,build_plan(evidence(config,{'example.Work':[]})))[0]
+    with pytest.raises(ValueError,match='inconclusive'):
+        generate(config,folder)
+    feedback=read_json(folder/'attempts/test/comparison-feedback.json')
+    assert all(feedback[key]==value for key,value in details.items())
+    assert not (folder/'latest.json').exists()
+
+
 
 @pytest.mark.parametrize('different',[False,True])
 def test_real_comparator_cli_and_http_review_gate_generation(config,monkeypatch,tmp_path,different):

@@ -23,4 +23,6 @@ report=dict(schema_version='java-behavior-comparison-v1',tool_version='test-peer
     evidence_level='static_analysis',input_hash=digest(identity),files=files,targets=request['targets'],
     findings=[],remarks=[] if decision=='consistent_in_review' else [dict(message='Synthetic difference',suggested_action='Restore original behavior')])
 if config.get('stale'): report['files']={}
+for key in ('root_causes','budgets','calls_by_stage','interactions','mapping_reuse','cache'):
+    if key in config: report[key]=config[key]
 print(json.dumps(report));raise SystemExit(dict(consistent_in_review=0,differences_found=1,inconclusive=2,error=3)[decision])

@@ -53,7 +53,9 @@ progress file or one inside inspected inputs is ignored. Stdout remains exactly 
 1. AST member, inheritance, branch, return, exception, write and call inventory.
 2. Proposed API input/output/context/exception mapping with explicit uncertainties.
 3. Original behavior identification, one member at a time, with per-fact accounting.
-4. Paged counterpart discovery and one-behavior source-based comparison.
+4. Paged counterpart discovery and one-behavior source-based comparison. Validated candidates
+   from the same original member are tried as hints for later behaviors; every behavior still
+   needs its own explicit match. Rejected hints fall back to the remaining generated catalog.
 5. A separate challenge/review of every claimed behavioral difference.
 6. Reverse generated-member accounting and related behavior interaction checks.
 
@@ -100,15 +102,28 @@ Reports contain input fingerprints, inspected file hashes, target pairs, finding
 proposals, remarks/suggested actions and source-location citations. `runs/<id>/report.md` is a short
 human summary. `report.json` is the full machine result; `repair-feedback.json` is suitable to feed
 back to an AI. `analysis.json` preserves inventories, mappings, scope and individual review results.
+Reports and repair feedback also include root_causes, budgets (setting, usage, limit and exhaustion),
+calls_by_stage, per-target interaction counts, mapping_reuse and cache reuse/migration counts.
+Repeated failures are grouped under one actionable cause with affected item IDs/stages/counts;
+analysis.json retains every issue in issue_details as well as its existing issue-message list.
+Unmapped behaviors block their related interactions under the mapping cause, without a warning
+for every pair. Source/API uncertainties retain their own cause and are not called budget failures.
 Raw stage requests/responses and validated cache receipts are under cache/tasks/. Sensitive source
 is retained locally there; use an appropriate organization report directory.
 
 ## Resuming and limits
 
-Rerun with the same output folder to resume accepted unchanged tasks. Source/config/prompt/code
-identities determine run/cache reuse. Changed source invalidates affected task payloads, while
+Rerun with the same output folder to resume accepted unchanged tasks. Run identities retain the
+configuration and implementation fingerprint. Task caches use exact stage/prompt/payload/model
+identity and a versioned task contract, so scheduler/report changes do not discard validated work.
+Changed source invalidates affected task payloads, while
 unaffected validated tasks can be reused. Raising time/call budgets does not invalidate model-task
-results. One process owns an output folder at a time; after forcibly killing it, remove a stale
+results. Existing whole-implementation cache keys are discovered from prior reports with the same
+model identity; the immediately preceding release also supports interrupted work without a report.
+Legacy receipts must pass their hash and current schema/evidence validation before migration.
+Old requests/responses/receipts remain intact. Future changes to task meaning outside explicit
+prompts/payloads must bump the task-cache contract. One process owns an output folder at a time;
+after forcibly killing it, remove a stale
 .comparison.lock only after verifying no comparison is still running.
 
 The output directory must be outside input source directories. Inputs are hashed again at the end;
@@ -120,6 +135,13 @@ not proof that the AI identified every behavior. Reverse and interaction checks 
 
 API retries, task count, stage character limits, evidence expansion, interaction count, indexing
 and AI-phase duration are bounded in config.yaml. Budget-exhausted work is reported as incomplete.
+The report names the actual setting that rejected work: max_model_calls, max_run_seconds,
+request_character_limit, max_model_attempts, max_evidence_rounds or max_interaction_pairs. Failed
+response/schema retries include the last error. Usage reaching a limit without blocking remaining
+work is not marked exhausted. Interaction allowance is per target and counts attempted mapped
+pairs, including cached reviews; unmapped prerequisites and calls rejected before work do not
+spend it. Cached tasks can still replay at the model-call/time limit. Detailed per-target counts
+separate attempted/reviewed interactions, unmapped behaviors and deferred work.
 Cached work saves API calls; no automatic code repair or original/native execution is performed.
 Use targeted execution-based comparison separately when stronger evidence is required.
 

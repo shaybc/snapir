@@ -64,7 +64,10 @@ def compare(config, folder, manifest, staged, attempt, support):
         if report.get('evidence_level')!='static_analysis' or not isinstance(report.get('remarks'),list):
             raise ValueError('Comparator omitted its analysis level or repair remarks')
         write_json(attempt/'comparison-feedback.json',dict(decision=decision,evidence_level='static_analysis',
-            remarks=report['remarks'],findings=report.get('findings',[]),source_locations=report.get('source_locations',{})))
+            remarks=report['remarks'],findings=report.get('findings',[]),source_locations=report.get('source_locations',{}),
+            root_causes=report.get('root_causes',[]),budgets=report.get('budgets',{}),
+            calls_by_stage=report.get('calls_by_stage',{}),interactions=report.get('interactions',[]),
+            mapping_reuse=report.get('mapping_reuse',{}),cache=report.get('cache',{})))
         if decision!='consistent_in_review' or report.get('complete') is not True:
             reason='; '.join(concise(item.get('message',''),160) for item in report['remarks'][:2] if isinstance(item,dict))
             raise ValueError('Behavior comparison '+decision+': '+reason+'; see '+str(attempt/'comparison-feedback.json'))

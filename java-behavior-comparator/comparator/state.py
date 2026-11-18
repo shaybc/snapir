@@ -2,7 +2,9 @@
 import json
 import time
 from pathlib import Path
-from comparator.models import digest, save, Incomplete
+from comparator.models import save, Incomplete
+from comparator.task_cache import TaskCache
+from comparator.review_limits import LimitReached
 from comparator import model_client
 from comparator import progress
 
@@ -12,29 +14,45 @@ class Tasks:
     def __init__(self,settings,work,chunks,ask=None):
         self.settings=settings;self.work=work;self.chunks=chunks;self.calls=0
         self.started=time.monotonic();self.ask=ask or model_client.request
+        self.cache=TaskCache(settings,work)
+        self.calls_by_stage={};self.cached_receipts=set();self.migrated_receipts=set();self.limit_hits={}
+        self.max_request_characters=0;self.max_attempts_used=0;self.max_evidence_used=0
+        self.mapping_reuse=dict(preferred_pages=0,preferred_matches=0)
 
-    def call(self,stage,prompt,payload,validate,allowed):
+    def call(self,stage,prompt,payload,validate,allowed,*,cached_only=False):
         payload=dict(payload);extras={}
         for expansion in range(self.settings['max_evidence_rounds']):
             current={**payload,'extra_evidence':extras}
-            if len(json.dumps(current,ensure_ascii=False))+len(prompt)>self.settings['request_character_limit']:
-                raise Incomplete(stage+': complete evidence exceeds the request budget; no source was truncated')
-            model_settings={key:self.settings[key] for key in ('model_provider','model_name','model_base_url','implementation_hash')}
-            key=digest(dict(stage=stage,prompt=prompt,payload=current,settings=model_settings))
-            path=self.work/'tasks'/stage/(key+'.json')
-            if path.is_file():
+            cached=self.cache.load(stage,prompt,current)
+            if cached_only and cached is None: return None
+            size=len(json.dumps(current,ensure_ascii=False))+len(prompt)
+            self.max_request_characters=max(self.max_request_characters,size)
+            self.max_evidence_used=max(self.max_evidence_used,expansion+1)
+            if size>self.settings['request_character_limit']:
+                self._limit('request_character_limit',size,stage)
+            path=self.cache.path(stage,prompt,current)
+            if cached is not None:
                 progress.update(stage,'cached',model_call=self.calls)
-                cached=json.loads(path.read_text(encoding='utf-8'))
-                if cached.get('response_hash')!=digest(cached.get('response')): raise Incomplete('Changed task cache: '+str(path))
-                value=cached['response']
-                self._validate(value,validate,allowed,current)
+                value,previous_path=cached
+                try:
+                    self._validate(value,validate,allowed,current)
+                except (ValueError,TypeError,KeyError) as error:
+                    raise Incomplete('Cached response failed current evidence validation: '+str(error)) from error
+                self.cached_receipts.add(str(path))
+                if previous_path!=path:
+                    self.cache.store(stage,prompt,current,value,migrated_from=previous_path)
+                    self.migrated_receipts.add(str(path))
             else:
                 error='';value=None
                 for attempt in range(self.settings['max_model_attempts']):
                     remaining=self.settings['max_run_seconds']-(time.monotonic()-self.started)
-                    if self.calls>=self.settings['max_model_calls'] or remaining<=0:
-                        raise Incomplete('Comparison task/run budget exhausted')
+                    if self.calls>=self.settings['max_model_calls']:
+                        self._limit('max_model_calls',self.calls,stage)
+                    if remaining<=0:
+                        self._limit('max_run_seconds',round(time.monotonic()-self.started,2),stage)
                     self.calls+=1
+                    self.calls_by_stage[stage]=self.calls_by_stage.get(stage,0)+1
+                    self.max_attempts_used=max(self.max_attempts_used,attempt+1)
                     sent={**current,'format_feedback':error}
                     save(path.with_suffix('.request.json'),dict(stage=stage,prompt=prompt,payload=sent))
                     try:
@@ -45,17 +63,31 @@ class Tasks:
                         path.parent.mkdir(parents=True,exist_ok=True)
                         path.with_suffix('.response.txt').write_text(text,encoding='utf-8')
                         value=json.loads(text);self._validate(value,validate,allowed,current)
-                        save(path,dict(response=value,response_hash=digest(value)))
+                        self.cache.store(stage,prompt,current,value)
                         break
                     except (ValueError,TypeError,KeyError) as problem:
                         error=str(problem)
                         save(path.with_suffix('.error.json'),dict(error=error,attempt=attempt+1))
-                else: raise Incomplete(stage+': '+error)
+                else: self._limit('max_model_attempts',self.settings['max_model_attempts'],stage,error)
             if value.get('need_evidence'):
                 for identity in value['need_evidence']: extras[identity]=self.chunks[identity]
                 continue
             return value
-        raise Incomplete(stage+': evidence expansion limit reached')
+        self._limit('max_evidence_rounds',self.settings['max_evidence_rounds'],stage)
+
+    def _limit(self,setting,used,stage,detail=''):
+        """Retain the actual exhausted setting and counters instead of one ambiguous budget error."""
+        error=LimitReached(setting,used,self.settings[setting],stage,detail)
+        self.limit_hits[setting]=error.record()
+        raise error
+
+    def budget_summary(self):
+        """Report measured usage and rejected work, not exhaustion inferred from equality alone."""
+        used=dict(max_model_calls=self.calls,max_run_seconds=round(time.monotonic()-self.started,2),
+            request_character_limit=self.max_request_characters,max_model_attempts=self.max_attempts_used,
+            max_evidence_rounds=self.max_evidence_used)
+        return {key:dict(limit=self.settings[key],used=value,exhausted=key in self.limit_hits)
+                for key,value in used.items()}
 
     @staticmethod
     def _validate(value,validate,allowed,payload):

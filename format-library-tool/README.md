@@ -264,6 +264,11 @@ Read attempts/<id>/comparison.json and comparison-feedback.json for the decision
 corrections with source locations. comparator.stdout.txt and comparator.stderr.txt retain transport
 output. comparison-work/ contains resumable stage evidence and a short Markdown report. To resume
 an interrupted review directly, run the comparator with this attempt's request/output paths.
+comparison-feedback.json also retains the comparator's grouped root causes, actual limit usage,
+calls by stage, interaction counts and mapping/cache reuse counters. Budget exhaustion identifies
+the setting to change; mapping/source uncertainties retain their own actions. Repeated blocked
+interactions are summarized under their prerequisite cause. Existing comparison-work caches can
+be resumed without deleting prepared folders or repeating validated, unchanged model tasks.
 All generation entry paths use the same extraction handoff. Discovery/preparation do not call AI
 comparison. Approval of human edits still records reviewed bytes and does not claim the generation
 review applies to subsequent edits. The converter and independent policy validator are unchanged.
