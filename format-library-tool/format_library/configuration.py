@@ -22,7 +22,7 @@ DEFAULTS = dict(source_encoding='UTF-8', java_version=25, java_home=None, java_s
     eclipse_project_classpath_containers={}, maven_settings_path=None, maven_local_repository=None,
     model_provider='litellm', model_name='', model_base_url='', model_api_key_environment='AI_API_KEY',
     model_timeout_seconds=900, max_model_attempts=3, model_stream=False, output_root='./work', approved_library_root='./approved',
-    native_package='com.company.nativeformats', request_character_limit=2000000, target_java_version=17,
+    native_package='il.co.dbank', request_character_limit=2700000, target_java_version=17,
     format_base_class='com.ibm.dse.base.FormatElement',
     decorator_base_classes=['com.ibm.dse.base.FormatDecorator', 'com.ibm.il.dse.cc.decorator.FormatDecoratorHolder'],
     source_excludes=['.git', '.venv', 'target', 'bin', 'build', 'node_modules'], known_dependencies=[])

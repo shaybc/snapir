@@ -2,7 +2,7 @@
 # Explicit local shared fields override common values, including null and empty collections.
 # null: use SNAPIR_COMMON_CONFIG or the default common file (CLI --common-config wins).
 # A relative path here is resolved against this tool YAML.
-common_config_path: null
+common_config_path: ../configs/default_config.yaml
 source_encoding: UTF-8         # Encoding of original/decompiled Java files, e.g. windows-1255
 # The default command uses this Python interpreter and ../java-policy-validator/run.py.
 validator_policy_path: ../java-policy-validator/policy.json
@@ -16,8 +16,8 @@ model_stream: false            # Enable only if the organization endpoint suppor
 # Settings specific to this separate tool.
 output_root: ./work
 approved_library_root: ./approved
-native_package: com.company.nativeformats
-request_character_limit: 2000000
+native_package: il.co.dbank
+request_character_limit: 2700000
 format_base_class: com.ibm.dse.base.FormatElement
 decorator_base_classes:
   - com.ibm.dse.base.FormatDecorator

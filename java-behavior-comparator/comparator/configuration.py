@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULTS = dict(model_provider='openai_compatible', model_name='', model_base_url='',
     model_api_key_environment='COMPARISON_AI_API_KEY', model_timeout_seconds=120,
     max_model_attempts=2, max_model_calls=200, max_run_seconds=3300,
-    request_character_limit=45000, response_character_limit=100000,
+    request_character_limit=2700000, response_character_limit=100000,
     catalog_page_size=12, max_evidence_rounds=3, max_interaction_pairs=100, index_timeout_seconds=300,
     java_home=None, maven_command='mvn', source_excludes=['.git','target','build','bin','.venv','node_modules'])
 

@@ -2,10 +2,10 @@
 # Explicit local model/Java/Maven fields override common values.
 # null: use SNAPIR_COMMON_CONFIG or the default common file (CLI --common-config wins).
 # A relative path here is resolved against this tool YAML.
-common_config_path: null
+common_config_path: ../configs/default_config.yaml
 max_model_calls: 200
 max_run_seconds: 3300
-request_character_limit: 45000
+request_character_limit: 2700000
 response_character_limit: 100000
 catalog_page_size: 12
 max_evidence_rounds: 3
