@@ -75,7 +75,12 @@ def build_request(config, folder, manifest):
     """Refresh approved inputs at launch; never send missing or stale prerequisites."""
     from format_library.approval import collect_prerequisites
     from format_library.workspaces import verify_inputs
+    from format_library.configuration import source_configuration_hash
     verify_inputs(folder, manifest)
+    if manifest['target_java_version'] != config['target_java_version']:
+        raise ValueError('Configured target Java version changed; prepare a new folder before conversion')
+    if manifest.get('source_configuration_hash') and manifest['source_configuration_hash'] != source_configuration_hash(config):
+        raise ValueError('Source configuration changed; discover and prepare a new folder before conversion')
     if manifest['blockers']:
         raise ValueError('Preparation is blocked: ' + '; '.join(manifest['blockers']))
     prerequisites = collect_prerequisites(config, folder, manifest)

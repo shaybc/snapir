@@ -21,12 +21,24 @@ def validate(config, staged, attempt, *, source_roots=(), release=None):
         expected = {path.relative_to(staged).as_posix(): file_hash(path)
                     for path in sorted(staged.rglob('*')) if path.is_file()}
         policy_hash = file_hash(policy)
+        common_path = Path(settings['_common_config_path']) if settings.get('_common_config_path') else None
+        common_hash = file_hash(common_path) if common_path else None
         environment = os.environ.copy()
         if settings.get('java_home'):
             environment['JAVA_HOME'] = settings['java_home']
             environment['PATH'] = str(Path(settings['java_home']) / 'bin') + os.pathsep + environment.get('PATH', '')
         command = [*settings['validator_command'], '--code', str(staged.resolve()), '--policy', str(policy),
                    '--release', str(release)]
+        if settings.get('_common_config_path'):
+            command += ['--common-config', settings['_common_config_path']]
+        # Forward explicit formatter overrides; inherited defaults must not mask validator-local settings.
+        explicit_fields = set((config or {}).get('_local_shared_fields', config or {}))
+        if 'java_version' in explicit_fields:
+            command += ['--java-version', str(settings['java_version'])]
+        for key in ('java_home', 'maven_settings_path', 'maven_local_repository'):
+            # Empty CLI values explicitly clear a common path overridden with local null.
+            if key in explicit_fields:
+                command += ['--' + key.replace('_', '-'), settings[key] if settings.get(key) is not None else '']
         for root in source_roots:
             command += ['--support', str(root)]
         result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8',
@@ -47,6 +59,8 @@ def validate(config, staged, attempt, *, source_roots=(), release=None):
         if expected != {path.relative_to(staged).as_posix(): file_hash(path)
                         for path in sorted(staged.rglob('*')) if path.is_file()} or file_hash(policy) != policy_hash:
             raise ValueError('Candidate or policy changed during validation')
+        if common_path and file_hash(common_path) != common_hash:
+            raise ValueError('Common configuration changed during validation')
         if report.get('input_hash') != hashlib.sha256(json.dumps(expected, ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest():
             raise ValueError('Validator omitted its input fingerprint')
         if not isinstance(report.get('findings'), list) or not report.get('tool_version') or not report.get('policy_version'):

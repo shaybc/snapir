@@ -3,6 +3,14 @@ version: 1
 name: Snapir conversion
 tagGroups: []
 objects:
+  - id: common-converter-configuration
+    type: store
+    name: Common converter configuration
+    description: Supplies all converter defaults in config/default_config.yaml while standalone tools may override applicable common values locally.
+    parent: snapir
+    technologies: [YAML]
+    code:
+      - config/default_config.yaml
   - id: operator
     type: actor
     name: Migration operator
@@ -707,6 +715,26 @@ objects:
     description: Displays isolated conversion dependency exports in VS Code.
     external: true
 connections:
+  - id: converter-common-configuration
+    from: conversion-cli
+    to: common-converter-configuration
+    description: Loads the selected converter profile.
+    technology: YAML
+  - id: format-library-common-configuration
+    from: format-library-tool
+    to: common-converter-configuration
+    description: Reads shared settings and forwards the selected YAML path to child tools without importing converter code.
+    technology: YAML
+  - id: behavior-comparator-common-configuration
+    from: java-behavior-comparator
+    to: common-converter-configuration
+    description: Reads shared model and JDK settings independently of the caller.
+    technology: YAML
+  - id: policy-validator-common-configuration
+    from: java-policy-validator
+    to: common-converter-configuration
+    description: Reads the JDK, compile target and infrastructure Maven settings while retaining its own dependency policy.
+    technology: YAML
   - id: format-library-behavior-comparison
     from: format-library-tool
     to: java-behavior-comparator
@@ -725,7 +753,7 @@ connections:
   - id: behavior-comparison-model
     from: java-behavior-comparator
     to: model-provider
-    description: Submits bounded behavior extraction, mapping and comparison tasks to its own configured endpoint.
+    description: Submits bounded behavior extraction, mapping and comparison tasks to the common configured model provider.
     technology: HTTP/JSON
   - id: behavior-comparison-files
     from: java-behavior-comparator

@@ -8,6 +8,7 @@ import sys
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from threading import Thread
 import yaml
+from comparison_config_fixture import write_config
 from support import sources, settings, answer
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -29,7 +30,7 @@ def test_standalone_cli_calls_own_endpoint_and_resumes(tmp_path):
     try:
         configured=settings();configured['model_base_url']='http://127.0.0.1:'+str(server.server_port)+'/v1'
         configured['model_api_key_environment']='COMPARATOR_TEST_KEY'
-        config=tmp_path/'config.yaml';config.write_text(yaml.safe_dump(configured))
+        config=tmp_path/'config.yaml';write_config(config, configured)
         inputs=tmp_path/'request.json';inputs.write_text(json.dumps(request))
         env=os.environ.copy();env['PYTHONPATH']='';env['COMPARATOR_TEST_KEY']='synthetic-not-a-real-key'
         env['PYTHONIOENCODING']='cp1252'

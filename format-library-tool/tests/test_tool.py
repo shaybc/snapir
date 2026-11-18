@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from configuration_fixture import write_config
 from format_library.configuration import load_config, TOOL_ROOT
 from format_library.files import digest, file_hash, read_json, write_json
 from format_library.planning import build_plan
@@ -22,12 +23,12 @@ def config(tmp_path, monkeypatch):
     comparison = tmp_path / 'comparison-config.json'
     comparison.write_text('{}')
     path = tmp_path / 'config.yaml'
-    path.write_text(yaml.safe_dump(dict(source_root=str(source), output_root=str(tmp_path / 'work'),
+    write_config(path, dict(source_root=str(source), output_root=str(tmp_path / 'work'),
         approved_library_root=str(tmp_path / 'approved'), native_package='example.nativeformats',
-        model_name='openai/fake', model_base_url='http://localhost/v1',
+        model_provider='litellm', model_name='openai/fake', model_base_url='http://localhost/v1',
         model_api_key_environment='FORMAT_LIBRARY_TEST_KEY',
         comparison_command=[sys.executable,str(Path(__file__).with_name('fake_comparator_cli.py'))],
-        comparison_config_path=str(comparison))))
+        comparison_config_path=str(comparison)))
     monkeypatch.setenv('FORMAT_LIBRARY_TEST_KEY', 'fake-key-never-sent')
     return load_config(path)
 

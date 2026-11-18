@@ -31,6 +31,7 @@ def main(argv=None):
     parser=Arguments(description='Read-only staged original/native Java behavior comparison')
     parser.add_argument('command',choices=['compare','index'],nargs='?',default='compare')
     parser.add_argument('--config',default=str(ROOT/'config.yaml'))
+    parser.add_argument('--common-config',help='Converter YAML containing shared model and Java settings')
     parser.add_argument('--request')
     parser.add_argument('--output',default=str(ROOT/'work'))
     parser.add_argument('--original');parser.add_argument('--generated')
@@ -40,7 +41,7 @@ def main(argv=None):
         parser.add_argument('--'+side+'-source',action='append',default=[])
         parser.add_argument('--'+side+'-jar',action='append',default=[])
     try:
-        args=parser.parse_args(argv);settings=load(args.config)
+        args=parser.parse_args(argv);settings=load(args.config,args.common_config)
         if args.request:
             request_path=Path(args.request).resolve()
             request=resolve_request(json.loads(request_path.read_text(encoding='utf-8-sig')),request_path.parent)
@@ -60,8 +61,10 @@ def main(argv=None):
             print(json.dumps(dict(schema_version=SCHEMA,decision='indexed',catalog=str(output/'catalog.json'),
                                   classes=sorted(result['classes']),warnings=result['warnings'])))
             return 0
-        if not settings['model_name'] or 'REPLACE' in settings['model_name'] or not settings['model_base_url']:
-            raise ValueError('Configure the independent comparator model_name/model_base_url')
+        if settings['model_provider']=='mock':
+            raise ValueError('Behavior comparison requires a live common model_provider; mock cannot approve behavior')
+        if not settings['model_name'] or 'REPLACE' in settings['model_name'] or (settings['model_provider']!='gemini' and not settings['model_base_url']):
+            raise ValueError('Configure model_name/model_base_url in the common converter YAML')
         if not os.environ.get(settings['model_api_key_environment']):
             raise ValueError('Set comparator API-key environment variable: '+settings['model_api_key_environment'])
         report=run(settings,request,args.output)

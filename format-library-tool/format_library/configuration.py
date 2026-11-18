@@ -8,6 +8,7 @@ import subprocess
 from copy import deepcopy
 from pathlib import Path
 import yaml
+from format_library.common_configuration import SHARED_FIELDS, load_common
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
 PATH_FIELDS = ('source_root', 'output_root', 'approved_library_root', 'java_home', 'validator_policy_path', 'comparison_config_path',
@@ -27,16 +28,23 @@ DEFAULTS = dict(source_encoding='UTF-8', java_version=25, java_home=None, java_s
     source_excludes=['.git', '.venv', 'target', 'bin', 'build', 'node_modules'], known_dependencies=[])
 
 
-def load_config(path):
+def load_config(path, common_config=None):
     """Resolve paths relative to YAML; reject invalid tool settings, never persist credentials."""
     path = Path(path).resolve()
     supplied = yaml.safe_load(path.read_text(encoding='utf-8-sig'))
     if not isinstance(supplied, dict):
         raise ValueError('Configuration must be a YAML object')
-    unknown = set(supplied) - set(DEFAULTS) - {'source_root'}
+    unknown = set(supplied) - set(DEFAULTS) - {'source_root', 'common_config_path'}
     if unknown:
         raise ValueError('Unsupported config fields; copy only documented sections: ' + ', '.join(sorted(unknown)))
     result = {**deepcopy(DEFAULTS), **supplied}
+    configured = supplied.get('common_config_path')
+    if configured:
+        configured = str((path.parent / Path(configured).expanduser()).resolve())
+    shared = load_common(TOOL_ROOT, common_config, configured, overrides=supplied, override_base=path.parent)
+    result.update(shared)
+    result['_local_shared_fields'] = sorted(set(supplied) & SHARED_FIELDS)
+    result['target_java_version'] = supplied['target_java_version'] if 'target_java_version' in supplied else shared['java_version']
     if not isinstance(result['validator_command'], list) or not result['validator_command'] or not all(
             isinstance(value, str) and value.strip() for value in result['validator_command']):
         raise ValueError('validator_command must be a nonempty list of command arguments')
@@ -76,8 +84,8 @@ def load_config(path):
             raise ValueError(key + ' must be a positive integer')
     if not re.fullmatch(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*', result['native_package'], re.ASCII):
         raise ValueError('native_package must be a Java package name')
-    if result['model_provider'] not in {'litellm', 'gemini'}:
-        raise ValueError('model_provider must be litellm or gemini')
+    if result['model_provider'] not in {'litellm', 'gemini', 'mock'}:
+        raise ValueError('Common model_provider must be litellm, gemini or mock')
     if not isinstance(result['model_stream'], bool):
         raise ValueError('model_stream must be true or false')
     if result['java_version'] < 17 or result['target_java_version'] < 17:
@@ -101,3 +109,12 @@ def java_environment(config):
     if result.returncode or not version or int(version[1]) != config['java_version']:
         raise ValueError('Selected JDK does not match java_version=' + str(config['java_version']))
     return java, environment
+
+
+def source_configuration_hash(config):
+    """Bind discovery and preparation to source inputs, excluding model and delivery settings."""
+    from format_library.files import digest
+    keys = ('source_root', 'source_encoding', 'classpath_jars', 'framework_jars', 'eclipse_classpath_variables',
+            'eclipse_classpath_containers', 'eclipse_project_classpath_containers', 'source_excludes',
+            'format_base_class', 'decorator_base_classes', 'maven_settings_path', 'maven_local_repository')
+    return digest({key: config.get(key) for key in keys})

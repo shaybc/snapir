@@ -1,0 +1,174 @@
+# Complete converter configuration defaults and common settings for the standalone tools.
+# All supported top-level fields are present, including nested settings with their defaults.
+# Empty lists/maps are configurable collections; null means unset or automatic where supported.
+# Paths are relative to this file, so ../ points at the repository root.
+# Set organization-specific source/JDK/model values here. Never store an API key here:
+# model_api_key_environment names the environment variable holding the credential.
+# Each standalone tool reads the applicable common fields, then applies explicit local overrides.
+# Tool-specific defaults (work folders, prompts, comparison budgets and policy) stay in each tool.
+
+# Common source, Java, model and dependency environment.
+source_root: ../bank-demo/composer/Workspace
+java_home: null
+java_version: 25
+java_scan_inactivity_timeout_seconds: 900
+model_provider: gemini
+model_name: gemini/gemini-3.5-flash-lite
+model_base_url: ''
+model_api_key_environment: GOOGLE_API_KEY
+model_timeout_seconds: 300
+max_model_attempts: 4
+classpath_jars: []
+framework_jars: []
+maven_settings_path: null
+maven_local_repository: null
+eclipse_classpath_variables: {}
+eclipse_classpath_containers: {}
+eclipse_project_classpath_containers: {}
+
+# Converter-specific settings. Standalone tools do not inherit these fields.
+conversion_strategy: legacy_components
+conversion_requirements: []
+behavior_context_chars: 2700000
+metadata_checklist_batching: true
+metadata_checklist_batch_items: 15
+metadata_checklist_request_chars: 2700000
+metadata_checklist_response_chars: 16000
+metadata_checklist_max_calls: null
+metadata_checklist_max_transport_calls: null
+metadata_checklist_timeout_split_after: 2
+behavior_triage_enabled: false
+unit_mutation_testing:
+  enabled: true
+  timeout_seconds: 180
+  recommended_score: 80
+executable_verification:
+  mode: checklist_v1
+  experimental_disable_facts: false
+  max_cases: 512
+  require_branch_coverage: true
+  seed: 1729
+  clock_millis: 1704153600000
+  random_cases: 12
+  max_domain_values: 32
+  max_case_chars: 131072
+  max_collection_items: 8
+  coverage_expansion_rounds: 2
+  coverage_expansion_cases: 16
+  coverage_expansion_batch_size: 4
+  coverage_expansion_seconds: 30.0
+  comparison_mutations:
+    enabled: false
+    max_mutants: 4
+    timeout_seconds: 600.0
+  fixtures: {}
+  replays: {}
+  schema_version: executable-verification-policy-v1
+format_comparison:
+  enabled: false
+  max_cases: 64
+  case_timeout_seconds: 15.0
+  discovery_request_chars: 2700000
+  compare_exception_messages: false
+  collect_facts: true
+test_preparation:
+  mode: existing
+  request_chars: 2700000
+  response_chars: 16000
+  max_fixture_bytes: 2000000
+  max_junit_scenarios: 128
+microservice:
+  enabled: true
+  helm_executable: helm
+  require_helm_validation: true
+  kubernetes_version: 1.34.0
+unit_verification_policy:
+  plumbing_rules:
+  - implicit_constructor_marker
+  - configured_setup_marker
+  - throws_declaration_metadata
+  tag_contracts: []
+  schema_version: static-check-policy-v1
+unit_verification_authorizations: []
+scoped_java_project: null
+scoped_java_projects: {}
+scoped_native_mode: prepare
+source_workspace_id: null
+service_registry_path: null
+shared_store_root: ../shared
+cross_run_component_reuse: true
+service_environments: {}
+service_maven_dependencies: {}
+dependency_policy_path: null
+plan_approval_policy: human
+shared_library_min_usage: 5
+broad_library_usage_threshold: 10
+mapper_jar: ../source/composer-mapper/target/composer-mapper-1.1.1-jar-with-dependencies.jar
+existing_composer_map: null
+mapper_vault_layout: legacy
+mapper_analysis_format: legacy
+mapper_analysis_reuse: null
+mapper_analysis:
+  batch_files: 100
+  batch_mib: 4
+  java_file_mib: 8
+  sqlite_cache_mib: 32
+  heap_mib: 768
+output_root: ../work/migration_runs
+conversion_scope: operations
+component_type: null
+selected_components: []
+component_attributes: {}
+channels:
+- INTERNET
+include_operations: null
+exclude_operations: null
+target_languages:
+- java
+auto_rerun_impacted_operations: true
+external_dependencies: []
+composer_behavior_document: docs/comp-manual/wsbcc_developer_manual_v2.md
+approved_maven_repository_urls: []
+allowed_ibm_artifacts: []
+allowed_ibm_classes: []
+deployment_template_dir: null
+deployment_values: {}
+deployment_defaults:
+  namespace: default
+  replicas: 1
+  image_pull_policy: IfNotPresent
+  container_port: 8080
+  cpu_request: 100m
+  cpu_limit: 500m
+  memory_request: 256Mi
+  memory_limit: 512Mi
+  liveness_path: /actuator/health
+  readiness_path: /actuator/health
+  managed_by_label: snapir
+  schema_version: v1
+deployment_platform: openshift
+deployment_environment: prod
+deployment_env_vars:
+  SPRING_PROFILES_ACTIVE: prod
+test_deployment:
+  service_base_url: https://openshift/microservices/
+  service_external_port: null
+  service_route_pattern: ms_${ms_name}
+runtime_validation_mode: disabled
+max_operations_per_batch: 5
+gate_policies:
+  '1': human
+  '2': human
+  '3': human
+  '4': human
+  '5': human
+max_agent_task_retries: 4
+side_road_conversion: false
+staged_unit_conversion: true
+side_road_baseline_attempts: 4
+side_road_simplify_attempts: 4
+max_parallel_conversion_workers: 4
+max_parallel_llm_tasks: 2
+max_parallel_build_tasks: 2
+inter_batch_delay_secs: 1.0
+enable_git: false

@@ -6,8 +6,8 @@ It imports no migration-converter runtime, reads no migration database, and does
 
 ## Setup
 
-Python 3.11+, JDK 17+ and Maven are needed. Use the Java version configured in config.yaml.
-Maven builds only the metadata scanner infrastructure. Generated Java is never compiled or run.
+Python 3.11+, a full JDK and Maven are needed. Use java_home/java_version from the common converter YAML.
+Maven builds only tool infrastructure. The independent validator compiles generated Java without running it.
 run.cmd validates the selected Python environment's requirements and their active transitive
 dependencies locally. If they are already satisfied, no installer or package index is contacted.
 Otherwise it runs pip install -r requirements.txt without --upgrade, then validates again.
@@ -19,9 +19,15 @@ The launcher then validates the configured JDK and builds the scanner and its Ma
 only when the JAR is missing/invalid or its source/build files have changed. A failed installation
 or build stops startup. Composer projects and generated components are never built.
 
-Edit config.yaml. Its source, Java, Eclipse/JAR, Maven and model fields use the corresponding
-converter field names and structures. Copy those fields, not the entire converter configuration.
-The shipped paths and endpoint are deliberately dummy values. Paths are relative to the YAML.
+Model, source workspace, Java, Eclipse/JAR and Maven defaults are read from ../config/default_config.yaml.
+That file lists all 89 converter settings and their nested defaults. Edit shared organization values there.
+Select it with --common-config PATH, SNAPIR_COMMON_CONFIG, or common_config_path in this tool's config.yaml
+(in that order) to use another common file. Without a selection, config/default_config.yaml is used.
+Legacy root config.yaml/sole-profile discovery remains available when the default common file is absent.
+A missing explicitly selected file is an error. Effective values are built-in fallbacks, then common YAML,
+then explicitly supplied local YAML entries. Missing local entries inherit the common value; null and empty
+collections override it. Relative paths resolve against the YAML that supplied them. Usually no local overrides are needed.
+source_encoding remains an input-specific setting here and is forwarded with the prepared source evidence.
 Never put the API key in YAML; set the named environment variable before launching the tool.
 FORMAT_LIBRARY_PYTHON optionally selects a different Python executable for run.cmd.
 
@@ -38,6 +44,26 @@ Double-click run.cmd for a menu, or use these commands from this directory:
 A different configuration is selected before the command:
 
     run.cmd --config "C:\organization\format-library.yaml" discover
+
+Select the converter profile once for this menu session and all child tools:
+
+    run.cmd --common-config "C:\snapir\configs\organization.yaml"
+
+The generated convert.cmd keeps that selection, including when prepare reuses a folder. A changed source
+configuration requires discovery again; changed source settings or Java target require fresh preparation.
+Endpoint-only changes do not invalidate prepared source evidence. java_version supplies both the JDK
+major version and the default target_java_version. An explicit local target_java_version overrides that
+compile target; java_version/java_home still select the JDK. Explicit local Java/Maven overrides are forwarded
+to the validator. Otherwise its own local settings can override common defaults. The requested compile target is always forwarded.
+
+Shared entries formerly copied here: source_root, java_home, java_version,
+java_scan_inactivity_timeout_seconds, classpath_jars, framework_jars, eclipse_classpath_variables,
+eclipse_classpath_containers, eclipse_project_classpath_containers, maven_settings_path,
+maven_local_repository, model_provider, model_name, model_base_url, model_api_key_environment,
+model_timeout_seconds and max_model_attempts. target_java_version defaults to effective java_version.
+Any explicit local value for these shared settings takes precedence over the common default.
+Output folders, native package, input encoding/excludes, model_stream, source classification rules,
+known_dependencies and validator/comparator commands, policies and task limits remain local.
 
 Startup and discovery share the same scanner freshness check for
 scanner/target/format-library-scanner-1.0.0-jar-with-dependencies.jar. Source changes rebuild it
@@ -202,9 +228,9 @@ and records their actual bytes; the generation report describes pre-review bytes
 ## Independent staged behavior comparison
 
 After generation passes policy/compilation validation, the format-library tool invokes the
-separate `java-behavior-comparator` CLI. Configure that tool's own `config.yaml` with the
-organization AI gateway and key environment variable. This is a separate configuration;
-no comparator module or configuration values are imported into this application.
+separate `java-behavior-comparator` CLI. Both tools read the same selected converter YAML for the
+organization AI provider, endpoint and key environment variable. The comparator's own config.yaml
+contains comparison-specific limits only. No comparator module is imported into this application.
 
 `comparison_command` selects the executable/argument list (default current Python plus the
 sibling comparator run.py). `comparison_config_path` points to its independent YAML and

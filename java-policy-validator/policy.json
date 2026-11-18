@@ -23,6 +23,5 @@
   "allowed_dependencies": [],
   "allowed_plugins": [],
   "allowed_repositories": [],
-  "target_java_version": 17,
   "compile_classpath": []
 }

@@ -2,7 +2,7 @@
 import re
 import shutil
 from pathlib import Path
-from format_library.configuration import TOOL_ROOT
+from format_library.configuration import TOOL_ROOT, source_configuration_hash
 from format_library.files import digest, file_hash, inside, read_json, write_json
 
 
@@ -18,12 +18,23 @@ def folder_name(group):
     return re.sub(r'[^A-Za-z0-9_.+-]', '_', label)[:100] + '--' + group['id'][6:14]
 
 
+def write_launcher(config, folder):
+    """Keep double-click conversion on the same explicitly selected common YAML, including reuse."""
+    common = ' --common-config "' + config['_common_config_path'] + '"' if config.get('_common_config_path') else ''
+    launcher = ('@echo off\r\nsetlocal\r\ncall "' + str(TOOL_ROOT / 'run.cmd') +
+                '" --config "' + config['_config_path'] + '"' + common +
+                ' convert --folder "%~dp0."\r\nset "conversion_exit=%ERRORLEVEL%"\r\npause\r\nexit /b %conversion_exit%\r\n')
+    (folder / 'convert.cmd').write_bytes(launcher.encode('utf-8'))
+
+
 def prepare(config, plan, names=()):
     """Copy complete original closures and required JARs; never overwrite an existing folder."""
     from format_library.planning import select_groups
     from format_library.prompts import write_prompt
     root = Path(config['output_root'])
-    for path in (str(TOOL_ROOT / 'run.cmd'), config['_config_path']):
+    if plan.get('source_configuration_hash') and plan['source_configuration_hash'] != source_configuration_hash(config):
+        raise ValueError('Source configuration changed since discovery; run Discover and plan again')
+    for path in (str(TOOL_ROOT / 'run.cmd'), config['_config_path'], config.get('_common_config_path', '')):
         if any(character in path for character in ('%', '"', '\r', '\n')):
             raise ValueError('CMD launcher paths cannot contain percent signs, quotes or newlines')
     write_json(root / 'plan.json', plan)
@@ -36,11 +47,13 @@ def prepare(config, plan, names=()):
             existing = read_json(folder / 'component.json')
             if existing.get('preparation_hash') != preparation_hash:
                 raise ValueError('Prepared folder has different evidence. Use a new output_root: ' + str(folder))
+            write_launcher(config, folder)
             created.append(folder)
             continue
         folder.mkdir(parents=True)
         manifest = dict(schema_version='format-library-component-v1', **group,
             source_encoding=plan.get('source_encoding', 'UTF-8'),
+            source_configuration_hash=plan.get('source_configuration_hash'),
             api_version=1, api_hash=api_revision(), native_package=config['native_package'],
             target_java_version=config['target_java_version'], known_dependencies=config['known_dependencies'],
             original_classes={name: plan['classes'][name] for name in group['source_classes']},
@@ -79,12 +92,7 @@ def prepare(config, plan, names=()):
             (folder / name).mkdir()
         write_json(folder / 'component.json', manifest)
         # No credentials are embedded. Both config and Python selection remain external.
-        launcher = ('@echo off\r\nsetlocal\r\n'
-                    'call "%~dp0..\\..\\..\\run.cmd" --config "' + config['_config_path'] +
-                    '" convert --folder "%~dp0."\r\nset "conversion_exit=%ERRORLEVEL%"\r\npause\r\nexit /b %conversion_exit%\r\n')
-        # The tool may live elsewhere than output_root; resolve its launcher explicitly.
-        launcher = launcher.replace('%~dp0..\\..\\..\\run.cmd', str(TOOL_ROOT / 'run.cmd'))
-        (folder / 'convert.cmd').write_bytes(launcher.encode('utf-8'))
+        write_launcher(config, folder)
         write_prompt(folder, manifest)
         created.append(folder)
     return created

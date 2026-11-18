@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from configuration_fixture import write_config
 from format_library.configuration import load_config
 from format_library.discovery import scan
 from format_library.planning import build_plan
@@ -30,8 +31,8 @@ def test_encoding_and_unreadable_file_do_not_stop_discovery(tmp_path, encoding):
     broken = parent.with_name('Broken.java')
     broken.write_bytes(b'package example; class Broken { // ' + bytes([0x81]) + b'\n}')
     config_path = tmp_path / 'config.yaml'
-    config_path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
-        source_encoding=encoding, java_home=os.environ.get('JAVA_HOME'), java_version=25)), encoding='utf-8')
+    write_config(config_path, dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        source_encoding=encoding, java_home=os.environ.get('JAVA_HOME'), java_version=25))
     config = load_config(config_path)
     discovery = scan(config)
     assert 'example.Format' in discovery['classes']
@@ -56,6 +57,6 @@ def test_encoding_and_unreadable_file_do_not_stop_discovery(tmp_path, encoding):
 @pytest.mark.parametrize('encoding', ['', None, 123, 'not-a-real-encoding'])
 def test_invalid_source_encoding_has_clear_configuration_error(tmp_path, encoding):
     config = tmp_path / 'config.yaml'
-    config.write_text(yaml.safe_dump(dict(source_root=str(tmp_path), source_encoding=encoding)))
+    write_config(config, dict(source_root=str(tmp_path), source_encoding=encoding))
     with pytest.raises(ValueError, match='source_encoding'):
         load_config(config)

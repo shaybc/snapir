@@ -16,7 +16,31 @@ from format_library.workspaces import prepare
 from test_tool import config, evidence, response, generate
 
 
-def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(config):
+@pytest.mark.parametrize('explicit', [False,True])
+def test_only_explicit_formatter_java_and_maven_overrides_are_forwarded(tmp_path, monkeypatch, explicit):
+    from format_library.configuration import DEFAULTS
+    settings = dict(DEFAULTS, validator_command=['external'],
+        _local_shared_fields=['java_home','java_version','maven_settings_path','maven_local_repository'] if explicit else [])
+    code = tmp_path/'code';code.mkdir()
+    (code/'Work.java').write_text('class Work {}')
+    attempt = tmp_path/'attempt';attempt.mkdir()
+    received = []
+    def run(command, **kwargs):
+        received.extend(command)
+        raise FileNotFoundError('Synthetic validator; only inspecting configuration arguments')
+    monkeypatch.setattr('format_library.validator_client.subprocess.run',run)
+    with pytest.raises(ValueError,match='External validation'):
+        validate(settings,code,attempt)
+    for flag in ('--java-home','--java-version','--maven-settings-path','--maven-local-repository'):
+        assert (flag in received) is explicit
+    assert '--release' in received
+    if explicit:
+        assert received[received.index('--java-home')+1] == ''
+
+
+@pytest.mark.parametrize('release', [17,25])
+def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(config, release):
+    config['target_java_version'] = release
     folder = prepare(config, build_plan(evidence(config, {'example.Work': []})))[0]
     manifest = read_json(folder / 'component.json')
     payload = json.loads(response(manifest))
@@ -32,6 +56,7 @@ def test_real_cli_accepts_documentation_and_preserves_last_candidate_on_failure(
     assert read_json(attempt/'validation.json')['status']=='passed'
     assert read_json(accepted/'candidate.json')['validation']['status']=='passed'
     assert read_json(attempt/'validation.json')['compilation']['status']=='passed'
+    assert read_json(attempt/'validation.json')['compilation']['release']==release
     assert read_json(attempt/'validation.json')['compilation']['support_files']
     invalid = json.loads(json.dumps(payload))
     invalid['files'][0]['content'] += '\nclass Invalid { int number(){return "wrong";} }'

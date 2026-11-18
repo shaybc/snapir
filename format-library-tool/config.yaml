@@ -1,5 +1,8 @@
-# Copy the matching fields from an existing converter config. Paths are relative to this YAML.
-source_root: C:/REPLACE/Composer/Workspace
+# Common settings default to ../config/default_config.yaml; tool defaults normally suffice.
+# Explicit local shared fields override common values, including null and empty collections.
+# null: use SNAPIR_COMMON_CONFIG or the default common file (CLI --common-config wins).
+# A relative path here is resolved against this tool YAML.
+common_config_path: null
 source_encoding: UTF-8         # Encoding of original/decompiled Java files, e.g. windows-1255
 # The default command uses this Python interpreter and ../java-policy-validator/run.py.
 validator_policy_path: ../java-policy-validator/policy.json
@@ -8,22 +11,6 @@ comparison_config_path: ../java-behavior-comparator/config.yaml
 comparison_timeout_seconds: 4200
 # comparison_command: [python, 'C:/tools/java-behavior-comparator/run.py']
 # validator_command: [python, 'C:/tools/java-policy-validator/run.py']
-java_version: 25
-java_home: null                 # null uses JAVA_HOME or java on PATH
-java_scan_inactivity_timeout_seconds: 900
-classpath_jars: []
-framework_jars: []              # Copied dependencies, never automatic AI source attachments
-eclipse_classpath_variables: {}
-eclipse_classpath_containers: {}
-eclipse_project_classpath_containers: {}
-maven_settings_path: null
-maven_local_repository: null
-model_provider: litellm         # litellm or gemini
-model_name: openai/REPLACE_MODEL
-model_base_url: https://REPLACE_ENDPOINT/v1
-model_api_key_environment: ORGANIZATION_AI_API_KEY
-model_timeout_seconds: 900      # Inactivity while awaiting response; local heartbeats do not reset it
-max_model_attempts: 3
 model_stream: false            # Enable only if the organization endpoint supports streaming
 
 # Settings specific to this separate tool.
@@ -31,7 +18,6 @@ output_root: ./work
 approved_library_root: ./approved
 native_package: com.company.nativeformats
 request_character_limit: 2000000
-target_java_version: 17
 format_base_class: com.ibm.dse.base.FormatElement
 decorator_base_classes:
   - com.ibm.dse.base.FormatDecorator

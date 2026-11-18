@@ -1,10 +1,10 @@
 # Independent Java policy validator
 
 This directory is a standalone tool. It imports no converter or format-library code and
-reads none of their configurations. Copy it independently if desired.
+reads only the common converter YAML for Java/Maven settings. Copy it independently if desired and supply that YAML.
 
-Requires a full JDK 17+ (including javac) and Python 3 (standard library only). Maven is required for the initial
-build or after validator changes. Set JAVA_HOME/PATH for your JDK and Maven. The launcher
+Requires the full JDK (including javac) selected by common java_version/java_home and Python 3 with PyYAML
+(installed if missing). Maven is required for the initial build or after validator changes. The launcher
 builds only this tool, never the inspected project. Maven build output goes to stderr.
 
 ```powershell
@@ -12,13 +12,15 @@ python run.py --code "C:\generated\candidate" --policy policy.json
 ```
 
 Compilation is mandatory on every invocation. There is no enable/disable switch.
-`--release 17` selects the target Java version (default: `target_java_version` in this
-validator's policy). Repeat `--support PATH` to supply native Java support source directories.
+The target release defaults to effective java_version. A local target_java_version in config.yaml overrides
+it; --release overrides both. java_version/java_home select the full JDK, which may compile for an earlier
+release. The policy.json file remains dedicated to dependency and runtime rules.
+Repeat `--support PATH` to supply native Java support source directories.
 These inputs are validated against the same Java policy and compiled with the candidate.
 For example:
 
 ```text
-python run.py --code candidate --support native-api/src/main/java --release 17
+python run.py --common-config ../configs/organization.yaml --code candidate --support native-api/src/main/java
 ```
 
 `run.cmd` accepts the same arguments. After building, Java alone can run it:
@@ -29,6 +31,19 @@ java -jar target/java-policy-validator-1.0.0-jar-with-dependencies.jar CODE_PATH
 
 The optional third Java argument is a JSON file containing `release` and `source_roots`.
 It supplies inputs, never enables compilation; omitting it still compiles the candidate.
+This low-level Java protocol accepts resolved inputs; use the Python/CMD launcher to read common YAML.
+
+The default common YAML is ../config/default_config.yaml. Select another with --common-config PATH,
+SNAPIR_COMMON_CONFIG or local common_config_path (in that order). Legacy root/sole-profile discovery is
+retained when the default file is absent. --config selects this tool's local YAML instead of config.yaml.
+Common java_home, java_version, maven_settings_path and maven_local_repository apply to this tool's
+infrastructure and default compile target. Explicit local entries override common values, including null.
+Paths resolve against their supplying YAML. Explicit --java-home, --java-version, --maven-settings-path,
+--maven-local-repository and --release arguments override YAML; the format library uses these to forward
+explicit local Java/Maven overrides and the requested compile target. Otherwise this tool's local settings
+remain effective. An empty CLI path value clears the common path (matching local null).
+No converter code is imported. Native dependency approvals and compile_classpath
+remain in policy.json; original classpath_jars/framework_jars are never used as native compile dependencies.
 
 Stdout is one JSON object. Exit codes are 0 passed, 1 findings, 2 validator failure.
 The report includes schema/tool/policy versions, policy SHA-256, per-file SHA-256,

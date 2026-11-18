@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from configuration_fixture import write_config
 from format_library.configuration import load_config
 from format_library.discovery import scan, SCANNER_JAR
 from format_library.planning import build_plan
@@ -30,8 +31,8 @@ def test_source_inheritance_and_decorator_precedence(tmp_path):
         path = root / 'src/main/java' / name
         path.parent.mkdir(parents=True, exist_ok=True); path.write_text(value)
     path = tmp_path / 'config.yaml'
-    path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
-        java_home=os.environ.get('JAVA_HOME'), java_version=25)))
+    write_config(path, dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25))
     result = scan(load_config(path))
     assert result['classes']['example.CCString']['kind'] == 'format'
     assert result['classes']['example.NilDecorator']['kind'] == 'decorator'
@@ -61,8 +62,8 @@ def test_binary_ancestry_and_copied_framework_dependencies(tmp_path):
             static { if (true) throw new IllegalStateException("scanner must never execute this"); }
         }''')
     classes = framework / 'classes'; classes.mkdir()
-    config_path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
-        java_home=os.environ.get('JAVA_HOME'), java_version=25)))
+    write_config(config_path, dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25))
     config = load_config(config_path)
     _, environment = java_environment(config)
     javac = shutil.which('javac', path=environment['PATH'])
@@ -94,8 +95,8 @@ def test_referenced_source_uses_own_project_jars(tmp_path):
     (a / 'src/a/Plain.java').write_text('package a; public class Plain extends vendor.Base {}')
     (b / 'src/b/Holder.java').write_text('package b; public class Holder extends vendor.Base {}')
     path = tmp_path / 'config.yaml'
-    path.write_text(yaml.safe_dump(dict(source_root=str(workspace), output_root=str(tmp_path / 'work'),
-        java_home=os.environ.get('JAVA_HOME'), java_version=25)))
+    write_config(path, dict(source_root=str(workspace), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25))
     config = load_config(path)
     _, environment = java_environment(config)
     javac, jar = (shutil.which(name, path=environment['PATH']) for name in ('javac', 'jar'))

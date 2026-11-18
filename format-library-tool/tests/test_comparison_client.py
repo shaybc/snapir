@@ -81,8 +81,19 @@ def test_real_comparator_cli_and_http_review_gate_generation(config,monkeypatch,
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
     try:
         comparison_config=tmp_path/'real-comparator.yaml'
-        comparison_config.write_text(yaml.safe_dump(dict(model_name='synthetic-review',
-            model_base_url='http://127.0.0.1:'+str(server.server_port)+'/v1',model_api_key_environment='COMPARISON_E2E_KEY')))
+        comparison_config.write_text('{}')
+        shared_path=Path(config['_common_config_path'])
+        shared=yaml.safe_load(shared_path.read_text())
+        shared.update(model_name='openai/synthetic-review',model_provider='litellm',
+            model_base_url='http://127.0.0.1:'+str(server.server_port)+'/v1',model_api_key_environment='COMPARISON_E2E_KEY')
+        shared_path.write_text(yaml.safe_dump(shared))
+        config.update(shared)
+        if different:
+            # A comparator-local connection override must also work through the format-tool CLI handoff.
+            comparison_config.write_text(yaml.safe_dump({key:shared[key] for key in
+                ('model_name','model_provider','model_base_url','model_api_key_environment')}))
+            shared.update(model_provider='mock',model_name='unused-default',model_base_url='')
+            shared_path.write_text(yaml.safe_dump(shared))
         monkeypatch.setenv('COMPARISON_E2E_KEY','synthetic-local-key')
         root=Path(__file__).resolve().parents[2]
         config['comparison_command']=[sys.executable,str(root/'java-behavior-comparator/run.py')]

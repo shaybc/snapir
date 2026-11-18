@@ -60,12 +60,14 @@ def main(argv=None):
     """Prepare tool dependencies using the same configuration and interpreter as the launcher."""
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--config', default=str(TOOL_ROOT / 'config.yaml'))
+    parser.add_argument('--common-config')
     args, _ = parser.parse_known_args(argv)
     try:
         ensure_python()
         from format_library.configuration import load_config
         from format_library.java_prerequisites import ensure_scanner
-        ensure_scanner(load_config(args.config))
+        config = load_config(args.config, args.common_config) if args.common_config else load_config(args.config)
+        ensure_scanner(config)
         return 0
     except (ValueError, OSError, subprocess.SubprocessError, ImportError) as error:
         print('Dependency setup: ' + str(error), file=sys.stderr)

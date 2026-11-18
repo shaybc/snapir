@@ -16,6 +16,28 @@ from tools.workspace_intake_tools.env_loader import load_env_with_fallbacks
 from tools.workspace_intake_tools.run_factory import create_run_config
 
 
+def test_shipped_common_configuration_lists_every_converter_field_and_default():
+    """Keep the common YAML complete and valid without changing converter runtime defaults."""
+    root = Path(__file__).resolve().parents[2]
+    path = root / 'config/default_config.yaml'
+    saved = yaml.safe_load(path.read_text(encoding='utf-8'))
+    defaults = PipelineConfiguration()
+    expected = defaults.model_dump(mode='json')
+    for name in PipelineConfiguration.model_fields:
+        if name not in expected:
+            expected[name] = getattr(defaults, name)
+    assert set(saved) == set(PipelineConfiguration.model_fields)
+    path_fields = {'source_root', 'mapper_jar', 'output_root', 'shared_store_root', 'java_home',
+                   'maven_settings_path', 'maven_local_repository', 'deployment_template_dir',
+                   'service_registry_path', 'mapper_analysis_reuse'}
+    for name, value in expected.items():
+        if name in path_fields and value:
+            assert (path.parent / saved[name]).resolve() == (root / value).resolve(), name
+        else:
+            assert saved[name] == value, name
+    PipelineConfiguration.model_validate(saved)
+
+
 def test_model_defaults_reference_central_values():
     profile = PipelineConfiguration()
     for field, key in (("source_root", "COMPOSER_ROOT"), ("mapper_jar", "COMPOSER_MAPPER_JAR"),

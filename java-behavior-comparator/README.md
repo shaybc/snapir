@@ -1,23 +1,33 @@
 # Independent Java behavior comparator
 
 This standalone read-only tool compares original and generated Java through small AI tasks.
-It imports no converter, format-library, or validator code and never reads their configuration.
+It imports no converter, format-library, or validator code. Its only shared configuration input is the converter YAML.
 It writes only comparator-owned reports/cache/build output. It never edits, compiles, executes,
 repairs or approves the inspected implementations. Maven builds only its own source indexer.
 
 ## Setup
 
-Install Python 3, a JDK 17+ and Maven on PATH (or configure java_home/maven_command). `run.cmd`
+Install Python 3, the JDK selected by common java_home/java_version and Maven on PATH. `run.cmd`
 uses Python and installs only missing requirements from this directory. The first index run
 builds `indexer/pom.xml`; later runs verify its content hashes and reuse the built JAR.
 
-Edit this tool's `config.yaml` with your organization OpenAI-compatible AI gateway values.
-LiteLLM gateways are supported over their HTTP chat-completions endpoint. The model name
-must be the exact name served by the gateway; no SDK provider-prefix rewriting occurs.
-The supported model_provider values are openai_compatible, openai and litellm (same HTTP
-protocol). Responses are non-streaming JSON. Set the named API-key environment variable.
-Copy connection values into this file; do not point it at another tool's YAML. Credentials
-are sent as HTTP headers and are not stored in request/response artifacts.
+Keep comparison limits in this tool's config.yaml. Shared defaults come from ../config/default_config.yaml,
+which lists every converter field and its default. Explicit local shared fields override common defaults.
+--common-config PATH wins, followed by SNAPIR_COMMON_CONFIG, then local common_config_path. Otherwise use
+config/default_config.yaml; legacy root/sole-profile discovery is retained if that file is absent.
+Relative paths resolve against the supplying YAML. Missing local values inherit common defaults; explicit
+null/empty settings replace them. A comparator-local connection override is honored even when called by the format library.
+The format-library caller passes the selected common path automatically; it does not import comparator code.
+
+Moved entries: model_provider, model_name, model_base_url, model_api_key_environment,
+model_timeout_seconds, max_model_attempts and java_home. java_version, maven_settings_path and
+maven_local_repository are also consumed from the common YAML for indexer selection/builds.
+max_model_calls, max_run_seconds, evidence/task limits, index_timeout_seconds, source_excludes and
+maven_command remain local. The original/generated source locations and encodings stay explicit request inputs.
+LiteLLM uses its own SDK adapter with the same provider-prefixed model names as the converter. Gemini
+uses google-genai (an empty model_base_url uses its standard endpoint). Old openai_compatible/openai
+transport remains supported. mock permits indexing but cannot produce behavior approval.
+Responses are non-streaming. Set the common model_api_key_environment variable; credentials are not stored in artifacts.
 
 ## CLI
 

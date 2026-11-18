@@ -5,6 +5,7 @@ from format_library.classpaths import inventory
 from format_library.java_prerequisites import SCANNER_JAR, ensure_scanner
 from format_library.files import file_hash, read_json, write_json
 from format_library.processes import run_process
+from format_library.configuration import source_configuration_hash
 
 def scan(config, *, build=False):
     """Discover classes and dependencies without invoking the converter or original classes."""
@@ -39,6 +40,7 @@ def scan(config, *, build=False):
                   scanner_hash=file_hash(SCANNER_JAR), source_root=config['source_root'],
                   source_encoding=config['source_encoding'])
     result['dependency_policy'] = 'required-members-v1'
+    result['source_configuration_hash'] = source_configuration_hash(config)
     result['detailed_log'] = str(log_path)
     from format_library.discovery_reporting import missing_dependencies, record_details
     result['unresolved_dependencies'] = missing_dependencies(result)

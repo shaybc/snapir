@@ -1,8 +1,9 @@
-"""Own YAML settings for the independent comparator; foreign tool configs are not loaded."""
+"""Tool-specific task limits with model and JDK settings from the common converter YAML."""
 import codecs
 import json
 from pathlib import Path
 import yaml
+from comparator.common_configuration import load_common
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULTS = dict(model_provider='openai_compatible', model_name='', model_base_url='',
@@ -13,23 +14,28 @@ DEFAULTS = dict(model_provider='openai_compatible', model_name='', model_base_ur
     java_home=None, maven_command='mvn', source_excludes=['.git','target','build','bin','.venv','node_modules'])
 
 
-def load(path):
+def load(path, common_config=None):
     """Validate independent settings and resolve its selected JDK location."""
     path = Path(path).resolve()
     value = yaml.safe_load(path.read_text(encoding='utf-8-sig'))
-    if not isinstance(value, dict) or set(value) - set(DEFAULTS):
+    if not isinstance(value, dict) or set(value) - set(DEFAULTS) - {'common_config_path', 'java_version', 'maven_settings_path', 'maven_local_repository'}:
         raise ValueError('Comparator configuration must contain only its documented settings')
     settings = {**DEFAULTS, **value}
+    configured = value.get('common_config_path')
+    if configured:
+        configured = str((path.parent / Path(configured).expanduser()).resolve())
+    shared = load_common(ROOT, common_config, configured, overrides=value, override_base=path.parent)
+    settings.update({key: shared[key] for key in ('model_provider', 'model_name', 'model_base_url',
+        'model_api_key_environment', 'model_timeout_seconds', 'max_model_attempts', 'java_home', 'java_version',
+        'maven_settings_path', 'maven_local_repository', '_common_config_path')})
     for key in ('model_timeout_seconds','max_model_attempts','max_model_calls','max_run_seconds',
                 'request_character_limit','response_character_limit','catalog_page_size','max_evidence_rounds','max_interaction_pairs','index_timeout_seconds'):
         if type(settings[key]) is not int or settings[key] <= 0:
             raise ValueError(key + ' must be a positive integer')
-    if settings['model_provider'] not in {'openai_compatible', 'openai', 'litellm'}:
-        raise ValueError('Use an OpenAI-compatible endpoint, including an organization LiteLLM gateway')
+    if settings['model_provider'] not in {'openai_compatible', 'openai', 'litellm', 'gemini', 'mock'}:
+        raise ValueError('Unsupported common model_provider')
     for key in ('model_name','model_base_url','model_api_key_environment','maven_command'):
         if not isinstance(settings[key], str): raise ValueError(key + ' must be text')
     if not isinstance(settings['source_excludes'], list) or not all(isinstance(v,str) for v in settings['source_excludes']):
         raise ValueError('source_excludes must list directory names')
-    if settings['java_home']:
-        settings['java_home'] = str((path.parent / settings['java_home']).resolve())
     return settings

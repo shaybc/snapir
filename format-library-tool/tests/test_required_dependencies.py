@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from configuration_fixture import write_config
 from format_library.configuration import load_config
 from format_library.discovery import scan, SCANNER_JAR
 from format_library.planning import build_plan
@@ -43,8 +44,8 @@ def test_qualified_jdk_names_virtual_hooks_and_per_formatter_helper_scope(tmp_pa
         <classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
         <classpathentry kind="lib" path="missing-declared.jar"/>
     </classpath>''')
-    config_path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
-        java_home=os.environ.get('JAVA_HOME'), java_version=25)))
+    write_config(config_path, dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25))
     result = scan(load_config(config_path))
     assert result['classes']['example.Unrelated']['dependency_status'] == 'ignored'
     assert result['classes']['example.Unknown']['ancestry_status'] == 'unresolved'
@@ -101,8 +102,8 @@ def test_explicit_super_constructor_does_not_pull_unused_constructor_dependencie
         path = root / 'src/main/java' / name
         path.parent.mkdir(parents=True, exist_ok=True); path.write_text(text)
     config = tmp_path / 'config.yaml'
-    config.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'),
-        java_home=os.environ.get('JAVA_HOME'), java_version=25)))
+    write_config(config, dict(source_root=str(root), output_root=str(tmp_path / 'work'),
+        java_home=os.environ.get('JAVA_HOME'), java_version=25))
     result = scan(load_config(config))
     scope = result['dependency_scopes']['example.Format']
     assert not any(item['issues'] for item in scope.values()), scope
@@ -127,7 +128,7 @@ def test_test_classpath_entries_and_sources_do_not_block_production(tmp_path):
       <classpathentry kind="con" path="production-container"/>
     </classpath>''')
     path = tmp_path / 'config.yaml'
-    path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'))))
+    write_config(path, dict(source_root=str(root), output_root=str(tmp_path / 'work')))
     result = inventory(load_config(path))
     assert [Path(item['file']).name for item in result['sources']] == ['Main.java']
     assert result['projects'][0]['libraries'] == []
@@ -141,5 +142,5 @@ def test_maven_test_only_dependencies_are_not_production_blockers(tmp_path, scop
     (root / 'pom.xml').write_text('<project><dependencies><dependency><scope>' + scope +
         '</scope></dependency></dependencies></project>')
     path = tmp_path / 'config.yaml'
-    path.write_text(yaml.safe_dump(dict(source_root=str(root), output_root=str(tmp_path / 'work'))))
+    write_config(path, dict(source_root=str(root), output_root=str(tmp_path / 'work')))
     assert bool(inventory(load_config(path))['projects'][0]['issues']) is blocked

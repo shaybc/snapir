@@ -26,8 +26,11 @@ def delivery_failure(text):
 def receive(config, request_path):
     """Kill an inactive API worker; only nonempty returned content resets the timeout."""
     command = [sys.executable, '-m', 'format_library.model_client', config['_config_path'], str(request_path)]
+    environment = os.environ.copy()
+    if config.get('_common_config_path'):
+        environment['SNAPIR_COMMON_CONFIG'] = config['_common_config_path']
     process = subprocess.Popen(command, cwd=TOOL_ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        text=True, encoding='utf-8', errors='replace')
+        text=True, encoding='utf-8', errors='replace', env=environment)
     messages = queue.Queue()
     def read():
         for line in process.stdout:
@@ -77,6 +80,8 @@ def convert(config, folder):
     """Serialize conversions within one component folder; preserve all prior attempts."""
     from format_library.locking import exclusive
     folder = Path(folder).resolve()
+    if config['model_provider'] == 'mock':
+        raise ValueError('Format conversion requires a live model_provider in the common converter YAML')
     if not (folder / 'component.json').is_file():
         raise ValueError('Select a prepared component folder')
     with exclusive(folder / '.conversion.lock'):
@@ -142,10 +147,12 @@ def worker(config, request):
             print(json.dumps(dict(delta=response.choices[0].message.content)), flush=True)
     elif config['model_provider'] == 'gemini':
         from google import genai
-        client = genai.Client(api_key=key, http_options=dict(base_url=config['model_base_url'],
-            timeout=config['model_timeout_seconds'] * 1000))
+        http_options = dict(timeout=config['model_timeout_seconds'] * 1000)
+        if config['model_base_url']:
+            http_options['base_url'] = config['model_base_url']
+        client = genai.Client(api_key=key, http_options=http_options)
         try:
-            options = dict(model=config['model_name'], contents=messages[1]['content'],
+            options = dict(model=config['model_name'].removeprefix('gemini/'), contents=messages[1]['content'],
                            config=dict(system_instruction=request['prompt']))
             if config['model_stream']:
                 for chunk in client.models.generate_content_stream(**options):

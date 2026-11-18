@@ -75,6 +75,7 @@ def main(argv=None):
     """Parse CLI actions; an argument-free launch opens the interactive menu."""
     parser = argparse.ArgumentParser(description='Prepare and generate a reviewed native format library independently of migration')
     parser.add_argument('--config', default=str(TOOL_ROOT / 'config.yaml'))
+    parser.add_argument('--common-config', help='Converter YAML containing shared model, Java and source settings')
     commands = parser.add_subparsers(dest='command')
     scanning = commands.add_parser('discover')
     scanning.add_argument('--rebuild-scanner', action='store_true')
@@ -88,7 +89,7 @@ def main(argv=None):
     commands.add_parser('status')
     args = parser.parse_args(argv)
     try:
-        config = load_config(args.config)
+        config = load_config(args.config, args.common_config) if args.common_config else load_config(args.config)
         if args.command == 'discover':
             discover(config, args.rebuild_scanner)
         elif args.command == 'prepare':

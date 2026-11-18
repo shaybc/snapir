@@ -27,12 +27,16 @@ def compare(config, folder, manifest, staged, attempt, support):
         input_hash=digest(dict(files=files,targets=targets,encodings=dict(original=request['original']['encoding'],generated='UTF-8'),
                                entry_methods={side:request[side]['entry_methods'] for side in ('original','generated')}))
         config_hash=file_hash(config_path)
+        common_path=Path(settings['_common_config_path']) if settings.get('_common_config_path') else None
+        common_hash=file_hash(common_path) if common_path else None
         environment=os.environ.copy()
         if settings.get('java_home'):
             environment['JAVA_HOME']=settings['java_home']
             environment['PATH']=str(Path(settings['java_home'])/'bin')+os.pathsep+environment.get('PATH','')
         command=[*settings['comparison_command'],'compare','--config',str(config_path),'--request',str(request_path.resolve()),
                  '--output',str((attempt/'comparison-work').resolve())]
+        if common_path:
+            command+=['--common-config',str(common_path)]
         result=subprocess.run(command,capture_output=True,text=True,encoding='utf-8',errors='replace',
                               timeout=settings['comparison_timeout_seconds'],env=environment)
         (attempt/'comparator.stdout.txt').write_text(result.stdout,encoding='utf-8')
@@ -49,7 +53,7 @@ def compare(config, folder, manifest, staged, attempt, support):
             raise ValueError('Comparator report does not match the original/generated evidence')
         current={str(path.resolve()):file_hash(path) for root in roots
                  for path in (sorted(root.rglob('*')) if root.is_dir() else [root]) if path.is_file()}
-        if current!=files or file_hash(config_path)!=config_hash:
+        if current!=files or file_hash(config_path)!=config_hash or (common_path and file_hash(common_path)!=common_hash):
             raise ValueError('Comparison inputs or comparator settings changed during review')
         if report.get('evidence_level')!='static_analysis' or not isinstance(report.get('remarks'),list):
             raise ValueError('Comparator omitted its analysis level or repair remarks')
