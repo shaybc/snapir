@@ -19,11 +19,15 @@ from format_library.approval import approve
 @pytest.fixture
 def config(tmp_path, monkeypatch):
     source = tmp_path / 'original'; source.mkdir()
+    comparison = tmp_path / 'comparison-config.json'
+    comparison.write_text('{}')
     path = tmp_path / 'config.yaml'
     path.write_text(yaml.safe_dump(dict(source_root=str(source), output_root=str(tmp_path / 'work'),
         approved_library_root=str(tmp_path / 'approved'), native_package='example.nativeformats',
         model_name='openai/fake', model_base_url='http://localhost/v1',
-        model_api_key_environment='FORMAT_LIBRARY_TEST_KEY')))
+        model_api_key_environment='FORMAT_LIBRARY_TEST_KEY',
+        comparison_command=[sys.executable,str(Path(__file__).with_name('fake_comparator_cli.py'))],
+        comparison_config_path=str(comparison))))
     monkeypatch.setenv('FORMAT_LIBRARY_TEST_KEY', 'fake-key-never-sent')
     return load_config(path)
 
@@ -55,7 +59,7 @@ def generate(config, folder):
     request = build_request(config, folder, manifest)
     attempt = folder / 'attempts/test'
     attempt.mkdir()
-    return extract(folder, manifest, response(manifest), request, attempt)
+    return extract(folder, manifest, response(manifest), request, attempt, config=config)
 
 
 def test_cycle_groups_and_dependency_order(config):

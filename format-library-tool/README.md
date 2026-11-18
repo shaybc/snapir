@@ -198,3 +198,32 @@ Java. Reports and captured output are saved in the attempt as `validation.json`,
 The previous accepted candidate is preserved. Delivery retries remain unchanged; policy
 findings do not yet initiate an automatic AI repair. Approval continues to allow human edits
 and records their actual bytes; the generation report describes pre-review bytes only.
+
+## Independent staged behavior comparison
+
+After generation passes policy/compilation validation, the format-library tool invokes the
+separate `java-behavior-comparator` CLI. Configure that tool's own `config.yaml` with the
+organization AI gateway and key environment variable. This is a separate configuration;
+no comparator module or configuration values are imported into this application.
+
+`comparison_command` selects the executable/argument list (default current Python plus the
+sibling comparator run.py). `comparison_config_path` points to its independent YAML and
+`comparison_timeout_seconds` bounds the subprocess. Original copied sources/JARs, source
+encoding, the original/native target class pairs, staged generated source and native API/
+approved prerequisite sources are supplied through `comparison-request.json`. The entry
+scope is original format/unformat/initialization/before hooks and generated format/unformat,
+plus constructors, fields and reached helpers. This does not compare all framework utility APIs.
+
+Only a complete `consistent_in_review` decision matching the inspected bytes allows publication.
+This is a static AI review, not behavioral verification: candidates still have verified=false.
+Differences, inconclusive work, missing comparator configuration, stale evidence or tool failure
+retain the staged candidate and preserve the previous accepted candidate. Existing human approval
+and delivery-only retry behavior remain unchanged; repair remarks are not automatically applied.
+
+Read attempts/<id>/comparison.json and comparison-feedback.json for the decision and suggested
+corrections with source locations. comparator.stdout.txt and comparator.stderr.txt retain transport
+output. comparison-work/ contains resumable stage evidence and a short Markdown report. To resume
+an interrupted review directly, run the comparator with this attempt's request/output paths.
+All generation entry paths use the same extraction handoff. Discovery/preparation do not call AI
+comparison. Approval of human edits still records reviewed bytes and does not claim the generation
+review applies to subsequent edits. The converter and independent policy validator are unchanged.

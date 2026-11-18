@@ -28,6 +28,30 @@ objects:
     code:
       - format-library-tool/format_library/**
       - format-library-tool/run.cmd
+  - id: java-behavior-comparator
+    type: app
+    name: Independent Java behavior comparator
+    description: Reviews original and generated behavior through bounded read-only AI stages and returns JSON repair evidence.
+    parent: snapir
+    technologies: [Python]
+    code:
+      - java-behavior-comparator/comparator/**
+      - java-behavior-comparator/run.py
+      - java-behavior-comparator/config.yaml
+  - id: behavior-source-indexer
+    type: app
+    name: Behavior comparison source indexer
+    description: Extracts source spans and AST facts and binary signatures without executing inspected code.
+    parent: snapir
+    technologies: [Java]
+    code:
+      - java-behavior-comparator/indexer/src/**
+  - id: behavior-comparison-artifacts
+    type: store
+    name: Behavior comparison evidence
+    description: Retains indexed source facts, bounded AI task receipts, source fingerprints and static comparison reports.
+    parent: snapir
+    technologies: [Filesystem]
   - id: java-policy-validator
     type: app
     name: Independent Java policy validator
@@ -683,6 +707,31 @@ objects:
     description: Displays isolated conversion dependency exports in VS Code.
     external: true
 connections:
+  - id: format-library-behavior-comparison
+    from: format-library-tool
+    to: java-behavior-comparator
+    description: Requests source-backed behavior review after generated code passes policy and compilation checks.
+    technology: CLI/JSON
+  - id: operator-behavior-comparator
+    from: operator
+    to: java-behavior-comparator
+    description: Independently selects original and generated code and reads static review reports.
+    technology: CLI
+  - id: behavior-comparison-indexing
+    from: java-behavior-comparator
+    to: behavior-source-indexer
+    description: Requests independent AST and dependency metadata.
+    technology: CLI/JSON
+  - id: behavior-comparison-model
+    from: java-behavior-comparator
+    to: model-provider
+    description: Submits bounded behavior extraction, mapping and comparison tasks to its own configured endpoint.
+    technology: HTTP/JSON
+  - id: behavior-comparison-files
+    from: java-behavior-comparator
+    to: behavior-comparison-artifacts
+    description: Saves resumable task evidence and machine-readable repair remarks.
+    technology: Filesystem
   - id: format-library-validator
     from: format-library-tool
     to: java-policy-validator

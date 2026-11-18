@@ -79,12 +79,16 @@ def extract(folder, manifest, response, request, attempt, *, config=None):
     for prerequisite in request['prerequisites']:
         support.append(inside(folder, 'prerequisites/' + prerequisite['id'] + '/' + prerequisite['revision'] + '/src/main/java'))
     report = validate(config, staged, attempt, source_roots=support, release=manifest['target_java_version'])
+    from format_library.comparison_client import compare
+    comparison = compare(config, folder, manifest, staged, attempt, support)
     shutil.copytree(staged, destination)
     candidate = dict(schema_version='format-library-candidate-v1', status='generated', group_id=manifest['id'],
         api_hash=manifest['api_hash'], preparation_hash=manifest['preparation_hash'], components=components,
         dependencies=dependencies, prerequisites=request['prerequisites'], request_hash=digest(request),
         files=[dict(path=item['path'], sha256=file_hash(inside(destination, item['path']))) for item in files],
         notes=payload.get('notes', []), verified=False,
+        comparison=dict(decision=comparison['decision'], evidence_level='static_analysis', complete=comparison['complete'],
+                        input_hash=comparison['input_hash'], report=str((attempt / 'comparison.json').relative_to(folder))),
         validation=dict(status=report['status'], policy_hash=report['policy_hash'], input_hash=report['input_hash'],
                         compilation=report['compilation'],
                         report=str((attempt / 'validation.json').relative_to(folder))))

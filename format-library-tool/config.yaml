@@ -4,6 +4,9 @@ source_encoding: UTF-8         # Encoding of original/decompiled Java files, e.g
 # The default command uses this Python interpreter and ../java-policy-validator/run.py.
 validator_policy_path: ../java-policy-validator/policy.json
 validator_timeout_seconds: 900
+comparison_config_path: ../java-behavior-comparator/config.yaml
+comparison_timeout_seconds: 4200
+# comparison_command: [python, 'C:/tools/java-behavior-comparator/run.py']
 # validator_command: [python, 'C:/tools/java-policy-validator/run.py']
 java_version: 25
 java_home: null                 # null uses JAVA_HOME or java on PATH
