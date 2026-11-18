@@ -5,11 +5,13 @@ from pathlib import Path
 import subprocess
 from format_library.configuration import DEFAULTS
 from format_library.files import file_hash, digest, write_json
+from format_library.progress import WaitProgress, announce, concise, duration
 
 
 def compare(config, folder, manifest, staged, attempt, support):
     """Submit original/native evidence and require a completed, matching static review."""
     settings={**DEFAULTS, **(config or {})}
+    announce('Preparing original and generated sources for behavior comparison...')
     config_path=Path(settings['comparison_config_path']).resolve()
     original=[str((folder/item['path']).resolve()) for item in manifest['files']]
     jars=[str((folder/item['path']).resolve()) for item in manifest['binaries']]
@@ -37,8 +39,12 @@ def compare(config, folder, manifest, staged, attempt, support):
                  '--output',str((attempt/'comparison-work').resolve())]
         if common_path:
             command+=['--common-config',str(common_path)]
-        result=subprocess.run(command,capture_output=True,text=True,encoding='utf-8',errors='replace',
-                              timeout=settings['comparison_timeout_seconds'],env=environment)
+        progress_path=attempt/'comparison-progress.json'
+        environment['JAVA_BEHAVIOR_PROGRESS_PATH']=str(progress_path.resolve())
+        announce('Comparing behavior: analyzing source code before model review...')
+        with WaitProgress('Behavior comparison',settings['comparison_timeout_seconds'],snapshot=progress_path):
+            result=subprocess.run(command,capture_output=True,text=True,encoding='utf-8',errors='replace',
+                                  timeout=settings['comparison_timeout_seconds'],env=environment)
         (attempt/'comparator.stdout.txt').write_text(result.stdout,encoding='utf-8')
         (attempt/'comparator.stderr.txt').write_text(result.stderr,encoding='utf-8')
         report=json.loads(result.stdout)
@@ -60,8 +66,11 @@ def compare(config, folder, manifest, staged, attempt, support):
         write_json(attempt/'comparison-feedback.json',dict(decision=decision,evidence_level='static_analysis',
             remarks=report['remarks'],findings=report.get('findings',[]),source_locations=report.get('source_locations',{})))
         if decision!='consistent_in_review' or report.get('complete') is not True:
-            raise ValueError('Behavior comparison '+decision+'; see '+str(attempt/'comparison-feedback.json'))
+            reason='; '.join(concise(item.get('message',''),160) for item in report['remarks'][:2] if isinstance(item,dict))
+            raise ValueError('Behavior comparison '+decision+': '+reason+'; see '+str(attempt/'comparison-feedback.json'))
+        announce('Behavior comparison passed within the reviewed scope.')
         return report
     except (ValueError,OSError,subprocess.SubprocessError) as error:
         write_json(attempt/'comparison-error.json',dict(status='not_accepted',message=str(error)))
-        raise ValueError('Behavior comparison did not accept the candidate: '+str(error)) from error
+        reason='Behavior comparison timed out after '+duration(error.timeout) if isinstance(error,subprocess.TimeoutExpired) else str(error)
+        raise ValueError('Behavior comparison did not accept the candidate: '+reason) from error

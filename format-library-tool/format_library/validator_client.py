@@ -6,6 +6,7 @@ import subprocess
 from format_library.configuration import DEFAULTS
 from format_library.files import file_hash, write_json
 import json
+from format_library.progress import WaitProgress, announce, concise, duration
 
 
 def validate(config, staged, attempt, *, source_roots=(), release=None):
@@ -41,8 +42,10 @@ def validate(config, staged, attempt, *, source_roots=(), release=None):
                 command += ['--' + key.replace('_', '-'), settings[key] if settings.get(key) is not None else '']
         for root in source_roots:
             command += ['--support', str(root)]
-        result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8',
-                                errors='replace', timeout=settings['validator_timeout_seconds'], env=environment)
+        announce('Checking policy and compiling generated Java...')
+        with WaitProgress('Policy and compilation', settings['validator_timeout_seconds']):
+            result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8',
+                                    errors='replace', timeout=settings['validator_timeout_seconds'], env=environment)
         (attempt / 'validator.stdout.txt').write_text(result.stdout, encoding='utf-8')
         (attempt / 'validator.stderr.txt').write_text(result.stderr, encoding='utf-8')
         report = json.loads(result.stdout)
@@ -74,9 +77,13 @@ def validate(config, staged, attempt, *, source_roots=(), release=None):
                        for index, root in enumerate(source_roots) for path in sorted(root.rglob('*.java')) if path.is_file()}:
             raise ValueError('Support sources changed during validation')
         if status == 'failed' or report['findings']:
-            raise ValueError('Generated candidate failed policy validation; see ' + str(report_path))
+            reason = '; '.join(concise(item.get('message', item.get('rule', '')), 160)
+                               for item in report['findings'][:2] if isinstance(item, dict))
+            raise ValueError('Generated candidate failed policy validation: ' + reason + '; see ' + str(report_path))
+        announce('Policy and compilation passed.')
         return report
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         # Preserve genuine findings; infrastructure failures have their own durable receipt.
         write_json(attempt / 'validation-rejection.json', dict(status='rejected', message=str(error)))
-        raise ValueError('External validation did not pass: ' + str(error)) from error
+        reason = 'Policy and compilation timed out after ' + duration(error.timeout) if isinstance(error, subprocess.TimeoutExpired) else str(error)
+        raise ValueError('External validation did not pass: ' + reason) from error

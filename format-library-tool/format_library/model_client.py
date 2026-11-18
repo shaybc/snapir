@@ -12,6 +12,7 @@ from pathlib import Path
 from uuid import uuid4
 from format_library.configuration import TOOL_ROOT
 from format_library.files import read_json, write_json
+from format_library.progress import WaitProgress, announce, concise, duration
 
 
 def delivery_failure(text):
@@ -37,9 +38,11 @@ def receive(config, request_path):
             messages.put(line)
         messages.put(None)
     threading.Thread(target=read, daemon=True).start()
-    last = last_notice = time.monotonic()
+    last = time.monotonic()
     chunks, completed = [], False
     response_file = Path(request_path).parent / 'response.partial.txt'
+    progress = WaitProgress('Generation model', config['model_timeout_seconds'],
+                            inactivity=lambda: time.monotonic() - last).start()
     try:
         while True:
             try:
@@ -58,18 +61,17 @@ def receive(config, request_path):
                     with response_file.open('a', encoding='utf-8') as stream:
                         stream.write(delta)
                     last = time.monotonic()
-                    if last - last_notice >= 5:
-                        print('Receiving model content (' + str(sum(map(len, chunks))) + ' characters)', flush=True)
-                        last_notice = last
                 if event.get('done'):
                     completed = True
             if time.monotonic() - last >= config['model_timeout_seconds']:
-                raise ValueError('No model content received within the inactivity timeout; heartbeat messages do not count')
+                raise ValueError('No model content received within the ' + duration(config['model_timeout_seconds']) +
+                                 ' inactivity timeout; heartbeat messages do not count')
         text = ''.join(chunks)
         if not completed or delivery_failure(text):
             raise ValueError('No model message delivered: empty, HTML, upstream error or incomplete provider response')
         return text
     finally:
+        progress.stop()
         if process.poll() is None:
             process.kill()
         process.wait()
@@ -98,30 +100,43 @@ def _convert(config, folder):
     if not os.environ.get(config['model_api_key_environment']):
         raise ValueError('Set the API-key environment variable: ' + config['model_api_key_environment'])
     manifest = read_json(folder / 'component.json')
+    announce('Preparing conversion request and checking prepared inputs...')
     request = build_request(config, folder, manifest)
     for number in range(config['max_model_attempts']):
         identity = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S') + '-' + uuid4().hex[:8]
         attempt = folder / 'attempts' / identity
         attempt.mkdir(parents=True)
         write_json(attempt / 'request.json', request)
-        print('Model delivery attempt ' + str(number + 1), flush=True)
+        label = 'Attempt ' + str(number + 1) + '/' + str(config['max_model_attempts'])
+        announce(label + ': sending conversion request to the model (inactivity limit ' +
+                 duration(config['model_timeout_seconds']) + ')...')
         try:
             response = receive(config, attempt / 'request.json')
         except (ValueError, OSError) as error:
             write_json(attempt / 'result.json', dict(status='delivery_failed', message=str(error), model_message_received=False))
-            print(str(error), flush=True)
+            announce(label + ' finished: failed to receive model output. ' + concise(error))
+            announce('Details: ' + str(attempt))
             if number + 1 == config['max_model_attempts']:
                 raise
             continue
         (attempt / 'response.txt').write_text(response, encoding='utf-8')
+        announce('Received model response (' + str(len(response)) + ' characters); checking returned files...')
         try:
             destination = extract(folder, manifest, response, request, attempt, config=config)
         except (ValueError, KeyError, TypeError) as error:
             write_json(attempt / 'result.json', dict(status='invalid_response', message=str(error), model_message_received=True))
+            announce(label + ' finished: failed. ' + concise(error))
+            announce('Details: ' + str(attempt))
             raise ValueError('Model response saved but not accepted: ' + str(error)) from error
         write_json(attempt / 'result.json', dict(status='generated' if destination else 'blocked',
             candidate=str(destination) if destination else None, model_message_received=True,
             reasons=read_json(attempt / 'result.json').get('reasons', []) if not destination else []))
+        if destination:
+            announce(label + ' finished: success. Generated code: ' + str(destination))
+        else:
+            reasons = read_json(attempt / 'result.json').get('reasons', [])
+            announce(label + ' finished: blocked by the model. ' + concise('; '.join(reasons)))
+            announce('Details: ' + str(attempt))
         return destination
 
 

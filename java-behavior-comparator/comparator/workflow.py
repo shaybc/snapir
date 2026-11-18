@@ -13,6 +13,7 @@ from comparator.behavior_comparison import compare
 from comparator.coverage_review import reverse, interaction_pairs
 from comparator.reporting import finish
 from comparator.stage_contracts import BASE, text
+from comparator import progress
 
 BOUNDARY=BASE+"""Describe the proposed original/native API input, output, exception and context mapping.
 The listed entries may differ structurally. Do not change semantics to make them agree. Unknown
@@ -38,6 +39,8 @@ def choose_targets(inputs,evidence):
 def run(settings,request,output,ask=None):
     """Analyze immutable inputs; persist partial work and resume only matching evidence."""
     output=Path(output).resolve();inputs=catalog(request,output,settings);output.mkdir(parents=True,exist_ok=True)
+    progress.protect_inputs(request)
+    progress.update('analysis','indexing')
     lock=output/'.comparison.lock'
     try:
         descriptor=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY)
@@ -132,4 +135,5 @@ def analyze(settings,request,output,inputs,ask):
     save(run_folder/'report.json',report)
     save(run_folder/'repair-feedback.json',dict(decision=report['decision'],evidence_level='static_analysis',
         remarks=report['remarks'],source_locations=report['source_locations']))
+    progress.update('complete','finished',model_call=tasks.calls)
     return report

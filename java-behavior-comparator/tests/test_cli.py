@@ -34,11 +34,14 @@ def test_standalone_cli_calls_own_endpoint_and_resumes(tmp_path):
         inputs=tmp_path/'request.json';inputs.write_text(json.dumps(request))
         env=os.environ.copy();env['PYTHONPATH']='';env['COMPARATOR_TEST_KEY']='synthetic-not-a-real-key'
         env['PYTHONIOENCODING']='cp1252'
-        command=[sys.executable,str(ROOT/'run.py'),'compare','--config',str(config),'--request',str(inputs),'--output',str(tmp_path/'reports')]
+        snapshot=tmp_path/'progress.json'
+        command=[sys.executable,str(ROOT/'run.py'),'compare','--config',str(config),'--request',str(inputs),
+                 '--output',str(tmp_path/'reports'),'--progress-file',str(snapshot)]
         first=subprocess.run(command,env=env,cwd=tmp_path,capture_output=True,text=True,encoding='utf-8',timeout=120)
         result=json.loads(first.stdout)
         assert first.returncode==0,result
         assert result['decision']=='consistent_in_review' and received
+        assert json.loads(snapshot.read_text())['phase']=='complete'
         count=len(received)
         second=subprocess.run(command,env=env,cwd=tmp_path,capture_output=True,text=True,encoding='utf-8',timeout=120)
         assert second.returncode==0 and len(received)==count

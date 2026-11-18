@@ -9,6 +9,7 @@ from comparator.models import SCHEMA, VERSION, DECISIONS, save
 from comparator.input_catalog import catalog
 from comparator.source_index import index
 from comparator.workflow import run
+from comparator import progress
 
 
 class Arguments(argparse.ArgumentParser):
@@ -32,6 +33,7 @@ def main(argv=None):
     parser.add_argument('command',choices=['compare','index'],nargs='?',default='compare')
     parser.add_argument('--config',default=str(ROOT/'config.yaml'))
     parser.add_argument('--common-config',help='Converter YAML containing shared model and Java settings')
+    parser.add_argument('--progress-file',help='Optional diagnostic JSON snapshot; stdout remains the final report')
     parser.add_argument('--request')
     parser.add_argument('--output',default=str(ROOT/'work'))
     parser.add_argument('--original');parser.add_argument('--generated')
@@ -42,6 +44,8 @@ def main(argv=None):
         parser.add_argument('--'+side+'-jar',action='append',default=[])
     try:
         args=parser.parse_args(argv);settings=load(args.config,args.common_config)
+        if args.progress_file:
+            os.environ[progress.ENVIRONMENT]=str(Path(args.progress_file).resolve())
         if args.request:
             request_path=Path(args.request).resolve()
             request=resolve_request(json.loads(request_path.read_text(encoding='utf-8-sig')),request_path.parent)
@@ -57,7 +61,10 @@ def main(argv=None):
             request=resolve_request(request,Path.cwd())
         if args.command=='index':
             output=Path(args.output).resolve();inputs=catalog(request,output,settings);output.mkdir(parents=True,exist_ok=True)
+            progress.protect_inputs(request)
+            progress.update('analysis','indexing')
             result=index(inputs,settings,output);save(output/'catalog.json',result)
+            progress.update('complete','finished')
             print(json.dumps(dict(schema_version=SCHEMA,decision='indexed',catalog=str(output/'catalog.json'),
                                   classes=sorted(result['classes']),warnings=result['warnings'])))
             return 0

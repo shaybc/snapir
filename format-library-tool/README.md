@@ -227,6 +227,20 @@ and records their actual bytes; the generation report describes pre-review bytes
 
 ## Independent staged behavior comparison
 
+Conversion progress is printed for both the menu and prepared-folder/CLI entry points:
+request preparation, model delivery, response receipt, policy/compilation, behavior comparison,
+and the final attempt outcome. Successful attempts print the generated folder; blocked/failed
+attempts print a short reason and their attempts/<id>/ details folder. Full diagnostics remain
+in the existing JSON reports and stdout/stderr files rather than being dumped to the console.
+
+Long waits produce a status line about every two minutes. Generation shows time without model
+content against model_timeout_seconds (an inactivity limit). Validation and comparison show
+elapsed time against their overall subprocess limits. Comparison additionally reports the
+current review phase/model call and its individual waiting limit when that status is available.
+These notices never reset model inactivity, extend timeouts, change retries or approve code.
+Comparison status is an optional comparison-progress.json snapshot; detailed evidence and the
+final validated comparison report remain authoritative. Cached reviews may finish without new model calls.
+
 After generation passes policy/compilation validation, the format-library tool invokes the
 separate `java-behavior-comparator` CLI. Both tools read the same selected converter YAML for the
 organization AI provider, endpoint and key environment variable. The comparator's own config.yaml

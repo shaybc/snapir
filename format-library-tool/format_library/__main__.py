@@ -61,8 +61,7 @@ def menu(config):
             elif action == '3':
                 status(config)
             elif action == '4':
-                result = convert(config, input('Prepared component folder: ').strip().strip('"'))
-                print('Generated: ' + str(result) if result else 'AI reported blocked; see attempts')
+                convert(config, input('Prepared component folder: ').strip().strip('"'))
             elif action == '5':
                 folder = input('Prepared component folder: ').strip().strip('"')
                 if input('Type APPROVE after reviewing its latest generated code: ').strip() == 'APPROVE':
@@ -100,8 +99,7 @@ def main(argv=None):
                 print('Prepared: ' + str(folder))
         elif args.command == 'convert':
             from format_library.model_client import convert
-            result = convert(config, args.folder)
-            print('Generated candidate: ' + str(result) if result else 'AI reported blocked; see attempts')
+            convert(config, args.folder)
         elif args.command == 'approve':
             from format_library.approval import approve
             print('Approved: ' + str(approve(config, args.folder, reviewed=args.reviewed)))

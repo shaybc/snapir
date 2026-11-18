@@ -42,6 +42,13 @@ list. If each side has exactly one target class it is selected automatically. Ot
 use both class selectors; ambiguous selections list available classes instead of guessing.
 Use --original-encoding and --generated-encoding for source encodings (default UTF-8).
 
+For live caller progress, optionally supply --progress-file STATUS_JSON or set
+JAVA_BEHAVIOR_PROGRESS_PATH to that path. The format-library caller sets it automatically.
+The small java-behavior-progress-v1 snapshot contains phase, activity, model_call and the
+current model_timeout_seconds. It is replaced atomically, contains no prompts/source/credentials,
+and does not affect deadlines, task cache identities or comparison decisions. An unwritable
+progress file or one inside inspected inputs is ignored. Stdout remains exactly the canonical final JSON result.
+
 `index` needs no AI key and saves a source catalog. `compare` runs these controlled stages:
 1. AST member, inheritance, branch, return, exception, write and call inventory.
 2. Proposed API input/output/context/exception mapping with explicit uncertainties.

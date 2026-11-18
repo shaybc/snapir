@@ -738,8 +738,8 @@ connections:
   - id: format-library-behavior-comparison
     from: format-library-tool
     to: java-behavior-comparator
-    description: Requests source-backed behavior review after generated code passes policy and compilation checks.
-    technology: CLI/JSON
+    description: Requests source-backed behavior review after policy and compilation checks and observes optional live phase snapshots.
+    technology: CLI/JSON and JSON progress file
   - id: operator-behavior-comparator
     from: operator
     to: java-behavior-comparator

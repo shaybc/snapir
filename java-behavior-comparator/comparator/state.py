@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from comparator.models import digest, save, Incomplete
 from comparator import model_client
+from comparator import progress
 
 
 class Tasks:
@@ -22,6 +23,7 @@ class Tasks:
             key=digest(dict(stage=stage,prompt=prompt,payload=current,settings=model_settings))
             path=self.work/'tasks'/stage/(key+'.json')
             if path.is_file():
+                progress.update(stage,'cached',model_call=self.calls)
                 cached=json.loads(path.read_text(encoding='utf-8'))
                 if cached.get('response_hash')!=digest(cached.get('response')): raise Incomplete('Changed task cache: '+str(path))
                 value=cached['response']
@@ -36,7 +38,10 @@ class Tasks:
                     sent={**current,'format_feedback':error}
                     save(path.with_suffix('.request.json'),dict(stage=stage,prompt=prompt,payload=sent))
                     try:
+                        progress.update(stage,'waiting',model_call=self.calls,
+                                        timeout=min(remaining,self.settings['model_timeout_seconds']))
                         text=self.ask(self.settings,stage,prompt,sent,min(remaining,self.settings['model_timeout_seconds']))
+                        progress.update(stage,'received',model_call=self.calls)
                         path.parent.mkdir(parents=True,exist_ok=True)
                         path.with_suffix('.response.txt').write_text(text,encoding='utf-8')
                         value=json.loads(text);self._validate(value,validate,allowed,current)
